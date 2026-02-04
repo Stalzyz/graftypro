@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  # 1. Main Web App
+  web:
+    build: .
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: "postgresql://user:password@postgres:5432/wabot_bsp?schema=public"
+      REDIS_HOST: "redis"
+      REDIS_PORT: "6379"
+      JWT_SECRET: ${JWT_SECRET}
+      META_APP_ID: ${META_APP_ID}
+      META_APP_SECRET: ${META_APP_SECRET}
+    depends_on:
+      - postgres
+      - redis
+    command: npm start
+
+  # 2. Worker: Campaigns
+  campaign-worker:
+    build: .
+    restart: always
+    environment:
+      DATABASE_URL: "postgresql://user:password@postgres:5432/wabot_bsp?schema=public"
+      REDIS_HOST: "redis"
+      REDIS_PORT: "6379"
+    depends_on:
+      - postgres
+      - redis
+    command: npx tsx workers/campaign.ts
+
+  # 3. Worker: Drips
+  drip-worker:
+    build: .
+    restart: always
+    environment:
+      DATABASE_URL: "postgresql://user:password@postgres:5432/wabot_bsp?schema=public"
+      REDIS_HOST: "redis"
+      REDIS_PORT: "6379"
+    depends_on:
+      - postgres
+      - redis
+    command: npx tsx workers/drip-scheduler.ts
+
+  # 4. Database
+  postgres:
+    image: postgres:15-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: wabot_bsp
+    volumes:
+      - postgres_data_prod:/var/lib/postgresql/data
+
+  # 5. Redis
+  redis:
+    image: redis:7-alpine
+    restart: always
+    volumes:
+      - redis_data_prod:/data
+
+volumes:
+  postgres_data_prod:
+  redis_data_prod:

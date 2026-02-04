@@ -1,0 +1,592 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// --------------------------------------
+// Core Multi-Tenant SaaS Tables
+// --------------------------------------
+
+enum UserRole {
+  OWNER
+  ADMIN
+  FINANCE
+  AGENT
+}
+
+enum WorkspaceStatus {
+  ACTIVE
+  SUSPENDED
+  DARMANT
+}
+
+model Workspace {
+  id            String          @id @default(uuid())
+  name          String
+  business_name String?
+  status        WorkspaceStatus @default(ACTIVE)
+  timezone      String          @default("UTC")
+  created_at    DateTime        @default(now())
+  updated_at    DateTime        @updatedAt
+  
+  // Settings stored as JSON for flexibility
+  settings      Json?           @default("{}") 
+
+  // Relations
+  users         User[]
+  teams         Team[]
+  waba          WhatsAppAccount?
+  templates     Template[]
+  contacts      Contact[]
+  conversations Conversation[]
+  flows         Flow[]
+  goals         Goal[]
+  campaigns     Campaign[]
+  products      Product[]
+  orders        Order[]
+  integrations  Integration[]
+  appointments  Appointment[]
+  slots         AppointmentSlot[]
+  drips         DripSequence[]
+
+  @@map("workspaces")
+}
+
+model User {
+  id             String    @id @default(uuid())
+  workspace_id   String
+  email          String
+  password_hash  String
+  role           UserRole  @default(AGENT)
+  first_name     String?
+  last_name      String?
+  email_verified DateTime?
+  created_at     DateTime  @default(now())
+  updated_at     DateTime  @updatedAt
+
+  workspace      Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  teams          TeamMember[]
+
+  @@unique([workspace_id, email]) // Email unique per workspace
+  @@map("users")
+}
+
+model Team {
+  id           String   @id @default(uuid())
+  workspace_id String
+  name         String
+  description  String?
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  workspace    Workspace    @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  members      TeamMember[]
+
+  @@map("teams")
+}
+
+model TeamMember {
+  id        String   @id @default(uuid())
+  team_id   String
+  user_id   String
+  joined_at DateTime @default(now())
+
+  team      Team     @relation(fields: [team_id], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([team_id, user_id])
+  @@map("team_members")
+}
+
+// --------------------------------------
+// WhatsApp Business Structure
+// --------------------------------------
+
+enum WabaStatus {
+  CONNECTED
+  DISCONNECTED
+  BANNED
+}
+
+model WhatsAppAccount {
+  id               String     @id @default(uuid())
+  workspace_id     String     @unique // One WABA per workspace for this MVP
+  waba_id          String     // Meta WABA ID
+  phone_number_id  String     @unique // Meta Phone Number ID
+  phone_number     String
+  display_name     String?
+  status           WabaStatus @default(CONNECTED)
+  quality_rating   String?    // GREEN, YELLOW, RED
+  messaging_limit  String?    // 250, 1K, 10K, etc.
+  access_token     String     // Store encrypted in real app
+  
+  created_at       DateTime   @default(now())
+  updated_at       DateTime   @updatedAt
+
+  workspace        Workspace  @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+
+  @@map("whatsapp_accounts")
+}
+
+enum TemplateStatus {
+  APPROVED
+  REJECTED
+  PENDING
+  PAUSED
+  DISABLED
+}
+
+model Template {
+  id           String         @id @default(uuid())
+  workspace_id String
+  waba_id      String?        // Optional link directly to WABA
+  
+  name         String
+  language     String
+  category     String         // MARKETING, UTILITY, AUTHENTICATION
+  status       TemplateStatus
+  
+  components   Json           // Header, Body, Footer, Buttons
+  
+  meta_id      String?         // ID from Meta
+  
+  created_at   DateTime       @default(now())
+  updated_at   DateTime       @updatedAt
+
+  workspace    Workspace      @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+
+  @@unique([workspace_id, name, language])
+  @@map("templates")
+}
+
+// --------------------------------------
+// Contact & Conversation Layer (Placeholder for Sub-Prompt 2)
+// --------------------------------------
+
+model Contact {
+  id           String   @id @default(uuid())
+  workspace_id String
+  phone        String
+  name         String?
+  
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  workspace    Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  conversations Conversation[]
+  flow_sessions FlowSession[]
+  orders        Order[]
+  appointments  Appointment[]
+  drip_enrollments DripEnrollment[]
+
+  @@unique([workspace_id, phone])
+  @@map("contacts")
+}
+
+model Conversation {
+  id           String   @id @default(uuid())
+  workspace_id String
+  contact_id   String
+  status       String   @default("OPEN") // OPEN, CLOSED, EXPIRED
+  
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  workspace    Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  contact      Contact   @relation(fields: [contact_id], references: [id], onDelete: Cascade)
+
+  @@map("conversations")
+}
+
+// --------------------------------------
+// System / Events
+// --------------------------------------
+
+model WebhookEvent {
+  id           String   @id @default(uuid())
+  meta_event_id String? @unique
+  waba_id      String?
+  payload      Json
+  processed    Boolean  @default(false)
+  created_at   DateTime @default(now())
+
+  @@map("webhook_events")
+}
+
+// --------------------------------------
+// No-Code Flow Builder
+// --------------------------------------
+
+enum FlowStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+model Flow {
+  id           String     @id @default(uuid())
+  workspace_id String
+  name         String
+  trigger_keyword String? 
+  
+  nodes        Json       
+  edges        Json       
+  
+  status       FlowStatus @default(DRAFT)
+  
+  published_at DateTime?
+  created_at   DateTime   @default(now())
+  updated_at   DateTime   @updatedAt
+
+  workspace    Workspace  @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  sessions     FlowSession[]
+  goal         Goal?
+
+  @@map("flows")
+}
+
+model FlowSession {
+  id           String   @id @default(uuid())
+  flow_id      String
+  contact_id   String
+  current_node_id String? 
+  state        Json?    // Collected variables
+  
+  is_completed Boolean  @default(false)
+  
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  flow         Flow     @relation(fields: [flow_id], references: [id], onDelete: Cascade)
+  contact      Contact  @relation(fields: [contact_id], references: [id], onDelete: Cascade)
+
+  @@map("flow_sessions")
+}
+
+// --------------------------------------
+// Goal-Based Engine
+// --------------------------------------
+
+enum GoalType {
+  BOOK_APPOINTMENT
+  COLLECT_PAYMENT
+  SELL_PRODUCT
+  GET_LEAD_INFO
+  CUSTOM
+}
+
+enum GoalStatus {
+  ACTIVE
+  PAUSED
+  COMPLETED
+}
+
+model Goal {
+  id           String     @id @default(uuid())
+  workspace_id String
+  name         String
+  type         GoalType
+  status       GoalStatus @default(ACTIVE)
+
+  // Configuration
+  config       Json       // e.g. { "product_id": "123", "price": 500 }
+  
+  // The invisible flow powering this goal
+  flow_id      String?    @unique
+  flow         Flow?      @relation(fields: [flow_id], references: [id])
+  drips        DripSequence[]
+
+  // Intelligence
+  metrics      GoalMetric[]
+  
+  created_at   DateTime   @default(now())
+  updated_at   DateTime   @updatedAt
+
+  workspace    Workspace  @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+
+  @@map("goals")
+}
+
+model GoalMetric {
+  id           String   @id @default(uuid())
+  goal_id      String
+  date         DateTime @default(now())
+  
+  started_count   Int    @default(0)
+  completed_count Int    @default(0)
+  dropped_off_count Int @default(0)
+  revenue         Float  @default(0.0)
+  
+  goal         Goal     @relation(fields: [goal_id], references: [id], onDelete: Cascade)
+
+  @@map("goal_metrics")
+}
+
+// --------------------------------------
+// Broadcasts / Campaigns
+// --------------------------------------
+
+enum CampaignStatus {
+  DRAFT
+  SCHEDULED
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+model Campaign {
+  id           String     @id @default(uuid())
+  workspace_id String
+  name         String
+  
+  template_id  String?
+  template_name String?   // Cache name for display
+  
+  // Segment Config
+  filters      Json       // e.g. { "tags": ["VIP"], "joined_after": "2024-01-01" }
+  
+  scheduled_at DateTime?
+  status       CampaignStatus @default(DRAFT)
+  
+  // Statistics
+  stats        CampaignStats?
+  
+  created_at   DateTime   @default(now())
+  updated_at   DateTime   @updatedAt
+
+  workspace    Workspace  @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+
+  @@map("campaigns")
+}
+
+model CampaignStats {
+  id           String   @id @default(uuid())
+  campaign_id  String   @unique
+  
+  total        Int      @default(0)
+  sent         Int      @default(0)
+  delivered    Int      @default(0)
+  read         Int      @default(0)
+  failed       Int      @default(0)
+  replied      Int      @default(0)
+  
+  campaign     Campaign @relation(fields: [campaign_id], references: [id], onDelete: Cascade)
+  
+  @@map("campaign_stats")
+}
+
+// --------------------------------------
+// Conversational Commerce
+// --------------------------------------
+
+model Product {
+  id           String   @id @default(uuid())
+  workspace_id String
+  
+  name         String
+  description  String?
+  image_url    String?
+  price        Float
+  currency     String   @default("INR")
+  
+  sku          String?
+  is_active    Boolean  @default(true)
+  
+  variants     ProductVariant[]
+  order_items  OrderItem[]
+  
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  workspace    Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+
+  @@map("products")
+}
+
+model ProductVariant {
+  id           String   @id @default(uuid())
+  product_id   String
+  name         String   // e.g. "Size: L"
+  price_adj    Float    @default(0) // price adjustment
+  
+  product      Product  @relation(fields: [product_id], references: [id], onDelete: Cascade)
+
+  @@map("product_variants")
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+model Order {
+  id           String   @id @default(uuid())
+  workspace_id String
+  contact_id   String
+  
+  total_amount Float
+  currency     String   @default("INR")
+  status       OrderStatus @default(PENDING)
+  
+  items        OrderItem[]
+  
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  workspace    Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  contact      Contact   @relation(fields: [contact_id], references: [id], onDelete: Cascade)
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id           String   @id @default(uuid())
+  order_id     String
+  product_id   String
+  quantity     Int
+  unit_price   Float
+  total_price  Float
+  
+  order        Order    @relation(fields: [order_id], references: [id], onDelete: Cascade)
+  product      Product  @relation(fields: [product_id], references: [id], onDelete: Cascade)
+
+  @@map("order_items")
+}
+
+// --------------------------------------
+// Integrations & Secrets
+// --------------------------------------
+
+enum IntegrationType {
+  RAZORPAY
+  STRIPE
+  SHOPIFY
+  CALENDLY
+}
+
+model Integration {
+  id           String   @id @default(uuid())
+  workspace_id String
+  type         IntegrationType
+  
+  credentials  Json     // Encrypted keys: { key_id: "...", key_secret: "..." }
+  is_active    Boolean  @default(true)
+  
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  workspace    Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+
+  @@unique([workspace_id, type]) // One active integration per type
+  @@map("integrations")
+}
+
+// --------------------------------------
+// Appointment Booking
+// --------------------------------------
+
+model AppointmentSlot {
+  id           String   @id @default(uuid())
+  workspace_id String
+  
+  start_time   DateTime
+  end_time     DateTime
+  is_booked    Boolean  @default(false)
+  
+  created_at   DateTime @default(now())
+
+  workspace    Workspace     @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  appointment  Appointment?
+
+  @@map("appointment_slots")
+}
+
+model Appointment {
+  id           String   @id @default(uuid())
+  workspace_id String
+  contact_id   String
+  slot_id      String   @unique
+  
+  status       String   @default("CONFIRMED") // CANCELLED, COMPLETED
+  notes        String?
+  
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  workspace    Workspace       @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  contact      Contact         @relation(fields: [contact_id], references: [id], onDelete: Cascade)
+  slot         AppointmentSlot @relation(fields: [slot_id], references: [id], onDelete: Cascade)
+
+  @@map("appointments")
+}
+
+// --------------------------------------
+// Smart Drip Automation
+// --------------------------------------
+
+enum DripStatus {
+  ACTIVE
+  PAUSED
+  COMPLETED
+}
+
+model DripSequence {
+  id           String   @id @default(uuid())
+  workspace_id String
+  name         String
+  
+  goal_id      String?  // Linked Goal (Stop if achieved)
+  
+  status       DripStatus @default(ACTIVE)
+  steps        DripStep[]
+  
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  workspace    Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  goal         Goal?     @relation(fields: [goal_id], references: [id])
+  
+  enrollments  DripEnrollment[]
+
+  @@map("drip_sequences")
+}
+
+model DripStep {
+  id           String   @id @default(uuid())
+  drip_id      String
+  
+  step_order   Int      // 1, 2, 3
+  delay_hours  Int      // Delay from previous step (or start)
+  
+  template_id  String?  // Message to send
+  
+  drip         DripSequence @relation(fields: [drip_id], references: [id], onDelete: Cascade)
+
+  @@map("drip_steps")
+}
+
+model DripEnrollment {
+  id           String   @id @default(uuid())
+  drip_id      String
+  contact_id   String
+  
+  current_step Int      @default(0)
+  next_run_at  DateTime
+  
+  is_stopped   Boolean  @default(false) // Stopped by Goal or Reply
+
+  drip         DripSequence @relation(fields: [drip_id], references: [id], onDelete: Cascade)
+  contact      Contact      @relation(fields: [contact_id], references: [id], onDelete: Cascade)
+
+  @@map("drip_enrollments")
+}

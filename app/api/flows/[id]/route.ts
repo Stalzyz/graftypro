@@ -1,0 +1,46 @@
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/db";
+import { getCurrentUser } from "@/lib/auth";
+
+export async function PUT(
+    req: Request,
+    { params }: { params: { id: string } }
+) {
+    try {
+        const user = await getCurrentUser(req);
+        if (!user) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        const body = await req.json();
+        const { nodes, edges, name, status } = body;
+
+        // Security: Ensure flow belongs to user's workspace
+        const flow = await prisma.flow.findFirst({
+            where: { id: params.id, workspace_id: user.workspaceId }
+        });
+
+        if (!flow) {
+            return NextResponse.json({ error: "Flow not found" }, { status: 404 });
+        }
+
+        const updatedFlow = await prisma.flow.update({
+            where: { id: params.id },
+            data: {
+                nodes: nodes ?? undefined,
+                edges: edges ?? undefined,
+                name: name ?? undefined,
+                status: status ?? undefined,
+                updated_at: new Date(),
+            },
+        });
+
+        return NextResponse.json({ success: true, flow: updatedFlow });
+    } catch (error) {
+        console.error("Update Flow Error:", error);
+        return NextResponse.json(
+            { error: "Internal Server Error" },
+            { status: 500 }
+        );
+    }
+}
