@@ -1,3 +1,7 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import Link from 'next/link';
 import {
     Users,
     MessageCircle,
@@ -6,6 +10,33 @@ import {
 } from "lucide-react";
 
 export default function DashboardPage() {
+    const [stats, setStats] = useState({
+        contactsCount: 0,
+        messagesSent: 0,
+        activeFlows: 0,
+        recentCampaigns: []
+    });
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchStats = async () => {
+            try {
+                const res = await fetch('/api/dashboard/stats');
+                if (res.ok) {
+                    const data = await res.json();
+                    setStats(data);
+                }
+            } catch (e) {
+                console.error("Failed to fetch dash stats", e);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchStats();
+    }, []);
+
+    if (loading) return <div className="p-8 text-gray-500">Loading Dashboard...</div>;
+
     return (
         <div className="space-y-8">
             <div>
@@ -17,25 +48,22 @@ export default function DashboardPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <StatCard
                     title="Total Contacts"
-                    value="1,280"
-                    trend="+12%"
+                    value={stats.contactsCount}
                     icon={<Users className="text-blue-600" size={24} />}
                 />
                 <StatCard
                     title="Messages Sent"
-                    value="45,320"
-                    trend="+5%"
+                    value={stats.messagesSent}
                     icon={<MessageCircle className="text-indigo-600" size={24} />}
                 />
                 <StatCard
                     title="Active Flows"
-                    value="8"
+                    value={stats.activeFlows}
                     icon={<Zap className="text-yellow-600" size={24} />}
                 />
                 <StatCard
-                    title="Conversion Rate"
-                    value="3.2%"
-                    trend="+0.4%"
+                    title="Campaigns"
+                    value={stats.recentCampaigns.length}
                     icon={<TrendingUp className="text-green-600" size={24} />}
                 />
             </div>
@@ -46,9 +74,19 @@ export default function DashboardPage() {
                 <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 p-6">
                     <h3 className="font-semibold text-gray-900 mb-4">Recent Broadcasts</h3>
                     <div className="space-y-4">
-                        <CampaignRow name="Black Friday Sale" status="Completed" sent={5000} date="2 hours ago" />
-                        <CampaignRow name="Weekly Newsletter" status="Processing" sent={120} date="Just now" />
-                        <CampaignRow name="Welcome Series" status="Active" sent={850} date="Ongoing" />
+                        {stats.recentCampaigns.length === 0 ? (
+                            <div className="text-gray-400 text-sm">No recent campaigns.</div>
+                        ) : (
+                            stats.recentCampaigns.map((c: any) => (
+                                <CampaignRow
+                                    key={c.id}
+                                    name={c.name}
+                                    status={c.status}
+                                    sent={c.sent_count || 0}
+                                    date={new Date(c.created_at).toLocaleDateString()}
+                                />
+                            ))
+                        )}
                     </div>
                 </div>
 
@@ -56,15 +94,15 @@ export default function DashboardPage() {
                 <div className="bg-white rounded-xl border border-gray-200 p-6">
                     <h3 className="font-semibold text-gray-900 mb-4">Quick Actions</h3>
                     <div className="space-y-3">
-                        <button className="w-full text-left px-4 py-3 rounded-lg border border-gray-200 hover:bg-gray-50 text-sm font-medium transition-colors">
+                        <Link href="/dashboard/campaigns" className="block w-full text-left px-4 py-3 rounded-lg border border-gray-200 hover:bg-gray-50 text-sm font-medium transition-colors">
                             + New Broadcast
-                        </button>
-                        <button className="w-full text-left px-4 py-3 rounded-lg border border-gray-200 hover:bg-gray-50 text-sm font-medium transition-colors">
+                        </Link>
+                        <Link href="/dashboard/flows/create" className="block w-full text-left px-4 py-3 rounded-lg border border-gray-200 hover:bg-gray-50 text-sm font-medium transition-colors">
                             + Create Automation Flow
-                        </button>
-                        <button className="w-full text-left px-4 py-3 rounded-lg border border-gray-200 hover:bg-gray-50 text-sm font-medium transition-colors">
-                            Manage Templates
-                        </button>
+                        </Link>
+                        <Link href="/dashboard/contacts" className="block w-full text-left px-4 py-3 rounded-lg border border-gray-200 hover:bg-gray-50 text-sm font-medium transition-colors">
+                            Manage Contacts
+                        </Link>
                     </div>
                 </div>
             </div>
@@ -94,8 +132,8 @@ function CampaignRow({ name, status, sent, date }: any) {
             </div>
             <div className="text-right">
                 <div className={`text-xs font-medium px-2 py-1 rounded-full inline-block mb-1 
-                    ${status === 'Completed' ? 'bg-green-100 text-green-700' :
-                        status === 'Processing' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'}`}>
+                    ${status === 'COMPLETED' ? 'bg-green-100 text-green-700' :
+                        status === 'PROCESSING' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'}`}>
                     {status}
                 </div>
                 <div className="text-xs text-gray-500">{sent} sent</div>

@@ -6,7 +6,11 @@ import {
     Send,
     GitBranch,
     Settings,
-    LogOut
+    Clock,
+    LogOut,
+    CreditCard,
+    Package,
+    ShoppingBag
 } from "lucide-react";
 
 export default function DashboardLayout({
@@ -24,13 +28,25 @@ export default function DashboardLayout({
                     </span>
                 </div>
 
-                <nav className="flex-1 px-4 py-6 space-y-1">
+                <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
                     <NavItem href="/dashboard" icon={<LayoutDashboard size={20} />} label="Overview" active />
                     <NavItem href="/dashboard/contacts" icon={<Users size={20} />} label="Contacts" />
                     <NavItem href="/dashboard/chat" icon={<MessageSquare size={20} />} label="Live Chat" />
                     <NavItem href="/dashboard/campaigns" icon={<Send size={20} />} label="Broadcasts" />
+                    <NavItem href="/dashboard/drips" icon={<Clock size={20} />} label="Drip Campaigns" />
                     <NavItem href="/dashboard/flows/create" icon={<GitBranch size={20} />} label="Automation" />
+
+                    <div className="pt-4 pb-2 px-3 text-xs font-semibold text-gray-400 uppercase tracking-widest">
+                        Commerce
+                    </div>
+                    <NavItem href="/dashboard/products" icon={<Package size={20} />} label="Products" />
+                    <NavItem href="/dashboard/orders" icon={<ShoppingBag size={20} />} label="Orders" />
+
+                    <div className="pt-4 pb-2 px-3 text-xs font-semibold text-gray-400 uppercase tracking-widest">
+                        System
+                    </div>
                     <NavItem href="/dashboard/settings" icon={<Settings size={20} />} label="Settings" />
+                    <NavItem href="/dashboard/settings/billing" icon={<CreditCard size={20} />} label="Billing" />
                 </nav>
 
                 <div className="p-4 border-t border-gray-100">

@@ -32,9 +32,13 @@ const worker = new Worker(
         if (!waba) throw new Error("No WhatsApp Account linked");
 
         // 3. Fetch Audience (Contacts matching filters)
-        // TODO: Implement complex filtering. For now, ALL contacts.
+        // Respecting Consent Engine (Phase 2)
         const contacts = await prisma.contact.findMany({
-            where: { workspace_id: workspaceId }
+            where: {
+                workspace_id: workspaceId,
+                opt_in: true,
+                blocked: false
+            }
         });
 
         console.log(`Audience Size: ${contacts.length}`);

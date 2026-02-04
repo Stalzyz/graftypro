@@ -3,68 +3,154 @@ import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import axios from "axios";
 
-// POST /api/whatsapp/onboard - Exchange Code for Token
+// Meta API Version
+const API_VER = "v18.0";
+
 export async function POST(req: Request) {
     try {
+        // 1. Authenticate Application User
         const user = await getCurrentUser(req);
         if (!user) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        const { code } = await req.json(); // The OAuth code from Meta SDK
-
+        const { code } = await req.json();
         if (!code) {
-            return NextResponse.json({ error: "Missing code" }, { status: 400 });
+            return NextResponse.json({ error: "Missing OAuth code" }, { status: 400 });
         }
 
+        // Use process.env variables directly
         const APP_ID = process.env.META_APP_ID;
         const APP_SECRET = process.env.META_APP_SECRET;
 
-        // 1. Exchange Code for Access Token
-        const tokenUrl = `https://graph.facebook.com/v18.0/oauth/access_token?client_id=${APP_ID}&client_secret=${APP_SECRET}&code=${code}`;
-        const tokenRes = await axios.get(tokenUrl);
+        // Validation for credentials
+        if (!APP_ID || !APP_SECRET) {
+            console.error("Meta Credentials Missing in .env");
+            return NextResponse.json({ error: "Server Misconfigured: Missing Meta Credentials" }, { status: 500 });
+        }
+
+        // 2. Exchange Code for User Access Token
+        console.log("Exchanging Code for Token...");
+        const tokenRes = await axios.get(`https://graph.facebook.com/${API_VER}/oauth/access_token`, {
+            params: {
+                client_id: APP_ID,
+                client_secret: APP_SECRET,
+                code: code
+            }
+        });
+
         const accessToken = tokenRes.data.access_token;
+        if (!accessToken) throw new Error("Failed to get Access Token from Meta");
 
-        // 2. Get WABA Details (Debug Token)
-        const debugUrl = `https://graph.facebook.com/debug_token?input_token=${accessToken}&access_token=${accessToken}`;
-        const debugRes = await axios.get(debugUrl);
+        // 3. Get User's WABA (WhatsApp Business Accounts)
+        console.log("Fetching WABA Details for user...");
 
-        // In Embedded Signup, the scopes usually allow us to fetch the WABA ID linked to this user
-        // For simplicity, we assume we fetch the first available WABA and Phone Number
-        // A real implementation requires listing the WABAs and letting user pick one if multiple exist.
+        // We query 'me/businesses' to find the WABA shared with this App
+        // This query navigates: Me -> Businesses -> Owned WABAs
+        const wabaRes = await axios.get(`https://graph.facebook.com/${API_VER}/me`, {
+            params: {
+                access_token: accessToken,
+                fields: "id,name,businesses{id,name,owned_whatsapp_business_accounts{id,name,currency}}"
+            }
+        });
 
-        // 3. Save to DB
-        // We fetch the shared WABA ID (this part depends heavily on the specific permission scope granted)
-        // Mocking the WABA ID extraction for now as it requires complex graph traversal
-        const MOCK_WABA_ID = "123456789";
-        const MOCK_PHONE_ID = "987654321";
+        // Find the first valid WABA
+        const businesses = wabaRes.data?.businesses?.data || [];
 
+        let wabaId = "";
+        let wabaName = "";
+
+        for (const biz of businesses) {
+            if (biz.owned_whatsapp_business_accounts?.data?.length > 0) {
+                const waba = biz.owned_whatsapp_business_accounts.data[0];
+                wabaId = waba.id;
+                wabaName = waba.name;
+                break;
+            }
+        }
+
+        // Fallback: If no owned WABA, try looking for 'client_whatsapp_business_accounts' (common in embedded signup)
+        if (!wabaId) {
+            const clientWabaRes = await axios.get(`https://graph.facebook.com/${API_VER}/me`, {
+                params: {
+                    access_token: accessToken,
+                    fields: "id,name,client_whatsapp_business_accounts{id,name,currency}"
+                }
+            });
+            const clientWabas = clientWabaRes.data?.client_whatsapp_business_accounts?.data || [];
+            if (clientWabas.length > 0) {
+                wabaId = clientWabas[0].id;
+                wabaName = clientWabas[0].name;
+            }
+        }
+
+        if (!wabaId) {
+            throw new Error("No WhatsApp Business Account (WABA) found linked to this Facebook User.");
+        }
+
+        console.log(`Found WABA: ${wabaId} (${wabaName})`);
+
+        // 4. Get Phone Number ID
+        console.log(`Fetching Phone Numbers for WABA: ${wabaId}`);
+        const phoneRes = await axios.get(`https://graph.facebook.com/${API_VER}/${wabaId}/phone_numbers`, {
+            params: {
+                access_token: accessToken
+            }
+        });
+
+        const phones = phoneRes.data.data;
+        if (!phones || phones.length === 0) {
+            throw new Error("No Phone Number found in this WABA. Please create a number in Meta Business Manager.");
+        }
+
+        // Pick the first phone number (MVP: Single Number Support)
+        const primaryPhone = phones[0];
+        const phoneId = primaryPhone.id;
+        const displayPhone = primaryPhone.display_phone_number || primaryPhone.verified_name;
+        const displayName = primaryPhone.verified_name || wabaName;
+
+        // 5. Register Webhook (Subscribe App to WABA)
+        try {
+            await axios.post(`https://graph.facebook.com/${API_VER}/${wabaId}/subscribed_apps`, {}, {
+                params: { access_token: accessToken }
+            });
+            console.log("Webhook Subscribed successfully");
+        } catch (subError: any) {
+            console.warn("Webhook subscription failed (non-critical if manually set):", subError.response?.data || subError.message);
+        }
+
+        // 6. Save to Database
+        console.log(`Saving Account: ${phoneId} for Workspace: ${user.workspaceId}`);
         await prisma.whatsAppAccount.upsert({
             where: { workspace_id: user.workspaceId },
             update: {
                 access_token: accessToken,
-                status: "CONNECTED",
-                waba_id: MOCK_WABA_ID,
-                phone_number_id: MOCK_PHONE_ID,
-                phone_number: "15550001" // In reality, fetch from API
+                waba_id: wabaId,
+                phone_number_id: phoneId,
+                phone_number: displayPhone,
+                display_name: displayName,
+                status: "CONNECTED"
             },
             create: {
                 workspace_id: user.workspaceId,
                 access_token: accessToken,
-                waba_id: MOCK_WABA_ID,
-                phone_number_id: MOCK_PHONE_ID,
-                phone_number: "15550001",
-                status: "CONNECTED",
-                display_name: "My Business"
+                waba_id: wabaId,
+                phone_number_id: phoneId,
+                phone_number: displayPhone,
+                display_name: displayName,
+                status: "CONNECTED"
             }
         });
 
-        return NextResponse.json({ success: true });
+        return NextResponse.json({
+            success: true,
+            data: { wabaId, phoneId, phone: displayPhone }
+        });
 
     } catch (error: any) {
-        console.error("Onboarding Error:", error.response?.data || error);
+        console.error("Onboarding Error:", error.response?.data || error.message);
         return NextResponse.json(
-            { error: "Onboarding Failed" },
+            { error: error.response?.data?.error?.message || error.message || "Onboarding Failed" },
             { status: 500 }
         );
     }

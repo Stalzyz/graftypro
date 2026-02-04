@@ -1,10 +1,11 @@
-FROM node:18-alpine AS base
+FROM node:18-slim AS base
 
 # Install dependencies only when needed
 FROM base AS deps
 WORKDIR /app
 COPY package.json package-lock.json* ./
-RUN npm ci
+# FIX: Use npm install instead of ci to handle lockfile mismatches during dev
+RUN npm install
 
 # Rebuild the source code only when needed
 FROM base AS builder
@@ -23,6 +24,13 @@ FROM base AS runner
 WORKDIR /app
 
 ENV NODE_ENV production
+ARG NEXT_PUBLIC_META_APP_ID
+ARG NEXT_PUBLIC_META_CONFIG_ID
+ENV NEXT_PUBLIC_META_APP_ID=$NEXT_PUBLIC_META_APP_ID
+ENV NEXT_PUBLIC_META_CONFIG_ID=$NEXT_PUBLIC_META_CONFIG_ID
+
+# FIX: Install OpenSSL for Prisma (Debian uses apt-get, usually installed)
+RUN apt-get update -y && apt-get install -y openssl
 
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs

@@ -7,6 +7,7 @@ interface SendMessagePayload {
     to: string;
     type: "text" | "template" | "image" | "interactive";
     text?: { body: string };
+    image?: { link: string; caption?: string };
     template?: {
         name: string;
         language: { code: string };
@@ -42,7 +43,8 @@ export class WhatsAppService {
             return response.data;
         } catch (error: any) {
             console.error("Meta API Error:", error.response?.data || error.message);
-            throw new Error("Failed to send WhatsApp message");
+            // Don't throw to avoid crashing flow runner
+            return null;
         }
     }
 
@@ -74,6 +76,23 @@ export class WhatsAppService {
                 name: templateName,
                 language: { code: langCode },
                 components
+            }
+        });
+    }
+
+    static async sendImage(
+        phoneId: string,
+        token: string,
+        to: string,
+        url: string,
+        caption?: string
+    ) {
+        return this.sendMessage(phoneId, token, {
+            to,
+            type: "image",
+            image: {
+                link: url,
+                caption
             }
         });
     }

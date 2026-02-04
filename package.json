@@ -15,7 +15,7 @@
     "bullmq": "^5.4.1",
     "clsx": "^2.1.0",
     "ioredis": "^5.3.2",
-    "jsonwebtoken": "^9.0.2",
+    "jose": "^5.2.0",
     "lucide-react": "^0.344.0",
     "next": "14.1.0",
     "razorpay": "^2.9.6",
@@ -34,6 +34,7 @@
     "postcss": "^8",
     "prisma": "^5.10.2",
     "tailwindcss": "^3.3.0",
-    "typescript": "^5"
+    "typescript": "^5",
+    "tsx": "^4.7.1"
   }
 }

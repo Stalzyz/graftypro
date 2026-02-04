@@ -10,7 +10,7 @@ export async function POST(req: Request) {
         }
 
         const body = await req.json();
-        const { name, trigger_keyword, nodes, edges } = body;
+        const { name, trigger_keyword, nodes, edges, status } = body;
 
         const flow = await prisma.flow.create({
             data: {
@@ -19,7 +19,7 @@ export async function POST(req: Request) {
                 trigger_keyword: trigger_keyword,
                 nodes: nodes || [],
                 edges: edges || [],
-                status: "DRAFT",
+                status: status || "DRAFT",
             },
         });
 

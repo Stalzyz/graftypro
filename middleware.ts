@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { verifyToken } from "./lib/auth";
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
     // 1. Define guarded paths
     const path = request.nextUrl.pathname;
 
@@ -32,20 +32,24 @@ export function middleware(request: NextRequest) {
     if (authHeader && authHeader.startsWith("Bearer ")) {
         token = authHeader.split(" ")[1];
     } else {
-        // Attempt cookie check (future proofing)
-        // token = request.cookies.get("token")?.value || "";
+        // Attempt cookie check
+        token = request.cookies.get("token")?.value || "";
     }
+
+    // DEBUG LOG
+    console.log(`[Middleware] Path: ${path}, Token Found: ${!!token}`);
 
     if (!token) {
         if (path.startsWith("/api")) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         } else {
+            console.log("[Middleware] Redirecting to /login (No Token)");
             return NextResponse.redirect(new URL("/login", request.url));
         }
     }
 
     // 3. Verify Token
-    const payload = verifyToken(token);
+    const payload = await verifyToken(token);
     if (!payload) {
         if (path.startsWith("/api")) {
             return NextResponse.json({ error: "Invalid Token" }, { status: 401 });

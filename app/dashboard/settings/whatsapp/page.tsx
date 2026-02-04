@@ -19,7 +19,7 @@ export default function WhatsAppSettingsPage() {
     const initFacebook = () => {
         window.fbAsyncInit = function () {
             window.FB.init({
-                appId: 'YOUR_META_APP_ID', // Replace with Env Var
+                appId: process.env.NEXT_PUBLIC_META_APP_ID,
                 autoLogAppEvents: true,
                 xfbml: true,
                 version: 'v18.0'
@@ -42,7 +42,7 @@ export default function WhatsAppSettingsPage() {
                 setLoading(false);
             }
         }, {
-            config_id: 'YOUR_CONFIG_ID', // Created in Meta App Dashboard
+            config_id: process.env.NEXT_PUBLIC_META_CONFIG_ID,
             response_type: 'code',
             override_default_response_type: true,
             extras: {

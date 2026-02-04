@@ -38,7 +38,7 @@ export async function POST(req: Request) {
         }
 
         // 3. Generate Token
-        const token = signToken({
+        const token = await signToken({
             userId: user.id,
             workspaceId: user.workspace_id,
             role: user.role,

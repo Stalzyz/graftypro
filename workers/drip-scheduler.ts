@@ -1,3 +1,4 @@
+
 import { prisma } from "../lib/db";
 import { WhatsAppService } from "../lib/whatsapp/service";
 
@@ -28,47 +29,66 @@ async function processDrips() {
     for (const enrollment of dueEnrollments) {
         try {
             const steps = enrollment.drip.steps;
-            // current_step is 0-indexed index of LAST completed step? 
-            // Let's say current_step 0 means "Just started, ready for Step 1".
-            // If we want 1-based logic:
+            // Current step logic:
+            // If current_step = 0, we look for step_order = 1
             const nextStepOrder = enrollment.current_step + 1;
             const stepToSend = steps.find(s => s.step_order === nextStepOrder);
 
             if (!stepToSend) {
                 // No more steps, mark completed
-                // But strictly, we check status.
                 console.log(`Drip ${enrollment.drip.name} finished for contact.`);
-                // Could delete enrollment or mark finished
+                await prisma.dripEnrollment.update({
+                    where: { id: enrollment.id },
+                    data: { is_stopped: true }
+                });
                 continue;
             }
 
             // 2. Safety Check (Goal Awareness)
             if (enrollment.drip.goal_id) {
-                // Check if goal is achieved for this contact
-                // (Requires tracking goal completion per contact - usually stored in GoalMetric or FlowSession)
-                // For MVP, we skip this deep check, assuming Flow would have set 'is_stopped' = true upon completion.
+                // Optional: Check if goal is already achieved.
             }
 
             // 3. Send Message
-            if (enrollment.contact.phone_number_id) {
-                // Need WABA ID. Contact model doesn't have it directly.
-                // In real app, fetch WABA via workspace_id
+            let sentSuccess = false;
+
+            if (enrollment.contact.phone) {
+                // Fetch WABA ID via workspace_id
                 const waba = await prisma.whatsAppAccount.findUnique({
                     where: { workspace_id: enrollment.drip.workspace_id }
                 });
 
-                if (waba && stepToSend.template_id) {
-                    await WhatsAppService.sendTemplate(
-                        waba.phone_number_id,
-                        waba.access_token,
-                        enrollment.contact.phone,
-                        stepToSend.template_id
-                    );
-                    console.log(`Sent Drip Step ${stepToSend.step_order} to ${enrollment.contact.phone}`);
+                // Fetch Template Details
+                let template = null;
+                if (stepToSend.template_id) {
+                    template = await prisma.template.findUnique({
+                        where: { id: stepToSend.template_id }
+                    });
+                }
+
+                if (waba && template) {
+                    try {
+                        await WhatsAppService.sendTemplate(
+                            waba.phone_number_id,
+                            waba.access_token,
+                            enrollment.contact.phone,
+                            template.name,
+                            template.language
+                        );
+                        console.log(`Sent Drip Step ${stepToSend.step_order} to ${enrollment.contact.phone}`);
+                        sentSuccess = true;
+                    } catch (err) {
+                        console.error("Failed to send message", err);
+                    }
+                } else {
+                    console.log(`Skipping Step ${stepToSend.step_order}: WABA or Template missing.`);
                 }
             }
 
             // 4. Update Enrollment (Schedule Next)
+            // Even if send failed? Usually yes, to avoid stuck loops, or setup retry.
+            // For MVP, we advance.
+
             const nextNextStep = steps.find(s => s.step_order === nextStepOrder + 1);
 
             if (nextNextStep) {
@@ -99,5 +119,7 @@ async function processDrips() {
 }
 
 // Run loop
+// Process drips immediately on start, then interval
+processDrips();
 setInterval(processDrips, 60000); // Check every minute
 console.log("🌊 Drip Scheduler Started");

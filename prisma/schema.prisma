@@ -2,7 +2,8 @@
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
 }
 
 datasource db {
@@ -27,6 +28,12 @@ enum WorkspaceStatus {
   DARMANT
 }
 
+enum Plan {
+  FREE
+  PRO
+  ENTERPRISE
+}
+
 model Workspace {
   id            String          @id @default(uuid())
   name          String
@@ -36,6 +43,11 @@ model Workspace {
   created_at    DateTime        @default(now())
   updated_at    DateTime        @updatedAt
   
+  // SaaS Billing
+  plan               Plan     @default(FREE)
+  subscription_id    String?  // Razorpay Sub ID
+  subscription_status String? // active, created, halted
+
   // Settings stored as JSON for flexibility
   settings      Json?           @default("{}") 
 
@@ -55,6 +67,7 @@ model Workspace {
   appointments  Appointment[]
   slots         AppointmentSlot[]
   drips         DripSequence[]
+  messages      Message[]
 
   @@map("workspaces")
 }
@@ -175,6 +188,15 @@ model Contact {
   workspace_id String
   phone        String
   name         String?
+  email        String?
+  
+  tags         String[] @default([])
+  attributes   Json     @default("{}") // Custom key-value pairs
+  
+  opt_in       Boolean  @default(true)
+  blocked      Boolean  @default(false)
+  
+  last_active_at DateTime @default(now())
   
   created_at   DateTime @default(now())
   updated_at   DateTime @updatedAt
@@ -185,6 +207,7 @@ model Contact {
   orders        Order[]
   appointments  Appointment[]
   drip_enrollments DripEnrollment[]
+  messages         Message[]
 
   @@unique([workspace_id, phone])
   @@map("contacts")
@@ -203,6 +226,47 @@ model Conversation {
   contact      Contact   @relation(fields: [contact_id], references: [id], onDelete: Cascade)
 
   @@map("conversations")
+  
+  messages     Message[]
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  TEMPLATE
+  INTERACTIVE
+  AUDIO
+  VIDEO
+  DOCUMENT
+  UNKNOWN
+}
+
+enum MessageDirection {
+  INBOUND
+  OUTBOUND
+}
+
+model Message {
+  id           String   @id @default(uuid())
+  workspace_id String
+  conversation_id String
+  contact_id   String
+  
+  meta_id      String?  @unique // ID from WhatsApp
+  type         MessageType
+  direction    MessageDirection
+  
+  content      Json     // The body/text/media url: { body: "Hello" } or { link: "..." }
+  status       String   @default("SENT") // SENT, DELIVERED, READ, FAILED
+  
+  created_at   DateTime @default(now())
+
+  workspace    Workspace     @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  conversation Conversation  @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
+  contact      Contact       @relation(fields: [contact_id], references: [id], onDelete: Cascade)
+
+  @@index([conversation_id])
+  @@map("messages")
 }
 
 // --------------------------------------

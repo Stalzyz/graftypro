@@ -1,42 +1,44 @@
-import jwt from "jsonwebtoken";
-import { prisma } from "./db";
+import { SignJWT, jwtVerify } from "jose";
 
-const JWT_SECRET = process.env.JWT_SECRET || "super-secret-key-change-this";
+const JWT_SECRET = process.env.JWT_SECRET || "development-secret-key-change-this-in-prod-12345";
+const secretKey = new TextEncoder().encode(JWT_SECRET);
 
 export interface UserPayload {
     userId: string;
     workspaceId: string;
     role: string;
+    [key: string]: any; // Allow extra claims
 }
 
-export function signToken(payload: UserPayload): string {
-    return jwt.sign(payload, JWT_SECRET, { expiresIn: "7d" });
+// Sign Token (Edge Compatible)
+export async function signToken(payload: UserPayload): Promise<string> {
+    return new SignJWT(payload)
+        .setProtectedHeader({ alg: "HS256" })
+        .setIssuedAt()
+        .setExpirationTime("7d")
+        .sign(secretKey);
 }
 
-export function verifyToken(token: string): UserPayload | null {
+// Verify Token (Edge Compatible)
+export async function verifyToken(token: string): Promise<UserPayload | null> {
     try {
-        return jwt.verify(token, JWT_SECRET) as UserPayload;
+        const { payload } = await jwtVerify(token, secretKey);
+        return payload as unknown as UserPayload;
     } catch (error) {
+        console.error("Token verification failed:", error);
         return null;
     }
 }
 
 /**
- * Middleware helper to get current user from Request headers
+ * Middleware helper to get current user from Request headers (Converted to async for jose)
  */
-export async function getCurrentUser(request: Request) {
+export async function getCurrentUser(request: Request): Promise<UserPayload | null> {
     const authHeader = request.headers.get("Authorization");
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
         return null;
     }
 
     const token = authHeader.split(" ")[1];
-    const payload = verifyToken(token);
-
-    if (!payload) return null;
-
-    // Optional: Fetch fresh user from DB if needed
-    // const user = await prisma.user.findUnique(...) 
-
-    return payload;
+    return await verifyToken(token);
 }

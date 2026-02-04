@@ -68,7 +68,7 @@ export async function POST(req: Request) {
 
                 // C. Log Conversation Event (Simplified)
                 // In real system: check if existing conversation is open, else open new.
-                const conversation = await prisma.conversation.findFirst({
+                let conversation = await prisma.conversation.findFirst({
                     where: {
                         contact_id: contact.id,
                         status: "OPEN",
@@ -76,13 +76,74 @@ export async function POST(req: Request) {
                 });
 
                 if (!conversation) {
-                    await prisma.conversation.create({
+                    conversation = await prisma.conversation.create({
                         data: {
                             workspace_id: waba.workspace_id,
                             contact_id: contact.id,
                             status: "OPEN"
                         }
-                    })
+                    });
+                }
+
+                // C2. Save Message (Timeline)
+                let msgType = "TEXT";
+                let msgContent = {};
+
+                if (message.text) {
+                    msgType = "TEXT";
+                    msgContent = { body: message.text.body };
+                } else if (message.image) {
+                    msgType = "IMAGE";
+                    msgContent = message.image;
+                } else if (message.interactive) {
+                    msgType = "INTERACTIVE";
+                    msgContent = message.interactive;
+                } else {
+                    msgType = "UNKNOWN";
+                    msgContent = { raw: message };
+                }
+
+                await prisma.message.create({
+                    data: {
+                        workspace_id: waba.workspace_id,
+                        contact_id: contact.id,
+                        conversation_id: conversation.id,
+                        meta_id: message.id,
+                        type: msgType as any, // Enum
+                        direction: "INBOUND",
+                        content: msgContent,
+                        status: "DELIVERED"
+                    }
+                });
+
+                // Update Contact Last Active
+                await prisma.contact.update({
+                    where: { id: contact.id },
+                    data: { last_active_at: new Date() }
+                });
+
+                // D. Consent Engine (Phase 2)
+                const textBody = message.text?.body?.toLowerCase()?.trim();
+
+                if (textBody === "stop" || textBody === "unsubscribe") {
+                    await prisma.contact.update({
+                        where: { id: contact.id },
+                        data: { opt_in: false }
+                    });
+                    // Optional: Send "You have been unsubscribed" via API (outside scope of webhook return)
+                    return NextResponse.json({ status: "opted_out" });
+                }
+
+                if (textBody === "start" || textBody === "subscribe") {
+                    await prisma.contact.update({
+                        where: { id: contact.id },
+                        data: { opt_in: true }
+                    });
+                }
+
+                if (!contact.opt_in && textBody !== "start") {
+                    // Ignore messages from opted-out users unless they resubscribe
+                    return NextResponse.json({ status: "ignored_blocked" });
                 }
 
                 // E. Trigger Flow Engine

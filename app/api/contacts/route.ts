@@ -2,38 +2,37 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 
-// GET /api/contacts - List contacts for current workspace
 export async function GET(req: Request) {
     try {
         const user = await getCurrentUser(req);
-        if (!user) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-        }
+        if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
         const { searchParams } = new URL(req.url);
+        const search = searchParams.get("search") || "";
         const page = parseInt(searchParams.get("page") || "1");
         const limit = parseInt(searchParams.get("limit") || "20");
-        const search = searchParams.get("search") || "";
-
         const skip = (page - 1) * limit;
 
-        // Filter by workspace AND search term
-        const whereClause = {
+        // Build Filter
+        const whereClause: any = {
             workspace_id: user.workspaceId,
-            OR: search
-                ? [
-                    { name: { contains: search, mode: "insensitive" as const } },
-                    { phone: { contains: search, mode: "insensitive" as const } },
-                ]
-                : undefined,
         };
 
-        const [contacts, total] = await prisma.$transaction([
+        if (search) {
+            whereClause.OR = [
+                { name: { contains: search, mode: "insensitive" } },
+                { phone: { contains: search, mode: "insensitive" } },
+                { email: { contains: search, mode: "insensitive" } },
+            ];
+        }
+
+        // Execute Query
+        const [contacts, total] = await Promise.all([
             prisma.contact.findMany({
                 where: whereClause,
-                skip,
+                orderBy: { last_active_at: "desc" },
                 take: limit,
-                orderBy: { updated_at: "desc" },
+                skip: skip,
             }),
             prisma.contact.count({ where: whereClause }),
         ]);
@@ -43,34 +42,29 @@ export async function GET(req: Request) {
             meta: {
                 total,
                 page,
-                last_page: Math.ceil(total / limit),
+                limit,
+                totalPages: Math.ceil(total / limit),
             },
         });
-    } catch (error) {
-        console.error("Fetch Contacts Error:", error);
-        return NextResponse.json(
-            { error: "Internal Server Error" },
-            { status: 500 }
-        );
+
+    } catch (error: any) {
+        return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }
 
-// POST /api/contacts - Create or Update Contact
 export async function POST(req: Request) {
     try {
         const user = await getCurrentUser(req);
-        if (!user) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-        }
+        if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
         const body = await req.json();
-        const { phone, name } = body;
+        const { phone, name, email, tags, attributes } = body;
 
         if (!phone) {
             return NextResponse.json({ error: "Phone number is required" }, { status: 400 });
         }
 
-        // Upsert: Update if exists, Create if not
+        // Upsert by Phone
         const contact = await prisma.contact.upsert({
             where: {
                 workspace_id_phone: {
@@ -80,21 +74,25 @@ export async function POST(req: Request) {
             },
             update: {
                 name: name || undefined,
-                updated_at: new Date(),
+                email: email || undefined,
+                tags: tags || undefined,
+                attributes: attributes || undefined,
+                last_active_at: new Date(),
             },
             create: {
                 workspace_id: user.workspaceId,
-                phone: phone,
-                name: name || "Unknown",
+                phone,
+                name,
+                email,
+                tags: tags || [],
+                attributes: attributes || {},
             },
         });
 
-        return NextResponse.json({ success: true, contact });
-    } catch (error) {
+        return NextResponse.json(contact);
+
+    } catch (error: any) {
         console.error("Create Contact Error:", error);
-        return NextResponse.json(
-            { error: "Internal Server Error" },
-            { status: 500 }
-        );
+        return NextResponse.json({ error: "Failed to create contact" }, { status: 500 });
     }
 }

@@ -3,10 +3,14 @@ version: '3.8'
 services:
   # 1. Main Web App
   web:
-    build: .
+    build:
+      context: .
+      args:
+        NEXT_PUBLIC_META_APP_ID: ${META_APP_ID}
+        NEXT_PUBLIC_META_CONFIG_ID: ${META_CONFIG_ID}
     restart: always
     ports:
-      - "3000:3000"
+      - "80:3000"
     environment:
       DATABASE_URL: "postgresql://user:password@postgres:5432/wabot_bsp?schema=public"
       REDIS_HOST: "redis"
