@@ -1,0 +1,40 @@
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/db";
+import { getCurrentUser } from "@/lib/auth";
+
+export const dynamic = 'force-dynamic';
+
+export async function GET(req: Request) {
+    try {
+        const user = await getCurrentUser(req);
+        if (!user) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        const account = await prisma.whatsAppAccount.findUnique({
+            where: { workspace_id: user.workspaceId }
+        });
+
+        if (account && account.status === 'CONNECTED') {
+            return NextResponse.json({
+                status: 'CONNECTED',
+                account: {
+                    phone_number: account.phone_number,
+                    display_name: account.display_name,
+                    quality_rating: account.quality_rating,
+                    messaging_limit: account.messaging_limit,
+                    waba_id: account.waba_id,
+                    phone_number_id: account.phone_number_id,
+                    integration_status: account.integration_status,
+                    health_status: account.health_status,
+                    last_health_check_at: account.last_health_check_at
+                }
+            });
+        }
+
+        return NextResponse.json({ status: 'DISCONNECTED' });
+
+    } catch (e) {
+        return NextResponse.json({ error: "Internal Error" }, { status: 500 });
+    }
+}

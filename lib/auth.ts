@@ -31,14 +31,29 @@ export async function verifyToken(token: string): Promise<UserPayload | null> {
 }
 
 /**
- * Middleware helper to get current user from Request headers (Converted to async for jose)
+ * Middleware helper to get current user. 
+ * Checks injected headers (from middleware) first, then falls back to Authorization header.
  */
 export async function getCurrentUser(request: Request): Promise<UserPayload | null> {
-    const authHeader = request.headers.get("Authorization");
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-        return null;
+    // 1. Check injected headers from middleware
+    const userId = request.headers.get("x-user-id");
+    const workspaceId = request.headers.get("x-workspace-id");
+    const role = request.headers.get("x-user-role");
+
+    if (userId && workspaceId) {
+        return {
+            userId,
+            workspaceId,
+            role: role || 'AGENT'
+        };
     }
 
-    const token = authHeader.split(" ")[1];
-    return await verifyToken(token);
+    // 2. Fallback to Authorization Header (if direct API call)
+    const authHeader = request.headers.get("Authorization");
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+        const token = authHeader.split(" ")[1];
+        return await verifyToken(token);
+    }
+
+    return null;
 }

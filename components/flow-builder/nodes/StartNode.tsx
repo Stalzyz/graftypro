@@ -13,6 +13,11 @@ const StartNode = ({ data, isConnectable }: NodeProps) => {
                 <div className="text-xs font-bold text-gray-800 uppercase">Start Trigger</div>
                 <div className="text-[10px] text-gray-500">{data.label || "Keyword Trigger"}</div>
             </div>
+            {data.showAnalytics && (
+                <div className="absolute -top-3 -right-3 bg-blue-600 text-white text-[10px] px-2 py-1 rounded-full font-black shadow-lg">
+                    {data.hits || 0}
+                </div>
+            )}
             {/* Logic: Only Source handle (Bottom) */}
             <Handle type="source" position={Position.Bottom} isConnectable={isConnectable} className="w-3 h-3 bg-orange-500 border-2 border-white" />
         </div>

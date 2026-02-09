@@ -1,17 +1,17 @@
 FROM node:18-slim AS base
+RUN apt-get update -y && apt-get install -y openssl ca-certificates
 
-# Install dependencies only when needed
-FROM base AS deps
-WORKDIR /app
-COPY package.json package-lock.json* ./
-# FIX: Use npm install instead of ci to handle lockfile mismatches during dev
-RUN npm install
-
-# Rebuild the source code only when needed
 FROM base AS builder
 WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
+
+# COPY everything first to ensure schema and code are available
 COPY . .
+
+# Install all dependencies including devDependencies (needed for build)
+RUN npm install
+
+# Hardcode the URL for the generation stage to avoid "empty host" during build
+ENV DATABASE_URL="postgresql://user:password@postgres:5432/wabot_bsp?schema=public"
 
 # Generate Prisma Client
 RUN npx prisma generate
@@ -19,34 +19,21 @@ RUN npx prisma generate
 # Build Next.js
 RUN npm run build
 
-# Production image, copy all the files and run next
 FROM base AS runner
 WORKDIR /app
-
 ENV NODE_ENV production
-ARG NEXT_PUBLIC_META_APP_ID
-ARG NEXT_PUBLIC_META_CONFIG_ID
-ENV NEXT_PUBLIC_META_APP_ID=$NEXT_PUBLIC_META_APP_ID
-ENV NEXT_PUBLIC_META_CONFIG_ID=$NEXT_PUBLIC_META_CONFIG_ID
 
-# FIX: Install OpenSSL for Prisma (Debian uses apt-get, usually installed)
-RUN apt-get update -y && apt-get install -y openssl
-
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
-
-COPY --from=builder /app/public ./public
-COPY --from=builder --chown=nextjs:nodejs /app/.next ./.next
+# Copy necessary files from builder
+COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/prisma ./prisma
-COPY --from=builder /app/workers ./workers
 COPY --from=builder /app/lib ./lib
+COPY --from=builder /app/worker.ts ./worker.ts
+COPY --from=builder /app/tsconfig.json ./tsconfig.json
+COPY --from=builder /app/.next ./.next
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/workers ./workers
+COPY --from=builder /app/scripts ./scripts
 
-USER nextjs
-
-EXPOSE 3000
-
-ENV PORT 3000
-
+# EXPOSE 3000
 CMD ["npm", "start"]

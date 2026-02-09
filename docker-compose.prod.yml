@@ -1,55 +1,34 @@
-version: '3.8'
-
 services:
-  # 1. Main Web App
   web:
+    image: wabot-app:latest
     build:
       context: .
-      args:
-        NEXT_PUBLIC_META_APP_ID: ${META_APP_ID}
-        NEXT_PUBLIC_META_CONFIG_ID: ${META_CONFIG_ID}
     restart: always
     ports:
-      - "80:3000"
+      - "3001:3000"
+    env_file:
+      - .env
     environment:
-      DATABASE_URL: "postgresql://user:password@postgres:5432/wabot_bsp?schema=public"
-      REDIS_HOST: "redis"
-      REDIS_PORT: "6379"
-      JWT_SECRET: ${JWT_SECRET}
-      META_APP_ID: ${META_APP_ID}
-      META_APP_SECRET: ${META_APP_SECRET}
+      - DATABASE_URL=postgresql://user:password@postgres:5432/wabot_bsp?schema=public
+      - REDIS_URL=redis://redis:6379
     depends_on:
       - postgres
       - redis
-    command: npm start
 
-  # 2. Worker: Campaigns
-  campaign-worker:
-    build: .
+  worker:
+    image: wabot-app:latest
     restart: always
+    env_file:
+      - .env
     environment:
-      DATABASE_URL: "postgresql://user:password@postgres:5432/wabot_bsp?schema=public"
-      REDIS_HOST: "redis"
-      REDIS_PORT: "6379"
+      - DATABASE_URL=postgresql://user:password@postgres:5432/wabot_bsp?schema=public
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
     depends_on:
       - postgres
       - redis
-    command: npx tsx workers/campaign.ts
+    command: npx tsx worker.ts
 
-  # 3. Worker: Drips
-  drip-worker:
-    build: .
-    restart: always
-    environment:
-      DATABASE_URL: "postgresql://user:password@postgres:5432/wabot_bsp?schema=public"
-      REDIS_HOST: "redis"
-      REDIS_PORT: "6379"
-    depends_on:
-      - postgres
-      - redis
-    command: npx tsx workers/drip-scheduler.ts
-
-  # 4. Database
   postgres:
     image: postgres:15-alpine
     restart: always
@@ -60,7 +39,6 @@ services:
     volumes:
       - postgres_data_prod:/var/lib/postgresql/data
 
-  # 5. Redis
   redis:
     image: redis:7-alpine
     restart: always

@@ -44,9 +44,8 @@ export async function POST(req: Request) {
             role: user.role,
         });
 
-        return NextResponse.json({
+        const response = NextResponse.json({
             success: true,
-            token,
             workspace: {
                 id: user.workspace.id,
                 name: user.workspace.name,
@@ -59,6 +58,17 @@ export async function POST(req: Request) {
                 first_name: user.first_name,
             },
         });
+
+        // Set Cookie
+        response.cookies.set("token", token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "lax",
+            maxAge: 60 * 60 * 24 * 7, // 7 days
+            path: "/",
+        });
+
+        return response;
 
     } catch (error: any) {
         console.error("Login Error:", error);

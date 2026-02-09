@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { Mail, Lock, ArrowRight, AlertCircle, Loader2 } from "lucide-react";
 
 export default function LoginPage() {
     const router = useRouter();
@@ -29,8 +30,6 @@ export default function LoginPage() {
                 throw new Error(data.error || "Login failed");
             }
 
-            // Successful login
-            document.cookie = `token=${data.token}; path=/; max-age=86400`; // 1 day
             router.push("/dashboard");
         } catch (err: any) {
             setError(err.message);
@@ -40,80 +39,85 @@ export default function LoginPage() {
     };
 
     return (
-        <div>
-            <h3 className="text-lg font-medium text-gray-900 mb-6 text-center">Sign in to your account</h3>
-            <form className="space-y-6" onSubmit={handleSubmit}>
+        <div className="space-y-6">
+            <div className="text-center mb-8">
+                <h2 className="text-xl font-bold text-gray-800">Welcome Back</h2>
+                <p className="text-sm text-gray-500 font-medium">Please enter your details to sign in.</p>
+            </div>
+
+            <form className="space-y-5" onSubmit={handleSubmit}>
                 {error && (
-                    <div className="bg-red-50 text-red-600 p-3 rounded text-sm">{error}</div>
+                    <div className="bg-red-50 border border-red-100 text-red-600 p-3 rounded-2xl text-xs font-medium flex items-center gap-2 animate-shake">
+                        <AlertCircle size={16} /> {error}
+                    </div>
                 )}
 
-                <div>
-                    <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                        Email address
-                    </label>
-                    <div className="mt-1">
+                {/* Google Auth Button */}
+                <button
+                    type="button"
+                    onClick={() => window.location.href = "/api/auth/google/mock"}
+                    className="w-full bg-white border border-gray-200 text-gray-700 py-3 rounded-xl font-medium flex items-center justify-center gap-3 hover:bg-gray-50 transition-all font-sans"
+                >
+                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-5 h-5" alt="Google" />
+                    Continue with Google {process.env.NODE_ENV === "development" ? "(Mock)" : ""}
+                </button>
+
+                <div className="relative flex py-2 items-center">
+                    <div className="flex-grow border-t border-gray-200"></div>
+                    <span className="flex-shrink mx-4 text-gray-400 text-xs uppercase font-bold">Or login with email</span>
+                    <div className="flex-grow border-t border-gray-200"></div>
+                </div>
+
+                <div className="space-y-2">
+                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">Email Address</label>
+                    <div className="relative group">
+                        <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#27954D] transition-colors" size={18} />
                         <input
-                            id="email"
-                            name="email"
                             type="email"
-                            autoComplete="email"
                             required
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
-                            className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                            placeholder="you@company.com"
+                            className="w-full bg-gray-50 border-transparent focus:bg-white focus:border-[#27954D]/30 rounded-2xl pl-12 pr-4 py-3.5 text-sm font-medium outline-none transition-all shadow-inner focus:ring-4 focus:ring-[#27954D]/5"
                         />
                     </div>
                 </div>
 
-                <div>
-                    <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                        Password
-                    </label>
-                    <div className="mt-1">
+                <div className="space-y-2">
+                    <div className="flex justify-between items-center px-1">
+                        <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest">Password</label>
+                        <a href="#" className="text-[10px] font-bold text-[#042f94] hover:underline uppercase tracking-tight">Forgot password?</a>
+                    </div>
+                    <div className="relative group">
+                        <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#27954D] transition-colors" size={18} />
                         <input
-                            id="password"
-                            name="password"
                             type="password"
-                            autoComplete="current-password"
                             required
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
-                            className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                            placeholder="••••••••"
+                            className="w-full bg-gray-50 border-transparent focus:bg-white focus:border-[#27954D]/30 rounded-2xl pl-12 pr-4 py-3.5 text-sm font-medium outline-none transition-all shadow-inner focus:ring-4 focus:ring-[#27954D]/5"
                         />
                     </div>
                 </div>
 
-                <div>
-                    <button
-                        type="submit"
-                        disabled={loading}
-                        className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
-                    >
-                        {loading ? "Signing in..." : "Sign in"}
-                    </button>
-                </div>
+                <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full bg-gradient-to-r from-[#27954D] to-[#042f94] text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-3 hover:scale-[1.02] active:scale-95 transition-all shadow-lg shadow-green-200 disabled:opacity-50 disabled:scale-100"
+                >
+                    {loading ? <Loader2 size={18} className="animate-spin" /> : "Sign In"}
+                    {!loading && <ArrowRight size={18} />}
+                </button>
             </form>
 
-            <div className="mt-6">
-                <div className="relative">
-                    <div className="absolute inset-0 flex items-center">
-                        <div className="w-full border-t border-gray-300" />
-                    </div>
-                    <div className="relative flex justify-center text-sm">
-                        <span className="px-2 bg-white text-gray-500">
-                            New User?
-                        </span>
-                    </div>
-                </div>
-
-                <div className="mt-6 grid grid-cols-1">
-                    <Link
-                        href="/register"
-                        className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
-                    >
+            <div className="pt-4 text-center">
+                <p className="text-gray-500 text-sm font-medium">
+                    New to Wabot?{" "}
+                    <Link href="/register" className="text-[#042f94] font-bold hover:underline">
                         Create an account
                     </Link>
-                </div>
+                </p>
             </div>
         </div>
     );

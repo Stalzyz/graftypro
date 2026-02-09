@@ -10,10 +10,16 @@ export const campaignQueue = new Queue("campaign-queue", {
     connection: REDIS_CONNECTION,
     defaultJobOptions: {
         attempts: 3,
-        backoff: {
-            type: "exponential",
-            delay: 1000,
-        },
+        backoff: { type: "exponential", delay: 1000 },
+        removeOnComplete: true,
+    },
+});
+
+export const automationQueue = new Queue("automation-queue", {
+    connection: REDIS_CONNECTION,
+    defaultJobOptions: {
+        attempts: 5,
+        backoff: { type: "fixed", delay: 5000 },
         removeOnComplete: true,
     },
 });

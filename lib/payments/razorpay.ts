@@ -33,7 +33,8 @@ export class RazorpayManager {
         amount: number, // In Rupee (will multiply by 100)
         currency: string = "INR",
         description: string,
-        customer: { name: string; contact: string; email: string }
+        customer: { name: string; contact: string; email: string },
+        notes: any = {}
     ) {
         const razorpay = await this.getClient(workspaceId);
 
@@ -55,6 +56,7 @@ export class RazorpayManager {
                 reminder_enable: true,
                 notes: {
                     workspaceId,
+                    ...notes
                 },
             });
 

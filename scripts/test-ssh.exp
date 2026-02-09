@@ -1,0 +1,13 @@
+#!/usr/bin/expect -f
+set timeout 60
+spawn ssh root@72.61.231.187 "ls -d /root/wabot_bsp"
+expect {
+    "Are you sure you want to continue connecting" {
+        send "yes\r"
+        exp_continue
+    }
+    "password:" {
+        send "Photoshop09@\r"
+    }
+}
+expect eof

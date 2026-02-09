@@ -1,12 +1,17 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google"; // Google Font: Inter
+import { Inter, Noto_Sans } from "next/font/google";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
+const noto = Noto_Sans({
+    subsets: ["latin"],
+    weight: ['400', '700', '900'],
+    variable: '--font-noto'
+});
 
 export const metadata: Metadata = {
-    title: "Wabot BSP | Intelligent Automation",
-    description: "The most intelligent WhatsApp automation & commerce platform.",
+    title: "WAVO | WhatsApp Marketing Platform",
+    description: "The next generation of WhatsApp automation and business growth.",
 };
 
 export default function RootLayout({
@@ -16,7 +21,7 @@ export default function RootLayout({
 }>) {
     return (
         <html lang="en">
-            <body className={inter.className}>{children}</body>
+            <body className={`${inter.className} ${noto.variable}`}>{children}</body>
         </html>
     );
 }

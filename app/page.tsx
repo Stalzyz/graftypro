@@ -1,171 +1,218 @@
+
+"use client";
 import Link from "next/link";
 import {
-    ArrowRight,
-    Zap,
-    MessageCircle,
+    GitMerge,
+    Droplets,
     ShoppingBag,
-    GitBranch,
-    BarChart3,
-    CheckCircle2
+    Send,
+    CreditCard,
+    Shield,
+    PieChart,
+    Users,
+    ChevronRight,
+    Star,
+    CheckCircle
 } from "lucide-react";
+import "./landing/landing.css";
+import { Logo } from "@/components/ui/Logo";
+import ExitIntentPopup from "@/components/landing/ExitIntentPopup";
+import SimulatedChatPreview from "@/components/landing/SimulatedChatPreview";
 
-export default function LandingPage() {
+// New Content Components
+import Industries from "@/components/landing/Industries";
+import SalesROI from "@/components/landing/SalesROI";
+import PricingCalculators from "@/components/landing/PricingCalculators";
+import FAQ from "@/components/landing/FAQ";
+import DetailedFooter from "@/components/landing/DetailedFooter";
+import InteractiveWidgets from "@/components/landing/InteractiveWidgets";
+import Integrations from "@/components/landing/Integrations";
+import Testimonials from "@/components/landing/Testimonials";
+import SetupGuide from "@/components/landing/SetupGuide";
+import PricingTable from "@/components/landing/PricingTable";
+
+export default function HomePage() {
     return (
-        <div className="min-h-screen bg-white">
-            {/* Navigation */}
-            <nav className="fixed w-full bg-white/80 backdrop-blur-md z-50 border-b border-gray-100">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                        <div className="bg-blue-600 text-white p-1.5 rounded-lg">
-                            <Zap size={20} fill="currentColor" />
-                        </div>
-                        <span className="text-xl font-bold text-gray-900 tracking-tight">Wabot BSP</span>
-                    </div>
-                    <div className="hidden md:flex items-center gap-8 text-sm font-medium text-gray-600">
-                        <Link href="#features" className="hover:text-gray-900">Features</Link>
-                        <Link href="#solutions" className="hover:text-gray-900">Solutions</Link>
-                        <Link href="#pricing" className="hover:text-gray-900">Pricing</Link>
-                    </div>
-                    <div className="flex items-center gap-4">
-                        <Link href="/api/auth/login" className="text-sm font-medium text-gray-600 hover:text-gray-900">
-                            Log in
-                        </Link>
-                        <Link
-                            href="/dashboard" // Redirects to register/dashboard
-                            className="px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-full hover:bg-gray-800 transition"
-                        >
-                            Get Started
-                        </Link>
-                    </div>
+        <main className="landing-body min-h-screen relative">
+            <div className="hero-gradient" />
+
+            {/* Nav */}
+            <nav className="max-w-7xl mx-auto px-6 py-10 flex items-center justify-between relative z-10">
+                <Link href="/">
+                    <Logo size={70} variant="light" />
+                </Link>
+                <div className="hidden lg:flex gap-10 items-center">
+                    <Link href="/how-to-use" className="nav-link">How to Use</Link>
+                    <Link href="/reseller-program" className="nav-link">Resellers</Link>
+                    <Link href="/white-label" className="nav-link">White-Label</Link>
+                    <Link href="#pricing-packages" className="nav-link">Pricing</Link>
+                    <Link href="https://wa.me/919789359407" target="_blank" className="nav-link font-black text-wa-green">Book Demo</Link>
+                </div>
+                <div className="flex items-center gap-6">
+                    <Link href="/login" className="nav-link">Login</Link>
+                    <Link href="/join" className="btn-primary">
+                        Get Started <ChevronRight size={18} />
+                    </Link>
                 </div>
             </nav>
 
             {/* Hero Section */}
-            <section className="pt-32 pb-20 px-4">
-                <div className="max-w-7xl mx-auto text-center">
-                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-semibold mb-6 border border-blue-100">
-                        <span className="relative flex h-2 w-2">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                            <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
-                        </span>
-                        v2.0 Now Available
-                    </div>
-
-                    <h1 className="text-5xl md:text-7xl font-bold text-gray-900 tracking-tight mb-8">
-                        automate your <br />
-                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">
-                            whatsapp revenue.
-                        </span>
+            <section className="max-w-7xl mx-auto px-6 pt-24 pb-32 relative z-10">
+                <div className="flex flex-col items-center text-center">
+                    <div className="section-tag animate-fade-in">Powered by Meta Cloud API</div>
+                    <h1 className="text-6xl md:text-8xl font-black mb-10 leading-[1.1] animate-fade-in">
+                        Start Growing Your <br />
+                        <span className="text-gradient">WhatsApp Revenue</span> <br />
+                        Today.
                     </h1>
-
-                    <p className="max-w-2xl mx-auto text-xl text-gray-600 mb-10 leading-relaxed">
-                        The first platform that unifies <strong>Chatbot Flows</strong>, <strong>Drip Campaigns</strong>, and <strong>Commerce</strong> into a single goal-driven engine.
+                    <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-full px-4 py-2 flex items-center gap-2 text-emerald-400 font-bold text-xs mb-8">
+                        <CheckCircle size={14} /> Claim Your 7-Day FREE Trial Pack
+                    </div>
+                    <p className="text-xl text-slate-400 mb-10 max-w-xl leading-relaxed animate-fade-in" style={{ animationDelay: '0.1s' }}>
+                        Automate your sales, recover 25% more carts, and scale your business with WAVO, the world's most powerful WhatsApp engine.
                     </p>
 
-                    <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-20">
-                        <Link href="/dashboard" className="w-full sm:w-auto px-8 py-4 bg-blue-600 text-white rounded-full font-semibold hover:bg-blue-700 transition flex items-center justify-center gap-2 shadow-lg shadow-blue-200">
-                            Start Free Trial <ArrowRight size={18} />
+                    <div className="flex flex-col sm:flex-row gap-6 animate-fade-in" style={{ animationDelay: '0.2s' }}>
+                        <Link href="/join" className="btn-primary px-10 py-5 text-lg">
+                            Get Your WhatsApp Growth Plan
                         </Link>
-                        <button className="w-full sm:w-auto px-8 py-4 bg-white text-gray-700 border border-gray-200 rounded-full font-semibold hover:bg-gray-50 transition">
-                            View Demo
-                        </button>
+                        <div className="flex items-center gap-4 text-slate-500 font-bold px-6">
+                            <CheckCircle className="text-wa-green" size={20} /> Starting at ₹3,999/mo
+                        </div>
                     </div>
 
-                    {/* Dashboard Preview / Mockup */}
-                    <div className="relative max-w-5xl mx-auto">
-                        <div className="absolute inset-x-0 -top-20 -z-10 transform-gpu overflow-hidden blur-3xl sm:-top-40">
-                            <div className="relative left-[calc(50%-11rem)] aspect-[1155/678] w-[36.125rem] -translate-x-1/2 rotate-[30deg] bg-gradient-to-tr from-[#ff80b5] to-[#9089fc] opacity-20 sm:left-[calc(50%-30rem)] sm:w-[72.1875rem]"></div>
+                    <div className="mt-20 flex gap-8 items-center text-slate-500 text-sm font-bold opacity-60 animate-fade-in" style={{ animationDelay: '0.3s' }}>
+                        <span>TRUSTED BY 2,000+ BRANDS</span>
+                        <div className="flex gap-4">
+                            <Star size={16} fill="currentColor" stroke="none" className="text-amber-500" />
+                            <Star size={16} fill="currentColor" stroke="none" className="text-amber-500" />
+                            <Star size={16} fill="currentColor" stroke="none" className="text-amber-500" />
+                            <Star size={16} fill="currentColor" stroke="none" className="text-amber-500" />
+                            <Star size={16} fill="currentColor" stroke="none" className="text-amber-500" />
                         </div>
+                    </div>
+                </div>
+            </section>
 
-                        <div className="rounded-2xl bg-gray-900/5 p-2 ring-1 ring-inset ring-gray-900/10 lg:-m-4 lg:rounded-3xl lg:p-4">
-                            <div className="bg-white rounded-xl shadow-2xl overflow-hidden border border-gray-200">
-                                {/* Fake Browser Header */}
-                                <div className="bg-gray-50 border-b border-gray-200 p-3 flex items-center gap-2">
-                                    <div className="flex gap-1.5">
-                                        <div className="w-3 h-3 rounded-full bg-red-400"></div>
-                                        <div className="w-3 h-3 rounded-full bg-yellow-400"></div>
-                                        <div className="w-3 h-3 rounded-full bg-green-400"></div>
-                                    </div>
-                                    <div className="flex-1 text-center text-xs font-medium text-gray-400 ml-4 bg-white py-1 rounded-md border border-gray-200 max-w-xs mx-auto">
-                                        app.wabot.com/dashboard/flows
-                                    </div>
+            {/* Industries Section (NEW) */}
+            <Industries />
+
+            {/* Core Modules */}
+            <section id="modules" className="py-24 bg-black/40 backdrop-blur-sm relative border-y border-slate-900">
+                <div className="max-w-7xl mx-auto px-6">
+                    <div className="text-center mb-20 px-2 lg:px-0">
+                        <h2 className="text-4xl md:text-5xl font-black mb-6">Built for <span className="text-gradient">Modern Commerce</span></h2>
+                        <p className="text-slate-400 text-lg">Every module you need to dominate WhatsApp marketing.</p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                        <ModuleCard
+                            icon={<Send size={32} />}
+                            title="Official Broadcasts"
+                            desc="Send thousands of messages without getting banned. Official API power."
+                        />
+                        <ModuleCard
+                            icon={<GitMerge size={32} />}
+                            title="Visual Flow Builder"
+                            desc="Design complex 24/7 automation workflows without a single line of code."
+                        />
+                        <ModuleCard
+                            icon={<ShoppingBag size={32} />}
+                            title="WhatsApp Commerce"
+                            desc="Native cart recovery and ordering right inside the chat window."
+                        />
+                        <ModuleCard
+                            icon={<Droplets size={32} />}
+                            title="Drip Campaigns"
+                            desc="Nurture leads over time with personalized follow-up sequences."
+                        />
+                        <ModuleCard
+                            icon={<PieChart size={32} />}
+                            title="Deep Analytics"
+                            desc="Track delivery, read rates, and conversion ROI in real-time."
+                        />
+                        <ModuleCard
+                            icon={<Shield size={32} />}
+                            title="Green Tick Support"
+                            desc="We help your brand get the official Meta Verified Green Badge."
+                        />
+                    </div>
+                </div>
+            </section>
+
+            {/* Sales & ROI Section (NEW) */}
+            <SalesROI />
+
+            {/* Simulated Chat Preview */}
+            <section className="py-24 overflow-hidden bg-slate-900/40">
+                <div className="max-w-7xl mx-auto px-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
+                        <div>
+                            <h2 className="text-4xl md:text-6xl font-black mb-8 leading-tight">
+                                Talk to Customers <br />
+                                <span className="text-wa-green">In Their Language</span>
+                            </h2>
+                            <p className="text-slate-400 text-lg mb-10 leading-relaxed">
+                                Our platform supports multi-language templates, interactive buttons, and native lists to make every interaction feel local and personal.
+                            </p>
+                            <div className="flex gap-12">
+                                <div>
+                                    <div className="text-4xl font-black text-white mb-2">99%</div>
+                                    <div className="text-slate-500 font-bold uppercase tracking-widest text-[10px]">Read Rate</div>
                                 </div>
-                                {/* Placeholder for App Screenshot */}
-                                <div className="aspect-[16/9] bg-slate-50 relative flex items-center justify-center">
-                                    <div className="grid grid-cols-3 gap-8 w-3/4 opacity-80">
-                                        <div className="col-span-1 bg-white p-4 rounded-lg shadow-sm border border-gray-200 h-64">
-                                            <div className="w-8 h-8 bg-blue-100 rounded mb-4"></div>
-                                            <div className="h-2 w-24 bg-gray-100 rounded mb-2"></div>
-                                            <div className="h-2 w-16 bg-gray-100 rounded"></div>
-                                        </div>
-                                        <div className="col-span-2 bg-white p-4 rounded-lg shadow-sm border border-gray-200 h-64 flex flex-col items-center justify-center border-dashed border-2">
-                                            <GitBranch size={48} className="text-gray-200 mb-2" />
-                                            <div className="text-gray-400 font-medium">Flow Builder Canvas</div>
-                                        </div>
-                                    </div>
+                                <div>
+                                    <div className="text-4xl font-black text-white mb-2">45%</div>
+                                    <div className="text-slate-500 font-bold uppercase tracking-widest text-[10px]">Click Through</div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                </div>
-            </section>
-
-            {/* Features Grid */}
-            <section className="py-24 bg-gray-50" id="features">
-                <div className="max-w-7xl mx-auto px-4">
-                    <div className="text-center mb-16">
-                        <h2 className="text-3xl font-bold text-gray-900 mb-4">Everything you need to scale.</h2>
-                        <p className="text-gray-500 max-w-2xl mx-auto">Replace your disjointed stack. Wabot combines marketing, automation, and sales into one cohesive platform.</p>
-                    </div>
-
-                    <div className="grid md:grid-cols-3 gap-8">
-                        <FeatureCard
-                            icon={<GitBranch />}
-                            title="Visual Flow Builder"
-                            desc="Drag-and-drop builder to create complex chatbots without writing a single line of code. Handle support, FAQs, and routing instantly."
-                        />
-                        <FeatureCard
-                            icon={<MessageCircle />}
-                            title="Smart Drip Campaigns"
-                            desc="Nurture leads over time. Set up sequences that automatically stop when a user replies or converts."
-                        />
-                        <FeatureCard
-                            icon={<ShoppingBag />}
-                            title="Native Commerce"
-                            desc="Turn WhatsApp into a storefront. create product catalogs, send carts, and collect payments directly within the chat."
-                        />
-                    </div>
-                </div>
-            </section>
-
-            {/* Footer */}
-            <footer className="bg-white border-t border-gray-200 py-12">
-                <div className="max-w-7xl mx-auto px-4 flex flex-col md:flex-row justify-between items-center gap-6">
-                    <div className="flex items-center gap-2">
-                        <div className="bg-gray-900 text-white p-1 rounded">
-                            <Zap size={16} fill="currentColor" />
+                        <div className="relative">
+                            <div className="absolute inset-0 bg-blue-500/10 blur-[120px] rounded-full" />
+                            <SimulatedChatPreview />
                         </div>
-                        <span className="font-bold text-gray-900">Wabot BSP</span>
-                    </div>
-                    <div className="text-sm text-gray-500">
-                        © 2024 Wabot Inc. All rights reserved.
                     </div>
                 </div>
-            </footer>
-        </div>
+            </section>
+
+            {/* Pricing Packages (NEW) */}
+            <PricingTable />
+
+            {/* Pricing & Calculators (NEW) */}
+            <PricingCalculators />
+
+            {/* Integrations Section (NEW) */}
+            <Integrations />
+
+            {/* Testimonials (NEW) */}
+            <Testimonials />
+
+            {/* Setup Guide / Academy (NEW) */}
+            <section id="setup">
+                <SetupGuide />
+            </section>
+
+            {/* FAQ (NEW) */}
+            <FAQ />
+
+            {/* Detailed Footer (NEW) */}
+            <DetailedFooter />
+
+            {/* Interactive Widgets (NEW) */}
+            <InteractiveWidgets />
+
+            <ExitIntentPopup />
+        </main>
     );
 }
 
-function FeatureCard({ icon, title, desc }: any) {
+function ModuleCard({ icon, title, desc }: { icon: React.ReactNode; title: string, desc: string }) {
     return (
-        <div className="bg-white p-8 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
-            <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center mb-6">
+        <div className="glass-card p-10 group hover:bg-slate-800/50 transition-all border border-slate-900">
+            <div className="w-16 h-16 bg-slate-900 rounded-2xl flex items-center justify-center text-wa-green mb-8 border border-slate-800 group-hover:scale-110 transition-transform">
                 {icon}
             </div>
-            <h3 className="text-xl font-bold text-gray-900 mb-3">{title}</h3>
-            <p className="text-gray-500 leading-relaxed">
-                {desc}
-            </p>
+            <h3 className="text-2xl font-bold mb-4 text-white">{title}</h3>
+            <p className="text-slate-500 leading-relaxed">{desc}</p>
         </div>
-    )
+    );
 }

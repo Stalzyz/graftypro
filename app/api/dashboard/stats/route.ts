@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(req: Request) {
     try {
         const user = await getCurrentUser(req);
@@ -15,7 +17,10 @@ export async function GET(req: Request) {
             contactsCount,
             messagesSent,
             activeFlows,
-            recentCampaigns
+            recentCampaigns,
+            totalRevenue,
+            funnelStats,
+            waba
         ] = await Promise.all([
             prisma.contact.count({
                 where: { workspace_id: workspaceId }
@@ -36,24 +41,55 @@ export async function GET(req: Request) {
                 where: { workspace_id: workspaceId },
                 orderBy: { created_at: "desc" },
                 take: 5,
-                select: {
-                    id: true,
-                    name: true,
-                    status: true,
-                    created_at: true,
-                    // If we had stats relation integrated, fetch them. 
-                    // For now, assume pending or mock stats if missing
+                include: { stats: true }
+            }),
+            prisma.order.aggregate({
+                where: {
+                    workspace_id: workspaceId,
+                    status: "PAID"
+                },
+                _sum: { total_amount: true }
+            }),
+            prisma.campaignStats.aggregate({
+                where: {
+                    campaign: { workspace_id: workspaceId }
+                },
+                _sum: {
+                    sent: true,
+                    delivered: true,
+                    read: true,
+                    replied: true
                 }
+            }),
+            prisma.whatsAppAccount.findUnique({
+                where: { workspace_id: workspaceId }
             })
         ]);
+
+        const isWabaConnected = !!waba && waba.status === "CONNECTED";
+        const revenueRecovered = totalRevenue._sum.total_amount || 0;
+        const potentialRevenue = contactsCount * 450; // Simple estimation logic ₹450 per contact potential
 
         return NextResponse.json({
             contactsCount,
             messagesSent,
             activeFlows,
+            wabaConnected: isWabaConnected,
+            revenueRecovered,
+            potentialRevenue,
+            totalRevenue: totalRevenue._sum.total_amount || 0,
+            funnel: {
+                sent: funnelStats._sum.sent || 0,
+                delivered: funnelStats._sum.delivered || 0,
+                read: funnelStats._sum.read || 0,
+                replied: funnelStats._sum.replied || 0
+            },
             recentCampaigns: recentCampaigns.map(c => ({
-                ...c,
-                sent_count: 0 // Placeholder until CampaignStats linked
+                id: c.id,
+                name: c.name,
+                status: c.status,
+                created_at: c.created_at,
+                sent_count: c.stats?.sent || 0
             }))
         });
 

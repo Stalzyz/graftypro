@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
+import { encrypt } from "@/lib/security/encryption";
+
+export const dynamic = 'force-dynamic';
 import axios from "axios";
 
 // Meta API Version
@@ -121,24 +124,32 @@ export async function POST(req: Request) {
 
         // 6. Save to Database
         console.log(`Saving Account: ${phoneId} for Workspace: ${user.workspaceId}`);
+        const encryptedToken = encrypt(accessToken);
+
         await prisma.whatsAppAccount.upsert({
             where: { workspace_id: user.workspaceId },
             update: {
-                access_token: accessToken,
+                access_token: encryptedToken,
                 waba_id: wabaId,
                 phone_number_id: phoneId,
                 phone_number: displayPhone,
                 display_name: displayName,
-                status: "CONNECTED"
+                integration_status: "ACTIVE",
+                health_status: "HEALTHY",
+                status: "CONNECTED",
+                validated_at: new Date()
             },
             create: {
                 workspace_id: user.workspaceId,
-                access_token: accessToken,
+                access_token: encryptedToken,
                 waba_id: wabaId,
                 phone_number_id: phoneId,
                 phone_number: displayPhone,
                 display_name: displayName,
-                status: "CONNECTED"
+                integration_status: "ACTIVE",
+                health_status: "HEALTHY",
+                status: "CONNECTED",
+                validated_at: new Date()
             }
         });
 

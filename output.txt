@@ -1,0 +1,25 @@
+* Host localhost:3001 was resolved.
+* IPv6: ::1
+* IPv4: 127.0.0.1
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0*   Trying [::1]:3001...
+* Connected to localhost (::1) port 3001
+> GET /api/test-edu-meta HTTP/1.1
+> Host: localhost:3001
+> User-Agent: curl/8.7.1
+> Accept: */*
+> 
+* Request completely sent off
+< HTTP/1.1 500 Internal Server Error
+< vary: RSC, Next-Router-State-Tree, Next-Router-Prefetch, Next-Url
+< content-type: application/json
+< Date: Sat, 07 Feb 2026 07:17:47 GMT
+< Connection: keep-alive
+< Keep-Alive: timeout=5
+< Transfer-Encoding: chunked
+< 
+{ [3500 bytes data]
+100  3488    0  3488    0     0  12968      0 --:--:-- --:--:-- --:--:-- 13014
+* Connection #0 to host localhost left intact
+{"success":false,"error":"\nInvalid `prisma.eduLead.create()` invocation:\n\n\nForeign key constraint violated: `edu_leads_form_id_fkey (index)`","stack":"PrismaClientKnownRequestError: \nInvalid `prisma.eduLead.create()` invocation:\n\n\nForeign key constraint violated: `edu_leads_form_id_fkey (index)`\n    at $n.handleRequestError (/Users/stalinkumar/Downloads/Wabot_BSP/node_modules/@prisma/client/runtime/library.js:121:7315)\n    at $n.handleAndLogRequestError (/Users/stalinkumar/Downloads/Wabot_BSP/node_modules/@prisma/client/runtime/library.js:121:6623)\n    at $n.request (/Users/stalinkumar/Downloads/Wabot_BSP/node_modules/@prisma/client/runtime/library.js:121:6307)\n    at async l (/Users/stalinkumar/Downloads/Wabot_BSP/node_modules/@prisma/client/runtime/library.js:130:9633)\n    at async EduService.captureLead (webpack-internal:///(rsc)/./lib/edu/service.ts:13:22)\n    at async EduService.handleMetaFlowSubmission (webpack-internal:///(rsc)/./lib/edu/service.ts:153:20)\n    at async GET (webpack-internal:///(rsc)/./app/api/test-edu-meta/route.ts:22:24)\n    at async /Users/stalinkumar/Downloads/Wabot_BSP/node_modules/next/dist/compiled/next-server/app-route.runtime.dev.js:6:63809\n    at async eU.execute (/Users/stalinkumar/Downloads/Wabot_BSP/node_modules/next/dist/compiled/next-server/app-route.runtime.dev.js:6:53964)\n    at async eU.handle (/Users/stalinkumar/Downloads/Wabot_BSP/node_modules/next/dist/compiled/next-server/app-route.runtime.dev.js:6:65062)\n    at async doRender (/Users/stalinkumar/Downloads/Wabot_BSP/node_modules/next/dist/server/base-server.js:1333:42)\n    at async cacheEntry.responseCache.get.routeKind (/Users/stalinkumar/Downloads/Wabot_BSP/node_modules/next/dist/server/base-server.js:1555:28)\n    at async DevServer.renderToResponseWithComponentsImpl (/Users/stalinkumar/Downloads/Wabot_BSP/node_modules/next/dist/server/base-server.js:1463:28)\n    at async DevServer.renderPageComponent (/Users/stalinkumar/Downloads/Wabot_BSP/node_modules/next/dist/server/base-server.js:1856:24)\n    at async DevServer.renderToResponseImpl (/Users/stalinkumar/Downloads/Wabot_BSP/node_modules/next/dist/server/base-server.js:1894:32)\n    at async DevServer.pipeImpl (/Users/stalinkumar/Downloads/Wabot_BSP/node_modules/next/dist/server/base-server.js:911:25)\n    at async NextNodeServer.handleCatchallRenderRequest (/Users/stalinkumar/Downloads/Wabot_BSP/node_modules/next/dist/server/next-server.js:271:17)\n    at async DevServer.handleRequestImpl (/Users/stalinkumar/Downloads/Wabot_BSP/node_modules/next/dist/server/base-server.js:807:17)\n    at async /Users/stalinkumar/Downloads/Wabot_BSP/node_modules/next/dist/server/dev/next-dev-server.js:331:20\n    at async Span.traceAsyncFn (/Users/stalinkumar/Downloads/Wabot_BSP/node_modules/next/dist/trace/trace.js:151:20)\n    at async DevServer.handleRequest (/Users/stalinkumar/Downloads/Wabot_BSP/node_modules/next/dist/server/dev/next-dev-server.js:328:24)\n    at async invokeRender (/Users/stalinkumar/Downloads/Wabot_BSP/node_modules/next/dist/server/lib/router-server.js:163:21)\n    at async handleRequest (/Users/stalinkumar/Downloads/Wabot_BSP/node_modules/next/dist/server/lib/router-server.js:342:24)\n    at async requestHandlerImpl (/Users/stalinkumar/Downloads/Wabot_BSP/node_modules/next/dist/server/lib/router-server.js:366:13)\n    at async Server.requestListener (/Users/stalinkumar/Downloads/Wabot_BSP/node_modules/next/dist/server/lib/start-server.js:140:13)"}

@@ -1,0 +1,15 @@
+node_modules
+.next
+.git
+.npm-cache
+tmp_cache
+*.zip
+*.tar.gz
+.env
+.env.local
+.env.production
+.env.development
+.vercel
+out
+build
+dist

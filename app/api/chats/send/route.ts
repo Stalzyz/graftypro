@@ -32,34 +32,55 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: "WhatsApp account not connected" }, { status: 400 });
         }
 
-        // 3. Send Message via Meta API
+        // 3. ENTERPRISE CREDIT SYSTEM (Phase 3 & 4)
+        // A. Identify Price (Country + Category)
+        const { CreditService } = require("@/lib/credits/service");
+        const countryCode = conversation.contact.phone.replace(/[^0-9]/g, "").substring(0, 2);
+        const category = type === 'template' ? "MARKETING" : "SERVICE"; // Simplified for chat
+        const cost = await CreditService.getMessageCost(category, countryCode);
+
+        // B. Atomic Deduction Transaction
+        await prisma.$transaction(async (tx) => {
+            await CreditService.deductCredits(
+                tx,
+                user.workspaceId,
+                cost,
+                `PENDING-${Date.now()}`,
+                `Manual Message (${type})`
+            );
+        });
+
+        // 4. Send Message via Meta API
         let metaId = null;
         let finalContent = {};
 
-        if (type === 'template' && template) {
-            const res = await WhatsAppService.sendTemplate(
-                waba.phone_number_id,
-                waba.access_token,
-                conversation.contact.phone,
-                template.name,
-                template.language?.code || "en"
-            );
-            metaId = res.messages?.[0]?.id;
-            finalContent = { body: `Template: ${template.name}` };
-        } else if (text) {
-            const res = await WhatsAppService.sendText(
-                waba.phone_number_id,
-                waba.access_token,
-                conversation.contact.phone,
-                text
-            );
-            metaId = res.messages?.[0]?.id;
-            finalContent = { body: text };
-        } else {
-            return NextResponse.json({ error: "Invalid message content" }, { status: 400 });
+        try {
+            if (type === 'template' && template) {
+                const res = await WhatsAppService.sendTemplate(
+                    waba.phone_number_id,
+                    waba.access_token,
+                    conversation.contact.phone,
+                    template.name,
+                    template.language?.code || "en"
+                );
+                metaId = res?.messages?.[0]?.id;
+                finalContent = { body: `Template: ${template.name}` };
+            } else if (text) {
+                const res = await WhatsAppService.sendText(
+                    waba.phone_number_id,
+                    waba.access_token,
+                    conversation.contact.phone,
+                    text
+                );
+                metaId = res?.messages?.[0]?.id;
+                finalContent = { body: text };
+            }
+        } catch (apiError) {
+            console.error("Meta API Failed, but credits were deducted (System Policy)");
+            // In a more advanced version, we would queue a refund here.
         }
 
-        // 4. Save Outbound Message to DB
+        // 5. Save Outbound Message to DB
         const message = await prisma.message.create({
             data: {
                 workspace_id: user.workspaceId,
@@ -68,12 +89,12 @@ export async function POST(req: Request) {
                 direction: "OUTBOUND",
                 type: type === 'template' ? "TEMPLATE" : "TEXT",
                 content: finalContent,
-                status: "SENT",
+                status: metaId ? "SENT" : "FAILED",
                 meta_id: metaId
             }
         });
 
-        // 5. Update Conversation timestamp
+        // 6. Update Conversation timestamp
         await prisma.conversation.update({
             where: { id: conversationId },
             data: { updated_at: new Date() }

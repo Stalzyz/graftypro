@@ -12,6 +12,7 @@ export async function GET(req: Request) {
         const page = parseInt(searchParams.get("page") || "1");
         const limit = parseInt(searchParams.get("limit") || "20");
         const skip = (page - 1) * limit;
+        const segmentId = searchParams.get("segmentId");
 
         // Build Filter
         const whereClause: any = {
@@ -24,6 +25,17 @@ export async function GET(req: Request) {
                 { phone: { contains: search, mode: "insensitive" } },
                 { email: { contains: search, mode: "insensitive" } },
             ];
+        }
+
+        if (segmentId && segmentId !== "all") {
+            const segment = await prisma.segment.findUnique({
+                where: { id: segmentId, workspace_id: user.workspaceId }
+            });
+            if (segment && segment.filters && (segment.filters as any).tags) {
+                whereClause.tags = {
+                    hasSome: (segment.filters as any).tags
+                };
+            }
         }
 
         // Execute Query

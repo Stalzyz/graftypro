@@ -10,9 +10,16 @@ const ConditionNode = ({ data, selected }: any) => {
             {/* Input Handle */}
             <Handle type="target" position={Position.Top} className="w-3 h-3 bg-gray-400" />
 
-            <div className="flex items-center gap-3 px-3 py-2 bg-orange-50 rounded-t-md border-b border-orange-100">
-                <GitBranch className="text-orange-500" size={16} />
-                <div className="text-xs font-bold text-orange-900 uppercase">Condition</div>
+            <div className="flex items-center justify-between px-3 py-2 bg-orange-50 rounded-t-md border-b border-orange-100">
+                <div className="flex items-center gap-2">
+                    <GitBranch className="text-orange-500" size={16} />
+                    <div className="text-xs font-bold text-orange-900 uppercase">Condition</div>
+                </div>
+                {data.showAnalytics && (
+                    <div className="bg-blue-600 text-white text-[10px] px-2 py-0.5 rounded-full font-black shadow-lg">
+                        {data.hits || 0}
+                    </div>
+                )}
             </div>
 
             <div className="p-3">

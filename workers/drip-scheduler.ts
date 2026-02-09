@@ -28,96 +28,193 @@ async function processDrips() {
 
     for (const enrollment of dueEnrollments) {
         try {
+            const drip = enrollment.drip;
+            // @ts-ignore
+            const settings = (drip.settings as any) || {};
+
+            // 1. Business Hours & Day Check
+            if (settings.business_hours) {
+                const tz = settings.timezone || "UTC";
+                const nowInTz = new Date(new Date().toLocaleString("en-US", { timeZone: tz }));
+                const hour = nowInTz.getHours();
+                const day = nowInTz.getDay(); // 0-6 (Sun-Sat)
+
+                const startHour = settings.start_hour || 9;
+                const endHour = settings.end_hour || 18;
+                const allowedDays = settings.days || [1, 2, 3, 4, 5]; // Mon-Fri default
+
+                if (hour < startHour || hour >= endHour || !allowedDays.includes(day)) {
+                    console.log(`Drip step paused for ${enrollment.contact.phone}: Outside business hours.`);
+                    // Push next_run_at to tomorrow morning
+                    const tomorrow = new Date();
+                    tomorrow.setDate(tomorrow.getDate() + 1);
+                    tomorrow.setHours(startHour, 0, 0, 0);
+
+                    await prisma.dripEnrollment.update({
+                        where: { id: enrollment.id },
+                        data: { next_run_at: tomorrow }
+                    });
+                    continue;
+                }
+            }
+
             const steps = enrollment.drip.steps;
-            // Current step logic:
-            // If current_step = 0, we look for step_order = 1
             const nextStepOrder = enrollment.current_step + 1;
             const stepToSend = steps.find(s => s.step_order === nextStepOrder);
 
             if (!stepToSend) {
-                // No more steps, mark completed
-                console.log(`Drip ${enrollment.drip.name} finished for contact.`);
                 await prisma.dripEnrollment.update({
                     where: { id: enrollment.id },
-                    data: { is_stopped: true }
+                    // @ts-ignore
+                    data: { is_stopped: true, stop_reason: "SEQUENCE_COMPLETED" }
                 });
                 continue;
             }
 
-            // 2. Safety Check (Goal Awareness)
-            if (enrollment.drip.goal_id) {
-                // Optional: Check if goal is already achieved.
+            // 2. Goal Check (Automatic Stop)
+            if (drip.goal_id) {
+                const goalAchieved = false; // TODO: Implement specific goal achievement check if needed
+                if (goalAchieved) {
+                    await prisma.dripEnrollment.update({
+                        where: { id: enrollment.id },
+                        // @ts-ignore
+                        data: {
+                            is_stopped: true,
+                            // @ts-ignore
+                            stop_reason: "GOAL_ACHIEVED"
+                        }
+                    });
+                    continue;
+                }
             }
 
-            // 3. Send Message
+            // 3. 24-Hour Window & Meta Compliance
+            // @ts-ignore
+            const lastActive = enrollment.contact.last_active_at;
+            const isInsideWindow = (now.getTime() - lastActive.getTime()) < (24 * 60 * 60 * 1000);
+
+            // Fetch WABA ID via workspace_id
+            const waba = await prisma.whatsAppAccount.findUnique({
+                where: { workspace_id: drip.workspace_id }
+            });
+
+            if (!waba) continue;
+
             let sentSuccess = false;
 
-            if (enrollment.contact.phone) {
-                // Fetch WABA ID via workspace_id
-                const waba = await prisma.whatsAppAccount.findUnique({
-                    where: { workspace_id: enrollment.drip.workspace_id }
+            // CONTENT LOGIC
+            // @ts-ignore
+            if (stepToSend.flow_id) {
+                if (!isInsideWindow) {
+                    console.log(`Contact ${enrollment.contact.phone} outside 24h window. Cannot trigger Flow.`);
+                    // Optional: Fallback to a template if configured in settings?
+                    // For now, we skip or alert.
+                } else {
+                    try {
+                        const { FlowRunner } = await import("../lib/engine/flow-runner");
+                        const session = await prisma.flowSession.create({
+                            data: {
+                                // @ts-ignore
+                                flow_id: stepToSend.flow_id,
+                                contact_id: enrollment.contact_id,
+                                state: { triggered_by: "drip", drip_id: enrollment.drip_id }
+                            },
+                            include: { flow: true }
+                        });
+                        await FlowRunner.executeNextStep(session, null);
+                        sentSuccess = true;
+                    } catch (err) { console.error(err); }
+                }
+                // @ts-ignore
+            } else if (stepToSend.template_id) {
+                // Templates can be sent OUTSIDE window
+                const template = await prisma.template.findUnique({
+                    // @ts-ignore
+                    where: { id: stepToSend.template_id }
                 });
 
-                // Fetch Template Details
-                let template = null;
-                if (stepToSend.template_id) {
-                    template = await prisma.template.findUnique({
-                        where: { id: stepToSend.template_id }
-                    });
-                }
-
-                if (waba && template) {
+                if (template) {
                     try {
                         await WhatsAppService.sendTemplate(
-                            waba.phone_number_id,
-                            waba.access_token,
-                            enrollment.contact.phone,
-                            template.name,
-                            template.language
+                            waba.phone_number_id, waba.access_token, enrollment.contact.phone,
+                            template.name, template.language
                         );
-                        console.log(`Sent Drip Step ${stepToSend.step_order} to ${enrollment.contact.phone}`);
                         sentSuccess = true;
-                    } catch (err) {
-                        console.error("Failed to send message", err);
-                    }
-                } else {
-                    console.log(`Skipping Step ${stepToSend.step_order}: WABA or Template missing.`);
+                    } catch (err) { console.error(err); }
                 }
             }
 
-            // 4. Update Enrollment (Schedule Next)
-            // Even if send failed? Usually yes, to avoid stuck loops, or setup retry.
-            // For MVP, we advance.
+            if (sentSuccess) {
+                // Track Analytics
+                const { DripService } = await import("../lib/services/drip-service");
+                await DripService.trackSent(stepToSend.id);
 
-            const nextNextStep = steps.find(s => s.step_order === nextStepOrder + 1);
-
-            if (nextNextStep) {
-                // Schedule next run
-                const nextRun = new Date(now.getTime() + nextNextStep.delay_hours * 60 * 60 * 1000);
-                await prisma.dripEnrollment.update({
-                    where: { id: enrollment.id },
-                    data: {
-                        current_step: nextStepOrder,
-                        next_run_at: nextRun
-                    }
-                });
-            } else {
-                // Done
-                await prisma.dripEnrollment.update({
-                    where: { id: enrollment.id },
-                    data: {
-                        current_step: nextStepOrder,
-                        is_stopped: true // Finished
-                    }
-                });
+                // Update Enrollment (Schedule Next)
+                const nextNextStep = steps.find(s => s.step_order === nextStepOrder + 1);
+                if (nextNextStep) {
+                    const nextRun = new Date(now.getTime() + nextNextStep.delay_hours * 60 * 60 * 1000);
+                    await prisma.dripEnrollment.update({
+                        where: { id: enrollment.id },
+                        data: {
+                            current_step: nextStepOrder,
+                            next_run_at: nextRun,
+                            // @ts-ignore
+                            metadata: enrollment.metadata, // Assuming metadata exists on enrollment
+                            // @ts-ignore
+                            stop_on_reply: enrollment.stop_on_reply // Assuming stop_on_reply exists on enrollment
+                        }
+                    });
+                } else {
+                    await prisma.dripEnrollment.update({
+                        where: { id: enrollment.id },
+                        data: {
+                            current_step: nextStepOrder,
+                            // @ts-ignore
+                            is_stopped: true,
+                            // @ts-ignore
+                            stop_reason: "SEQUENCE_COMPLETED"
+                        }
+                    });
+                }
             }
 
         } catch (e) {
             console.error(`Failed to process drip for ${enrollment.id}`, e);
         }
     }
-}
 
+    // --- RESUME WAITING FLOW SESSIONS ---
+    const waitingSessions = await prisma.flowSession.findMany({
+        where: {
+            // @ts-ignore
+            is_waiting: true,
+            // @ts-ignore
+            next_run_at: { lte: now }
+        }
+    });
+
+    console.log(`Found ${waitingSessions.length} waiting flow sessions to resume.`);
+
+    for (const session of waitingSessions) {
+        try {
+            const { FlowRunner } = await import("../lib/engine/flow-runner");
+
+            // 1. Mark as not waiting
+            await prisma.flowSession.update({
+                where: { id: session.id },
+                // @ts-ignore
+                data: { is_waiting: false }
+            });
+
+            // 2. Execute next step (moving from the 'wait' node target)
+            await FlowRunner.executeNextStep(session, session.current_node_id);
+            console.log(`Resumed Flow Session ${session.id}`);
+
+        } catch (e) {
+            console.error(`Failed to resume flow session ${session.id}`, e);
+        }
+    }
+}
 // Run loop
 // Process drips immediately on start, then interval
 processDrips();

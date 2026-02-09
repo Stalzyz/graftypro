@@ -19,6 +19,7 @@ export async function GET(req: Request) {
 
 // 2. Event Ingestion (POST)
 export async function POST(req: Request) {
+    const startTime = Date.now();
     try {
         const body = await req.json();
 
@@ -31,6 +32,30 @@ export async function POST(req: Request) {
         const value = changes?.value;
 
         if (!value) return NextResponse.json({ status: "ignored" });
+
+        // Handle Template Status Updates
+        if (changes?.field === "message_template_status_update") {
+            const { event, message_template_name, message_template_language } = value;
+            const wabaIdFromMeta = entry.id;
+
+            const waba = await prisma.whatsAppAccount.findFirst({
+                where: { waba_id: wabaIdFromMeta }
+            });
+
+            if (waba) {
+                await prisma.template.updateMany({
+                    where: {
+                        workspace_id: waba.workspace_id,
+                        name: message_template_name,
+                        language: message_template_language
+                    },
+                    data: {
+                        status: event as any
+                    }
+                });
+                return NextResponse.json({ status: "template_updated" });
+            }
+        }
 
         // Handle Messages
         if (value.messages) {
@@ -83,6 +108,12 @@ export async function POST(req: Request) {
                             status: "OPEN"
                         }
                     });
+                } else {
+                    // Update timestamp to bring to top of inbox
+                    await prisma.conversation.update({
+                        where: { id: conversation.id },
+                        data: { updated_at: new Date() }
+                    });
                 }
 
                 // C2. Save Message (Timeline)
@@ -103,6 +134,7 @@ export async function POST(req: Request) {
                     msgContent = { raw: message };
                 }
 
+                // @ts-ignore
                 await prisma.message.create({
                     data: {
                         workspace_id: waba.workspace_id,
@@ -119,15 +151,39 @@ export async function POST(req: Request) {
                 // Update Contact Last Active
                 await prisma.contact.update({
                     where: { id: contact.id },
+                    // @ts-ignore
                     data: { last_active_at: new Date() }
                 });
 
                 // D. Consent Engine (Phase 2)
                 const textBody = message.text?.body?.toLowerCase()?.trim();
 
+                // STOP DROPS ON REPLY (Intelligent Follow-up)
+                if (textBody !== "start") {
+                    // Update: Only stop if sequence allows it
+                    const activeDrips = await prisma.dripEnrollment.findMany({
+                        where: {
+                            contact_id: contact.id,
+                            is_stopped: false,
+                            // @ts-ignore
+                            drip: { stop_on_reply: true }
+                        }
+                    });
+
+                    if (activeDrips.length > 0) {
+                        await prisma.dripEnrollment.updateMany({
+                            where: { id: { in: activeDrips.map(d => d.id) } },
+                            // @ts-ignore
+                            data: { is_stopped: true, stop_reason: "USER_REPLIED" }
+                        });
+                        console.log(`Stopped ${activeDrips.length} drips for contact ${contact.phone} due to reply.`);
+                    }
+                }
+
                 if (textBody === "stop" || textBody === "unsubscribe") {
                     await prisma.contact.update({
                         where: { id: contact.id },
+                        // @ts-ignore
                         data: { opt_in: false }
                     });
                     // Optional: Send "You have been unsubscribed" via API (outside scope of webhook return)
@@ -137,17 +193,18 @@ export async function POST(req: Request) {
                 if (textBody === "start" || textBody === "subscribe") {
                     await prisma.contact.update({
                         where: { id: contact.id },
+                        // @ts-ignore
                         data: { opt_in: true }
                     });
                 }
 
+                // @ts-ignore
                 if (!contact.opt_in && textBody !== "start") {
                     // Ignore messages from opted-out users unless they resubscribe
                     return NextResponse.json({ status: "ignored_blocked" });
                 }
 
                 // E. Trigger Flow Engine
-                // We import dynamically to avoid circular dependencies if any, or just standard import at top.
                 const { FlowRunner } = await import("@/lib/engine/flow-runner");
 
                 if (message.text && message.text.body) {
@@ -156,10 +213,56 @@ export async function POST(req: Request) {
                         contact.id,
                         message.text.body
                     );
+                } else if (message.interactive && message.interactive.type === 'nfm_reply') {
+                    // META FLOW RESPONSE
+                    const responseJson = message.interactive.nfm_reply.response_json;
+                    const data = JSON.parse(responseJson);
+
+                    // Map attributes to Contact
+                    await prisma.contact.update({
+                        where: { id: contact.id },
+                        // @ts-ignore
+                        data: {
+                            // @ts-ignore
+                            attributes: {
+                                // @ts-ignore
+                                ...(contact.attributes as object || {}),
+                                ...data,
+                                meta_flow_last_submitted_at: new Date().toISOString()
+                            }
+                        }
+                    });
+
+                    // --- EDU MODULE INTEGRATION ---
+                    try {
+                        const { EduService } = require("@/lib/edu/service");
+                        await EduService.handleMetaFlowSubmission(waba.workspace_id, contact.phone, data);
+                    } catch (eduError) {
+                        console.error("[Webhook] Edu Meta Flow Error:", eduError);
+                    }
+
+                    // Resume Flow
+                    await FlowRunner.processMessage(
+                        waba.workspace_id,
+                        contact.id,
+                        "FLOW_SUBMITTED_SUCCESSFULLY"
+                    );
+
+                } else if (message.interactive && message.interactive.type === 'list_reply') {
+                    // INTERACTIVE LIST RESPONSE
+                    const selectedId = message.interactive.list_reply.id;
+
+                    // Trigger Flow with selection
+                    await FlowRunner.processMessage(
+                        waba.workspace_id,
+                        contact.id,
+                        `LIST_SELECT_ID:${selectedId}`
+                    );
                 }
             }
         }
 
+        console.log(`[Webhook] POST processed in ${Date.now() - startTime}ms`);
         return NextResponse.json({ status: "processed" });
 
     } catch (error) {

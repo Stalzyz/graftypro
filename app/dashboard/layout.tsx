@@ -1,4 +1,6 @@
+"use client";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
     LayoutDashboard,
     Users,
@@ -10,78 +12,139 @@ import {
     LogOut,
     CreditCard,
     Package,
-    ShoppingBag
+    ShoppingBag,
+    LayoutTemplate,
+    Target,
+    Zap,
+    MessageCircle,
+    ArrowRight,
+    X,
+    GraduationCap,
+    Smartphone
 } from "lucide-react";
+import { useBranding } from "@/hooks/use-branding";
+import { BrandProvider } from "@/components/branding/BrandProvider";
+import { DynamicLogo } from "@/components/branding/DynamicLogo";
 
 export default function DashboardLayout({
     children,
 }: {
     children: React.ReactNode;
 }) {
+    const { branding } = useBranding();
+    const pathname = usePathname();
+
     return (
-        <div className="min-h-screen bg-gray-50 flex">
-            {/* Sidebar */}
-            <aside className="w-64 bg-white border-r border-gray-200 hidden md:flex flex-col">
-                <div className="h-16 flex items-center px-6 border-b border-gray-100">
-                    <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">
-                        Wabot BSP
-                    </span>
-                </div>
-
-                <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
-                    <NavItem href="/dashboard" icon={<LayoutDashboard size={20} />} label="Overview" active />
-                    <NavItem href="/dashboard/contacts" icon={<Users size={20} />} label="Contacts" />
-                    <NavItem href="/dashboard/chat" icon={<MessageSquare size={20} />} label="Live Chat" />
-                    <NavItem href="/dashboard/campaigns" icon={<Send size={20} />} label="Broadcasts" />
-                    <NavItem href="/dashboard/drips" icon={<Clock size={20} />} label="Drip Campaigns" />
-                    <NavItem href="/dashboard/flows/create" icon={<GitBranch size={20} />} label="Automation" />
-
-                    <div className="pt-4 pb-2 px-3 text-xs font-semibold text-gray-400 uppercase tracking-widest">
-                        Commerce
+        <BrandProvider colors={branding?.colors}>
+            <div className="min-h-screen bg-[#FDFDFD] flex">
+                {/* Sidebar */}
+                <aside className="w-[280px] bg-white border-r border-slate-100 hidden lg:flex flex-col fixed h-screen z-50 overflow-hidden">
+                    {/* Brand Identity */}
+                    <div className="h-20 flex items-center px-8 border-b border-slate-50/50">
+                        <DynamicLogo
+                            logoUrl={branding?.logo_url}
+                            brandName={branding?.brand_name}
+                            className="h-9 w-auto"
+                        />
                     </div>
-                    <NavItem href="/dashboard/products" icon={<Package size={20} />} label="Products" />
-                    <NavItem href="/dashboard/orders" icon={<ShoppingBag size={20} />} label="Orders" />
 
-                    <div className="pt-4 pb-2 px-3 text-xs font-semibold text-gray-400 uppercase tracking-widest">
-                        System
+                    <nav className="flex-1 px-4 py-8 space-y-1.5 overflow-y-auto custom-scrollbar">
+                        <NavItem href="/dashboard" icon={<LayoutDashboard size={20} strokeWidth={1.5} />} label="Overview" pathname={pathname} />
+                        <NavItem href="/dashboard/contacts" icon={<Users size={20} strokeWidth={1.5} />} label="Contacts" pathname={pathname} />
+                        <NavItem href="/dashboard/chat" icon={<MessageCircle size={20} strokeWidth={1.5} />} label="Live Chat" pathname={pathname} />
+
+                        <div className="pt-8 pb-3 px-6">
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] block">Automation</span>
+                        </div>
+                        <NavItem href="/dashboard/flows" icon={<GitBranch size={20} strokeWidth={1.5} />} label="Flow Builder" pathname={pathname} />
+                        <NavItem href="/dashboard/responders" icon={<Zap size={20} strokeWidth={1.5} />} label="Quick Replies" pathname={pathname} />
+                        <NavItem href="/dashboard/drips" icon={<Clock size={20} strokeWidth={1.5} />} label="Drip Sequences" pathname={pathname} />
+
+                        <div className="pt-8 pb-3 px-6">
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] block">Campaigns</span>
+                        </div>
+                        <NavItem href="/dashboard/campaigns" icon={<Send size={20} strokeWidth={1.5} />} label="Broadcasts" pathname={pathname} />
+                        <NavItem href="/dashboard/templates" icon={<LayoutTemplate size={20} strokeWidth={1.5} />} label="Templates" pathname={pathname} />
+
+                        <div className="pt-8 pb-3 px-6">
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] block">Commerce & CRM</span>
+                        </div>
+                        <NavItem href="/dashboard/education" icon={<GraduationCap size={20} strokeWidth={1.5} />} label="Lead Engine" pathname={pathname} />
+                        <NavItem href="/dashboard/products" icon={<ShoppingBag size={20} strokeWidth={1.5} />} label="Store Catalog" pathname={pathname} />
+                    </nav>
+
+                    {/* Footer Nav */}
+                    <div className="p-6 border-t border-slate-50 space-y-1 bg-slate-50/30">
+                        <NavItem href="/dashboard/settings" icon={<Settings size={20} strokeWidth={1.5} />} label="Preferences" pathname={pathname} />
+                        <NavItem href="/dashboard/settings/billing" icon={<CreditCard size={20} strokeWidth={1.5} />} label="Billing" pathname={pathname} />
+                        <button
+                            onClick={async () => {
+                                await fetch("/api/auth/logout", { method: "POST" });
+                                window.location.href = "/login";
+                            }}
+                            className="flex items-center gap-3 text-sm font-medium text-slate-400 hover:text-rose-500 px-4 py-3 w-full rounded-2xl hover:bg-rose-50/50 transition-all mt-4 group"
+                        >
+                            <div className="bg-slate-100 group-hover:bg-rose-100 p-2 rounded-xl transition-colors">
+                                <LogOut size={16} strokeWidth={2} />
+                            </div>
+                            Sign Out
+                        </button>
                     </div>
-                    <NavItem href="/dashboard/settings" icon={<Settings size={20} />} label="Settings" />
-                    <NavItem href="/dashboard/settings/billing" icon={<CreditCard size={20} />} label="Billing" />
-                </nav>
+                </aside>
 
-                <div className="p-4 border-t border-gray-100">
-                    <button className="flex items-center gap-3 text-sm font-medium text-gray-500 hover:text-red-600 px-2 py-2 w-full rounded-md hover:bg-red-50 transition-colors">
-                        <LogOut size={20} />
-                        Sign Out
-                    </button>
+                {/* Content Area */}
+                <div className="flex-1 flex flex-col lg:ml-[280px]">
+                    {/* Breadcrumbs / Action Bar could go here */}
+
+                    <main className="flex-1 p-8 lg:p-12 max-w-7xl">
+                        {children}
+                    </main>
+
+                    {/* Footer */}
+                    <footer className="py-10 px-12 border-t border-slate-100 bg-white shadow-[0_-1px_0_0_rgba(0,0,0,0.02)]">
+                        <div className="flex flex-col md:flex-row justify-between items-center gap-6">
+                            <p className="text-[11px] text-slate-400 font-medium tracking-wide">
+                                &copy; {new Date().getFullYear()} {branding?.brand_name || "WAVO"}. ENTERPRISE GRADE MESSAGING.
+                            </p>
+                            <div className="flex gap-8">
+                                <FooterLink label="Documentation" />
+                                <FooterLink label="Status" />
+                                <FooterLink label="Privacy" />
+                            </div>
+                        </div>
+                    </footer>
                 </div>
-            </aside>
-
-            {/* Main Content */}
-            <div className="flex-1 flex flex-col">
-                {/* Mobile Header (Hidden on Desktop) */}
-                <header className="h-16 bg-white border-b border-gray-200 md:hidden flex items-center px-4">
-                    <span className="font-bold">Wabot</span>
-                </header>
-
-                <main className="flex-1 overflow-auto p-8">
-                    {children}
-                </main>
             </div>
-        </div>
+        </BrandProvider>
     );
 }
 
-function NavItem({ href, icon, label, active = false }: any) {
-    const baseClass = "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors";
-    const activeClass = active
-        ? "bg-blue-50 text-blue-700"
-        : "text-gray-600 hover:bg-gray-100 hover:text-gray-900";
+function NavItem({ href, icon, label, pathname }: { href: string; icon: React.ReactNode; label: string; pathname: string }) {
+    const isActive = pathname === href || (href !== "/dashboard" && pathname.startsWith(href));
 
     return (
-        <Link href={href} className={`${baseClass} ${activeClass}`}>
-            {icon}
+        <Link
+            href={href}
+            className={`flex items-center gap-4 px-4 py-3 rounded-2xl text-sm font-semibold transition-all duration-300 relative group overflow-hidden ${isActive
+                ? "bg-slate-900 text-white shadow-xl shadow-slate-200"
+                : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
+                }`}
+        >
+            <div className={`transition-colors duration-300 ${isActive ? "text-white" : "text-slate-400 group-hover:text-slate-900"}`}>
+                {icon}
+            </div>
+            {label}
+            {isActive && (
+                <div className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-[#27954D] rounded-l-full shadow-[0_0_12px_rgba(39,149,77,0.5)]" />
+            )}
+        </Link>
+    );
+}
+
+function FooterLink({ label }: { label: string }) {
+    return (
+        <Link href="#" className="text-[11px] font-bold uppercase tracking-widest text-slate-300 hover:text-slate-900 transition-colors">
             {label}
         </Link>
-    )
+    );
 }

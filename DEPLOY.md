@@ -1,64 +1,81 @@
-# Deployment Guide (Railway.app)
+# Deployment Guide
 
-This project is a Full-Stack Boilerplate containing:
-1.  **Next.js 14 App** (Frontend & API)
+This project consists of:
+1.  **Next.js 14 App** (Web & API)
 2.  **PostgreSQL** (Database)
 3.  **Redis** (Queue)
-4.  **Worker Script** (Background Job Processor)
+4.  **Worker** (Background Processing)
 
-## Option 1: Railway (Easiest)
+---
 
-### 1. Initialize Git
-Ensure your project is a git repo.
+## Recommended: VPS Deployment (Docker)
+
+This is the most stable way to run Wabot BSP on a VPS (Ubuntu/Debian).
+
+### 1. Prerequisite Setup on VPS
+SSH into your VPS and run the setup script to install Docker, Nginx, and other dependencies:
 ```bash
-git init
-git add .
-git commit -m "Initial commit"
-# Push to GitHub
+# On your local machine, upload the files
+scp -r . root@your-vps-ip:~/wabot_bsp
+
+# SSH into VPS
+ssh root@your-vps-ip
+cd ~/wabot_bsp
+
+# Run setup
+chmod +x setup-vps.sh deploy.sh
+./setup-vps.sh
 ```
 
-### 2. Create Project on Railway
-1.  Go to [Railway.app](https://railway.app/).
-2.  Click "New Project" -> "Deploy from GitHub repo".
-3.  Select your `Wabot_BSP` repo.
+### 2. Configure Environment
+Copy the example environment file and fill in your production values:
+```bash
+cp .env.example .env
+nano .env
+```
+*   **Database**: Set a strong `POSTGRES_PASSWORD`.
+*   **Auth**: Set unique `JWT_SECRET` and `ADMIN_JWT_SECRET`.
+*   **Meta**: Enter your `META_APP_ID`, `META_APP_SECRET`, and `NEXT_PUBLIC` values.
+*   **Security**: Generate an `ENCRYPTION_KEY` (`openssl rand -hex 32`).
 
-### 3. Add Services (Database & Redis)
-In the Railway Canvas:
-1.  Right click -> Add Service -> **PostgreSQL**.
-2.  Right click -> Add Service -> **Redis**.
+### 3. Deploy
+Launch the production environment:
+```bash
+./deploy.sh
+```
+This script will:
+- Build Docker images.
+- Start all services (Web, DB, Redis, Worker).
+- Sync the Database schema (`prisma db push`).
+- Seed your Admin Account.
 
-### 4. Configure Environment Variables
-Go to your Next.js Service -> **Variables**:
-*   `DATABASE_URL`: `${{PostgreSQL.DATABASE_URL}}` (Auto-fill)
-*   `REDIS_HOST`: `${{Redis.HOST}}`
-*   `REDIS_PORT`: `${{Redis.PORT}}`
-*   `REDIS_PASSWORD`: `${{Redis.PASSWORD}}`
-*   `JWT_SECRET`: Generate a random string.
-*   `META_APP_ID`: Your Meta App ID.
-*   `META_APP_SECRET`: Your Meta App Secret.
+### 4. Domain & SSL (Nginx)
+1. Copy the Nginx config:
+   ```bash
+   sudo cp nginx.conf.example /etc/nginx/sites-available/wabot
+   sudo ln -s /etc/nginx/sites-available/wabot /etc/nginx/sites-enabled/
+   sudo nano /etc/nginx/sites-available/wabot # Update your-domain.com
+   sudo nginx -t && sudo systemctl restart nginx
+   ```
+2. Setup SSL with Certbot:
+   ```bash
+   sudo certbot --nginx -d your-domain.com
+   ```
 
-### 5. Configure Build & Start Command
-The default start command is `next start`. This runs the web app.
-**However**, we also need the **Worker** running.
+---
 
-**Strategy for Workers on Railway:**
-Add a *second* service pointing to the *same* GitHub repo.
-1.  Name it "Worker".
-2.  Set Start Command: `npx tsx workers/campaign.ts`
-3.  Copy the same Env Vars (Redis/DB).
+## Alternative: Railway (PaaS)
 
-## Option 2: VPS (Hostinger/DigitalOcean) with Docker
+1.  **New Project** > **Deploy from GitHub**.
+2.  **Add PostgreSQL** and **Redis** services.
+3.  **Variables**: Copy keys from `.env.example`.
+4.  **Worker**: Add a second service from the same repo with Start Command: `npx tsx worker.ts`.
 
-1.  SSH into your server.
-2.  Clone the repo.
-3.  Run:
-    ```bash
-    docker-compose up -d --build
-    ```
-4.  The app will be live on port 3000.
-5.  Use Nginx to reverse proxy port 80 -> 3000.
+---
 
-## Post-Deployment
-1.  Go to `https://your-app.up.railway.app/dashboard`.
-2.  Create an account (Register).
-3.  Go to Settings -> WhatsApp -> Connect.
+## Post-Deployment Checklist
+1.  **Register**: Go to `https://your-domain.com/register` and create your account.
+2.  **Meta Webhook**: 
+    - URL: `https://your-domain.com/api/whatsapp/webhook`
+    - Verify Token: Same as in your `.env`.
+3.  **Finance**: Connect Razorpay in Settings > Payments.

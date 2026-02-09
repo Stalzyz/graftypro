@@ -3,7 +3,7 @@
 
 generator client {
   provider      = "prisma-client-js"
-  binaryTargets = ["native", "debian-openssl-3.0.x"]
+  binaryTargets = ["native"]
 }
 
 datasource db {
@@ -38,15 +38,19 @@ model Workspace {
   id            String          @id @default(uuid())
   name          String
   business_name String?
+  website       String?         // Added for Business Profile
   status        WorkspaceStatus @default(ACTIVE)
   timezone      String          @default("UTC")
   created_at    DateTime        @default(now())
   updated_at    DateTime        @updatedAt
   
   // SaaS Billing
-  plan               Plan     @default(FREE)
+  plan               Plan     @default(FREE) // Keep for backward compat for now
+  current_plan_id    String?  // Link to SubscriptionPlan
   subscription_id    String?  // Razorpay Sub ID
   subscription_status String? // active, created, halted
+
+  plan_details       SubscriptionPlan? @relation(fields: [current_plan_id], references: [id])
 
   // Settings stored as JSON for flexibility
   settings      Json?           @default("{}") 
@@ -58,6 +62,7 @@ model Workspace {
   templates     Template[]
   contacts      Contact[]
   conversations Conversation[]
+  auto_responders AutoResponder[]
   flows         Flow[]
   goals         Goal[]
   campaigns     Campaign[]
@@ -68,8 +73,212 @@ model Workspace {
   slots         AppointmentSlot[]
   drips         DripSequence[]
   messages      Message[]
+  segments      Segment[]
+  // Reseller Migration (Phase 2: Permanent Mapping)
+  reseller_id   String?
+  reseller      Reseller?  @relation(fields: [reseller_id], references: [id])
+
+  // Finance
+  transactions  Transaction[]
+  invoices      Invoice[]
+  wallet        VendorWallet?
+
+  commerce_stores  CommerceStore[]
+  edu_forms        EduForm[]
+  edu_leads        EduLead[]
+  feedbacks        Feedback[]
+
+  // --- SALES CONVERSION SYSTEM (Profiling) ---
+  industry          String?
+  revenue_range     String?
+  whatsapp_goal     String?
+  message_volume    String?
+  use_api_already   Boolean? @default(false)
+  needs_assistance  Boolean? @default(false)
+  trial_ends_at     DateTime? // For 7-day trial tracking
 
   @@map("workspaces")
+}
+
+model Lead {
+  id                String   @id @default(uuid())
+  name              String
+  business_name     String?
+  whatsapp_number   String
+  revenue_range     String?
+  goal              String?  // lead_gen, recovery, etc.
+  ip_address        String?
+  user_agent        String?
+  source            String?  // utm source etc.
+  created_at        DateTime @default(now())
+
+  @@map("leads")
+}
+
+// ... (existing models)
+
+// --------------------------------------
+// COMMERCE ENGINE (Phase 1)
+// --------------------------------------
+
+enum CommercePlatform {
+  WOOCOMMERCE
+  SHOPIFY
+  CUSTOM
+}
+
+model CommerceStore {
+  id                    String           @id @default(uuid())
+  workspace_id          String
+  platform             CommercePlatform
+  encrypted_credentials Json             // Encrypted API keys/tokens
+  status               String           @default("ACTIVE")
+  last_sync_at         DateTime?
+  
+  created_at           DateTime         @default(now())
+  updated_at           DateTime         @updatedAt
+
+  workspace            Workspace        @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  products             CommerceProduct[]
+  orders               CommerceOrder[]
+
+  @@map("commerce_stores")
+}
+
+model CommerceProduct {
+  id                  String         @id @default(uuid())
+  store_id            String
+  external_id         String         // ID from Shopify/Woo
+  name                String
+  description         String?
+  price               Decimal
+  currency            String         @default("INR")
+  stock               Int            @default(0)
+  image_urls          String[]       // Array of URLs
+  category            String?
+  
+  created_at          DateTime       @default(now())
+  updated_at          DateTime       @updatedAt
+
+  store               CommerceStore  @relation(fields: [store_id], references: [id], onDelete: Cascade)
+
+  @@unique([store_id, external_id])
+  @@map("commerce_products")
+}
+
+model CommerceOrder {
+  id                  String         @id @default(uuid())
+  store_id            String
+  external_id         String         // ID from Shopify/Woo
+  customer_phone      String?
+  total_amount        Decimal
+  status              String
+  synced_at           DateTime       @default(now())
+  
+  events              CommerceEvent[]
+
+  store               CommerceStore  @relation(fields: [store_id], references: [id], onDelete: Cascade)
+
+  @@unique([store_id, external_id])
+  @@map("commerce_orders")
+}
+
+model CommerceEvent {
+  id               String        @id @default(uuid())
+  order_id         String
+  event_type       String        // order.placed, order.paid, checkout.abandoned
+  processed_status String        @default("PENDING")
+  payload          Json?         // Original webhook data
+  
+  created_at       DateTime      @default(now())
+
+  order            CommerceOrder @relation(fields: [order_id], references: [id], onDelete: Cascade)
+
+  @@map("commerce_events")
+}
+
+// --------------------------------------
+// EDUTECH CONVERSION ENGINE (Phased Build)
+// --------------------------------------
+
+enum EduLeadStatus {
+  NEW
+  CONTACTED
+  FOLLOW_UP
+  DEMO_SCHEDULED
+  PAYMENT_PENDING
+  ENROLLED
+  LOST
+}
+
+model EduForm {
+  id           String   @id @default(uuid())
+  workspace_id String
+  name         String   // e.g. "Summer Batch Inquiry"
+  type         String   // INQUIRY, DEMO, SCHOLARSHIP
+  fields       Json     // [{ name: "grade", type: "select", options: ["10th", "12th"] }]
+  
+  success_msg  String?
+  redirect_url String?
+  
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  workspace    Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  leads        EduLead[]
+
+  @@map("edu_forms")
+}
+
+model EduLead {
+  id                String        @id @default(uuid())
+  workspace_id      String
+  form_id           String?
+  
+  student_name      String
+  parent_name       String?
+  whatsapp_number   String
+  email             String?
+  
+  grade             String?
+  course_interested String?
+  budget_range      String?
+  city              String?
+  
+  status            EduLeadStatus @default(NEW)
+  counselor_id      String?
+  
+  notes             String?
+  potential_revenue Decimal       @default(0)
+  
+  // Custom Attributes
+  attributes        Json          @default("{}")
+  
+  created_at        DateTime      @default(now())
+  updated_at        DateTime      @updatedAt
+
+  workspace         Workspace     @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  form              EduForm?      @relation(fields: [form_id], references: [id])
+
+  @@index([workspace_id, status])
+  @@map("edu_leads")
+}
+
+model Segment {
+  id           String   @id @default(uuid())
+  workspace_id String
+  name         String
+  description  String?
+  
+  // JSON rules: { "tags": ["VIP"], "min_orders": 5, "last_active_days": 7 }
+  filters      Json     @default("{}")
+  
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  workspace    Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+
+  @@map("segments")
 }
 
 model User {
@@ -80,7 +289,11 @@ model User {
   role           UserRole  @default(AGENT)
   first_name     String?
   last_name      String?
+  phone          String?   // Added for OTP
+  phone_verified DateTime? // OTP Verification Timestamp
+  google_id      String?   // OAuth
   email_verified DateTime?
+  welcome_offer_claimed Boolean @default(false)
   created_at     DateTime  @default(now())
   updated_at     DateTime  @updatedAt
 
@@ -122,6 +335,24 @@ model TeamMember {
 // WhatsApp Business Structure
 // --------------------------------------
 
+enum IntegrationStatus {
+  DRAFT           // Credentials entered, not validated
+  VALIDATING      // Validation in progress
+  ACTIVE          // Fully operational
+  DEGRADED        // Working but with warnings
+  PAUSED          // Manually paused by user
+  SUSPENDED       // Auto-paused due to risk
+  DISABLED        // Permanently disabled
+  FAILED          // Validation failed
+}
+
+enum HealthStatus {
+  HEALTHY         // All checks passing
+  WARNING         // Minor issues detected
+  CRITICAL        // Major issues, auto-pause triggered
+  UNKNOWN         // Not yet checked
+}
+
 enum WabaStatus {
   CONNECTED
   DISCONNECTED
@@ -129,29 +360,143 @@ enum WabaStatus {
 }
 
 model WhatsAppAccount {
-  id               String     @id @default(uuid())
-  workspace_id     String     @unique // One WABA per workspace for this MVP
-  waba_id          String     // Meta WABA ID
-  phone_number_id  String     @unique // Meta Phone Number ID
-  phone_number     String
-  display_name     String?
-  status           WabaStatus @default(CONNECTED)
-  quality_rating   String?    // GREEN, YELLOW, RED
-  messaging_limit  String?    // 250, 1K, 10K, etc.
-  access_token     String     // Store encrypted in real app
+  id               String            @id @default(uuid())
+  workspace_id     String            @unique // One WABA per workspace for this MVP
+  
+  // Enhanced Status Management
+  integration_status IntegrationStatus @default(DRAFT)
+  health_status      HealthStatus      @default(UNKNOWN)
+  status             WabaStatus       @default(CONNECTED) // Legacy field
+  
+  // Meta Credentials (Enhanced)
+  app_id             String?           // Meta App ID
+  app_secret         String?           // Encrypted
+  access_token       String            // Encrypted
+  waba_id            String            // Meta WABA ID
+  phone_number_id    String           @unique // Meta Phone Number ID
+  phone_number       String
+  display_name       String?
+  business_id        String?           // Meta Business Manager ID
+  
+  // Webhook Configuration
+  webhook_url        String?           // Generated webhook URL
+  webhook_verify_token String?         // Generated verify token
+  webhook_verified_at  DateTime?       // When webhook was verified
+  
+  // Permissions & Scopes
+  granted_permissions Json?            // Array of granted permissions
+  required_permissions Json?           // Array of required permissions
+  permission_check_at  DateTime?       // Last permission check
+  
+  // Health Metrics
+  last_health_check_at DateTime?
+  last_successful_send_at DateTime?
+  consecutive_failures Int @default(0)
+  
+  // Risk Indicators
+  quality_rating     String?           // GREEN, YELLOW, RED
+  messaging_limit    String?           // 250, 1K, 10K, 100K, UNLIMITED
+  rate_limit_tier    String?           // Tier information
+  
+  // Audit Trail
+  validated_at       DateTime?
+  suspended_at       DateTime?
+  suspension_reason  String?
   
   created_at       DateTime   @default(now())
   updated_at       DateTime   @updatedAt
 
   workspace        Workspace  @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  health_logs      IntegrationHealthLog[]
+  audit_logs       IntegrationAuditLog[]
 
   @@map("whatsapp_accounts")
 }
 
+enum HealthCheckType {
+  TOKEN_VALIDITY
+  WEBHOOK_REACHABILITY
+  PERMISSION_CHECK
+  PHONE_STATUS
+  RATE_LIMIT_CHECK
+  MESSAGE_DELIVERY
+  QUALITY_RATING
+}
+
+model IntegrationHealthLog {
+  id                   String   @id @default(uuid())
+  whatsapp_account_id  String
+  
+  check_type           HealthCheckType
+  status               String   // PASS, WARN, FAIL
+  
+  details              Json     // Check-specific data
+  error_message        String?
+  
+  checked_at           DateTime @default(now())
+  
+  whatsapp_account     WhatsAppAccount @relation(fields: [whatsapp_account_id], references: [id], onDelete: Cascade)
+  
+  @@index([whatsapp_account_id, checked_at])
+  @@map("integration_health_logs")
+}
+
+enum AuditAction {
+  INTEGRATION_CREATED
+  CREDENTIALS_UPDATED
+  VALIDATION_STARTED
+  VALIDATION_PASSED
+  VALIDATION_FAILED
+  ACTIVATED
+  PAUSED
+  SUSPENDED
+  RESUMED
+  DELETED
+  WEBHOOK_VERIFIED
+  PERMISSION_GRANTED
+  PERMISSION_REVOKED
+  HEALTH_CHECK_FAILED
+  AUTO_SUSPENDED
+  
+  // Reseller Actions
+  RESELLER_REGISTERED
+  RESELLER_APPROVED
+  RESELLER_SUSPENDED
+  RESELLER_MARGING_CHANGED
+  VENDOR_MAPPED_TO_RESELLER
+}
+
+model IntegrationAuditLog {
+  id                   String   @id @default(uuid())
+  whatsapp_account_id  String
+  workspace_id         String
+  user_id              String?
+  
+  action               AuditAction
+  details              Json?
+  ip_address           String?
+  user_agent           String?
+  
+  created_at           DateTime @default(now())
+  
+  whatsapp_account     WhatsAppAccount @relation(fields: [whatsapp_account_id], references: [id], onDelete: Cascade)
+  
+  @@index([whatsapp_account_id, created_at])
+  @@index([workspace_id, created_at])
+  @@map("integration_audit_logs")
+}
+
+enum TemplateCategory {
+  MARKETING
+  UTILITY
+  AUTHENTICATION
+}
+
 enum TemplateStatus {
+  DRAFT
+  PENDING
   APPROVED
   REJECTED
-  PENDING
   PAUSED
   DISABLED
 }
@@ -163,13 +508,16 @@ model Template {
   
   name         String
   language     String
-  category     String         // MARKETING, UTILITY, AUTHENTICATION
-  status       TemplateStatus
+  category     TemplateCategory
+  status       TemplateStatus   @default(DRAFT)
   
   components   Json           // Header, Body, Footer, Buttons
   
   meta_id      String?         // ID from Meta
   
+  variables    TemplateVariable[]
+  drip_steps   DripStep[]
+
   created_at   DateTime       @default(now())
   updated_at   DateTime       @updatedAt
 
@@ -177,6 +525,19 @@ model Template {
 
   @@unique([workspace_id, name, language])
   @@map("templates")
+}
+
+model TemplateVariable {
+  id           String   @id @default(uuid())
+  template_id  String
+  
+  component_index Int    // 0 = Header, 1 = Body, etc. (Or strict type enum)
+  param_index     Int    // {{1}} = 1
+  sample_value    String 
+  
+  template     Template @relation(fields: [template_id], references: [id], onDelete: Cascade)
+
+  @@map("template_variables")
 }
 
 // --------------------------------------
@@ -312,6 +673,10 @@ model Flow {
   workspace    Workspace  @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
   sessions     FlowSession[]
   goal         Goal?
+  analytics    FlowAnalytics[]
+  auto_responders AutoResponder[]
+  campaigns    Campaign[]
+  drip_steps   DripStep[]
 
   @@map("flows")
 }
@@ -324,6 +689,8 @@ model FlowSession {
   state        Json?    // Collected variables
   
   is_completed Boolean  @default(false)
+  is_waiting   Boolean  @default(false)
+  next_run_at  DateTime?
   
   created_at   DateTime @default(now())
   updated_at   DateTime @updatedAt
@@ -332,6 +699,20 @@ model FlowSession {
   contact      Contact  @relation(fields: [contact_id], references: [id], onDelete: Cascade)
 
   @@map("flow_sessions")
+}
+
+model FlowAnalytics {
+  id             String   @id @default(uuid())
+  flow_id        String
+  node_id        String
+  hits           Int      @default(0)
+  
+  last_hit_at    DateTime @default(now())
+
+  flow           Flow     @relation(fields: [flow_id], references: [id], onDelete: Cascade)
+
+  @@unique([flow_id, node_id])
+  @@map("flow_analytics")
 }
 
 // --------------------------------------
@@ -412,6 +793,8 @@ model Campaign {
   
   template_id  String?
   template_name String?   // Cache name for display
+  flow_id      String?
+  flow         Flow?      @relation(fields: [flow_id], references: [id])
   
   // Segment Config
   filters      Json       // e.g. { "tags": ["VIP"], "joined_after": "2024-01-01" }
@@ -608,8 +991,17 @@ model DripSequence {
   id           String   @id @default(uuid())
   workspace_id String
   name         String
+  description  String?
   
   goal_id      String?  // Linked Goal (Stop if achieved)
+  
+  // Intelligence Settings
+  stop_on_reply      Boolean @default(true)
+  stop_on_interaction Boolean @default(true)
+  
+  // Timing & Lifecycle
+  // settings: { business_hours: true, timezone: "Asia/Kolkata", days: [1,2,3,4,5] }
+  settings     Json?    @default("{}")
   
   status       DripStatus @default(ACTIVE)
   steps        DripStep[]
@@ -632,11 +1024,31 @@ model DripStep {
   step_order   Int      // 1, 2, 3
   delay_hours  Int      // Delay from previous step (or start)
   
-  template_id  String?  // Message to send
+  // Content Type (Either Flow OR Template)
+  flow_id      String? 
+  template_id  String?
   
   drip         DripSequence @relation(fields: [drip_id], references: [id], onDelete: Cascade)
+  flow         Flow?        @relation(fields: [flow_id], references: [id])
+  template     Template?    @relation(fields: [template_id], references: [id])
+
+  analytics    DripStepAnalytics?
 
   @@map("drip_steps")
+}
+
+model DripStepAnalytics {
+  id           String   @id @default(uuid())
+  step_id      String   @unique
+  
+  sent_count      Int   @default(0)
+  delivered_count Int   @default(0)
+  read_count      Int   @default(0)
+  clicked_count   Int   @default(0)
+  
+  step         DripStep @relation(fields: [step_id], references: [id], onDelete: Cascade)
+
+  @@map("drip_step_analytics")
 }
 
 model DripEnrollment {
@@ -647,10 +1059,581 @@ model DripEnrollment {
   current_step Int      @default(0)
   next_run_at  DateTime
   
-  is_stopped   Boolean  @default(false) // Stopped by Goal or Reply
+  is_stopped   Boolean  @default(false)
+  stop_reason  String?  // GOAL_ACHIEVED, USER_REPLIED, MANUALLY_STOPPED
+  
+  // Carry data from trigger (e.g. { "cart_total": 5000 })
+  metadata     Json?    @default("{}")
 
   drip         DripSequence @relation(fields: [drip_id], references: [id], onDelete: Cascade)
   contact      Contact      @relation(fields: [contact_id], references: [id], onDelete: Cascade)
 
   @@map("drip_enrollments")
+}
+model AutoResponder {
+  id           String   @id @default(uuid())
+  workspace_id String
+  keyword      String
+  match_type   String   @default("EXACT") // EXACT, CONTAINS, STARTS_WITH
+  reply_type   String   @default("TEXT") // TEXT, FLOW
+  reply_text   String?
+  flow_id      String?
+  
+  status       Boolean  @default(true)
+  
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  workspace    Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  flow         Flow?     @relation(fields: [flow_id], references: [id])
+
+  @@unique([workspace_id, keyword])
+  @@map("auto_responders")
+}
+
+// --------------------------------------
+// SUPER ADMIN SYSTEM (Phase 1)
+// --------------------------------------
+
+enum AdminRole {
+  SUPER_ADMIN
+  SALES
+  FINANCE
+  SUPPORT
+  READ_ONLY
+}
+
+model AdminUser {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  password_hash String
+  role          AdminRole @default(SUPER_ADMIN)
+  name          String?
+  
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+
+  audit_logs    AdminAuditLog[]
+
+  @@map("admin_users")
+}
+
+model AdminAuditLog {
+  id            String    @id @default(uuid())
+  admin_id      String
+  action        String    // e.g. "BAN_VENDOR", "VIEW_REVENUE", "IMPERSONATE"
+  resource      String?   // Target ID (e.g. Workspace ID, User ID)
+  details       Json?     // { "reason": "Fraud", "old_value": "PRO", "new_value": "ENTERPRISE" }
+  ip_address    String?
+  
+  created_at    DateTime  @default(now())
+
+  admin         AdminUser @relation(fields: [admin_id], references: [id])
+
+  @@map("admin_audit_logs")
+}
+
+
+// --------------------------------------
+// HYBRID RESELLER ENGINE (Phases 1-7)
+// --------------------------------------
+
+enum ResellerStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+  REJECTED
+}
+
+enum KYCStatus {
+  NONE
+  SUBMITTED
+  VERIFIED
+  REJECTED
+}
+
+model Reseller {
+  id                String         @id @default(uuid())
+  email             String         @unique
+  password_hash     String?        // For portal access
+  name              String
+  business_name     String?
+  last_login        DateTime?
+  referral_code     String         @unique // short code e.g. "GREK123"
+  
+  status            ResellerStatus @default(PENDING)
+  kyc_status        KYCStatus      @default(NONE)
+  
+  // Commission Logic (Phase 3)
+  base_commission   Decimal        @default(20.00) // Percentage
+  markup_enabled    Boolean        @default(true)
+  
+  // Wallet (Phase 5)
+  wallet_balance    Decimal        @default(0.00)
+  total_earned      Decimal        @default(0.00)
+  
+  // Branding (Phase 1: Custom Branding Module)
+  brand_name        String?
+  logo_url          String?
+  favicon_url       String?
+  primary_color     String?         @default("#0F172A") // Default Slate 900
+  secondary_color   String?         @default("#3B82F6") // Default Blue 500
+  custom_domain     String?         @unique // e.g. "dashboard.reseller.com"
+
+  is_frozen         Boolean        @default(false)
+  freeze_reason     String?
+  
+  tier_id           String?
+  tier              ResellerTier?  @relation(fields: [tier_id], references: [id])
+  
+  // Billing & Operations (Phase B: Automated Billing)
+  low_credit_threshold   Decimal        @default(500.00)
+  billing_address        String?
+  gst_number             String?        // Indian tax compliance
+  
+  // Encrypted Bank Details
+  bank_account_holder    String?        // Encrypted
+  bank_account_number    String?        // Encrypted
+  bank_ifsc              String?        // Encrypted
+  bank_name              String?
+  
+  // Auto-Onboarding
+  onboarding_bonus       Decimal        @default(0.00)
+  onboarding_bonus_paid  Boolean        @default(false)
+  
+  // God Mode Features (Best BSP)
+  broadcast_banner       String?        // Announcement to vendors
+  broadcast_link         String?        // Link for banner
+  support_email          String?        // Custom reseller support email
+  support_url            String?        // Custom help center URL
+  markup_percentage      Decimal        @default(0.00) // Profit markup for messages
+  
+  // Relations
+  vendors           Workspace[]    // Mapped vendors (Phase 2)
+  vendor_mappings   ResellerVendorMap[]
+  ledger_entries    ResellerLedger[]
+  invoices          ResellerInvoice[]
+  payout_requests   ResellerPayoutRequest[]
+  risk_logs         ResellerRiskLog[]
+  fraud_proofs      ResellerFraudProof[]
+  feedbacks         Feedback[]
+  
+  created_at        DateTime       @default(now())
+  updated_at        DateTime       @updatedAt
+
+  @@map("resellers")
+}
+
+model ResellerRiskLog {
+  id              String   @id @default(uuid())
+  reseller_id     String
+  signal_type     String   // SELF_REFERRAL, RAPID_SIGNUP, etc
+  risk_impact     Int
+  details         Json?
+  
+  created_at      DateTime @default(now())
+  
+  reseller        Reseller @relation(fields: [reseller_id], references: [id])
+
+  @@index([reseller_id])
+  @@map("reseller_risk_logs")
+}
+
+model ResellerTier {
+  id                String     @id @default(uuid())
+  name              String     @unique // Starter, Growth, Empire
+  min_vendors       Int        @default(0)
+  commission_rate    Decimal    @default(20.00)
+  
+  resellers         Reseller[]
+  
+  @@map("reseller_tiers")
+}
+
+model ResellerVendorMap {
+  id              String   @id @default(uuid())
+  reseller_id     String
+  workspace_id    String   @unique
+  
+  mapped_at       DateTime @default(now())
+  referral_source String?  // Code used
+  
+  // Permanent Lock (Phase 2)
+  is_permanent    Boolean  @default(true)
+  
+  reseller        Reseller  @relation(fields: [reseller_id], references: [id])
+
+  @@index([reseller_id])
+  @@map("reseller_vendor_maps")
+}
+
+// --------------------------------------
+// RESELLER FINANCIALS (Phase 5 & 6)
+// --------------------------------------
+
+enum LedgerEntryType {
+  COMMISSION
+  PAYOUT
+  REFUND_REVERSAL
+  ADJUSTMENT
+}
+
+model ResellerLedger {
+  id              String          @id @default(uuid())
+  reseller_id     String
+  workspace_id    String?         // Which vendor triggered this
+  
+  amount          Decimal
+  type            LedgerEntryType
+  description     String?
+  
+  // Audit Trail
+  reference_id    String?         // Transaction ID or Payout ID
+  balance_after   Decimal
+  
+  created_at      DateTime        @default(now())
+  
+  reseller        Reseller        @relation(fields: [reseller_id], references: [id])
+
+  @@index([reseller_id])
+  @@map("reseller_ledger")
+}
+
+enum PayoutRequestStatus {
+  PENDING
+  APPROVED
+  PAID
+  REJECTED
+}
+
+model ResellerPayoutRequest {
+  id              String              @id @default(uuid())
+  reseller_id     String
+  amount          Decimal
+  status          PayoutRequestStatus @default(PENDING)
+  
+  // Payment Details
+  payment_method  String?             // RAZORPAY, BANK_TRANSFER, etc.
+  payment_details Json?               // VPA or Bank details
+  admin_notes     String?
+  
+  // Execution Info
+  gateway_payout_id String?           // Razorpay Payout ID
+  processed_by      String?           // Admin User ID
+  processed_at    DateTime?
+  created_at      DateTime            @default(now())
+
+  reseller        Reseller            @relation(fields: [reseller_id], references: [id])
+
+  @@index([reseller_id])
+  @@map("reseller_payout_requests")
+}
+
+model ResellerFraudProof {
+  id              String   @id @default(uuid())
+  reseller_id     String
+  transaction_id  String   @unique // The vendor's transaction ID
+  
+  proof_url       String   // Screenshot URL
+  status          String   @default("PENDING") // PENDING, VERIFIED, REJECTED
+  
+  // Automated Checks
+  risk_score      Int      @default(0) // 0-100
+  checks_passed   Json     @default("[]") // Results of OCR, EXIF, etc.
+  
+  admin_notes     String?
+  verified_at     DateTime?
+  created_at      DateTime @default(now())
+
+  reseller        Reseller @relation(fields: [reseller_id], references: [id])
+
+  @@index([reseller_id])
+  @@map("reseller_fraud_proofs")
+}
+
+enum InvoiceStatus {
+  DRAFT
+  ISSUED
+  PAID
+  CANCELLED
+}
+
+model ResellerInvoice {
+  id              String        @id @default(uuid())
+  invoice_number  String        @unique // e.g. INV-2026-0001
+  reseller_id     String
+  
+  amount_subtotal Decimal
+  tax_amount      Decimal       @default(0.00)
+  amount_total    Decimal
+  
+  status          InvoiceStatus @default(ISSUED)
+  pdf_url         String?
+  
+  billing_details Json?         // Snapshot of reseller address at time of issue
+  
+  created_at      DateTime      @default(now())
+  paid_at         DateTime?
+  
+  reseller        Reseller      @relation(fields: [reseller_id], references: [id])
+
+  @@index([reseller_id])
+  @@map("reseller_invoices")
+}
+
+// --------------------------------------
+// FINANCE & BILLING SYSTEM (Phase 6)
+// --------------------------------------
+
+enum TransactionType {
+  SUBSCRIPTION_CHARGE
+  CREDIT_PURCHASE
+  REFUND
+  COMMISSION_PAYOUT
+  USAGE_CHARGE
+}
+
+enum TransactionStatus {
+  SUCCESS
+  FAILED
+  PENDING
+}
+
+model Transaction {
+  id              String            @id @default(uuid())
+  workspace_id    String?           // Nullable for system-level transactions
+  partner_id      String?           // Nullable
+  
+  amount          Float
+  currency        String            @default("INR")
+  type            TransactionType
+  status          TransactionStatus @default(PENDING)
+  
+  description     String?
+  reference_id    String?           // Razorpay payment ID, etc.
+  
+  created_at      DateTime          @default(now())
+
+  workspace       Workspace?        @relation(fields: [workspace_id], references: [id])
+
+  @@map("transactions")
+}
+
+model SystemConfig {
+  id                String   @id @default("global")
+  platform_name     String   @default("WAVO")
+  platform_tagline  String?
+  logo_url          String?
+  favicon_url       String?
+  login_logo_url    String?
+  
+  // Theme Controls
+  primary_color     String   @default("#27954D")
+  secondary_color   String   @default("#042F94")
+  theme_mode        String   @default("LIGHT") // LIGHT, DARK
+  border_radius     String   @default("12px")
+  
+  // Contact Info
+  support_email     String?
+  support_phone     String?
+  support_whatsapp  String?
+  address           String?
+  
+  // SEO & Social
+  meta_title        String?
+  meta_description  String?
+  social_links      Json?    @default("{}") // { twitter: "", facebook: "" }
+  
+  // Global Feature Toggles
+  modules           Json?    @default("{}") // { commerce: true, drips: true, etc }
+  
+  updated_at        DateTime @updatedAt
+
+  @@map("system_config")
+}
+
+model EmailTemplate {
+  id          String   @id @default(uuid())
+  slug        String   @unique // vendor-signup, subscription-success
+  subject     String
+  body_html   String
+  variables   String[] // List of supported variables like ["user_name", "plan_name"]
+  is_active   Boolean  @default(true)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  @@map("email_templates")
+}
+
+model PaymentGatewayConfig {
+  id            String   @id @default(uuid())
+  provider      String   // razorpay, stripe, paypal
+  key_id        String
+  key_secret    String
+  webhook_secret String?
+  is_live       Boolean  @default(false)
+  is_active     Boolean  @default(true)
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  @@map("payment_gateway_configs")
+}
+
+model Invoice {
+  id              String   @id @default(uuid())
+  workspace_id    String
+  
+  invoice_number  String   @unique // INV-2024-0001
+  amount_total    Decimal  @default(0.00)
+  amount_subtotal Decimal  @default(0.00)
+  tax_total       Decimal  @default(0.00)
+  tax_details     Json?    // { cgst: 0, sgst: 0, igst: 18 }
+  
+  status          String   @default("PAID")
+  pdf_url         String?  
+  
+  billing_period_start DateTime
+  billing_period_end   DateTime
+  
+  // GST / Billing Details at time of issue
+  billing_name     String?
+  billing_address  String?
+  billing_gstin    String?
+  
+  created_at      DateTime @default(now())
+
+  workspace       Workspace @relation(fields: [workspace_id], references: [id])
+
+  @@map("invoices")
+}
+
+// --------------------------------------
+// ENTERPRISE CREDIT SYSTEM (Phases 1-9)
+// --------------------------------------
+
+model VendorWallet {
+  id               String   @id @default(uuid())
+  workspace_id     String   @unique
+  current_balance  Decimal  @default(0.00)
+  locked_balance   Decimal  @default(0.00)
+  total_purchased  Decimal  @default(0.00)
+  total_used       Decimal  @default(0.00)
+  
+  // Fraud Protection (Phase 7)
+  is_frozen        Boolean  @default(false)
+  freeze_reason    String?
+  
+  workspace        Workspace @relation(fields: [workspace_id], references: [id])
+  ledger_entries   CreditTransaction[]
+
+  @@map("vendor_wallets")
+}
+
+enum CreditTransactionType {
+  PURCHASE
+  DEDUCTION
+  REFUND
+  REVERSAL
+  ADJUSTMENT
+}
+
+model CreditTransaction {
+  id               String   @id @default(uuid())
+  workspace_id     String
+  type             CreditTransactionType
+  amount           Decimal
+  balance_before   Decimal
+  balance_after    Decimal
+  
+  related_message_id String?
+  related_payment_id String?
+  description      String?
+  
+  created_at       DateTime @default(now())
+
+  wallet           VendorWallet @relation(fields: [workspace_id], references: [workspace_id])
+
+  @@index([workspace_id])
+  @@index([workspace_id, type])
+  @@index([created_at])
+  @@map("credit_transactions")
+}
+
+model CreditPricing {
+  id               String   @id @default(uuid())
+  message_type     String   // Marketing, Utility, Auth, Service
+  country          String   // Country Name or ISO
+  country_code     String?  // e.g. "91"
+  
+  meta_cost        Decimal
+  platform_margin  Decimal
+  reseller_margin  Decimal
+  final_vendor_price Decimal
+
+  @@unique([message_type, country])
+  @@index([message_type, country_code])
+  @@map("pricing_table")
+}
+
+model Feedback {
+  id           String   @id @default(uuid())
+  workspace_id String?
+  reseller_id  String?
+  name         String
+  role         String   // VENDOR, RESELLER
+  content      String
+  rating       Int      @default(5)
+  is_approved  Boolean  @default(false)
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  workspace    Workspace? @relation(fields: [workspace_id], references: [id])
+  reseller     Reseller?  @relation(fields: [reseller_id], references: [id])
+
+  @@map("feedbacks")
+}
+
+model SubscriptionPlan {
+  id               String   @id @default(uuid())
+  name             String   @unique
+  description      String?
+  price            Decimal  @default(0.00)
+  currency         String   @default("INR")
+  billing_cycle    String   @default("MONTHLY")
+  
+  // Control Modules (Limits)
+  max_contacts     Int      @default(100)
+  max_flows        Int      @default(3)
+  max_campaigns    Int      @default(1)
+  max_messages     Int      @default(500)
+  
+  // Module Access
+  api_access       Boolean  @default(false)
+  crm_access       Boolean  @default(true)
+  flow_builder_access Boolean @default(true)
+  drip_campaign_access Boolean @default(false)
+  commerce_access   Boolean  @default(false)
+  edu_engine_access Boolean  @default(false)
+
+  is_public        Boolean  @default(true)
+  is_active        Boolean  @default(true)
+  
+  workspaces       Workspace[]
+  
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+
+  @@map("subscription_plans")
+}
+
+model VerificationOTP {
+  id          String   @id @default(uuid())
+  identifier  String   // email or phone
+  code        String
+  type        String   // 'EMAIL' | 'PHONE'
+  expires_at  DateTime
+  created_at  DateTime @default(now())
+
+  @@unique([identifier, code])
+  @@map("verification_otps")
 }

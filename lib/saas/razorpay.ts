@@ -10,6 +10,9 @@ export const saasRazorpay = new Razorpay({
     key_secret: key_secret || "test_secret"
 });
 
+// Alias for backward compatibility
+export const razorpay = saasRazorpay;
+
 export const PLANS = {
     FREE: {
         id: "free",
@@ -18,13 +21,13 @@ export const PLANS = {
         limits: { contacts: 100, campaigns: 1 }
     },
     PRO: {
-        id: "plan_PqCXXXexample", // Replace with real Razorpay Plan ID
+        id: process.env.RAZORPAY_PLAN_PRO || "plan_pro_default",
         name: "Pro Plan",
         price: 2999, // INR
         limits: { contacts: 10000, campaigns: 100 }
     },
     ENTERPRISE: {
-        id: "plan_EntXXXexample",
+        id: process.env.RAZORPAY_PLAN_ENTERPRISE || "plan_enterprise_default",
         name: "Enterprise",
         price: 9999, // INR
         limits: { contacts: 100000, campaigns: 1000 }
@@ -42,6 +45,15 @@ export async function createCustomer(name: string, email: string, contact: strin
         console.error("Error creating customer", e);
         return null;
     }
+}
+
+export async function createOrder(amount: number, currency: string = "INR", notes: any = {}) {
+    return await saasRazorpay.orders.create({
+        amount: amount * 100, // Amount in paise
+        currency,
+        receipt: `rcpt_${Date.now().toString().slice(-8)}`,
+        notes
+    });
 }
 
 export async function createSubscription(planId: string) {

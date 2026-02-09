@@ -1,6 +1,6 @@
 "use client";
 
-import { MessageSquare, GitBranch, Flag, Zap, ShoppingBag } from "lucide-react";
+import { MessageSquare, GitBranch, Flag, Zap, ShoppingBag, CreditCard, Truck, Layout, Trophy, Clock, Hourglass, List, Calendar } from "lucide-react";
 
 export default function FlowSidebar() {
     const onDragStart = (event: React.DragEvent, nodeType: string) => {
@@ -16,6 +16,15 @@ export default function FlowSidebar() {
                 <DraggableItem type="message" label="Send Message" icon={<MessageSquare size={16} />} onDragStart={onDragStart} />
                 <DraggableItem type="condition" label="Condition (Yes/No)" icon={<GitBranch size={16} />} onDragStart={onDragStart} />
                 <DraggableItem type="catalog" label="Send Product" icon={<ShoppingBag size={16} />} onDragStart={onDragStart} />
+                <DraggableItem type="payment" label="Collect Payment" icon={<CreditCard size={16} />} onDragStart={onDragStart} />
+                <DraggableItem type="order_tracking" label="Order Tracking" icon={<Truck size={16} />} onDragStart={onDragStart} />
+                <DraggableItem type="appointment" label="Book Appointment" icon={<Calendar size={16} />} onDragStart={onDragStart} />
+                <DraggableItem type="meta_flow" label="Meta Form Flow" icon={<Layout size={16} />} onDragStart={onDragStart} />
+                <DraggableItem type="goal" label="Goal Completion" icon={<Trophy size={16} />} onDragStart={onDragStart} />
+                <DraggableItem type="wait" label="Wait Delay" icon={<Hourglass size={16} />} onDragStart={onDragStart} />
+                <DraggableItem type="time_window" label="Time Window" icon={<Clock size={16} />} onDragStart={onDragStart} />
+                <DraggableItem type="list" label="Interactive List" icon={<List size={16} />} onDragStart={onDragStart} />
+                <DraggableItem type="drip" label="Drip Enrollment" icon={<Clock size={16} />} onDragStart={onDragStart} />
                 <DraggableItem type="start" label="Start Trigger" icon={<Zap size={16} />} onDragStart={onDragStart} />
                 <DraggableItem type="action" label="Perform Action" icon={<Zap size={16} />} onDragStart={onDragStart} />
                 <DraggableItem type="end" label="End Flow" icon={<Flag size={16} />} onDragStart={onDragStart} />

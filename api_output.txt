@@ -1,0 +1,25 @@
+* Host localhost:3001 was resolved.
+* IPv6: ::1
+* IPv4: 127.0.0.1
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0*   Trying [::1]:3001...
+* Connected to localhost (::1) port 3001
+> GET /api/test-edu-meta HTTP/1.1
+> Host: localhost:3001
+> User-Agent: curl/8.7.1
+> Accept: */*
+> 
+* Request completely sent off
+< HTTP/1.1 200 OK
+< vary: RSC, Next-Router-State-Tree, Next-Router-Prefetch, Next-Url
+< content-type: application/json
+< Date: Sat, 07 Feb 2026 07:20:18 GMT
+< Connection: keep-alive
+< Keep-Alive: timeout=5
+< Transfer-Encoding: chunked
+< 
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0{ [561 bytes data]
+100   549    0   549    0     0   1277      0 --:--:-- --:--:-- --:--:--  1276
+* Connection #0 to host localhost left intact
+{"success":true,"data":{"id":"23195346-9976-4fa1-9544-a6465da1d383","workspace_id":"d75b2b5c-2157-4521-9e94-e65a3dd870a7","form_id":"META_FLOW_INQUIRY","student_name":"Meta Flow Tester","parent_name":null,"whatsapp_number":"919988776655","email":"metaflow-test@example.com","grade":"Professional","course_interested":"Cloud Architecture","budget_range":null,"city":"Bangalore","status":"NEW","counselor_id":null,"notes":null,"potential_revenue":"5000","attributes":{},"created_at":"2026-02-07T07:20:18.982Z","updated_at":"2026-02-07T07:20:18.982Z"}}

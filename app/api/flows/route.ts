@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(req: Request) {
     try {
         const user = await getCurrentUser(req);
@@ -40,8 +42,19 @@ export async function GET(req: Request) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
+        const { searchParams } = new URL(req.url);
+        const keyword = searchParams.get("keyword");
+
+        let where: any = { workspace_id: user.workspaceId };
+        if (keyword && keyword.trim() !== "") {
+            where.trigger_keyword = {
+                contains: keyword,
+                mode: "insensitive"
+            };
+        }
+
         const flows = await prisma.flow.findMany({
-            where: { workspace_id: user.workspaceId },
+            where: where,
             orderBy: { updated_at: "desc" },
         });
 
