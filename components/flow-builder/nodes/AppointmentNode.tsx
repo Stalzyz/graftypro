@@ -60,11 +60,22 @@ export default memo(({ data, isConnectable }: any) => {
                 className="w-4 h-4 bg-blue-500 border-2 border-white -left-2"
             />
 
+            {/* Success Handle (True) */}
             <Handle
                 type="source"
                 position={Position.Right}
+                id="true"
                 isConnectable={isConnectable}
-                className="w-4 h-4 bg-green-500 border-2 border-white -right-2"
+                className="w-4 h-4 bg-green-500 border-2 border-white -right-2 top-1/3 shadow-lg"
+            />
+
+            {/* Failed Handle (False) */}
+            <Handle
+                type="source"
+                position={Position.Right}
+                id="false"
+                isConnectable={isConnectable}
+                className="w-4 h-4 bg-red-500 border-2 border-white -right-2 top-2/3 shadow-lg"
             />
 
             <div className="px-5 py-3 bg-blue-50/30 border-t border-blue-100 text-center">

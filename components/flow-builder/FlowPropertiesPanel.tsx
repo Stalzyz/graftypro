@@ -1,9 +1,10 @@
 "use client";
 
-import { X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { X, Paperclip, Loader2, Calendar, Trash2, Copy, Smartphone, ChevronDown, ChevronUp, FileCode } from "lucide-react";
+import { SmartUploader } from "../ui/SmartUploader";
+import { useEffect, useState, useRef } from "react";
 
-export default function FlowPropertiesPanel({ selectedNode, onChange, onClose }: any) {
+export default function FlowPropertiesPanel({ selectedNode, onChange, onClose, onDelete, onDuplicate }: any) {
     const [label, setLabel] = useState("");
     const [content, setContent] = useState("");
 
@@ -20,6 +21,7 @@ export default function FlowPropertiesPanel({ selectedNode, onChange, onClose }:
     // Catalog Data
     const [productId, setProductId] = useState("");
     const [products, setProducts] = useState<any[]>([]);
+    const [templates, setTemplates] = useState<any[]>([]);
 
     // Payment Data
     const [amount, setAmount] = useState("");
@@ -54,7 +56,19 @@ export default function FlowPropertiesPanel({ selectedNode, onChange, onClose }:
     const [mediaUrl, setMediaUrl] = useState("");
     const [buttons, setButtons] = useState<any[]>([]);
 
+    // Meta Template Data
+    const [templateName, setTemplateName] = useState("");
+    const [templateLanguage, setTemplateLanguage] = useState("en_US");
+    const [templateBodyText, setTemplateBodyText] = useState("");
+
     // List Node Data
+    // Action Node Data (Email & Sheets)
+    const [emailAddress, setEmailAddress] = useState("");
+    const [emailSubject, setEmailSubject] = useState("");
+    const [spreadsheetId, setSpreadsheetId] = useState("");
+    const [sheetName, setSheetName] = useState("");
+    const [webhookUrl, setWebhookUrl] = useState("");
+
     const [headerUrl, setHeaderUrl] = useState("");
 
     useEffect(() => {
@@ -63,8 +77,15 @@ export default function FlowPropertiesPanel({ selectedNode, onChange, onClose }:
             setContent(selectedNode.data.text || "");
 
             if (selectedNode.type === 'action') {
-                setActionType(selectedNode.data.actionType || "start_drip");
+                const at = selectedNode.data.actionType || "start_drip";
+                setActionType(at);
                 setDripId(selectedNode.data.dripId || "");
+                setEmailAddress(selectedNode.data.emailAddress || "");
+                setEmailSubject(selectedNode.data.emailSubject || "");
+                setSpreadsheetId(selectedNode.data.spreadsheetId || "");
+                setSheetName(selectedNode.data.sheetName || "");
+                setWebhookUrl(selectedNode.data.webhookUrl || "");
+
                 // Fetch drips
                 fetch('/api/drips').then(r => r.json()).then(res => setDrips(res.data || []));
             }
@@ -77,7 +98,7 @@ export default function FlowPropertiesPanel({ selectedNode, onChange, onClose }:
 
             if (selectedNode.type === 'catalog') {
                 setProductId(selectedNode.data.productId || "");
-                fetch('/api/products').then(r => r.json()).then(res => setProducts(res.data || []));
+                fetch('/api/commerce/products').then(r => r.json()).then(res => setProducts(res.data || []));
             }
 
             if (selectedNode.type === 'payment') {
@@ -124,6 +145,13 @@ export default function FlowPropertiesPanel({ selectedNode, onChange, onClose }:
                 setContentType(selectedNode.data.contentType || 'TEXT');
                 setMediaUrl(selectedNode.data.mediaUrl || "");
                 setButtons(selectedNode.data.buttons || []);
+            }
+
+            if (selectedNode.type === 'meta_template') {
+                setTemplateName(selectedNode.data.templateName || "");
+                setTemplateLanguage(selectedNode.data.language || "en_US");
+                setTemplateBodyText(selectedNode.data.bodyText || "");
+                fetch('/api/templates').then(r => r.json()).then(res => setTemplates(res.data?.filter((t: any) => t.status === 'APPROVED') || []));
             }
         }
     }, [selectedNode]);
@@ -224,6 +252,30 @@ export default function FlowPropertiesPanel({ selectedNode, onChange, onClose }:
         } else if (field === "headerUrl") {
             setHeaderUrl(val);
             newData.headerUrl = val;
+        } else if (field === "emailAddress") {
+            setEmailAddress(val);
+            newData.emailAddress = val;
+        } else if (field === "emailSubject") {
+            setEmailSubject(val);
+            newData.emailSubject = val;
+        } else if (field === "spreadsheetId") {
+            setSpreadsheetId(val);
+            newData.spreadsheetId = val;
+        } else if (field === "sheetName") {
+            setSheetName(val);
+            newData.sheetName = val;
+        } else if (field === "webhookUrl") {
+            setWebhookUrl(val);
+            newData.webhookUrl = val;
+        } else if (field === "templateName") {
+            setTemplateName(val);
+            newData.templateName = val;
+        } else if (field === "language") {
+            setTemplateLanguage(val);
+            newData.language = val;
+        } else if (field === "bodyText") {
+            setTemplateBodyText(val);
+            newData.bodyText = val;
         }
 
         onChange(selectedNode.id, newData);
@@ -231,19 +283,75 @@ export default function FlowPropertiesPanel({ selectedNode, onChange, onClose }:
 
     if (!selectedNode) return null;
 
+    const nodeTypeLabel: Record<string, string> = {
+        message: 'Message Node',
+        list: 'List Menu Node',
+        start: 'Start Trigger',
+        condition: 'Condition',
+        wait: 'Wait / Delay',
+        time_window: 'Time Window',
+        payment: 'Payment Request',
+        catalog: 'Product Catalog',
+        order_tracking: 'Order Tracking',
+        appointment: 'Appointment',
+        drip: 'Drip Enrollment',
+        action: 'Action Node',
+        meta_flow: 'Meta Form',
+        end: 'End Flow',
+        order_summary: 'Order Summary',
+        meta_template: 'Cloud Template',
+    };
+
+    const nodeTypeBg: Record<string, string> = {
+        message: 'bg-emerald-100 text-emerald-800',
+        list: 'bg-fuchsia-100 text-fuchsia-800',
+        start: 'bg-blue-100 text-blue-800',
+        condition: 'bg-violet-100 text-violet-800',
+        wait: 'bg-amber-100 text-amber-800',
+        time_window: 'bg-slate-100 text-slate-800',
+        payment: 'bg-emerald-100 text-emerald-800',
+        catalog: 'bg-orange-100 text-orange-800',
+        order_tracking: 'bg-orange-100 text-orange-800',
+        appointment: 'bg-blue-100 text-blue-800',
+        drip: 'bg-slate-100 text-slate-800',
+        action: 'bg-zinc-100 text-zinc-800',
+        meta_flow: 'bg-indigo-100 text-indigo-800',
+        end: 'bg-red-100 text-red-800',
+        order_summary: 'bg-orange-100 text-orange-800',
+        meta_template: 'bg-emerald-100 text-emerald-800',
+    };
+
     return (
-        <aside className="w-80 bg-white border-l border-gray-200 flex flex-col h-full shadow-xl z-10 transition-transform">
-            <div className="flex items-center justify-between p-4 border-b border-gray-100 bg-gray-50">
-                <h3 className="font-semibold text-gray-800">Edit Node</h3>
-                <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
+        <aside className="w-80 bg-white border-l border-gray-100 flex flex-col h-full z-10">
+            {/* Panel Header */}
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-white shrink-0">
+                <div className="flex items-center gap-2">
+                    <span className={`text-[10px] font-black px-2 py-1 rounded-lg ${nodeTypeBg[selectedNode.type || ''] || 'bg-gray-100 text-gray-700'}`}>
+                        {nodeTypeLabel[selectedNode.type || ''] || selectedNode.type}
+                    </span>
+                </div>
+                <div className="flex items-center gap-1">
+                    {onDuplicate && (
+                        <button onClick={() => onDuplicate(selectedNode)} title="Duplicate Node" className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors">
+                            <Copy size={14} />
+                        </button>
+                    )}
+                    {onDelete && (
+                        <button onClick={onDelete} title="Delete Node" className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors">
+                            <Trash2 size={14} />
+                        </button>
+                    )}
+                    <button onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors">
+                        <X size={14} />
+                    </button>
+                </div>
             </div>
 
-            <div className="p-6 space-y-6 flex-1 overflow-y-auto">
-                <div>
-                    <label className="block text-xs font-semibold text-gray-500 uppercase mb-2">Node Type</label>
-                    <div className="px-3 py-2 bg-gray-100 rounded text-sm font-medium text-gray-700 capitalize">
-                        {selectedNode.type}
-                    </div>
+            <div className="p-4 space-y-5 flex-1 overflow-y-auto">
+                {/* Node ID badge */}
+                <div className="bg-gray-50 rounded-lg px-3 py-2">
+                    <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Node ID</p>
+                    <p className="text-[11px] font-mono text-gray-600 mt-0.5">{selectedNode.id}</p>
                 </div>
 
                 <div>
@@ -274,16 +382,23 @@ export default function FlowPropertiesPanel({ selectedNode, onChange, onClose }:
                         </div>
 
                         {contentType !== 'TEXT' && (
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Media URL</label>
-                                <input
-                                    type="text"
-                                    value={mediaUrl}
-                                    onChange={(e) => handleUpdate("mediaUrl", e.target.value)}
-                                    placeholder="https://example.com/image.jpg"
-                                    className="w-full border border-gray-300 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-blue-500"
-                                />
-                            </div>
+                            <SmartUploader
+                                label="Media Content"
+                                module="flow"
+                                defaultValue={mediaUrl}
+                                description={`Upload ${contentType.toLowerCase()} (Max 10MB)`}
+                                onUploadSuccess={(url) => {
+                                    setMediaUrl(url);
+                                    handleUpdate("mediaUrl", url);
+                                }}
+                                accept={
+                                    contentType === 'IMAGE' ? "image/jpeg,image/png,image/webp" :
+                                        contentType === 'VIDEO' ? "video/mp4,video/webm" :
+                                            contentType === 'VOICE' ? "audio/mpeg,audio/ogg" :
+                                                "application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                                }
+                                fileType={contentType.toLowerCase() as any}
+                            />
                         )}
 
                         <div>
@@ -352,7 +467,6 @@ export default function FlowPropertiesPanel({ selectedNode, onChange, onClose }:
                                             >
                                                 <option value="reply">Reply</option>
                                                 <option value="url">URL</option>
-                                                <option value="call">Call</option>
                                             </select>
                                         </div>
                                         {btn.type !== 'reply' && (
@@ -378,19 +492,121 @@ export default function FlowPropertiesPanel({ selectedNode, onChange, onClose }:
 
                 {selectedNode.type === 'catalog' && (
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Select Product</label>
+                        <div className="flex justify-between items-center mb-1">
+                            <label className="block text-sm font-medium text-gray-700">Sequence / Carousel Products</label>
+                            <span className="text-[10px] font-bold text-purple-600 bg-purple-100 px-2 py-0.5 rounded-full">Max 10</span>
+                        </div>
                         <select
-                            value={productId}
-                            onChange={(e) => handleUpdate("productId", e.target.value)}
+                            value=""
+                            onChange={(e) => {
+                                const val = e.target.value;
+                                if (!val) return;
+                                const p = products.find((prod: any) => prod.id === val);
+                                const currentList = (selectedNode.data?.carouselProducts && selectedNode.data.carouselProducts.length > 0) ? selectedNode.data.carouselProducts : (selectedNode.data?.productName ? [{
+                                    id: selectedNode.data.productId || 'manual',
+                                    name: selectedNode.data.productName,
+                                    price: selectedNode.data.productPrice,
+                                    image: selectedNode.data.productImage,
+                                    text: selectedNode.data.text
+                                }] : []);
+
+                                if (currentList.length >= 10) {
+                                    alert("Maximum 10 products allowed in a sequence.");
+                                    return;
+                                }
+
+                                const newData = {
+                                    ...selectedNode.data,
+                                    carouselProducts: [...currentList, {
+                                        id: val,
+                                        name: p ? p.name : 'Unknown Product',
+                                        price: p ? p.price : 0,
+                                        image: p ? (p.image_url || (p.image_urls && p.image_urls[0]) || '') : '',
+                                        text: p ? p.description : ''
+                                    }]
+                                };
+                                // Clear legacy single-product fields if turning into multi-product
+                                delete newData.productId; delete newData.productName; delete newData.productPrice; delete newData.productImage;
+                                onChange(selectedNode.id, newData);
+                            }}
                             className="w-full border border-gray-300 rounded-lg p-2 text-sm bg-white"
                         >
-                            <option value="">Choose a product...</option>
-                            {products.map(p => (
+                            <option value="">+ Add a product...</option>
+                            {products.map((p: any) => (
                                 <option key={p.id} value={p.id}>{p.name} (₹{p.price})</option>
                             ))}
                         </select>
+
+                        {/* Show current selections preview */}
+                        <div className="space-y-2 mt-3 max-h-60 overflow-y-auto">
+                            {((selectedNode.data?.carouselProducts && selectedNode.data.carouselProducts.length > 0) ? selectedNode.data.carouselProducts : (selectedNode.data?.productName ? [{
+                                id: selectedNode.data.productId || 'manual',
+                                name: selectedNode.data.productName,
+                                price: selectedNode.data.productPrice,
+                                image: selectedNode.data.productImage,
+                                text: selectedNode.data.text
+                            }] : [])).map((cp: any, idx: number) => (
+                                <div key={idx} className="p-3 bg-purple-50 rounded-xl border border-purple-100 flex items-center gap-3 relative group">
+                                    {cp.image && (
+                                        <img src={cp.image} className="w-10 h-10 object-cover rounded-lg" alt={cp.name} />
+                                    )}
+                                    <div className="flex-1 min-w-0">
+                                        <div className="text-xs font-bold text-purple-900 truncate">{cp.name}</div>
+                                        <div className="text-xs text-purple-700 font-semibold">₹{cp.price}</div>
+                                    </div>
+                                    <button
+                                        onClick={() => {
+                                            const currentList = (selectedNode.data?.carouselProducts && selectedNode.data.carouselProducts.length > 0) ? selectedNode.data.carouselProducts : (selectedNode.data?.productName ? [{
+                                                id: selectedNode.data.productId || 'manual', name: selectedNode.data.productName, price: selectedNode.data.productPrice, image: selectedNode.data.productImage, text: selectedNode.data.text
+                                            }] : []);
+                                            const newList = currentList.filter((_: any, i: number) => i !== idx);
+                                            onChange(selectedNode.id, { ...selectedNode.data, carouselProducts: newList, productId: null, productName: null, productPrice: null, productImage: null });
+                                        }}
+                                        className="p-1.5 bg-white text-rose-500 rounded-md shadow-sm border border-purple-100 opacity-0 group-hover:opacity-100 transition-opacity"
+                                    >
+                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Manual entry fallback when no products exist */}
+                        {products.length === 0 && (
+                            <div className="mt-3 p-3 bg-amber-50 rounded-xl border border-amber-200 space-y-2">
+                                <p className="text-xs font-bold text-amber-800">⚠️ No products found in your Commerce store. Enter product details manually:</p>
+                                <input
+                                    type="text"
+                                    placeholder="Product Name"
+                                    value={selectedNode.data.productName || ''}
+                                    onChange={(e) => onChange(selectedNode.id, { ...selectedNode.data, productName: e.target.value })}
+                                    className="w-full border border-amber-200 rounded-lg p-2 text-xs outline-none focus:ring-2 focus:ring-amber-400"
+                                />
+                                <input
+                                    type="text"
+                                    placeholder="Price (e.g. 999)"
+                                    value={selectedNode.data.productPrice || ''}
+                                    onChange={(e) => onChange(selectedNode.id, { ...selectedNode.data, productPrice: e.target.value })}
+                                    className="w-full border border-amber-200 rounded-lg p-2 text-xs outline-none focus:ring-2 focus:ring-amber-400"
+                                />
+                                <input
+                                    type="text"
+                                    placeholder="Description (optional)"
+                                    value={selectedNode.data.text || ''}
+                                    onChange={(e) => onChange(selectedNode.id, { ...selectedNode.data, text: e.target.value })}
+                                    className="w-full border border-amber-200 rounded-lg p-2 text-xs outline-none focus:ring-2 focus:ring-amber-400"
+                                />
+                                <input
+                                    type="text"
+                                    placeholder="Image URL (optional, must be https://...)"
+                                    value={selectedNode.data.productImage || ''}
+                                    onChange={(e) => onChange(selectedNode.id, { ...selectedNode.data, productImage: e.target.value })}
+                                    className="w-full border border-amber-200 rounded-lg p-2 text-xs outline-none focus:ring-2 focus:ring-amber-400"
+                                />
+                            </div>
+                        )}
+
                         <p className="text-xs text-gray-400 mt-2">
-                            The bot will send this product as an interactive message.
+                            The bot will send this product as an interactive message with an &quot;Interested&quot; button. Connect the output handle to the next step.
                         </p>
                     </div>
                 )}
@@ -448,6 +664,10 @@ export default function FlowPropertiesPanel({ selectedNode, onChange, onClose }:
                             >
                                 <option value="start_drip">Start Drip Campaign</option>
                                 <option value="stop_drip">Stop Drip Campaign</option>
+                                <option value="webhook">Trigger Outbound Webhook</option>
+                                <option value="save_to_crm">Sync to Universal CRM</option>
+                                <option value="google_sheet">Append to Google Sheet</option>
+                                <option value="send_email">Send Notification Email</option>
                             </select>
                         </div>
 
@@ -469,6 +689,78 @@ export default function FlowPropertiesPanel({ selectedNode, onChange, onClose }:
                                         <option key={d.id} value={d.id}>{d.name}</option>
                                     ))}
                                 </select>
+                            </div>
+                        )}
+                        {actionType === 'send_email' && (
+                            <div className="space-y-3 p-3 bg-blue-50/50 rounded-xl border border-blue-100">
+                                <div>
+                                    <label className="block text-[10px] font-black text-blue-900 uppercase tracking-widest mb-1">Recipient Email</label>
+                                    <input
+                                        type="email"
+                                        placeholder="stalin@grafty.pro"
+                                        value={emailAddress}
+                                        onChange={(e) => handleUpdate("emailAddress", e.target.value)}
+                                        className="w-full border border-gray-200 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] font-black text-blue-900 uppercase tracking-widest mb-1">Subject</label>
+                                    <input
+                                        type="text"
+                                        placeholder="New Lead Generated"
+                                        value={emailSubject}
+                                        onChange={(e) => handleUpdate("emailSubject", e.target.value)}
+                                        className="w-full border border-gray-200 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                                    />
+                                </div>
+                                <div className="text-[10px] text-blue-700 bg-blue-100 p-2 rounded-lg font-medium">
+                                    This will send a notification with the full lead details and variables to the email specified above.
+                                </div>
+                            </div>
+                        )}
+                        {actionType === 'webhook' && (
+                            <div className="space-y-3 p-3 bg-slate-50/50 rounded-xl border border-slate-100">
+                                <div>
+                                    <label className="block text-[10px] font-black text-slate-900 uppercase tracking-widest mb-1">Webhook URL</label>
+                                    <input
+                                        type="text"
+                                        placeholder="https://your-api.com/webhook"
+                                        value={webhookUrl}
+                                        onChange={(e) => handleUpdate("webhookUrl", e.target.value)}
+                                        className="w-full border border-gray-200 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-slate-500"
+                                    />
+                                </div>
+                                <div className="text-[10px] text-slate-700 bg-slate-100 p-2 rounded-lg font-medium">
+                                    The full lead payload (name, phone, variable data) will be sent as a POST request to this URL.
+                                </div>
+                            </div>
+                        )}
+                        {actionType === 'google_sheet' && (
+                            <div className="space-y-3 p-3 bg-emerald-50/50 rounded-xl border border-emerald-100">
+                                <div>
+                                    <label className="block text-[10px] font-black text-emerald-900 uppercase tracking-widest mb-1">Spreadsheet ID</label>
+                                    <input
+                                        type="text"
+                                        placeholder="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
+                                        value={spreadsheetId}
+                                        onChange={(e) => handleUpdate("spreadsheetId", e.target.value)}
+                                        className="w-full border border-gray-200 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-emerald-500"
+                                    />
+                                    <p className="text-[9px] text-emerald-600 mt-1">Copy this from your Google Sheet URL.</p>
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] font-black text-emerald-900 uppercase tracking-widest mb-1">Sheet Name</label>
+                                    <input
+                                        type="text"
+                                        placeholder="Sheet1"
+                                        value={sheetName}
+                                        onChange={(e) => handleUpdate("sheetName", e.target.value)}
+                                        className="w-full border border-gray-200 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-emerald-500"
+                                    />
+                                </div>
+                                <div className="text-[10px] text-emerald-700 bg-emerald-100 p-2 rounded-lg font-medium">
+                                    Make sure you have shared your sheet with our service account email to allow writing.
+                                </div>
                             </div>
                         )}
                     </div>
@@ -700,26 +992,37 @@ export default function FlowPropertiesPanel({ selectedNode, onChange, onClose }:
                             </p>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-3">
-                            <div>
-                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Button Text</label>
-                                <input
-                                    type="text"
-                                    value={listBtnText}
-                                    onChange={(e) => handleUpdate("listBtnText", e.target.value)}
-                                    placeholder="e.g. View Options"
-                                    className="w-full border border-gray-200 bg-gray-50 rounded-lg p-2.5 text-sm font-bold outline-none focus:ring-4 focus:ring-fuchsia-100 transition-all"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Section Title</label>
-                                <input
-                                    type="text"
-                                    value={sectionTitle}
-                                    onChange={(e) => handleUpdate("sectionTitle", e.target.value)}
-                                    placeholder="e.g. Main Menu"
-                                    className="w-full border border-gray-200 bg-gray-50 rounded-lg p-2.5 text-sm font-bold outline-none focus:ring-4 focus:ring-fuchsia-100 transition-all"
-                                />
+                        <div className="space-y-4">
+                            <SmartUploader
+                                label="Header Image (Optional)"
+                                module="flow"
+                                defaultValue={headerUrl}
+                                onUploadSuccess={(url) => {
+                                    setHeaderUrl(url);
+                                    handleUpdate("headerUrl", url);
+                                }}
+                            />
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Button Text</label>
+                                    <input
+                                        type="text"
+                                        value={listBtnText}
+                                        onChange={(e) => handleUpdate("listBtnText", e.target.value)}
+                                        placeholder="e.g. View Options"
+                                        className="w-full border border-gray-200 bg-gray-50 rounded-lg p-2.5 text-sm font-bold outline-none focus:ring-4 focus:ring-fuchsia-100 transition-all font-sans"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Section Title</label>
+                                    <input
+                                        type="text"
+                                        value={sectionTitle}
+                                        onChange={(e) => handleUpdate("sectionTitle", e.target.value)}
+                                        placeholder="e.g. Main Menu"
+                                        className="w-full border border-gray-200 bg-gray-50 rounded-lg p-2.5 text-sm font-bold outline-none focus:ring-4 focus:ring-fuchsia-100 transition-all font-sans"
+                                    />
+                                </div>
                             </div>
                         </div>
 
@@ -821,18 +1124,158 @@ export default function FlowPropertiesPanel({ selectedNode, onChange, onClose }:
                                 Users will be prompted to select a slot. The next response will be treated as the Slot ID for booking.
                             </p>
                         </div>
-                        <div className="space-y-2">
+                        <div className="space-y-4">
                             <div className="flex items-center gap-2 text-[10px] font-black text-gray-400 uppercase tracking-widest">
                                 <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span> Success Path
                             </div>
                             <p className="text-[10px] text-gray-500 font-medium">Followed after successful slot booking.</p>
                         </div>
+                        <div className="pt-4 border-t border-gray-100">
+                            <button
+                                onClick={() => window.location.href = '/dashboard/settings/integrations'}
+                                className="w-full flex items-center justify-center gap-2 py-3 bg-blue-600 text-white rounded-xl text-xs font-black hover:bg-blue-700 transition-all shadow-lg shadow-blue-100"
+                            >
+                                <Calendar size={14} />
+                                Connect Google Calendar
+                            </button>
+                            <p className="text-[9px] text-center text-gray-400 mt-2 font-bold uppercase tracking-widest">
+                                Required for real-time sync
+                            </p>
+                        </div>
+                    </div>
+                )}
+
+                {selectedNode.type === 'order_summary' && (
+                    <div className="space-y-4">
+                        <div className="bg-orange-50 p-4 rounded-2xl border border-orange-100">
+                            <h4 className="text-sm font-black text-orange-900 mb-2 tracking-tight">Checkout Summary</h4>
+                            <p className="text-xs text-orange-700 font-medium leading-relaxed">
+                                Displays the list of items in the cart, individual prices, and the grand total.
+                            </p>
+                        </div>
+                        <div>
+                            <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Contextual Message</label>
+                            <textarea
+                                value={content}
+                                onChange={(e) => handleUpdate("content", e.target.value)}
+                                placeholder="e.g. Here is your order summary. Please review before proceeding to payment."
+                                className="w-full border border-gray-200 bg-gray-50 rounded-lg p-3 text-sm font-bold outline-none focus:ring-4 focus:ring-orange-100 transition-all resize-none"
+                                rows={4}
+                            />
+                        </div>
+                    </div>
+                )}
+
+                {selectedNode.type === 'meta_template' && (
+                    <div className="space-y-4 pt-4 border-t border-gray-100">
+                        <div className="flex items-center gap-2 mb-2">
+                            <FileCode size={16} className="text-emerald-600" />
+                            <h4 className="text-[11px] font-black text-emerald-800 uppercase tracking-widest">Template Configuration</h4>
+                        </div>
+                        <div className="space-y-3 p-4 bg-emerald-50/50 rounded-2xl border border-emerald-100">
+                            <div>
+                                <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5">Template Name</label>
+                                <select
+                                    value={templateName}
+                                    onChange={e => {
+                                        const val = e.target.value;
+                                        handleUpdate("templateName", val);
+                                        const t = templates.find(t => t.name === val);
+                                        if (t) {
+                                            handleUpdate("language", t.language);
+                                            setTemplateLanguage(t.language);
+                                            // Extract body text from components
+                                            const bodyComp = (t.components as any[] || []).find(c => c.type === 'BODY');
+                                            if (bodyComp) {
+                                                handleUpdate("bodyText", bodyComp.text);
+                                                setTemplateBodyText(bodyComp.text);
+                                            }
+                                        }
+                                    }}
+                                    className="w-full bg-white border border-emerald-200 rounded-xl px-4 py-2 text-xs font-bold focus:border-emerald-500 outline-none"
+                                >
+                                    <option value="">Select an approved template...</option>
+                                    {templates.map(t => (
+                                        <option key={t.id} value={t.name}>{t.name} ({t.language})</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5">Language</label>
+                                <input
+                                    type="text"
+                                    value={templateLanguage}
+                                    onChange={e => handleUpdate("language", e.target.value)}
+                                    placeholder="en_US"
+                                    className="w-full bg-white border border-emerald-200 rounded-xl px-4 py-2 text-xs font-bold focus:border-emerald-500 outline-none"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5">Body Preview</label>
+                                <textarea
+                                    value={templateBodyText}
+                                    onChange={e => handleUpdate("bodyText", e.target.value)}
+                                    placeholder="Welcome to our service!"
+                                    className="w-full bg-white border border-emerald-200 rounded-xl px-4 py-2 text-xs font-medium focus:border-emerald-500 outline-none resize-none"
+                                    rows={3}
+                                />
+                            </div>
+                        </div>
                     </div>
                 )}
             </div>
 
-            <div className="p-4 border-t border-gray-100 bg-gray-50 text-xs text-center text-gray-400">
-                Changes are auto-saved to canvas
+            {/* WhatsApp Preview (message & list nodes only) */}
+            {(selectedNode.type === 'message' || selectedNode.type === 'list' || selectedNode.type === 'meta_template') && (
+                <div className="border-t border-gray-100 shrink-0">
+                    <div className="px-4 py-2.5 flex items-center gap-2 bg-gray-50 border-b border-gray-100">
+                        <Smartphone size={13} className="text-emerald-600" />
+                        <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">WhatsApp Preview</p>
+                    </div>
+                    <div className="bg-[#ECE5DD] p-3 min-h-[80px] max-h-[200px] overflow-y-auto">
+                        <div className="bg-white rounded-2xl rounded-tl-sm px-3 py-2 shadow-sm max-w-[85%] text-[12px] font-medium text-gray-800 leading-relaxed">
+                            {/* Media indicator */}
+                            {(selectedNode.data?.contentType === 'IMAGE' || selectedNode.data?.headerUrl) && (
+                                <div className="bg-gray-100 rounded-lg h-20 mb-2 flex items-center justify-center text-gray-400 text-[10px] font-bold overflow-hidden">
+                                    {selectedNode.data?.mediaUrl || selectedNode.data?.headerUrl ? (
+                                        <img src={selectedNode.data?.mediaUrl || selectedNode.data?.headerUrl} alt="preview" className="w-full h-full object-cover rounded-lg" />
+                                    ) : '📷 Image'}
+                                </div>
+                            )}
+                            {selectedNode.data?.contentType === 'VIDEO' && (
+                                <div className="bg-gray-100 rounded-lg h-16 mb-2 flex items-center justify-center text-gray-400 text-[10px] font-bold">🎬 Video</div>
+                            )}
+                            {selectedNode.data?.contentType === 'DOCUMENT' && (
+                                <div className="bg-gray-100 rounded-lg px-3 py-2 mb-2 flex items-center gap-2 text-gray-600 text-[10px]">📄 Document</div>
+                            )}
+                            {/* Body text */}
+                            <p className="whitespace-pre-wrap">{selectedNode.data?.bodyText || selectedNode.data?.text || selectedNode.data?.label || '...'}</p>
+                            {/* Buttons */}
+                            {selectedNode.data?.buttons?.length > 0 && (
+                                <div className="mt-2 space-y-1 border-t border-gray-100 pt-2">
+                                    {selectedNode.data.buttons.map((btn: any, i: number) => (
+                                        <div key={i} className="text-center text-[11px] font-bold text-blue-600 border border-blue-100 rounded-lg py-1">
+                                            {btn.title || 'Button'}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                            {/* List items */}
+                            {selectedNode.type === 'list' && (
+                                <div className="mt-2 border-t border-gray-100 pt-2 text-center">
+                                    <div className="text-[11px] font-bold text-blue-600 border border-blue-100 rounded-lg py-1">
+                                        {selectedNode.data?.buttonText || '☰ Open Menu'}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Footer */}
+            <div className="px-4 py-2 border-t border-gray-100 bg-gray-50 flex items-center justify-between shrink-0">
+                <p className="text-[9px] text-gray-400 font-bold">Changes apply to canvas in real-time</p>
             </div>
         </aside>
     );

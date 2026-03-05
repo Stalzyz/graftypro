@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import FlowBuilder from "@/components/flow-builder/FlowBuilder";
+import FlowBuilder from "../../../../components/flow-builder/FlowBuilder";
 
 export default function EditFlowPage({ params }: { params: { id: string } }) {
     const [flowData, setFlowData] = useState<any>(null);

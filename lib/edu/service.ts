@@ -1,6 +1,6 @@
-import { prisma } from "@/lib/db";
-import { automationQueue } from "@/lib/queue";
-import { RazorpayManager } from "@/lib/payments/razorpay";
+import { prisma } from "../db";
+import { automationQueue } from "../queue";
+import { RazorpayManager } from "../payments/razorpay";
 
 export class EduService {
     /**
@@ -125,7 +125,7 @@ export class EduService {
             {
                 name: lead.student_name,
                 contact: lead.whatsapp_number,
-                email: lead.email || "no-email@wabot.in"
+                email: lead.email || "no-email@grafty.in"
             },
             { eduLeadId: lead.id }
         );

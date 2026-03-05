@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { MessageCircle, CreditCard, Settings, Wallet, Shield, Users, Bell, LifeBuoy } from "lucide-react";
-import { useBranding } from "@/hooks/use-branding";
+import { MessageCircle, CreditCard, Settings, Wallet, Shield, Users, Bell, LifeBuoy, Zap } from "lucide-react";
+import { useBranding } from "../../../hooks/use-branding";
 
 export default function SettingsPage() {
     const { branding } = useBranding();
@@ -15,6 +15,17 @@ export default function SettingsPage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {/* Personal Profile */}
+                <SettingCard
+                    href="/dashboard/settings/profile"
+                    title="Company Profile"
+                    desc="Update your name, job title, and personalization preferences."
+                    icon={<Users size={24} />}
+                    color="text-[#042F94]"
+                    bg="bg-[#042F94]/10"
+                    borderColor="hover:border-[#042F94]/30"
+                />
+
                 {/* WhatsApp Integration Card */}
                 <SettingCard
                     href="/dashboard/settings/whatsapp"
@@ -50,7 +61,7 @@ export default function SettingsPage() {
 
                 {/* Support Desk (White-Labeled) */}
                 <SettingCard
-                    href={branding?.support?.url || `mailto:${branding?.support?.email || 'support@wabot.com'}`}
+                    href={branding?.support?.url || `mailto:${branding?.support?.email || 'support@grafty.com'}`}
                     external={!!branding?.support?.url}
                     title="Help & Support"
                     desc={branding?.is_white_labeled
@@ -64,26 +75,35 @@ export default function SettingsPage() {
 
                 {/* Security */}
                 <SettingCard
-                    href="#"
+                    href="/dashboard/settings/api"
                     title="Security & API"
                     desc="Manage API keys, webhooks, and security preferences."
                     icon={<Shield size={24} />}
                     color="text-red-600"
                     bg="bg-red-50"
                     borderColor="hover:border-red-300"
-                    disabled
                 />
 
                 {/* Team */}
                 <SettingCard
-                    href="#"
+                    href="/dashboard/settings/team"
                     title="Team Members"
                     desc="Invite agents and manage roles for shared inbox access."
                     icon={<Users size={24} />}
                     color="text-indigo-600"
                     bg="bg-indigo-50"
                     borderColor="hover:border-indigo-300"
-                    disabled
+                />
+
+                {/* Integrations */}
+                <SettingCard
+                    href="/dashboard/settings/integrations"
+                    title="Integrations"
+                    desc="Connect Google Calendar, Zapier, and other 3rd-party tools."
+                    icon={<Zap size={24} />}
+                    color="text-fuchsia-600"
+                    bg="bg-fuchsia-100"
+                    borderColor="hover:border-fuchsia-300"
                 />
             </div>
         </div>

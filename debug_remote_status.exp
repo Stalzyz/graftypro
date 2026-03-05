@@ -1,0 +1,24 @@
+#!/usr/bin/expect -f
+set timeout 30
+set ip "72.61.231.187"
+set user "root"
+set password "Photoshop09@"
+
+spawn ssh -o StrictHostKeyChecking=no $user@$ip
+expect "password:"
+send "$password\r"
+expect "#"
+
+send "echo '--- DOCKER_START ---'\r"
+send "docker ps --format 'table {{.ID}}\\t{{.Names}}\\t{{.Image}}\\t{{.Ports}}'\r"
+expect "#"
+send "echo '--- DOCKER_END ---'\r"
+
+send "echo '--- REPO_START ---'\r"
+send "ls -la ~/grafty_bsp/app/\\(auth\\)/login/page.tsx\r"
+send "grep 'Welcome back' ~/grafty_bsp/app/\\(auth\\)/login/page.tsx\r"
+expect "#"
+send "echo '--- REPO_END ---'\r"
+
+send "exit\r"
+expect eof

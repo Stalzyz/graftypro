@@ -1,12 +1,12 @@
 
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient } from "../lib/generated/client";
 import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
 async function main() {
     console.log("Creating Super Admin...");
-    const email = "admin@wabot.com";
+    const email = "admin@grafty.com";
     const password = "AdminPassword@123"; // Default strong password
 
     // Check if exists

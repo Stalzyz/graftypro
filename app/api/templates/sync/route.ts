@@ -1,9 +1,11 @@
 
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
-import { getCurrentUser } from "@/lib/auth";
-import axios from "axios";
+import { prisma } from "../../../../lib/db";
+import { getCurrentUser } from "../../../../lib/auth";
 import { TemplateCategory } from "@prisma/client";
+import { decrypt } from "../../../../lib/security/encryption";
+
+export const dynamic = "force-dynamic";
 
 const API_VER = "v18.0";
 
@@ -30,7 +32,8 @@ export async function POST(req: Request) {
 
         // Fetch templates using the Service (which has mock bypass)
         const { MetaTemplateService } = await import("@/lib/whatsapp/templates");
-        const metaTemplates = await MetaTemplateService.listTemplates(waba.waba_id, waba.access_token);
+        const token = decrypt(waba.access_token);
+        const metaTemplates = await MetaTemplateService.listTemplates(waba.waba_id, token);
 
         console.log(`Found ${metaTemplates.length} templates from Meta`);
 

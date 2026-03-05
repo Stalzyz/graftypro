@@ -41,6 +41,11 @@ export async function requireSuperAdmin() {
     if (!session) {
         throw new Error("Unauthorized");
     }
-    // Expand this for role checks logic later
+
+    // Strict Role Enforcement
+    if (session.role !== 'SUPER_ADMIN') {
+        throw new Error("Permission Denied: Super Admin access required");
+    }
+
     return session;
 }

@@ -3,8 +3,8 @@
 import React from 'react';
 import { Users, Handshake, TrendingUp, ShieldCheck, ChevronRight, CheckCircle, Globe, BadgeDollarSign } from 'lucide-react';
 import Link from 'next/link';
-import { Logo } from "@/components/ui/Logo";
-import DetailedFooter from "@/components/landing/DetailedFooter";
+import { Logo } from "../../components/ui/Logo";
+import DetailedFooter from "../../components/landing/DetailedFooter";
 
 export default function ResellerLandingPage() {
     return (
@@ -18,7 +18,7 @@ export default function ResellerLandingPage() {
                 </Link>
                 <div className="flex items-center gap-6">
                     <Link href="/login" className="nav-link">Login</Link>
-                    <Link href="/register?type=RESELLER" className="btn-primary">
+                    <Link href="/reseller-register" className="btn-primary">
                         Become a Partner <ChevronRight size={18} />
                     </Link>
                 </div>
@@ -31,10 +31,10 @@ export default function ResellerLandingPage() {
                     <span className="text-gradient">WhatsApp SaaS Agency</span>
                 </h1>
                 <p className="text-xl text-slate-400 max-w-2xl mx-auto mb-12">
-                    Join the WAVO Partner Network. Resell the world's most powerful WhatsApp Marketing engine and keep up to 35% recurring commission.
+                    Join the Grafty Partner Network. Resell the world's most powerful WhatsApp Marketing engine and keep up to 35% recurring commission.
                 </p>
                 <div className="flex justify-center gap-6">
-                    <Link href="/register?type=RESELLER" className="btn-primary px-10 py-5 text-lg">
+                    <Link href="/reseller-register" className="btn-primary px-10 py-5 text-lg">
                         Apply for Partner Access
                     </Link>
                 </div>

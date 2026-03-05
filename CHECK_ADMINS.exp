@@ -1,0 +1,9 @@
+#!/usr/bin/expect -f
+set timeout 30
+set password "Photoshop09@"
+set server "root@72.61.231.187"
+
+spawn ssh $server "cd /root/grafty_bsp && docker compose -f docker-compose.prod.yml exec -T web npx tsx -e \"import { prisma } from './lib/db'; async function main() { const admins = await prisma.adminUser.findMany({ select: { email: true, role: true } }); console.log(JSON.stringify(admins)); } main();\""
+expect "password:"
+send "$password\r"
+expect eof

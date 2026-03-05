@@ -15,12 +15,12 @@ type Message = {
 
 const DEMO_FLOW: Record<string, Message[]> = {
     start: [
-        { id: "1", text: "Hi there! 👋 Welcome to Wabot Business.", sender: "bot", delay: 500 },
+        { id: "1", text: "Hi there! 👋 Welcome to Grafty Business.", sender: "bot", delay: 500 },
         { id: "2", text: "I can help you grow your business on WhatsApp. What would you like to explore?", sender: "bot", type: "buttons", options: ["Automate Sales 🚀", "Recover Carts 🛒", "Support Agents 🎧"], delay: 1500 }
     ],
     "Automate Sales 🚀": [
         { id: "3", text: "Great choice! 🚀", sender: "bot", delay: 500 },
-        { id: "4", text: "With Wabot, you can build automated sales funnels that qualify leads 24/7.", sender: "bot", delay: 1500 },
+        { id: "4", text: "With Grafty, you can build automated sales funnels that qualify leads 24/7.", sender: "bot", delay: 1500 },
         { id: "5", text: "Would you like to see a live revenue report?", sender: "bot", type: "buttons", options: ["Show Me Money 💰", "Maybe Later"], delay: 2500 }
     ],
     "Recover Carts 🛒": [
@@ -33,7 +33,7 @@ const DEMO_FLOW: Record<string, Message[]> = {
         { id: "10", text: "Route chats to human agents only when needed, or let AI handle the FAQs.", sender: "bot", type: "buttons", options: ["See Inbox", "AI Features"], delay: 1500 }
     ],
     "Show Me Money 💰": [
-        { id: "11", text: "Here is a sample weekly report for a fashion brand using Wabot:", sender: "bot", type: "image", delay: 1000 },
+        { id: "11", text: "Here is a sample weekly report for a fashion brand using Grafty:", sender: "bot", type: "image", delay: 1000 },
         { id: "12", text: "Ready to scale?", sender: "bot", type: "buttons", options: ["Sign Up Now ⚡️"], delay: 2000 }
     ],
     default: [
@@ -97,7 +97,7 @@ export default function SimulatedChatPreview() {
             <div className="bg-[#075E54] p-4 pt-10 text-white flex items-center gap-3 shadow-md z-10">
                 <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center text-sm font-bold">WB</div>
                 <div className="flex-1">
-                    <h3 className="font-bold text-sm">Wabot Business</h3>
+                    <h3 className="font-bold text-sm">Grafty Business</h3>
                     <p className="text-[10px] opacity-80">Typically replies instantly</p>
                 </div>
                 <div className="flex gap-3 text-white/80">

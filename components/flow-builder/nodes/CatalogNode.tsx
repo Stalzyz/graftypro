@@ -22,19 +22,37 @@ const CatalogNode = ({ data, selected }: any) => {
             </div>
 
             <div className="p-3">
-                {data.productName ? (
-                    <div className="flex gap-3 items-center">
-                        {data.productImage && (
-                            <img src={data.productImage} className="w-10 h-10 object-cover rounded bg-gray-100" />
-                        )}
-                        <div className="flex-1 min-w-0">
-                            <div className="text-sm font-medium text-gray-900 truncate">{data.productName}</div>
-                            <div className="text-xs text-gray-500 font-bold">₹{data.productPrice}</div>
-                        </div>
-                    </div>
-                ) : (
-                    <div className="text-sm text-gray-400 italic text-center py-2">Select a product...</div>
-                )}
+                {(() => {
+                    const prods = data?.carouselProducts || (data?.productName ? [{
+                        name: data.productName,
+                        price: data.productPrice,
+                        image: data.productImage
+                    }] : []);
+
+                    if (prods.length > 0) {
+                        return (
+                            <div className="space-y-2">
+                                {prods.slice(0, 3).map((p: any, i: number) => (
+                                    <div key={i} className="flex gap-3 items-center">
+                                        {p.image && (
+                                            <img src={p.image} className="w-8 h-8 object-cover rounded bg-gray-100" />
+                                        )}
+                                        <div className="flex-1 min-w-0">
+                                            <div className="text-xs font-medium text-gray-900 truncate">{p.name}</div>
+                                            <div className="text-[10px] text-gray-500 font-bold">₹{p.price}</div>
+                                        </div>
+                                    </div>
+                                ))}
+                                {prods.length > 3 && (
+                                    <div className="text-[10px] text-center font-bold text-gray-400 bg-gray-50 py-1 rounded">
+                                        + {prods.length - 3} more
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    }
+                    return <div className="text-sm text-gray-400 italic text-center py-2">Select product(s)...</div>;
+                })()}
             </div>
 
             <Handle type="source" position={Position.Bottom} className="w-3 h-3 bg-gray-400" />

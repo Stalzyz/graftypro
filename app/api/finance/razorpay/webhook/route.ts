@@ -3,7 +3,7 @@ import crypto from "crypto";
 
 export const dynamic = 'force-dynamic';
 
-import { prisma } from "@/lib/db";
+import { prisma } from "../../../../../lib/db";
 
 export async function POST(req: Request) {
     try {

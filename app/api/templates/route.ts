@@ -1,8 +1,11 @@
 
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
-import { getCurrentUser } from "@/lib/auth";
-import { MetaTemplateService } from "@/lib/whatsapp/templates";
+import { prisma } from "../../../lib/db";
+import { getCurrentUser } from "../../../lib/auth";
+import { MetaTemplateService } from "../../../lib/whatsapp/templates";
+import { decrypt } from "../../../lib/security/encryption";
+
+export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
     try {
@@ -48,7 +51,8 @@ export async function POST(req: Request) {
                 return NextResponse.json({ error: "WABA not connected" }, { status: 400 });
             }
 
-            const metaTemplates = await MetaTemplateService.listTemplates(waba.waba_id, waba.access_token);
+            const token = decrypt(waba.access_token);
+            const metaTemplates = await MetaTemplateService.listTemplates(waba.waba_id, token);
 
             // Upsert each template
             for (const mt of metaTemplates) {

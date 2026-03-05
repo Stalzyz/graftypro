@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
-import { requireSuperAdmin } from "@/lib/admin-auth";
+import { prisma } from "../../../../../lib/db";
+import { requireSuperAdmin } from "../../../../../lib/admin-auth";
+
+export const dynamic = "force-dynamic";
 
 /**
  * PHASE 8: ADMIN RESELLER DETAIL
@@ -17,10 +19,9 @@ export async function GET(
             where: { id },
             include: {
                 tier: true,
-                vendor_mappings: {
-                    include: { workspace: true },
+                vendors: {
                     take: 50,
-                    orderBy: { mapped_at: 'desc' }
+                    orderBy: { created_at: 'desc' }
                 },
                 ledger_entries: {
                     take: 50,
@@ -62,13 +63,10 @@ export async function PATCH(
         const body = await req.json();
 
         // Whitelist allowed updates
+        // Whitelist allowed updates
         const {
-            base_commission,
-            tier_id,
-            is_frozen,
-            freeze_reason,
-            status,
-            kyc_status
+            base_commission, tier_id, is_frozen, freeze_reason, status, kyc_status,
+            custom_domain, brand_name, logo_url, favicon_url, primary_color, secondary_color
         } = body;
 
         const updated = await prisma.reseller.update({
@@ -78,8 +76,20 @@ export async function PATCH(
                 ...(tier_id !== undefined && { tier_id }),
                 ...(is_frozen !== undefined && { is_frozen }),
                 ...(freeze_reason !== undefined && { freeze_reason }),
-                ...(status !== undefined && { status }),
+                ...(status !== undefined && {
+                    status,
+                    // If manually activated by admin, assume they are verified
+                    ...(status === 'ACTIVE' ? { email_verified: true } : {})
+                }),
                 ...(kyc_status !== undefined && { kyc_status }),
+
+                // Branding Config
+                ...(custom_domain !== undefined && { custom_domain }),
+                ...(brand_name !== undefined && { brand_name }),
+                ...(logo_url !== undefined && { logo_url }),
+                ...(favicon_url !== undefined && { favicon_url }),
+                ...(primary_color !== undefined && { primary_color }),
+                ...(secondary_color !== undefined && { secondary_color }),
             }
         });
 

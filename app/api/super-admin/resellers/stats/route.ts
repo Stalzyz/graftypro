@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
-import { requireSuperAdmin } from "@/lib/admin-auth";
+import { prisma } from "../../../../../lib/db";
+import { requireSuperAdmin } from "../../../../../lib/admin-auth";
+
+export const dynamic = "force-dynamic";
 
 /**
  * PHASE 8: ADMIN DASHBOARD DATA

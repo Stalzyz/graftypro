@@ -1,8 +1,9 @@
-
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+
+export const dynamic = 'force-dynamic';
+import { prisma } from "../../../../../lib/db";
 import bcrypt from "bcryptjs";
-import { signToken } from "@/lib/auth";
+import { signToken } from "../../../../../lib/auth";
 
 export async function POST(req: Request) {
     try {
@@ -12,8 +13,10 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: "Email and password are required" }, { status: 400 });
         }
 
+        const normalizedEmail = email.toLowerCase().trim();
+
         const reseller = await prisma.reseller.findUnique({
-            where: { email }
+            where: { email: normalizedEmail }
         });
 
         if (!reseller || !reseller.password_hash) {
@@ -25,6 +28,15 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
         }
 
+        // @ts-ignore
+        if (!reseller.email_verified) {
+            return NextResponse.json({
+                error: "Verification Required",
+                needs_verification: true,
+                email: reseller.email
+            }, { status: 403 });
+        }
+
         // Update last login
         await prisma.reseller.update({
             where: { id: reseller.id },
@@ -32,9 +44,12 @@ export async function POST(req: Request) {
         });
 
         const token = await signToken({
-            resellerId: reseller.id,
+            userId: reseller.id,
+            workspaceId: "partner_root",
             email: reseller.email,
-            role: "RESELLER"
+            role: "RESELLER",
+            // @ts-ignore
+            partnerRole: reseller.role
         });
 
         const response = NextResponse.json({ success: true, name: reseller.name });

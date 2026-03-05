@@ -1,7 +1,9 @@
 
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
-import { getAdminSession } from "@/lib/admin-auth";
+import { prisma } from "../../../../lib/db";
+import { getAdminSession } from "../../../../lib/admin-auth";
+
+export const dynamic = "force-dynamic";
 
 // Fetch current plans (mocking DB for now since we don't have a Plans table yet)
 // In a full implementation, you'd have a 'Plan' model.

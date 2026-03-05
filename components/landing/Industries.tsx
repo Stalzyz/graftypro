@@ -48,9 +48,9 @@ export default function Industries() {
         <section id="industries" className="py-24 bg-slate-900/50">
             <div className="max-w-7xl mx-auto px-6">
                 <div className="text-center mb-20">
-                    <div className="section-tag mx-auto">Who use WAVO?</div>
+                    <div className="section-tag mx-auto">Who use Grafty?</div>
                     <h2 className="text-4xl md:text-5xl font-black mt-6 mb-6">Designed for <span className="text-gradient">Every Industry</span></h2>
-                    <p className="text-slate-400 text-lg max-w-2xl mx-auto">WAVO is versatile enough to transform how you interact with customers, regardless of your business sector.</p>
+                    <p className="text-slate-400 text-lg max-w-2xl mx-auto">Grafty is versatile enough to transform how you interact with customers, regardless of your business sector.</p>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">

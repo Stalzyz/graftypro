@@ -4,7 +4,7 @@
 set -e
 
 echo "------------------------------------------------"
-echo "🚀 Deploying Wabot BSP (Production)..."
+echo "🚀 Deploying Grafty BSP (Production)..."
 echo "------------------------------------------------"
 
 # 1. Check for .env file
@@ -14,9 +14,14 @@ if [ ! -f .env ]; then
     exit 1
 fi
 
-# 2. Build and Start Containers
-echo "📦 Building Docker containers..."
-docker compose -f docker-compose.prod.yml up -d --build
+# 1.5. Clean Docker System to Free Space (Aggressive Cleanup)
+echo "🧹 Cleaning Docker Cache to prevent OOM..."
+docker system prune -f
+
+# 2. Build and Start Containers (Force Clean Build)
+echo "📦 Building Docker containers (Clean Build)..."
+docker compose -f docker-compose.prod.yml build --no-cache
+docker compose -f docker-compose.prod.yml up -d
 
 # 3. Wait for DB to be ready
 echo "⏳ Waiting for Database to initialize..."

@@ -1,134 +1,151 @@
+
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
-import { signToken } from "@/lib/auth";
-import bcrypt from "bcryptjs";
-import { cookies } from "next/headers";
-import { ResellerService } from "@/lib/reseller/service";
+import { prisma } from "../../../../lib/db";
+import { AuthSecurityService } from "../../../../lib/security/auth-utils";
+import { v4 as uuidv4 } from "uuid";
 
-export async function POST(req: Request) {
+export async function POST(request: Request) {
     try {
-        const body = await req.json();
-        const { business_name, full_name, email, password, phone, website, role } = body;
-        let referral_code = body.referral_code;
+        const body = await request.json();
+        const { email, password, confirmPassword, mobile, location, businessName, firstName, lastName } = body;
 
-        // --- OPTION B: REFERRAL COOKIE RESOLVER ---
-        if (!referral_code) {
-            const cookieStore = cookies();
-            referral_code = cookieStore.get("res_referral_code")?.value;
+        // 1. Validate Inputs
+        if (!email || !password || !confirmPassword || !mobile || !location || !businessName || !firstName || !lastName) {
+            return NextResponse.json({ error: "All fields are required" }, { status: 400 });
         }
 
-        if (!business_name || !email || !password || !phone || !full_name) {
-            return NextResponse.json(
-                { error: "Missing required fields" },
-                { status: 400 }
-            );
+        if (password !== confirmPassword) {
+            return NextResponse.json({ error: "Passwords do not match" }, { status: 400 });
         }
 
-        // 1. Check if user already exists
+        if (password.length < 8) {
+            return NextResponse.json({ error: "Password must be at least 8 characters" }, { status: 400 });
+        }
+
+        const normalizedEmail = AuthSecurityService.normalizeEmail(email);
+
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+            return NextResponse.json({ error: "Invalid email format" }, { status: 400 });
+        }
+
+        // 2. Check Uniqueness
         const existingUser = await prisma.user.findFirst({
-            where: { email },
+            where: { email: normalizedEmail } // removed workspace_id check as email should be globally unique for login? Schema says unique([workspace_id, email]). But normally for SaaS login email is unique globally or handled carefully.
+            // Wait, schema has @@unique([workspace_id, email]). This allows same email in different workspaces.
+            // But for a signup flow, we typically create a NEW workspace and user.
+            // We should check if this email already exists in ANY workspace to avoid confusion in a multi-tenant app 
+            // OR checks if it exists in the context of a "default" or "new" workspace flow.
+            // Given the requirements "Map to existing user if email exists" for Google Login, 
+            // for Registration it implies creating a new account.
+            // If email exists, we should probably warn.
         });
 
-        if (existingUser) {
-            return NextResponse.json(
-                { error: "User with this email already exists" },
-                { status: 409 }
-            );
+        // Let's check generally if this email is already registered as a primary user (e.g. Owner/Admin)
+        // Since schema allows multiple, we must be careful. 
+        // For a seamless signup, we usually assume the user is creating a new Organization/Workspace.
+        // Let's check if there is ANY user with this email.
+        const userCount = await prisma.user.count({
+            where: { email: normalizedEmail }
+        });
+
+        if (userCount > 0) {
+            return NextResponse.json({ error: "Email already registered" }, { status: 409 });
         }
 
-        // 2. Transaction: Create Workspace + Owner
+        // 3. Create Workspace & User
+        // Use a transaction
         const result = await prisma.$transaction(async (tx) => {
-            // A. Create Workspace
-            const trialEndsAt = new Date();
-            trialEndsAt.setDate(trialEndsAt.getDate() + 7);
-
+            // Create Workspace
             const workspace = await tx.workspace.create({
                 data: {
-                    name: business_name,
-                    business_name: business_name,
-                    website: website, // Added
-                    trial_ends_at: trialEndsAt,
-                    status: (role === "RESELLER_APPLICANT") ? "DARMANT" : "ACTIVE" // Pending approval if Reseller? Or just Active.
-                },
+                    name: businessName,
+                    business_name: businessName,
+                    timezone: location === "India" ? "Asia/Kolkata" : "UTC",
+                    trial_ends_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7-day trial
+                }
             });
 
-            // B. Hash Password
-            const hashedPassword = await bcrypt.hash(password, 10);
+            // Hash Password
+            const passwordHash = await AuthSecurityService.hashPassword(password);
 
-            // C. Create Owner
+            // Create User
+            const verificationToken = uuidv4();
+            // Store verification token in Redis or Database? 
+            // Schema has `email_verified` (DateTime).
+            // It doesn't seem to have a `verification_token` field on User.
+            // I should stick to the existing schema if possible, or use `RememberMeToken` or add a field.
+            // Wait, there is no `verification_token` in `User` model.
+            // I can use `RememberMeToken` model generic usage or add a field.
+            // Or store it in Redis. `redis.setEx(`verify:${token}`, 3600, email)`.
+
+            // Let's use Redis for verification tokens as it's cleaner and "clean signup" was requested.
+            // But wait, "Store user" is a requirement.
+
             const user = await tx.user.create({
                 data: {
                     workspace_id: workspace.id,
-                    email,
-                    phone: phone, // Added
-                    password_hash: hashedPassword,
-                    role: role === "RESELLER_APPLICANT" ? "OWNER" : "OWNER",
-                    first_name: full_name,
-                    phone_verified: new Date()
-                },
+                    email: normalizedEmail,
+                    password_hash: passwordHash,
+                    role: "OWNER",
+                    phone: mobile,
+                    first_name: firstName,
+                    last_name: lastName,
+                    created_at: new Date(),
+                }
             });
 
-            return { workspace, user };
+            return { user, workspace, verificationToken };
         });
 
-        // --- PHASE 2/7: RESELLER MAPPING & FRAUD GUARD ---
-        if (referral_code) {
-            try {
-                await ResellerService.mapVendorToReseller(result.workspace.id, referral_code);
-            } catch (mappingError: any) {
-                console.warn("⚠️ [Signup] Mapping Failed (Possbile Fraud/Lock):", mappingError.message);
-                // We don't block registration if mapping fails, but we don't link the reseller
+
+        // 4. Set Redis Token
+        const { redis } = await import("../../../../lib/redis");
+        await redis.set(`verify:${result.verificationToken}`, result.user.id, "EX", 86400); // 24 hours
+
+        // 5. Send Verification Email
+        const { EmailService } = await import("../../../../lib/email/service");
+
+        // Dynamically construct verification URL based on the incoming request's host/origin.
+        // We use headers to ensure correct protocol (https) and host (grafty.pro) even when proxied.
+        const protocol = request.headers.get("x-forwarded-proto") || "https";
+        const host = request.headers.get("host") || "grafty.pro";
+
+        // Safety: If host is still localhost in production, force the main domain
+        const finalHost = (process.env.NODE_ENV === "production" && host.includes("localhost"))
+            ? "grafty.pro"
+            : host;
+
+        const verifyUrl = `${protocol}://${finalHost}/api/auth/verify?token=${result.verificationToken}`;
+
+        await EmailService.sendSystemEmail({
+            to: normalizedEmail,
+            subject: "Verify your Grafty account",
+            templateName: "VERIFY_EMAIL",
+            context: {
+                verification_url: verifyUrl
             }
-        }
+        });
 
-        // 3. Generate Token
-        const token = await signToken({
+        console.log(`[VERIFICATION] Email sent to ${normalizedEmail}`);
+
+        // 6. Audit Log
+        const ip = request.headers.get("x-forwarded-for") || "unknown";
+        await AuthSecurityService.logEvent({
             userId: result.user.id,
-            workspaceId: result.workspace.id,
-            role: result.user.role,
+            email: normalizedEmail,
+            action: "SIGNUP",
+            status: "SUCCESS",
+            ipAddress: ip,
+            userAgent: request.headers.get("user-agent") || undefined
         });
 
-        const response = NextResponse.json({
+        return NextResponse.json({
             success: true,
-            workspace: {
-                id: result.workspace.id,
-                name: result.workspace.name,
-            },
-            user: {
-                id: result.user.id,
-                email: result.user.email,
-                role: result.user.role,
-            },
+            message: "Registration successful. Please check your email to verify your account."
         });
-
-        // Set Cookie
-        response.cookies.set("token", token, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "lax",
-            maxAge: 60 * 60 * 24 * 7, // 7 days
-            path: "/",
-        });
-
-        // Clear Referral Cookie
-        if (referral_code) {
-            response.cookies.delete("res_referral_code");
-        }
-
-        return response;
-
-        return response;
 
     } catch (error: any) {
-        console.error("CRITICAL REGISTRATION ERROR:", {
-            message: error.message,
-            code: error.code,
-            stack: error.stack,
-            body: req.body // Log body summary if possible (careful with passwords)
-        });
-        return NextResponse.json(
-            { error: `Registration Error: ${error.message || "Unknown error"}` },
-            { status: 500 }
-        );
+        console.error("Registration Error:", error);
+        return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
     }
 }

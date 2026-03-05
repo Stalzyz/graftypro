@@ -1,6 +1,7 @@
 
 import { prisma } from "../lib/db";
 import { WhatsAppService } from "../lib/whatsapp/service";
+import { decrypt } from "../lib/security/encryption";
 
 /**
  * Run this every minute via Cron or setInterval
@@ -136,7 +137,7 @@ async function processDrips() {
                 if (template) {
                     try {
                         await WhatsAppService.sendTemplate(
-                            waba.phone_number_id, waba.access_token, enrollment.contact.phone,
+                            waba.phone_number_id, decrypt(waba.access_token), enrollment.contact.phone,
                             template.name, template.language
                         );
                         sentSuccess = true;

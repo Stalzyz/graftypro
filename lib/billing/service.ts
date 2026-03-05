@@ -1,5 +1,5 @@
-import { prisma } from "@/lib/db";
-import { EmailService } from "@/lib/email/service";
+import { prisma } from "../db";
+import { EmailService } from "../email/service";
 
 export class BillingService {
     /**
@@ -17,13 +17,18 @@ export class BillingService {
             const count = await tx.resellerInvoice.count();
             const invoiceNumber = `INV-${year}-${(count + 1).toString().padStart(4, '0')}`;
 
-            // 2. Create Formal Invoice
+            // 2. Create Formal Invoice with 18% GST
+            const subtotal = amount;
+            const tax = subtotal * 0.18;
+            const total = subtotal + tax;
+
             const invoice = await tx.resellerInvoice.create({
                 data: {
                     invoice_number: invoiceNumber,
                     reseller_id: resellerId,
-                    amount_subtotal: amount,
-                    amount_total: amount,
+                    amount_subtotal: subtotal,
+                    tax_amount: tax,
+                    amount_total: total,
                     status: 'PAID',
                     paid_at: new Date(),
                     billing_details: {

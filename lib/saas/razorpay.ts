@@ -14,23 +14,23 @@ export const saasRazorpay = new Razorpay({
 export const razorpay = saasRazorpay;
 
 export const PLANS = {
-    FREE: {
-        id: "free",
-        name: "Free Plan",
-        price: 0,
-        limits: { contacts: 100, campaigns: 1 }
+    PRIME_STARTER: {
+        id: "plan_starter_default",
+        name: "PRIME STARTER",
+        price: 1999,
+        limits: { contacts: 1000, campaigns: 5, messages: 2500 }
     },
-    PRO: {
+    ACCELERATOR_PRO: {
         id: process.env.RAZORPAY_PLAN_PRO || "plan_pro_default",
-        name: "Pro Plan",
-        price: 2999, // INR
-        limits: { contacts: 10000, campaigns: 100 }
+        name: "ACCELERATOR PRO",
+        price: 4999,
+        limits: { contacts: 10000, campaigns: 25, messages: 25000 }
     },
-    ENTERPRISE: {
+    ULTIMATE_SCALE: {
         id: process.env.RAZORPAY_PLAN_ENTERPRISE || "plan_enterprise_default",
-        name: "Enterprise",
-        price: 9999, // INR
-        limits: { contacts: 100000, campaigns: 1000 }
+        name: "ULTIMATE SCALE",
+        price: 12999,
+        limits: { contacts: 100000, campaigns: 100, messages: 1000000 }
     }
 };
 
@@ -64,7 +64,7 @@ export async function createSubscription(planId: string) {
         total_count: 120, // 10 years
         addons: [],
         notes: {
-            source: "wabot_bsp_saas"
+            source: "grafty_bsp_saas"
         }
     });
 }

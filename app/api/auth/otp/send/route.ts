@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
-import { OTPService } from "@/lib/services/otp-service";
+import { OTPService } from "../../../../../lib/services/otp-service";
+
+export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
     try {

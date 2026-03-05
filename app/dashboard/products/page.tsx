@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Plus, Package, Search, MoreVertical } from "lucide-react";
+import { Plus, Package, Search, MoreVertical, ShoppingBag, ShoppingCart } from "lucide-react";
 
 export default function ProductsPage() {
     const [products, setProducts] = useState([]);
@@ -34,15 +34,22 @@ export default function ProductsPage() {
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Products</h1>
-                    <p className="text-gray-500">Manage your catalog for WhatsApp commerce.</p>
+                    <h1 className="text-2xl font-black text-gray-900 tracking-tight italic">E-commerce</h1>
+                    <p className="text-sm font-medium text-gray-500 uppercase tracking-widest">Connect and manage your digital storefront.</p>
                 </div>
-                <Link href="/dashboard/products/new">
-                    <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2 font-medium">
-                        <Plus size={20} />
-                        Add Product
+                <div className="flex gap-3">
+                    <button className="flex items-center gap-2 bg-white border border-slate-200 text-slate-700 px-4 py-2.5 rounded-xl text-xs font-bold hover:bg-slate-50 transition-all shadow-sm">
+                        <ShoppingBag size={16} className="text-[#96BF48]" /> Shopify
                     </button>
-                </Link>
+                    <button className="flex items-center gap-2 bg-white border border-slate-200 text-slate-700 px-4 py-2.5 rounded-xl text-xs font-bold hover:bg-slate-50 transition-all shadow-sm">
+                        <ShoppingCart size={16} className="text-[#3C434A]" /> WooCommerce
+                    </button>
+                    <Link href="/dashboard/products/new">
+                        <button className="bg-gradient-to-r from-[#27954D] to-[#042F94] text-white px-5 py-2.5 rounded-xl flex items-center gap-2 text-xs font-black uppercase tracking-widest shadow-lg hover:scale-[1.02] transition-all active:scale-95">
+                            <Plus size={16} /> Add Product
+                        </button>
+                    </Link>
+                </div>
             </div>
 
             {/* Filters */}

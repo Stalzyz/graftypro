@@ -1,64 +1,474 @@
-import { prisma } from "@/lib/db";
+/**
+ * Credit Service - Production-Grade Credit Wallet Management
+ * 
+ * Features:
+ * - GST-compliant credit purchases
+ * - Atomic deductions with row locking
+ * - Idempotent operations
+ * - Invoice generation
+ * - Meta billing tracking
+ * - Reseller commission processing
+ */
+
+import { prisma } from "../db";
+import { GSTService } from "../finance/gst-service";
+import { InvoiceService } from "../finance/invoice-service";
 
 export class CreditService {
     private static pricingCache: Map<string, { price: number, expiry: number }> = new Map();
     private static CACHE_TTL = 10 * 60 * 1000; // 10 Minutes
 
     /**
-     * PHASE 2: Add credits to vendor wallet safely with ledger entry.
-     * Uses atomic transactions and balance snapshots.
+     * Add credits to vendor wallet with GST and invoice generation
+     * 
+     * @param tx - Prisma transaction
+     * @param workspaceId - Workspace ID
+     * @param netAmount - Amount before GST
+     * @param paymentId - Razorpay payment ID
+     * @param description - Transaction description
+     * @param billingDetails - Customer billing details
+     * @returns Balance after addition and invoice
      */
-    static async addCredits(tx: any, workspaceId: string, amount: number, paymentId: string, description: string) {
-        // 1. Get or Create Wallet (Row Lock)
-        // Note: tx.vendorWallet.findUnique doesn't support SELECT FOR UPDATE directly in all Prisma versions, 
-        // but since this is inside a transaction and we're using update immediately after, it's generally safe.
-        // For absolute safety in high-concurrency, we'd use tx.$executeRaw.
+    static async addCreditsWithGST(
+        tx: any,
+        workspaceId: string,
+        netAmount: number,
+        paymentId: string,
+        description: string,
+        billingDetails: {
+            name: string;
+            address: string;
+            state: string;
+            pincode: string;
+            gstin?: string;
+            email?: string;
+            phone?: string;
+        }
+    ) {
+        // 1. Check for duplicate payment (idempotency)
+        const existingTransaction = await tx.creditTransaction.findFirst({
+            where: {
+                related_payment_id: paymentId,
+                type: 'PURCHASE'
+            }
+        });
 
+        if (existingTransaction) {
+            console.log(`[Credit Engine] Duplicate payment detected: ${paymentId}`);
+            return {
+                balanceAfter: Number(existingTransaction.balance_after),
+                invoice: null,
+                duplicate: true
+            };
+        }
+
+        // 2. Calculate GST
+        const gstBreakdown = await GSTService.calculateGST(netAmount, billingDetails.state);
+
+        // 3. Get or Create Wallet
         let wallet = await tx.vendorWallet.findUnique({
             where: { workspace_id: workspaceId }
         });
 
         if (!wallet) {
             wallet = await tx.vendorWallet.create({
-                data: { workspace_id: workspaceId }
+                data: {
+                    workspace_id: workspaceId,
+                    billing_name: billingDetails.name,
+                    billing_address: billingDetails.address,
+                    billing_state: billingDetails.state,
+                    billing_pincode: billingDetails.pincode,
+                    billing_email: billingDetails.email,
+                    billing_phone: billingDetails.phone,
+                    gst_registered: !!billingDetails.gstin,
+                    gstin: billingDetails.gstin
+                }
+            });
+        } else {
+            // Update billing details if provided
+            await tx.vendorWallet.update({
+                where: { id: wallet.id },
+                data: {
+                    billing_name: billingDetails.name,
+                    billing_address: billingDetails.address,
+                    billing_state: billingDetails.state,
+                    billing_pincode: billingDetails.pincode,
+                    billing_email: billingDetails.email || wallet.billing_email,
+                    billing_phone: billingDetails.phone || wallet.billing_phone,
+                    gst_registered: !!billingDetails.gstin,
+                    gstin: billingDetails.gstin || wallet.gstin
+                }
             });
         }
 
         const balanceBefore = Number(wallet.current_balance);
-        const balanceAfter = balanceBefore + amount;
+        const balanceAfter = balanceBefore + netAmount; // Credits = net amount (before GST)
 
-        // 2. Update Wallet
+        // 4. Update Wallet
         await tx.vendorWallet.update({
             where: { id: wallet.id },
             data: {
-                current_balance: { increment: amount },
-                total_purchased: { increment: amount }
+                current_balance: { increment: netAmount },
+                total_purchased: { increment: netAmount }
             }
         });
 
-        // 3. Create Ledger Entry (Append-only)
-        await tx.creditTransaction.create({
+        // 5. Create Ledger Entry with GST breakdown
+        const transaction = await tx.creditTransaction.create({
             data: {
                 workspace_id: workspaceId,
+                wallet_id: wallet.id,
                 type: 'PURCHASE',
-                amount: amount,
+                amount: netAmount,
                 balance_before: balanceBefore,
                 balance_after: balanceAfter,
+
+                // GST Breakdown
+                net_amount: gstBreakdown.net_amount,
+                gst_amount: gstBreakdown.gst_total,
+                cgst_amount: gstBreakdown.cgst,
+                sgst_amount: gstBreakdown.sgst,
+                igst_amount: gstBreakdown.igst,
+                total_amount: gstBreakdown.total_amount,
+
+                // References
                 related_payment_id: paymentId,
-                description: description
+                description: description,
+
+                // Status
+                status: 'COMPLETED',
+                initiated_by: 'SYSTEM'
             }
         });
 
-        console.log(`[Credit Engine] Credits Added: ${amount} to ${workspaceId}. Balance: ${balanceAfter}`);
-        return { balanceAfter };
+        // 6. Generate Invoice
+        const invoice = await InvoiceService.createInvoice({
+            tx,
+            workspaceId,
+            walletId: wallet.id,
+            paymentId,
+            items: [{
+                description: description || "WhatsApp Credits Purchase",
+                quantity: 1,
+                rate: netAmount,
+                taxable_value: netAmount,
+                cgst_rate: gstBreakdown.cgst_rate,
+                sgst_rate: gstBreakdown.sgst_rate,
+                igst_rate: gstBreakdown.igst_rate
+            }],
+            billingDetails,
+            hsnCode: (billingDetails as any).hsn_code
+        });
+
+        // Link transaction to invoice
+        await tx.creditTransaction.update({
+            where: { id: transaction.id },
+            data: { invoice_id: invoice.id }
+        });
+
+        console.log(`[Credit Engine] Credits Added: ${netAmount} to ${workspaceId}. Balance: ${balanceAfter}. Invoice: ${invoice.invoice_number}`);
+
+        return {
+            balanceAfter,
+            invoice,
+            transaction,
+            duplicate: false
+        };
     }
 
     /**
-     * PHASE 3: Atomic Message Deduction Engine
-     * Prevents negative balance and ensures ledger consistency.
+     * Legacy addCredits for backward compatibility
+     * Use addCreditsWithGST for new implementations
+     */
+    static async addCredits(tx: any, workspaceId: string, amount: number, paymentId: string, description: string) {
+        // Get wallet to extract billing details
+        const wallet = await tx.vendorWallet.findUnique({
+            where: { workspace_id: workspaceId }
+        });
+
+        const billingDetails = {
+            name: wallet?.billing_name || 'Customer',
+            address: wallet?.billing_address || 'Address',
+            state: wallet?.billing_state || 'Karnataka',
+            pincode: wallet?.billing_pincode || '560001',
+            gstin: wallet?.gstin,
+            email: wallet?.billing_email,
+            phone: wallet?.billing_phone
+        };
+
+        return await this.addCreditsWithGST(tx, workspaceId, amount, paymentId, description, billingDetails);
+    }
+
+    /**
+     * Atomic credit deduction with row locking and idempotency
+     * 
+     * @param workspaceId - Workspace ID
+     * @param amount - Amount to deduct
+     * @param messageId - Unique message ID
+     * @param metaMessageId - Meta's message ID (optional, can be updated later)
+     * @param category - Message category (MARKETING, UTILITY, etc.)
+     * @param countryCode - Country code
+     * @param description - Transaction description
+     * @returns Deduction result
+     */
+    static async deductCreditsAtomic(
+        workspaceId: string,
+        amount: number,
+        messageId: string,
+        metaMessageId: string | null,
+        category: string,
+        countryCode: string,
+        description: string
+    ) {
+        return await prisma.$transaction(async (tx) => {
+            // 1. Row-level lock using raw SQL
+            await tx.$executeRaw`
+        SELECT * FROM vendor_wallets 
+        WHERE workspace_id = ${workspaceId} 
+        FOR UPDATE
+      `;
+
+            // 2. Check for duplicate deduction (idempotency)
+            const existing = await tx.creditTransaction.findFirst({
+                where: {
+                    related_message_id: messageId,
+                    type: 'DEDUCTION'
+                }
+            });
+
+            if (existing) {
+                console.log(`[Credit Engine] Duplicate deduction prevented: ${messageId}`);
+                return {
+                    success: false,
+                    error: 'DUPLICATE_DEDUCTION',
+                    transaction_id: existing.id,
+                    balance_after: Number(existing.balance_after)
+                };
+            }
+
+            // 3. Get wallet
+            const wallet = await tx.vendorWallet.findUnique({
+                where: { workspace_id: workspaceId }
+            });
+
+            if (!wallet) {
+                throw new Error('Wallet not found');
+            }
+
+            if (wallet.is_frozen) {
+                throw new Error(`Wallet frozen: ${wallet.freeze_reason || 'Review required'}`);
+            }
+
+            // 3.5 Check Workspace Status
+            const workspace = await tx.workspace.findUnique({
+                where: { id: workspaceId }
+            });
+
+            if (!workspace || workspace.status === 'SUSPENDED') {
+                throw new Error("Account suspended. Please contact support.");
+            }
+
+            if (wallet.is_automated_blocked) {
+                throw new Error('Automated messaging blocked for security. Please contact support.');
+            }
+
+            const currentBalance = Number(wallet.current_balance);
+
+            if (currentBalance < amount) {
+                throw new Error('Insufficient balance');
+            }
+
+            // 4. Calculate pricing breakdown
+            const metaCost = await this.getMetaCost(category, countryCode);
+            const ourCharge = amount;
+            const margin = ourCharge - metaCost;
+
+            // 5. Update wallet
+            const balanceAfter = currentBalance - amount;
+
+            await tx.vendorWallet.update({
+                where: { id: wallet.id },
+                data: {
+                    current_balance: { decrement: amount },
+                    total_used: { increment: amount }
+                }
+            });
+
+            // 6. Create ledger entry
+            const transaction = await tx.creditTransaction.create({
+                data: {
+                    workspace_id: workspaceId,
+                    wallet_id: wallet.id,
+                    type: 'DEDUCTION',
+                    amount: -amount,
+                    balance_before: currentBalance,
+                    balance_after: balanceAfter,
+
+                    // References
+                    related_message_id: messageId,
+                    meta_message_id: metaMessageId,
+
+                    // Message Details
+                    message_category: category,
+                    country_code: countryCode,
+                    meta_cost: metaCost,
+                    our_charge: ourCharge,
+                    margin: margin,
+
+                    // Metadata
+                    description: description,
+                    status: 'COMPLETED',
+                    initiated_by: 'SYSTEM'
+                }
+            });
+
+            // 7. Process reseller commission
+            try {
+                const { ResellerService } = require('@/lib/reseller/service');
+                await ResellerService.processUsageCommission(
+                    tx,
+                    workspaceId,
+                    amount,
+                    messageId
+                );
+            } catch (err) {
+                console.error('[Credit Engine] Reseller commission error:', err);
+            }
+
+            console.log(`[Credit Engine] Credits Deducted: ${amount} from ${workspaceId}. Balance: ${balanceAfter}`);
+
+            // 8. Fraud Detection & Auto Recharge Hooks
+            await this.processPostDeductionHooks(tx, wallet, balanceAfter, amount);
+
+            return {
+                success: true,
+                balance_after: balanceAfter,
+                transaction_id: transaction.id,
+                margin: margin
+            };
+
+        }, {
+            isolationLevel: 'Serializable',
+            timeout: 10000
+        });
+    }
+
+    /**
+     * Process post-deduction logic: Fraud Checks and Auto Recharge
+     */
+    private static async processPostDeductionHooks(tx: any, wallet: any, balanceAfter: number, amount: number) {
+        // 1. Velocity Analysis (Spike Detection)
+        const velocity = await this.calculateUsageVelocity(wallet.workspace_id);
+
+        // 2. Fraud Rules
+        if (velocity > (wallet.max_daily_velocity || 10000)) {
+            console.warn(`[Fraud Engine] High velocity detected for ${wallet.workspace_id}: ${velocity}`);
+            // Flag for review but don't block yet (soft alert)
+            this.triggerFraudAlert(wallet.workspace_id, velocity, "DAILY_VELOCITY_EXCEEDED");
+        }
+
+        // 3. Auto-Recharge Logic
+        if (wallet.auto_recharge_enabled && balanceAfter < Number(wallet.auto_recharge_threshold)) {
+            if (wallet.razorpay_customer_id && wallet.razorpay_token_id) {
+                console.log(`[Auto Recharge] Triggering recharge for ${wallet.workspace_id} (Balance: ${balanceAfter})`);
+                // Offload to background worker or process here
+                this.triggerAutoRecharge(wallet.workspace_id, Number(wallet.auto_recharge_amount));
+            }
+        }
+
+        // 4. Standard Low Balance Alert (if not auto-recharged)
+        if (balanceAfter < 500 && !wallet.auto_recharge_enabled) {
+            this.triggerLowBalanceAlert(wallet.workspace_id, balanceAfter, wallet.billing_email);
+        }
+    }
+
+    /**
+     * Calculate usage velocity (Credits used in last 24 hours)
+     */
+    static async calculateUsageVelocity(workspaceId: string): Promise<number> {
+        const last24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        const result = await prisma.creditTransaction.aggregate({
+            where: {
+                workspace_id: workspaceId,
+                type: 'DEDUCTION',
+                created_at: { gte: last24h }
+            },
+            _sum: {
+                amount: true
+            }
+        });
+        return Math.abs(Number(result._sum.amount || 0));
+    }
+
+    /**
+     * Trigger Auto Recharge via Razorpay
+     * Note: This requires the Razorpay Recurring/Token API setup
+     */
+    private static async triggerAutoRecharge(workspaceId: string, amount: number) {
+        try {
+            // This would normally call a dedicated PaymentService
+            console.log(`[Auto Recharge] Attempting to charge ${amount} for ${workspaceId}`);
+
+            // Placeholder: In real implementation, this would:
+            // 1. Create a Razorpay Order
+            // 2. Use the stored customer_id and token_id to create a recurring charge
+            // 3. Upon success, call CreditService.addCredits()
+
+            // For now, we'll log it and send an email notification that auto-recharge is attempted
+            const { EmailService } = await import("@/lib/email/service");
+            await EmailService.sendBrandedEmail(workspaceId, {
+                to: "admin@grafty.pro", // Notify platform admin
+                subject: "⚡ Auto-Recharge Attempted",
+                templateName: "AUTO_RECHARGE_NOTIFICATION",
+                context: {
+                    workspace_id: workspaceId,
+                    amount: (amount || 0).toLocaleString(),
+                    status: "PENDING_TOKEN_IMPLEMENTATION"
+                }
+            });
+        } catch (err) {
+            console.error("[Auto Recharge] Failed:", err);
+        }
+    }
+
+    /**
+     * Trigger Fraud Alert to Admins
+     */
+    private static async triggerFraudAlert(workspaceId: string, velocity: number, reason: string) {
+        try {
+            const { EmailService } = await import("@/lib/email/service");
+            await EmailService.sendBrandedEmail(workspaceId, {
+                to: "security@grafty.pro",
+                subject: "🚨 FRAUD ALERT: High Usage Velocity Detected",
+                templateName: "FRAUD_ALERT",
+                context: {
+                    workspace_id: workspaceId,
+                    velocity: (velocity || 0).toLocaleString(),
+                    reason: reason,
+                    timestamp: new Date().toISOString()
+                }
+            });
+        } catch (err) {
+            console.error("[Fraud Engine] Alert failed:", err);
+        }
+    }
+
+    /**
+     * Update Meta message ID for a transaction
+     * Called after message is sent to Meta
+     */
+    static async updateMetaMessageId(transactionId: string, metaMessageId: string) {
+        await prisma.creditTransaction.update({
+            where: { id: transactionId },
+            data: { meta_message_id: metaMessageId }
+        });
+    }
+
+    /**
+     * Legacy deductCredits for backward compatibility
      */
     static async deductCredits(tx: any, workspaceId: string, amount: number, messageId: string, description: string) {
-        // 1. Get Wallet with Row Lock
+        // Get wallet with row lock
         const wallet = await tx.vendorWallet.findUnique({
             where: { workspace_id: workspaceId }
         });
@@ -74,7 +484,7 @@ export class CreditService {
         const balanceBefore = Number(wallet.current_balance);
         const balanceAfter = balanceBefore - amount;
 
-        // 2. Update Wallet
+        // Update Wallet
         await tx.vendorWallet.update({
             where: { id: wallet.id },
             data: {
@@ -83,12 +493,13 @@ export class CreditService {
             }
         });
 
-        // 3. Create Ledger Entry
+        // Create Ledger Entry
         await tx.creditTransaction.create({
             data: {
                 workspace_id: workspaceId,
+                wallet_id: wallet.id,
                 type: 'DEDUCTION',
-                amount: -amount, // Negative for ledger
+                amount: -amount,
                 balance_before: balanceBefore,
                 balance_after: balanceAfter,
                 related_message_id: messageId,
@@ -96,10 +507,9 @@ export class CreditService {
             }
         });
 
-        // 4. PHASE 5: RESELLER HOOK (God-Mode Markup included)
+        // Reseller Hook
         try {
             const { ResellerService } = require("@/lib/reseller/service");
-            // Pass the total deducted amount. Service will resolve commission + markup profit.
             await ResellerService.processUsageCommission(tx, workspaceId, amount, messageId);
         } catch (hookError) {
             console.error("Reseller Usage Hook Error:", hookError);
@@ -109,8 +519,7 @@ export class CreditService {
     }
 
     /**
-     * PHASE 4: Margin Protection Engine (Enhanced for God-Mode Markup)
-     * Fetches the final price for a specific message type and country.
+     * Get message cost for a specific category and country
      */
     static async getMessageCost(category: string, countryCode: string, workspaceId?: string) {
         const cacheKey = `${category}-${countryCode}-${workspaceId || 'GLOBAL'}`;
@@ -120,7 +529,7 @@ export class CreditService {
             return cached.price;
         }
 
-        // 1. Get Base Pricing
+        // Get Base Pricing
         const pricing = await prisma.creditPricing.findFirst({
             where: {
                 message_type: category,
@@ -144,7 +553,7 @@ export class CreditService {
 
         let finalPrice = basePrice;
 
-        // 2. Apply Custom Reseller Markup (God-Mode Phase)
+        // Apply Custom Reseller Markup
         if (workspaceId) {
             const workspace = await prisma.workspace.findUnique({
                 where: { id: workspaceId },
@@ -167,7 +576,55 @@ export class CreditService {
     }
 
     /**
-     * Utility to seed standard Meta pricing (Approximate)
+     * Get Meta's cost for a message (what Meta charges us)
+     */
+    static async getMetaCost(category: string, countryCode: string): Promise<number> {
+        const pricing = await prisma.creditPricing.findFirst({
+            where: {
+                message_type: category,
+                country_code: countryCode
+            }
+        });
+
+        if (!pricing) {
+            const fallback = await prisma.creditPricing.findFirst({
+                where: {
+                    message_type: category,
+                    country: "GLOBAL"
+                }
+            });
+            return fallback ? Number(fallback.meta_cost) : 0.50;
+        }
+
+        return Number(pricing.meta_cost);
+    }
+
+    /**
+     * Trigger low balance alert via email
+     */
+    private static async triggerLowBalanceAlert(workspaceId: string, balance: number, email: string | null) {
+        if (!email) return;
+
+        try {
+            const { EmailService } = await import("@/lib/email/service");
+            await EmailService.sendBrandedEmail(workspaceId, {
+                to: email,
+                subject: "⚠️ Low Credit Balance Alert",
+                templateName: "LOW_BALANCE_ALERT",
+                context: {
+                    balance: (balance || 0).toLocaleString(),
+                    threshold: 500,
+                    recharge_url: `${process.env.NEXT_PUBLIC_APP_URL || ""}/dashboard/credits/recharge`
+                }
+            });
+            console.log(`⚠️ Low balance alert sent to ${email} (Balance: ${balance})`);
+        } catch (err) {
+            console.error("[Credit Engine] Failed to send low balance alert:", err);
+        }
+    }
+
+    /**
+     * Seed default pricing
      */
     static async seedDefaultPricing() {
         const defaultPricing = [

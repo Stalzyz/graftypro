@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/db";
+import { prisma } from "../db";
 import { FINANCIAL_RULES } from "./config";
 
 export class FraudDetectionEngine {

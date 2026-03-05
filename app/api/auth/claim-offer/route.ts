@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { prisma } from "../../../../lib/db";
 import { cookies } from "next/headers";
-import { verifyToken } from "@/lib/auth";
+import { verifyToken } from "../../../../lib/auth";
+
+export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
     try {
@@ -31,18 +33,21 @@ export async function POST(req: Request) {
                 await prisma.vendorWallet.update({
                     where: { workspace_id: payload.workspaceId },
                     data: {
-                        balance: { increment: 500 }
+                        current_balance: { increment: 500 }
                     }
                 });
 
                 // Track in Transaction
-                await (prisma as any).transaction.create({
+                await prisma.creditTransaction.create({
                     data: {
                         workspace_id: payload.workspaceId,
+                        wallet_id: wallet.id,
                         amount: 500,
-                        type: "CREDIT",
+                        type: "PURCHASE",
                         description: "Welcome Offer: 500 Free Credits",
-                        status: "COMPLETED"
+                        status: "COMPLETED",
+                        balance_before: wallet.current_balance,
+                        balance_after: Number(wallet.current_balance) + 500
                     }
                 });
             }

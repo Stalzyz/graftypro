@@ -1,6 +1,7 @@
 import crypto from "crypto";
 
-const ENCRYPTION_KEY = process.env.COMMERCE_ENCRYPTION_KEY || "v-bad-default-key-32-chars-long!!"; // Must be 32 chars
+const RAW_KEY = process.env.COMMERCE_ENCRYPTION_KEY || "v-bad-default-key-32-chars-long!"; // Must be exactly 32 chars
+const ENCRYPTION_KEY = Buffer.from(RAW_KEY.padEnd(32, '0').slice(0, 32));
 const IV_LENGTH = 16;
 
 export function encrypt(text: string) {

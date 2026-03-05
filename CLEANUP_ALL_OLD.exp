@@ -1,0 +1,37 @@
+#!/usr/bin/expect -f
+
+set timeout -1
+set password "Photoshop09@"
+set server "root@72.61.231.187"
+
+puts "================================================"
+puts "🧹 Total Cleanup of Old Configurations"
+puts "================================================"
+
+spawn ssh $server {bash -s <<'CLEANUP_EOF'
+    echo "🔧 Removing all old Nginx configs..."
+    
+    # List of files to remove from sites-enabled and sites-available
+    FILES=("app.grekam.in" "graft.pro" "graft.pro.temp" "wabot" "wabot-app" "wabot_bsp" "default")
+    
+    for f in "${FILES[@]}"; do
+        rm -f "/etc/nginx/sites-enabled/$f"
+        rm -f "/etc/nginx/sites-available/$f"
+        echo "✅ Cleared $f"
+    done
+    
+    # Reload Nginx
+    echo "🔄 Reloading Nginx..."
+    nginx -t && systemctl reload nginx
+    
+    echo "✨ All old configurations removed."
+CLEANUP_EOF
+}
+
+expect {
+    "password:" {
+        send "$password\r"
+        exp_continue
+    }
+    eof
+}

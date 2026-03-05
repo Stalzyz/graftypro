@@ -19,7 +19,7 @@ const StartNode = ({ data, isConnectable }: NodeProps) => {
                 </div>
             )}
             {/* Logic: Only Source handle (Bottom) */}
-            <Handle type="source" position={Position.Bottom} isConnectable={isConnectable} className="w-3 h-3 bg-orange-500 border-2 border-white" />
+            <Handle type="source" position={Position.Right} isConnectable={isConnectable} className="w-3 h-3 bg-orange-500 border-2 border-white -right-1.5" />
         </div>
     );
 };

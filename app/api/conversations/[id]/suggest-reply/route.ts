@@ -1,8 +1,8 @@
 
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
-import { getCurrentUser } from "@/lib/auth";
-import { AIService } from "@/lib/ai/openai";
+import { prisma } from "../../../../../lib/db";
+import { getCurrentUser } from "../../../../../lib/auth";
+import { AIService } from "../../../../../lib/ai/openai";
 
 export const dynamic = 'force-dynamic';
 

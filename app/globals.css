@@ -2,6 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
+
 /* ========================================
    WABOT BSP - WhatsApp-Inspired Design System
    Clean, Professional, Calm UI
@@ -44,10 +45,6 @@
   --glass-bg: rgba(255, 255, 255, 0.7);
   --glass-border: rgba(255, 255, 255, 0.3);
   --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
-
-  /* Dark Mode Glassmorphism */
-  --glass-bg-dark: rgba(24, 24, 27, 0.8);
-  --glass-border-dark: rgba(255, 255, 255, 0.08);
 }
 
 /* Base Styles */
@@ -176,7 +173,6 @@ html {
    COMPONENT UTILITIES
    ======================================== */
 
-/* Glass Card - Light */
 .glass-card {
   background: var(--glass-bg);
   backdrop-filter: blur(12px);
@@ -184,16 +180,6 @@ html {
   border: 1px solid var(--glass-border);
   border-radius: 16px;
   box-shadow: var(--glass-shadow);
-}
-
-/* Glass Card - Dark */
-.glass-card-dark {
-  background: var(--glass-bg-dark);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid var(--glass-border-dark);
-  border-radius: 16px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
 }
 
 /* Soft Card (No Glass, Subtle) */
@@ -215,50 +201,70 @@ html {
    ======================================== */
 
 .btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 10px 20px;
-  font-weight: 500;
-  font-size: 14px;
-  border-radius: 12px;
-  transition: all 0.15s ease;
-  cursor: pointer;
-  border: none;
-  outline: none;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  padding: 10px 24px !important;
+  font-weight: 600 !important;
+  font-size: 14px !important;
+  border-radius: 12px !important;
+  /* Rounded Rectangle */
+  transition: all 0.2s ease !important;
+  cursor: pointer !important;
+  border: 1px solid transparent !important;
+  outline: none !important;
+  white-space: nowrap !important;
+  height: 44px !important;
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, var(--wa-green-500) 0%, var(--wa-green-600) 100%);
+  background: #27954D;
   color: white;
-  box-shadow: 0 2px 8px rgba(39, 149, 77, 0.3);
+  box-shadow: 0 4px 12px rgba(39, 149, 77, 0.2);
+  border: none;
+  border-radius: 12px;
+  height: 44px;
+  padding: 0 24px;
 }
 
 .btn-primary:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 16px rgba(37, 211, 102, 0.4);
+  box-shadow: 0 8px 20px rgba(39, 149, 77, 0.3);
+  background: #218041;
 }
 
 .btn-secondary {
   background: white;
-  color: var(--gray-700);
-  border: 1px solid var(--gray-200);
+  color: #374151;
+  border: 1px solid #E5E7EB;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  border-radius: 12px;
+  height: 44px;
+  padding: 0 24px;
 }
 
 .btn-secondary:hover {
-  background: var(--gray-50);
-  border-color: var(--gray-300);
+  color: var(--wa-green-600) !important;
 }
 
-.btn-ghost {
-  background: transparent;
-  color: var(--gray-600);
+.btn-outline {
+  background: transparent !important;
+  color: var(--gray-800) !important;
+  border: 1px solid var(--gray-200) !important;
 }
 
-.btn-ghost:hover {
-  background: var(--gray-100);
-  color: var(--gray-900);
+.btn-outline:hover {
+  background: var(--gray-50) !important;
+}
+
+.btn-danger {
+  background: #ef4444 !important;
+  color: white !important;
+}
+
+.btn-danger:hover {
+  background: #dc2626 !important;
 }
 
 /* ========================================
@@ -283,18 +289,6 @@ html {
 
 .input::placeholder {
   color: var(--gray-400);
-}
-
-/* Dark Input */
-.input-dark {
-  background: var(--gray-900);
-  border-color: var(--gray-700);
-  color: white;
-}
-
-.input-dark:focus {
-  border-color: var(--wa-green-500);
-  box-shadow: 0 0 0 3px rgba(37, 211, 102, 0.15);
 }
 
 /* ========================================
@@ -363,21 +357,6 @@ html {
 .nav-item.active {
   background: var(--wa-green-100);
   color: var(--wa-green-700);
-}
-
-/* Dark Sidebar */
-.nav-item-dark {
-  color: var(--gray-400);
-}
-
-.nav-item-dark:hover {
-  background: rgba(37, 211, 102, 0.1);
-  color: var(--wa-green-400);
-}
-
-.nav-item-dark.active {
-  background: rgba(37, 211, 102, 0.15);
-  color: var(--wa-green-400);
 }
 
 /* ========================================
@@ -465,58 +444,6 @@ html {
 }
 
 /* ========================================
-   ANIMATIONS
-   ======================================== */
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes slideIn {
-  from {
-    opacity: 0;
-    transform: translateX(-8px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-@keyframes pulse-soft {
-
-  0%,
-  100% {
-    opacity: 1;
-  }
-
-  50% {
-    opacity: 0.7;
-  }
-}
-
-.animate-fade-in {
-  animation: fadeIn 0.3s ease-out;
-}
-
-.animate-slide-in {
-  animation: slideIn 0.3s ease-out;
-}
-
-.animate-pulse-soft {
-  animation: pulse-soft 2s ease-in-out infinite;
-}
-
-/* ========================================
    SCROLLBAR (Minimal)
    ======================================== */
 
@@ -536,11 +463,6 @@ html {
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--gray-400);
-}
-
-/* Dark Scrollbar */
-.dark-scrollbar::-webkit-scrollbar-thumb {
-  background: var(--gray-700);
 }
 
 /* ========================================

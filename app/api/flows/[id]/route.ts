@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
-import { getCurrentUser } from "@/lib/auth";
+import { prisma } from "../../../../lib/db";
+import { getCurrentUser } from "../../../../lib/auth";
+
+export const dynamic = "force-dynamic";
 
 export async function GET(
     req: Request,
@@ -41,6 +43,10 @@ export async function PUT(
 
         const body = await req.json();
         const { nodes, edges, name, status, trigger_keyword } = body;
+
+        // Validation
+        if (nodes && !Array.isArray(nodes)) return NextResponse.json({ error: "Nodes must be an array" }, { status: 400 });
+        if (edges && !Array.isArray(edges)) return NextResponse.json({ error: "Edges must be an array" }, { status: 400 });
 
         // Security: Ensure flow belongs to user's workspace
         const flow = await prisma.flow.findFirst({

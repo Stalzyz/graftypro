@@ -13,7 +13,7 @@ import {
     HelpCircle
 } from "lucide-react";
 import "../../landing/landing.css";
-import { Logo } from "@/components/ui/Logo";
+import { Logo } from "../../../components/ui/Logo";
 
 export default function ModulesDocumentation() {
     const modules = [
@@ -89,10 +89,10 @@ export default function ModulesDocumentation() {
         {
             id: "reseller",
             icon: <Users />,
-            title: "Reseller Controls",
+            title: "Partner Controls",
             description: "Manage your sub-vendors and track your commission growth.",
             steps: [
-                "Switch to the 'Reseller Panel' from the sidebar.",
+                "Switch to the 'Partner Panel' from the sidebar.",
                 "Go to 'Sub-Vendors' and click 'Invite' to onboard a client.",
                 "Set custom markups in 'Pricing' for different message categories.",
                 "View your 'Wallet' to see accumulated profit and markup gains.",

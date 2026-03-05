@@ -2,14 +2,8 @@
 "use client";
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import {
-    ShieldCheck,
-    Mail,
-    Lock,
-    ArrowRight,
-    Loader2,
-    AlertCircle
-} from 'lucide-react';
+import { Mail, Lock, ArrowRight, Loader2, AlertCircle } from 'lucide-react';
+import { Logo } from "../../../components/ui/Logo";
 
 export default function PartnerLoginPage() {
     const router = useRouter();
@@ -42,75 +36,67 @@ export default function PartnerLoginPage() {
     };
 
     return (
-        <div className="min-h-screen bg-black flex items-center justify-center p-6 selection:bg-cyan-500/30">
-            <div className="w-full max-w-md space-y-8 animate-in fade-in zoom-in duration-500">
+        <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
+            <div className="w-full max-w-md space-y-8">
                 {/* Logo */}
                 <div className="flex flex-col items-center">
-                    <div className="w-16 h-16 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-2xl shadow-cyan-500/20 mb-6">
-                        <ShieldCheck className="text-white" size={32} />
+                    <div className="mb-6">
+                        <Logo size={50} brandName="Grafty" />
                     </div>
-                    <h1 className="text-3xl font-black italic tracking-tighter text-white uppercase">Partner Access</h1>
-                    <p className="text-zinc-500 font-bold text-[10px] uppercase tracking-[0.2em] mt-2">White-Label Infrastructure</p>
+                    <h1 className="text-3xl font-black tracking-tighter text-slate-900 uppercase">Partner Access</h1>
+                    <p className="text-slate-400 font-bold text-[10px] uppercase tracking-[0.2em] mt-2">Partner Network Infrastructure</p>
                 </div>
 
                 {/* Card */}
-                <div className="bg-zinc-950 border border-zinc-900 rounded-[2.5rem] p-8 shadow-2xl relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/5 rounded-full -mr-16 -mt-16 blur-3xl group-hover:bg-cyan-500/10 transition-all"></div>
-
-                    <form onSubmit={handleLogin} className="space-y-6 relative z-10">
+                <div className="bg-white border border-slate-200 rounded-[2.5rem] p-8 shadow-xl">
+                    <form onSubmit={handleLogin} className="space-y-6">
                         {error && (
-                            <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-2xl text-xs font-bold flex items-center gap-3 animate-shake">
+                            <div className="bg-red-50 border border-red-200 text-red-600 p-4 rounded-2xl text-xs font-bold flex items-center gap-3">
                                 <AlertCircle size={18} /> {error}
                             </div>
                         )}
 
                         <div className="space-y-2">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 ml-1">Work Email</label>
-                            <div className="relative group">
-                                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600 group-focus-within:text-cyan-400 transition-colors" size={18} />
+                            <label htmlFor="email" className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Work Email</label>
+                            <div className="relative">
+                                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                                 <input
-                                    type="email"
-                                    required
-                                    value={email}
-                                    onChange={e => setEmail(e.target.value)}
+                                    id="email" type="email" required
+                                    value={email} onChange={e => setEmail(e.target.value)}
                                     placeholder="partner@yourbrand.com"
-                                    className="w-full bg-black border border-zinc-800 rounded-2xl pl-12 pr-4 py-4 text-sm font-bold text-white outline-none focus:border-cyan-500/50 focus:ring-4 focus:ring-cyan-500/5 transition-all"
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-12 pr-4 py-4 text-sm font-bold text-slate-900 outline-none focus:border-[#27954D] focus:ring-4 focus:ring-green-500/10 transition-all"
                                 />
                             </div>
                         </div>
 
                         <div className="space-y-2">
                             <div className="flex justify-between items-center ml-1">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Secure Password</label>
-                                <a href="#" className="text-[10px] font-black uppercase text-cyan-500 hover:text-cyan-400 transition-colors">Forgot?</a>
+                                <label htmlFor="password" className="text-[10px] font-black uppercase tracking-widest text-slate-500">Secure Password</label>
+                                <a href="/partner/forgot-password" className="text-[10px] font-black uppercase text-[#042F94] hover:underline">Forgot?</a>
                             </div>
-                            <div className="relative group">
-                                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600 group-focus-within:text-cyan-400 transition-colors" size={18} />
+                            <div className="relative">
+                                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                                 <input
-                                    type="password"
-                                    required
-                                    value={password}
-                                    onChange={e => setPassword(e.target.value)}
+                                    id="password" type="password" required
+                                    value={password} onChange={e => setPassword(e.target.value)}
                                     placeholder="••••••••"
-                                    className="w-full bg-black border border-zinc-800 rounded-2xl pl-12 pr-4 py-4 text-sm font-bold text-white outline-none focus:border-cyan-500/50 focus:ring-4 focus:ring-cyan-500/5 transition-all"
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-12 pr-4 py-4 text-sm font-bold text-slate-900 outline-none focus:border-[#27954D] focus:ring-4 focus:ring-green-500/10 transition-all"
                                 />
                             </div>
                         </div>
 
                         <button
-                            type="submit"
-                            disabled={loading}
-                            className="w-full bg-white text-black py-4 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-cyan-400 transition-all shadow-xl shadow-white/5 active:scale-95 disabled:opacity-50 disabled:scale-100"
+                            type="submit" disabled={loading}
+                            className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-[#27954D] transition-all shadow-lg active:scale-95 disabled:opacity-50"
                         >
                             {loading ? <Loader2 size={18} className="animate-spin" /> : <>Enter Console <ArrowRight size={18} /></>}
                         </button>
                     </form>
                 </div>
 
-                {/* Footer */}
                 <div className="text-center">
-                    <p className="text-zinc-600 text-xs font-bold uppercase tracking-widest">
-                        Not a partner? <a href="/reseller-program" className="text-white hover:text-cyan-400 transition-colors underline decoration-zinc-800 underline-offset-4">Apply Now</a>
+                    <p className="text-slate-500 text-xs font-bold uppercase tracking-widest">
+                        Not a partner? <a href="/reseller-register" className="text-slate-900 hover:text-[#27954D] transition-colors underline underline-offset-4">Apply Now</a>
                     </p>
                 </div>
             </div>

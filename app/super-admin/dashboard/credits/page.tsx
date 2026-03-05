@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
     Zap,
     Coins,
@@ -10,13 +10,60 @@ import {
     Globe,
     Info,
     History,
-    ArrowRight,
     Search,
     IndianRupee,
-    AlertCircle
+    AlertCircle,
+    Loader2,
+    RefreshCw,
+    X,
+    Plus
 } from "lucide-react";
 
 export default function CreditModule() {
+    const [wallets, setWallets] = useState<any[]>([]);
+    const [stats, setStats] = useState<any>(null);
+    const [loading, setLoading] = useState(true);
+    const [search, setSearch] = useState("");
+    const [page, setPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+    const [totalRecords, setTotalRecords] = useState(0);
+    const [showProvisionModal, setShowProvisionModal] = useState(false);
+
+    const fetchData = useCallback(async () => {
+        setLoading(true);
+        try {
+            const [walletsRes, statsRes] = await Promise.all([
+                fetch(`/api/super-admin/finance/wallets?page=${page}&limit=20${search ? `&search=${encodeURIComponent(search)}` : ""}`),
+                fetch(`/api/super-admin/finance/stats?month=${new Date().getMonth() + 1}&year=${new Date().getFullYear()}`)
+            ]);
+            const walletsData = await walletsRes.json();
+            const statsData = await statsRes.json();
+
+            if (walletsData.success) {
+                setWallets(walletsData.data || []);
+                setTotalPages(walletsData.pagination?.totalPages || 1);
+                setTotalRecords(walletsData.pagination?.total || 0);
+            }
+            if (statsData) {
+                setStats(statsData);
+            }
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setLoading(false);
+        }
+    }, [page, search]);
+
+    useEffect(() => {
+        fetchData();
+    }, [fetchData]);
+
+    const filteredWallets = wallets;
+
+    const totalCredits = wallets.reduce((sum, w) => sum + (Number(w.balance) || 0), 0);
+    const creditRevenue = stats?.total_revenue || 0;
+    const lowBalanceCount = wallets.filter(w => (Number(w.balance) || 0) < 500).length;
+
     return (
         <div className="max-w-7xl space-y-12 pb-20 font-sans">
             <header className="flex items-end justify-between">
@@ -31,7 +78,17 @@ export default function CreditModule() {
                 </div>
 
                 <div className="flex gap-4">
-                    <button className="px-8 py-4 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] flex items-center gap-2 hover:bg-black transition-all shadow-xl shadow-slate-200 active:scale-95">
+                    <button
+                        onClick={() => fetchData()}
+                        className="px-6 py-4 bg-white border border-slate-100 text-slate-900 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] flex items-center gap-2 hover:bg-slate-50 transition-all shadow-sm"
+                    >
+                        <RefreshCw size={14} />
+                        Refresh
+                    </button>
+                    <button
+                        onClick={() => setShowProvisionModal(true)}
+                        className="px-8 py-4 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] flex items-center gap-2 hover:bg-black transition-all shadow-xl shadow-slate-200 active:scale-95"
+                    >
                         <Zap size={14} className="fill-white" />
                         Provision Bulk Credits
                     </button>
@@ -88,12 +145,29 @@ export default function CreditModule() {
                 </div>
             </div>
 
+            {/* Stats */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                <CreditStatCard label="Circulating Credits" value="1.2M" icon={<Coins />} color="blue" />
-                <CreditStatCard label="Credit Revenue" value="₹12.4 L" icon={<IndianRupee />} color="green" />
-                <CreditStatCard label="Low Balance Alerts" value="14" icon={<AlertCircle />} color="orange" />
+                <CreditStatCard
+                    label="Circulating Credits"
+                    value={loading ? "—" : totalCredits.toLocaleString()}
+                    icon={<Coins />}
+                    color="blue"
+                />
+                <CreditStatCard
+                    label="Credit Revenue (This Month)"
+                    value={loading ? "—" : `₹${Number(creditRevenue).toLocaleString()}`}
+                    icon={<IndianRupee />}
+                    color="green"
+                />
+                <CreditStatCard
+                    label="Low Balance Alerts"
+                    value={loading ? "—" : String(lowBalanceCount)}
+                    icon={<AlertCircle />}
+                    color="orange"
+                />
             </div>
 
+            {/* Wallet Table */}
             <div className="bg-white rounded-[40px] border border-slate-100 shadow-sm overflow-hidden border-t-4 border-t-slate-900">
                 <div className="p-10 border-b border-slate-50 flex items-center justify-between bg-slate-50/30">
                     <h2 className="text-xl font-black text-slate-900 tracking-tight">Global Wallet Registry</h2>
@@ -101,31 +175,112 @@ export default function CreditModule() {
                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={14} />
                         <input
                             type="text"
+                            value={search}
+                            onChange={e => { setSearch(e.target.value); setPage(1); }}
                             placeholder="Find Organizations or Wallet IDs..."
                             className="bg-white border-none rounded-2xl pl-10 pr-6 py-3 text-xs font-bold w-72 focus:ring-2 focus:ring-slate-100 shadow-sm transition-all"
                         />
                     </div>
                 </div>
 
-                <div className="overflow-x-auto">
-                    <table className="w-full">
-                        <thead>
-                            <tr className="bg-slate-50/50">
-                                <th className="text-left px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Client Identity</th>
-                                <th className="text-left px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Wallet Status</th>
-                                <th className="text-left px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Available Credits</th>
-                                <th className="text-left px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Consumption (24h)</th>
-                                <th className="text-right px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-50">
-                            <CreditRow name="Tesla Motors" credits="45,000" usage="1,200" status="HEALTHY" />
-                            <CreditRow name="SpaceX" credits="2,100" usage="850" status="CRITICAL" />
-                            <CreditRow name="Starlink" credits="1,20,000" usage="0" status="INACTIVE" />
-                        </tbody>
-                    </table>
+                <div className="overflow-x-auto min-h-[300px]">
+                    {loading ? (
+                        <div className="flex items-center justify-center h-48 text-slate-400 gap-2">
+                            <Loader2 size={24} className="animate-spin" /> Loading wallets...
+                        </div>
+                    ) : wallets.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center h-48 text-slate-400 gap-2">
+                            <Coins size={32} className="text-slate-200" />
+                            <p className="text-sm font-bold">No wallets found.</p>
+                        </div>
+                    ) : (
+                        <table className="w-full">
+                            <thead>
+                                <tr className="bg-slate-50/50">
+                                    <th className="text-left px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Client Identity</th>
+                                    <th className="text-left px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Wallet Status</th>
+                                    <th className="text-left px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Available Credits</th>
+                                    <th className="text-left px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Last Activity</th>
+                                    <th className="text-right px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-50">
+                                {wallets.map((wallet) => {
+                                    const balance = Number(wallet.balance) || 0;
+                                    const status = wallet.is_frozen ? "FROZEN" : balance < 500 ? "CRITICAL" : balance < 2000 ? "LOW" : "HEALTHY";
+                                    const name = wallet.workspace?.name || wallet.workspace?.owner?.name || `Wallet #${wallet.id}`;
+                                    return (
+                                        <tr key={wallet.id} className="hover:bg-slate-50/30 transition-colors group">
+                                            <td className="px-10 py-8">
+                                                <div className="flex items-center gap-4">
+                                                    <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400 font-black uppercase">
+                                                        {name[0]}
+                                                    </div>
+                                                    <div>
+                                                        <div className="text-sm font-black text-slate-900">{name}</div>
+                                                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                                            {wallet.workspace?.owner?.email || "—"}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="px-10 py-8">
+                                                <span className={`px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest ${status === "HEALTHY" ? "bg-[#27954D]/10 text-[#27954D]" :
+                                                        status === "CRITICAL" ? "bg-rose-500/10 text-rose-500" :
+                                                            status === "FROZEN" ? "bg-blue-500/10 text-blue-500" :
+                                                                "bg-amber-500/10 text-amber-600"
+                                                    }`}>
+                                                    {status}
+                                                </span>
+                                            </td>
+                                            <td className="px-10 py-8 text-xs font-black text-slate-900 italic">
+                                                {balance.toLocaleString()} Credits
+                                            </td>
+                                            <td className="px-10 py-8 text-xs text-slate-400 font-medium">
+                                                {wallet.updated_at ? new Date(wallet.updated_at).toLocaleDateString() : "—"}
+                                            </td>
+                                            <td className="px-10 py-8 text-right">
+                                                <button
+                                                    className="p-3 bg-slate-50 rounded-xl hover:bg-slate-900 hover:text-slate-700 transition-all shadow-sm"
+                                                    title="View history"
+                                                >
+                                                    <History size={14} />
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    )}
                 </div>
+
+                {totalPages > 1 && (
+                    <div className="p-8 bg-slate-50/50 flex items-center justify-between border-t border-slate-50">
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                            Page {page} of {totalPages} ({totalRecords} Wallets)
+                        </span>
+                        <div className="flex gap-4">
+                            <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
+                                className="px-6 py-3 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 transition-all disabled:opacity-50">
+                                Prev
+                            </button>
+                            <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
+                                className="px-6 py-3 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 transition-all disabled:opacity-50">
+                                Next
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
+
+            {showProvisionModal && (
+                <ProvisionModal
+                    onClose={() => setShowProvisionModal(false)}
+                    onSuccess={() => { setShowProvisionModal(false); fetchData(); }}
+                    wallets={wallets}
+                />
+            )}
         </div>
     );
 }
@@ -155,40 +310,84 @@ function CreditStatCard({ label, value, icon, color }: any) {
     );
 }
 
-function CreditRow({ name, credits, usage, status }: any) {
+function ProvisionModal({ onClose, onSuccess, wallets }: any) {
+    const [selectedWallet, setSelectedWallet] = useState("");
+    const [amount, setAmount] = useState("");
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState("");
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!selectedWallet || !amount) return;
+        setLoading(true);
+        setError("");
+        try {
+            const res = await fetch(`/api/super-admin/finance/wallets/${selectedWallet}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ action: "credit", amount: Number(amount), note: "Admin bulk provision" })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                onSuccess();
+            } else {
+                setError(data.error || "Failed to provision credits");
+            }
+        } catch (e) {
+            setError("Error provisioning credits");
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return (
-        <tr className="hover:bg-slate-50/30 transition-colors group">
-            <td className="px-10 py-8">
-                <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400 font-black">
-                        {name[0]}
-                    </div>
-                    <div>
-                        <div className="text-sm font-black text-slate-900">{name}</div>
-                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Enterprise Org</div>
-                    </div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+            <div className="bg-white rounded-[32px] w-full max-w-md shadow-2xl p-8 space-y-6">
+                <div className="flex items-center justify-between">
+                    <h3 className="text-xl font-black text-slate-900">Provision Credits</h3>
+                    <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-900">
+                        <X size={20} />
+                    </button>
                 </div>
-            </td>
-            <td className="px-10 py-8">
-                <span className={`px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest ${status === 'HEALTHY' ? 'bg-[#27954D]/10 text-[#27954D]' :
-                        status === 'CRITICAL' ? 'bg-rose-500/10 text-rose-500' :
-                            'bg-slate-100 text-slate-400'
-                    }`}>
-                    {status}
-                </span>
-            </td>
-            <td className="px-10 py-8 text-xs font-black text-slate-900 italic">{credits} Units</td>
-            <td className="px-10 py-8">
-                <div className="flex items-center gap-2">
-                    <TrendingUp size={12} className="text-blue-500" />
-                    <span className="text-xs font-bold text-slate-700">{usage} Units</span>
-                </div>
-            </td>
-            <td className="px-10 py-8 text-right">
-                <button className="p-3 bg-slate-50 rounded-xl hover:bg-slate-900 hover:text-white transition-all shadow-sm">
-                    <History size={14} />
-                </button>
-            </td>
-        </tr>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <div className="space-y-2">
+                        <label className="text-xs font-black uppercase tracking-wider text-slate-400">Select Workspace</label>
+                        <select
+                            required
+                            value={selectedWallet}
+                            onChange={e => setSelectedWallet(e.target.value)}
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-slate-900 transition-all"
+                        >
+                            <option value="">— Select a Wallet —</option>
+                            {wallets.map((w: any) => (
+                                <option key={w.id} value={w.id}>
+                                    {w.workspace?.name || `Wallet #${w.id}`} (Balance: {Number(w.balance).toLocaleString()})
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                    <div className="space-y-2">
+                        <label className="text-xs font-black uppercase tracking-wider text-slate-400">Credits to Add</label>
+                        <input
+                            required
+                            type="number"
+                            min="1"
+                            value={amount}
+                            onChange={e => setAmount(e.target.value)}
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-slate-900 transition-all"
+                            placeholder="e.g. 5000"
+                        />
+                    </div>
+                    {error && <p className="text-xs text-rose-500 font-bold">{error}</p>}
+                    <button
+                        type="submit"
+                        disabled={loading}
+                        className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] hover:bg-black transition-all disabled:opacity-50"
+                    >
+                        {loading ? "Provisioning..." : "Provision Credits"}
+                    </button>
+                </form>
+            </div>
+        </div>
     );
 }

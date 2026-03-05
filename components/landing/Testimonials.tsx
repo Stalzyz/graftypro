@@ -22,7 +22,7 @@ export default function Testimonials() {
             } else {
                 // Fallback to defaults if no approved feedback exists
                 setFeedbacks([
-                    { name: "Suresh Kumar", role: "Digital Agency Owner", content: "WAVO has completely transformed how we handle client retention. The 24/7 automation is flawless.", rating: 5 },
+                    { name: "Suresh Kumar", role: "Digital Agency Owner", content: "Grafty has completely transformed how we handle client retention. The 24/7 automation is flawless.", rating: 5 },
                     { name: "Priya Sharma", role: "E-commerce Founder", content: "Best WhatsApp marketing tool in India. ROI is easily 5x within the first month.", rating: 5 },
                     { name: "Rahul Verma", role: "Reseller Partner", content: "The reseller dashboard is so intuitive. My vendors love the green tick support!", rating: 4 }
                 ]);
@@ -64,7 +64,7 @@ export default function Testimonials() {
                             Trusted by <span className="text-gradient">Forward-Thinking</span> Businesses.
                         </h2>
                         <p className="text-slate-400 text-lg leading-relaxed">
-                            See how businesses and resellers are scaling their WhatsApp operations with WAVO's enterprise-grade engine.
+                            See how businesses and resellers are scaling their WhatsApp operations with Grafty's enterprise-grade engine.
                         </p>
                     </div>
                     <button

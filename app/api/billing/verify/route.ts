@@ -1,9 +1,11 @@
 
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
-import { getCurrentUser } from "@/lib/auth";
+import { prisma } from "../../../../lib/db";
+import { getCurrentUser } from "../../../../lib/auth";
 import crypto from "crypto";
-import { saasRazorpay, PLANS } from "@/lib/saas/razorpay";
+import { saasRazorpay, PLANS } from "../../../../lib/saas/razorpay";
+
+export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
     try {
@@ -45,15 +47,44 @@ export async function POST(req: Request) {
         }
 
         // 3. Activate Plan in DB
-        await prisma.workspace.update({
+        const updatedWorkspace = await prisma.workspace.update({
             where: { id: user.workspaceId },
             data: {
-                // @ts-ignore
-                plan: newPlan,
+                plan: newPlan as any,
                 subscription_status: "active",
                 subscription_id: razorpay_subscription_id
             }
         });
+
+        // 4. AUTOMATED MONSTER INVOICE TRIGGER
+        try {
+            const { InvoiceService } = await import("@/lib/finance/invoice-service");
+            const planData = PLANS[newPlan as keyof typeof PLANS];
+
+            await InvoiceService.createInvoice({
+                workspaceId: user.workspaceId,
+                paymentId: razorpay_payment_id,
+                paymentMethod: "Razorpay",
+                status: "PAID",
+                items: [{
+                    description: `Grafty ${newPlan} Subscription (Monthly)`,
+                    hsn_code: "998311",
+                    quantity: 1,
+                    rate: planData.price / 1.18, // Back calculate taxable value from inclusive amount
+                    taxable_value: planData.price / 1.18
+                }],
+                billingDetails: {
+                    name: updatedWorkspace.business_name || updatedWorkspace.name,
+                    address: updatedWorkspace.billing_address || "Billing Address Not Provided",
+                    state: updatedWorkspace.billing_state || "Karnataka",
+                    pincode: updatedWorkspace.billing_pincode || "000000",
+                    email: updatedWorkspace.billing_email || user.email,
+                    gstin: updatedWorkspace.billing_gstin || undefined
+                }
+            });
+        } catch (invoiceError) {
+            console.error("Automated Invoice failed but subscription was activated:", invoiceError);
+        }
 
         return NextResponse.json({ success: true, plan: newPlan });
 

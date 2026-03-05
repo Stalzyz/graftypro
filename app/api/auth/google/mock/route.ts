@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
-import { signToken } from "@/lib/auth";
+
+export const dynamic = 'force-dynamic';
+import { prisma } from "../../../../../lib/db";
+import { signToken } from "../../../../../lib/auth";
 
 export async function GET(req: Request) {
     // MOCK GOOGLE AUTH FLOW
@@ -55,9 +57,9 @@ export async function GET(req: Request) {
             role: user.role,
         });
 
-        // Redirect to dashboard if they already have an account setup, else profiling
+        const targetPath = "/dashboard";
         const protocol = req.headers.get("x-forwarded-proto") || "http";
-        const host = req.headers.get("x-forwarded-host") || req.headers.get("host") || "app.grekam.in";
+        const host = req.headers.get("host") || "grafty.pro";
         const baseUrl = `${protocol}://${host}`;
         const targetUrl = new URL(targetPath, baseUrl);
 

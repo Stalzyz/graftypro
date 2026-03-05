@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
-import { createOrder } from "@/lib/saas/razorpay";
+import { createOrder } from "../../../../../lib/saas/razorpay";
 
 export const dynamic = 'force-dynamic';
-import { getCurrentUser } from "@/lib/auth"; // Standard auth helper
-import { prisma } from "@/lib/db";
+import { getCurrentUser } from "../../../../../lib/auth"; // Standard auth helper
+import { prisma } from "../../../../../lib/db";
 
 export async function POST(req: Request) {
     try {

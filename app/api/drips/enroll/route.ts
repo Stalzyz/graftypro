@@ -1,8 +1,10 @@
 
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
-import { getCurrentUser } from "@/lib/auth";
-import { DripService } from "@/lib/services/drip-service";
+import { prisma } from "../../../../lib/db";
+import { getCurrentUser } from "../../../../lib/auth";
+import { DripService } from "../../../../lib/services/drip-service";
+
+export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
     try {

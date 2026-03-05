@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+export const dynamic = "force-dynamic";
+
+import React, { useState, useEffect, useRef, Suspense } from "react";
 import {
     Search,
     Send,
@@ -26,10 +28,60 @@ import {
     Loader2,
     MessageSquare,
     Video,
-    Mic
+    Mic,
+    ChevronRight,
+    Filter,
+    Calendar,
+    Star,
+    Zap,
+    PlusCircle,
+    UserPlus,
+    CreditCard,
+    FilePlus,
+    Bell,
+    Settings,
+    LayoutDashboard,
+    AlertCircle,
+    Camera,
+    Mail,
+    Users,
+    GitBranch,
+    ShoppingBag,
+    Globe,
+    Bug
 } from "lucide-react";
+import { format } from "date-fns";
+import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import LeadScoreBadge from "../../../components/crm/LeadScoreBadge";
+import DripEnrollModal from "../../../components/crm/DripEnrollModal";
+import FollowUpModal from "../../../components/crm/FollowUpModal";
+
+const safeFormat = (dateValue: any, formatStr: string, fallback = "--:--") => {
+    try {
+        if (!dateValue || dateValue === "null") return fallback;
+        const d = new Date(dateValue);
+        if (isNaN(d.getTime())) return fallback;
+        return format(d, formatStr);
+    } catch (e) {
+        return fallback;
+    }
+};
 
 export default function SharedInbox() {
+    return (
+        <Suspense fallback={
+            <div className="flex items-center justify-center h-screen bg-white dark:bg-black">
+                <Loader2 className="animate-spin text-green-600" size={32} />
+            </div>
+        }>
+            <SharedInboxContent />
+        </Suspense>
+    );
+}
+
+function SharedInboxContent() {
+    // -- UI State --
     const [conversations, setConversations] = useState<any[]>([]);
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [bulkSelectedIds, setBulkSelectedIds] = useState<string[]>([]);
@@ -41,7 +93,60 @@ export default function SharedInbox() {
     const [attachedFile, setAttachedFile] = useState<any>(null);
     const [suggestions, setSuggestions] = useState<string[]>([]);
     const [fetchingSuggestions, setFetchingSuggestions] = useState(false);
+    const [agents, setAgents] = useState<any[]>([]);
+    const [chatFilter, setChatFilter] = useState("all");
+    const [assigning, setAssigning] = useState(false);
+    const [showCRM, setShowCRM] = useState(false);
+    const [searchQuery, setSearchQuery] = useState("");
+    const [isMobileListOpen, setIsMobileListOpen] = useState(true);
+    const [newChatPhone, setNewChatPhone] = useState("");
+    const [startingChat, setStartingChat] = useState(false);
+    const [isNewChatModalOpen, setIsNewChatModalOpen] = useState(false);
 
+    // -- Modal States --
+    const [showDripModal, setShowDripModal] = useState(false);
+    const [showFollowUpModal, setShowFollowUpModal] = useState(false);
+    const [contactNotes, setContactNotes] = useState<any[]>([]);
+    const [contactFollowUps, setContactFollowUps] = useState<any[]>([]);
+    const [newNote, setNewNote] = useState("");
+    const [savingNote, setSavingNote] = useState(false);
+    const [isChatActionOpen, setIsChatActionOpen] = useState(false);
+
+    const handleClearConversation = async () => {
+        if (!selectedId || !confirm("Clear all messages in this conversation?")) return;
+        try {
+            const res = await fetch(`/api/conversations/${selectedId}/messages`, { method: "DELETE" });
+            if (res.ok) {
+                setMessages([]);
+                setIsChatActionOpen(false);
+            }
+        } catch (e) {
+            alert("Failed to clear conversation");
+        }
+    };
+
+    const handleDeleteConversation = async () => {
+        if (!selectedId || !confirm("Delete this conversation?")) return;
+        try {
+            const res = await fetch(`/api/conversations/${selectedId}`, { method: "DELETE" });
+            if (res.ok) {
+                setSelectedId(null);
+                setIsChatActionOpen(false);
+                fetchConversations();
+            }
+        } catch (e) {
+            alert("Failed to delete conversation");
+        }
+    };
+
+    const activeConversation = conversations.find(c => c.id === selectedId);
+
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
+    const router = useRouter();
+    const phoneParam = searchParams.get("phone");
+
+    // -- Refs --
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const searchInputRef = useRef<HTMLInputElement>(null);
@@ -52,39 +157,89 @@ export default function SharedInbox() {
 
     useEffect(() => {
         fetchConversations();
+        fetchAgents();
         const interval = setInterval(fetchConversations, 10000);
         return () => clearInterval(interval);
-    }, []);
+    }, [chatFilter, searchQuery]);
 
     useEffect(() => {
         if (selectedId) {
             fetchMessages(selectedId);
+            fetchCRMData(activeConversation?.contact_id);
             setSuggestions([]);
-            const interval = setInterval(() => fetchMessages(selectedId), 5000);
+            const interval = setInterval(() => fetchMessages(selectedId), 2000);
             return () => clearInterval(interval);
         }
     }, [selectedId]);
 
-    useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if ((e.metaKey || e.ctrlKey) && e.key === "k") {
-                e.preventDefault();
-                searchInputRef.current?.focus();
+    const fetchCRMData = async (contactId: string) => {
+        if (!contactId) return;
+        try {
+            const [notesRes, followUpsRes] = await Promise.all([
+                fetch(`/api/crm/notes?contactId=${contactId}`),
+                fetch(`/api/crm/follow-ups?contactId=${contactId}`)
+            ]);
+            const notesData = await notesRes.json();
+            const followUpsData = await followUpsRes.json();
+            if (notesData.data) setContactNotes(notesData.data);
+            if (followUpsData.data) setContactFollowUps(followUpsData.data);
+        } catch (e) {
+            console.error("CRM Data Fetch Error:", e);
+        }
+    };
+
+    const handleAddNote = async () => {
+        if (!newNote.trim() || !activeConversation?.contact_id) return;
+        setSavingNote(true);
+        try {
+            const res = await fetch("/api/crm/notes", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    contactId: activeConversation?.contact_id,
+                    content: newNote
+                })
+            });
+            if (res.ok) {
+                setNewNote("");
+                if (activeConversation?.contact_id) {
+                    fetchCRMData(activeConversation.contact_id);
+                }
             }
-        };
-
-        window.addEventListener("keydown", handleKeyDown);
-        return () => window.removeEventListener("keydown", handleKeyDown);
-    }, []);
-
-    useEffect(scrollToBottom, [messages]);
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setSavingNote(false);
+        }
+    };
 
     const fetchConversations = async () => {
         try {
-            const res = await fetch("/api/conversations");
+            const res = await fetch(`/api/conversations?filter=${chatFilter}&q=${searchQuery}`);
             const data = await res.json();
-            if (data.data) setConversations(data.data);
+            if (data.data) {
+                setConversations(data.data);
+                // Auto-select by phone parameter if present
+                if (phoneParam && !selectedId) {
+                    const found = data.data.find((c: any) => c.contact?.phone && (c.contact.phone.includes(phoneParam) || phoneParam.includes(c.contact.phone)));
+                    if (found) {
+                        setSelectedId(found.id);
+                        setIsMobileListOpen(false);
+                    }
+                }
+            }
+        } catch (e) {
+            console.error("Fetch Conversations Error:", e);
+        } finally {
             setLoading(false);
+        }
+    };
+
+    const fetchAgents = async () => {
+        try {
+            const res = await fetch("/api/settings/users");
+            const data = await res.json();
+            if (data.data) setAgents(data.data);
         } catch (e) {
             console.error(e);
         }
@@ -114,6 +269,7 @@ export default function SharedInbox() {
         }
     };
 
+    // -- Handlers --
     const handleSend = async (e?: any) => {
         if (e) e.preventDefault();
         if ((!replyText.trim() && !attachedFile) || !selectedId) return;
@@ -138,16 +294,20 @@ export default function SharedInbox() {
                 setSuggestions([]);
                 fetchMessages(selectedId);
                 fetchConversations();
+            } else {
+                const errData = await res.json();
+                alert(errData.error || "Failed to send message");
             }
         } catch (e) {
             console.error(e);
+            alert("Network error while sending message");
         } finally {
             setSending(false);
         }
     };
 
     const onKeyDown = (e: React.KeyboardEvent) => {
-        if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+        if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
             handleSend();
         }
@@ -160,32 +320,55 @@ export default function SharedInbox() {
         setUploading(true);
         const formData = new FormData();
         formData.append("file", file);
+        formData.append("module", "general");
 
         try {
-            const res = await fetch("/api/media/upload", {
+            const res = await fetch("/api/uploads", {
                 method: "POST",
                 body: formData
             });
             const data = await res.json();
-            if (data.url) {
-                setAttachedFile(data);
+
+            if (data.success) {
+                setAttachedFile({
+                    url: data.url,
+                    filename: data.originalName,
+                    type: data.mime,
+                    size: data.size
+                });
+            } else {
+                alert(`Upload failed: ${data.error || 'Unknown error'}`);
             }
         } catch (err) {
-            alert("Upload failed");
+            console.error(err);
+            alert("Upload failed due to network error");
         } finally {
             setUploading(false);
+            if (fileInputRef.current) fileInputRef.current.value = "";
         }
     };
 
-    const toggleBulkSelect = (id: string) => {
-        setBulkSelectedIds(prev =>
-            prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
-        );
+    const handleAssign = async (agentId: string) => {
+        if (!selectedId) return;
+        setAssigning(true);
+        try {
+            const res = await fetch(`/api/conversations/${selectedId}/assign`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ agentId })
+            });
+            if (res.ok) {
+                fetchConversations();
+            }
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setAssigning(false);
+        }
     };
 
     const handleBulkAction = async (action: string) => {
         if (bulkSelectedIds.length === 0) return;
-
         const confirmMsg = action === 'delete' ? 'Delete selected conversations?' : `Perform ${action} on selected items?`;
         if (!confirm(confirmMsg)) return;
 
@@ -205,260 +388,869 @@ export default function SharedInbox() {
         }
     };
 
-    const activeConversation = conversations.find(c => c.id === selectedId);
+    const toggleBulkSelect = (id: string) => {
+        setBulkSelectedIds(prev =>
+            prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+        );
+    };
 
+    const handleNewChat = () => {
+        setNewChatPhone("");
+        setIsNewChatModalOpen(true);
+    };
+
+    const handleInitializeChat = async () => {
+        if (!newChatPhone.trim()) return;
+        setStartingChat(true);
+        try {
+            const res = await fetch("/api/conversations", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ phone: newChatPhone })
+            });
+            const data = await res.json();
+            if (data.data) {
+                setIsNewChatModalOpen(false);
+                setNewChatPhone("");
+                await fetchConversations();
+                setSelectedId(data.data.id);
+                setIsMobileListOpen(false);
+            } else {
+                alert(data.error || "Failed to start conversation");
+            }
+        } catch (e) {
+            console.error(e);
+            alert("Error starting conversation");
+        } finally {
+            setStartingChat(false);
+        }
+    };
+
+    const handleMessageAction = async (messageId: string, mode: 'me' | 'all') => {
+        try {
+            const res = await fetch('/api/chats/messages/delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ messageId, deleteForAll: mode === 'all' }),
+            });
+            if (res.ok) {
+                setMessages(prev => prev.map(m => m.id === messageId ? { ...m, _deleted: true } : m));
+            } else {
+                const data = await res.json();
+                if (typeof window !== 'undefined') alert(data.error || "Delete failed");
+            }
+        } catch (err) {
+            console.error("Delete failed", err);
+        }
+    };
     return (
-        <div className="flex h-[calc(100vh-140px)] bg-white border border-gray-100 rounded-[2rem] shadow-xl shadow-green-100/20 overflow-hidden relative animate-fade-in">
+        <div className="flex h-screen bg-white overflow-hidden relative font-inter border-l border-slate-100 animate-in fade-in duration-700">
 
-            {/* Bulk Action Bar overlay */}
-            {bulkSelectedIds.length > 0 && (
-                <div className="absolute top-0 left-0 right-0 h-16 bg-[#042f94] z-50 flex items-center justify-between px-8 text-white animate-in slide-in-from-top">
-                    <div className="flex items-center gap-4">
-                        <button onClick={() => setBulkSelectedIds([])} className="hover:bg-black/10 p-2 rounded-full">
-                            <X size={20} />
-                        </button>
-                        <span className="font-bold">{bulkSelectedIds.length} Selected</span>
-                    </div>
-                    <div className="flex gap-4 text-xs font-bold">
-                        <button onClick={() => handleBulkAction('archive')} className="flex items-center gap-2 hover:bg-black/10 px-4 py-2 rounded-lg transition-colors">
-                            <Archive size={16} /> Archive
-                        </button>
-                        <button onClick={() => handleBulkAction('delete')} className="flex items-center gap-2 hover:bg-black/10 px-4 py-2 rounded-lg transition-colors text-red-100">
-                            <Trash2 size={16} /> Delete
-                        </button>
-                    </div>
-                </div>
-            )}
 
-            {/* Sidebar: Chat List */}
-            <div className="w-[380px] border-r border-gray-100 flex flex-col bg-[#fdfdfd]">
-                <div className="p-6">
-                    <div className="flex justify-between items-center mb-6">
-                        <h2 className="text-2xl font-bold text-gray-800 tracking-tight">Chats</h2>
-                        <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-xl">
-                            <MessageSquare size={18} className="text-[#27954D]" />
+            {/* 2️⃣ MIDDLE PANEL: Intelligent Chat List */}
+            <div className={`w-full md:w-[320px] lg:w-[360px] border-r border-slate-100 bg-white flex flex-col z-20 shrink-0 ${!isMobileListOpen && 'hidden md:flex'}`}>
+                {/* Search & Header */}
+                <div className="p-6 pb-4 space-y-4 bg-white">
+                    <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-2">
+                            <h2 className="text-3xl font-[900] text-indigo-950 tracking-tighter">Live Chat</h2>
+                        </div>
+                        <div className="flex gap-2">
+                            <button className="p-2.5 text-slate-400 hover:bg-slate-50 rounded-xl transition-all border border-slate-100 hover:border-slate-200"><Filter size={18} /></button>
+                            <button onClick={handleNewChat} className="p-2.5 text-white bg-slate-900 hover:bg-black rounded-xl transition-all shadow-lg shadow-slate-200"><PlusCircle size={18} /></button>
                         </div>
                     </div>
-                    <div className="relative">
-                        <Search className="absolute left-3 top-2.5 text-gray-400" size={16} />
+
+                    {/* Search Field */}
+                    <div className="relative group">
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-emerald-500 transition-colors" size={18} />
                         <input
-                            ref={searchInputRef}
                             type="text"
-                            placeholder="Search or start new chat"
-                            className="w-full bg-gray-100/50 border-none rounded-2xl pl-10 pr-4 py-2.5 text-sm focus:ring-2 focus:ring-[#27954D]/30 outline-none transition-all placeholder:text-gray-400"
+                            placeholder="Search leads, tags or messages..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full bg-slate-100/80 border-2 border-transparent focus:border-emerald-500/20 focus:bg-white rounded-[1.25rem] pl-12 pr-4 py-3.5 text-[13px] font-bold text-slate-700 outline-none transition-all placeholder:text-slate-400 shadow-inner"
                         />
                     </div>
+
+                    {/* Horizontal Context Filters */}
+                    <div className="flex gap-1 overflow-x-auto no-scrollbar pb-1">
+                        {[
+                            { id: 'all', label: 'All', count: 0 },
+                            { id: 'me', label: 'Mine', count: 0 },
+                            { id: 'unassigned', label: 'New', count: 0 },
+                            { id: 'unread', label: 'Unread', count: 0 },
+                            { id: 'follow_up', label: 'Follow Up', count: 0 }
+                        ].map(f => (
+                            <button
+                                key={f.id}
+                                onClick={() => setChatFilter(f.id)}
+                                className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap border ${chatFilter === f.id ? 'bg-slate-900 text-white border-slate-900 shadow-lg shadow-slate-200' : 'bg-white text-slate-400 border-slate-100 hover:border-slate-300'}`}
+                            >
+                                {f.label}
+                            </button>
+                        ))}
+                    </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto no-scrollbar pb-6 px-3 space-y-1">
-                    {conversations.map((chat) => (
-                        <div
-                            key={chat.id}
-                            className={`p-4 rounded-[1.5rem] cursor-pointer transition-all flex gap-3 items-center group relative ${selectedId === chat.id ? 'bg-[#27954D]/10 shadow-sm' : 'hover:bg-gray-50'}`}
-                            onClick={(e) => {
-                                if ((e.target as any).closest('.bulk-check')) return;
-                                setSelectedId(chat.id);
-                            }}
-                        >
-                            <div className={`bulk-check absolute left-1 opacity-0 group-hover:opacity-100 transition-opacity ${bulkSelectedIds.includes(chat.id) ? 'opacity-100' : ''}`} onClick={(e) => { e.stopPropagation(); toggleBulkSelect(chat.id); }}>
-                                {bulkSelectedIds.includes(chat.id) ? <CheckSquare className="text-[#27954D]" size={18} /> : <Square className="text-gray-200" size={18} />}
-                            </div>
-
-                            <div className={`w-12 h-12 rounded-full flex items-center justify-center text-gray-500 font-bold border border-gray-100 shrink-0 group-hover:translate-x-6 transition-all bg-gradient-to-br from-gray-50 to-white shadow-sm overflow-hidden ${selectedId === chat.id ? 'translate-x-6 ring-2 ring-[#27954D]' : ''}`}>
-                                {chat.contact.name?.[0] || <User size={20} />}
-                            </div>
-
-                            <div className={`flex-1 min-w-0 transition-all ${selectedId === chat.id ? 'ml-6' : 'group-hover:ml-6'}`}>
-                                <div className="flex justify-between items-baseline mb-0.5">
-                                    <h4 className="text-sm font-bold text-gray-800 truncate">{chat.contact.name || chat.contact.phone}</h4>
-                                    <span className="text-[10px] text-gray-400 font-medium">
-                                        {new Date(chat?.updated_at || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                    </span>
-                                </div>
-                                <div className="flex items-center gap-1">
-                                    <p className="text-xs text-gray-500 truncate">
-                                        {(chat.messages?.[0]?.content as any)?.body || "No messages yet"}
-                                    </p>
-                                </div>
-                            </div>
-
-                            {chat.unreadCount > 0 && (
-                                <div className="w-5 h-5 bg-[#27954D] text-white text-[10px] font-bold rounded-full flex items-center justify-center shadow-lg shadow-green-200">
-                                    {chat.unreadCount}
-                                </div>
-                            )}
+                {/* Bulk Action Strip */}
+                {bulkSelectedIds.length > 0 && (
+                    <div className="mx-4 mb-2 p-2 bg-green-50 rounded-xl flex items-center justify-between animate-in slide-in-from-top-2">
+                        <span className="text-xs font-bold text-green-700 ml-2">{bulkSelectedIds.length} selected</span>
+                        <div className="flex gap-1">
+                            <button onClick={() => handleBulkAction('archive')} className="p-1.5 text-green-600 hover:bg-white rounded-lg"><Archive size={14} /></button>
+                            <button onClick={() => handleBulkAction('delete')} className="p-1.5 text-red-600 hover:bg-white rounded-lg"><Trash2 size={14} /></button>
+                            <button onClick={() => setBulkSelectedIds([])} className="p-1.5 text-gray-400 hover:bg-white rounded-lg"><X size={14} /></button>
                         </div>
-                    ))}
+                    </div>
+                )}
+
+                <div className="flex-1 overflow-y-auto no-scrollbar py-2 px-4 space-y-1.5 bg-slate-50/30">
+                    {conversations.length === 0 && !loading ? (
+                        <div className="flex flex-col items-center justify-center py-20 text-center px-6">
+                            <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center text-gray-300 mb-4">
+                                <MessageSquare size={32} />
+                            </div>
+                            <h3 className="text-sm font-bold text-gray-900">No messages found</h3>
+                            <p className="text-xs text-gray-400 mt-1">Try changing your filters or searching for someone else.</p>
+                        </div>
+                    ) : (
+                        conversations.map((chat) => (
+                            <div
+                                key={chat.id}
+                                onClick={() => {
+                                    setSelectedId(chat.id);
+                                    setIsMobileListOpen(false);
+                                }}
+                                className={`p-4 rounded-[1.75rem] cursor-pointer transition-all flex gap-4 items-center group relative border ${selectedId === chat.id ? 'bg-white border-green-100 shadow-lg shadow-green-100/50 transform scale-[1.02]' : 'bg-transparent border-transparent hover:bg-gray-50/80 hover:scale-[1.01]'}`}
+                            >
+                                {/* Multiselect Checkbox */}
+                                <div
+                                    onClick={(e) => { e.stopPropagation(); toggleBulkSelect(chat.id); }}
+                                    className={`shrink-0 transition-all ${bulkSelectedIds.includes(chat.id) || bulkSelectedIds.length > 0 ? 'w-5 opacity-100' : 'w-0 opacity-0 overflow-hidden'}`}
+                                >
+                                    {bulkSelectedIds.includes(chat.id) ? <CheckSquare className="text-green-600" size={18} /> : <Square className="text-gray-300" size={18} />}
+                                </div>
+
+                                {/* Avatar */}
+                                <div className="relative shrink-0">
+                                    <div className={`w-14 h-14 rounded-[1.25rem] overflow-hidden border-2 flex items-center justify-center font-black text-xl uppercase tracking-tighter shadow-sm transition-all ${selectedId === chat.id ? 'border-green-200 bg-green-50 text-green-600' : 'border-white bg-white text-gray-400'}`}>
+                                        {chat.contact?.avatar_url ? (
+                                            <img src={chat.contact.avatar_url} alt="" className="w-full h-full object-cover" />
+                                        ) : (
+                                            chat.contact?.name?.[0] || <User size={26} />
+                                        )}
+                                    </div>
+                                    <div className={`absolute -right-1 -bottom-1 w-5 h-5 rounded-full border-[3px] border-white shadow-sm ${chat.status === 'OPEN' ? 'bg-green-500' : 'bg-gray-300'}`} />
+                                </div>
+
+                                {/* Info */}
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex justify-between items-center mb-1">
+                                        <h4 className={`text-[14px] font-black truncate leading-tight ${selectedId === chat.id ? 'text-gray-900' : 'text-gray-700'}`}>
+                                            {chat.contact?.name || chat.contact?.phone}
+                                        </h4>
+                                        <span className="text-[10px] text-gray-400 font-bold tabular-nums ml-2">
+                                            {safeFormat(chat?.updated_at || Date.now(), "HH:mm")}
+                                        </span>
+                                    </div>
+
+                                    <div className="flex items-center gap-2">
+                                        <p className={`text-[12px] truncate flex-1 leading-relaxed ${chat.unreadCount > 0 ? 'text-gray-900 font-black' : 'text-gray-400 font-medium'}`}>
+                                            {(chat.messages?.[0]?.content as any)?.body || "No messages yet"}
+                                        </p>
+                                        {chat.unreadCount > 0 && (
+                                            <div className="px-2 h-5 bg-green-600 text-white text-[10px] font-black rounded-full flex items-center justify-center animate-pulse shadow-sm">
+                                                {chat.unreadCount}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* CRM Indicators in Sidebar */}
+                                    <div className="flex gap-1.5 mt-2 items-center">
+                                        {chat.contact?.tags?.length > 0 && (
+                                            <div className="flex gap-1">
+                                                {chat.contact?.tags?.slice(0, 1).map((tag: any, idx: number) => (
+                                                    <span key={idx} className="px-2 py-0.5 rounded-lg bg-green-50 text-green-600 text-[9px] font-black uppercase tracking-widest border border-green-100">
+                                                        {tag}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        )}
+                                        {chat.assigned_to && (
+                                            <div className="w-4 h-4 rounded-lg bg-slate-900 flex items-center justify-center text-white" title="Assigned">
+                                                <User size={8} fill="currentColor" />
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        ))
+                    )}
+
+                    {loading && (
+                        <div className="flex flex-col items-center justify-center py-20 gap-3 opacity-50">
+                            <Loader2 className="animate-spin text-green-600" />
+                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Live synchronization...</span>
+                        </div>
+                    )}
                 </div>
             </div>
 
-            {/* Main: Chat Window */}
-            <div className="flex-1 flex flex-col bg-[#f0f2f5] bg-opacity-30 relative">
-                {/* Wallpaper Overlay (Subtle Pattern) */}
-                <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')] bg-repeat" />
+            {/* 3️⃣ RIGHT PANEL: Chat Window & CRM */}
+            <div className={`flex-1 flex flex-col bg-white relative overflow-hidden ${isMobileListOpen && 'hidden md:flex'}`}>
+                {/* Wallpaper Pattern */}
+                <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')] bg-repeat z-0" />
 
                 {selectedId ? (
-                    <>
-                        <div className="h-16 bg-white/80 backdrop-blur-md border-b border-gray-100 px-6 flex items-center justify-between z-10">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-gradient-to-br from-[#27954D] to-[#042f94] rounded-full flex items-center justify-center text-white font-bold shadow-lg shadow-green-100">
-                                    {activeConversation?.contact.name?.[0] || "U"}
+                    <div className="flex-1 flex overflow-hidden z-10 relative">
+                        {/* Main Chat Thread */}
+                        <div className="flex-1 flex flex-col min-w-0">
+                            {/* Chat Header */}
+                            <div className="h-[72px] bg-white border-b border-gray-100 px-6 flex items-center justify-between shrink-0 shadow-sm">
+                                <div className="flex items-center gap-4">
+                                    <button onClick={() => setIsMobileListOpen(true)} className="md:hidden p-2 -ml-2 text-gray-400"><ChevronRight className="rotate-180" /></button>
+                                    <div className="w-12 h-12 bg-gradient-to-br from-green-600 to-green-800 rounded-2xl flex items-center justify-center text-white font-black text-xl shadow-lg shadow-green-100 overflow-hidden relative group">
+                                        {activeConversation?.contact?.avatar_url ? (
+                                            <img src={activeConversation.contact.avatar_url} alt="" className="w-full h-full object-cover" />
+                                        ) : (
+                                            activeConversation?.contact?.name?.[0] || <User />
+                                        )}
+                                        <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer">
+                                            <ImageIcon size={16} />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <h3 className="text-[15px] font-black text-gray-900 tracking-tight leading-none mb-1.5">{activeConversation?.contact?.name || activeConversation?.contact?.phone || "Contact"}</h3>
+                                        <div className="flex items-center gap-1.5">
+                                            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.5)]" />
+                                            <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest">{activeConversation?.contact?.phone || "No Phone"}</p>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div>
-                                    <h3 className="text-sm font-bold text-gray-800">{activeConversation?.contact.name || activeConversation?.contact.phone}</h3>
-                                    <div className="flex items-center gap-1.5">
-                                        <div className="w-1.5 h-1.5 bg-[#27954D] rounded-full animate-pulse" />
-                                        <p className="text-[10px] text-[#27954D] font-bold uppercase tracking-wider">Live</p>
+
+                                <div className="flex items-center gap-4">
+                                    {/* Assignment Quick Dropdown */}
+                                    <div className="hidden lg:flex items-center gap-2 bg-gray-50 border border-gray-100 rounded-xl px-3 py-1.5 hover:bg-gray-100 transition-all cursor-pointer">
+                                        <UserPlus size={14} className="text-gray-400" />
+                                        <select
+                                            value={activeConversation?.assigned_to || ""}
+                                            onChange={(e) => handleAssign(e.target.value)}
+                                            className="bg-transparent border-none text-[10px] font-black uppercase tracking-widest text-gray-600 outline-none focus:ring-0 cursor-pointer p-0"
+                                        >
+                                            <option value="">Assign</option>
+                                            {agents.map(a => <option key={a.id} value={a.id}>{a.first_name || a.email}</option>)}
+                                        </select>
+                                    </div>
+
+                                    <div className="h-8 w-[1px] bg-gray-100 hidden sm:block" />
+
+                                    <div className="flex items-center gap-2 text-gray-400">
+                                        <button className="p-2.5 hover:bg-gray-50 hover:text-green-600 rounded-xl transition-all" title="Video Chamada"><Video size={18} /></button>
+                                        <button className="p-2.5 hover:bg-gray-50 hover:text-green-600 rounded-xl transition-all" title="Ligar"><Phone size={18} /></button>
+                                        <button
+                                            onClick={() => setShowCRM(!showCRM)}
+                                            className={`p-2.5 rounded-xl transition-all ${showCRM ? 'bg-green-600 text-white shadow-lg shadow-green-100' : 'hover:bg-gray-50 hover:text-indigo-600'}`}
+                                            title="Perfil CRM"
+                                        >
+                                            <Info size={18} />
+                                        </button>
+
+                                        {/* Individual Chat Actions */}
+                                        <div className="relative">
+                                            <button
+                                                onClick={() => setIsChatActionOpen(!isChatActionOpen)}
+                                                className="p-2.5 hover:bg-gray-50 text-gray-400 hover:text-gray-900 rounded-xl transition-all"
+                                            >
+                                                <MoreVertical size={18} />
+                                            </button>
+
+                                            {isChatActionOpen && (
+                                                <>
+                                                    <div className="fixed inset-0 z-[100]" onClick={() => setIsChatActionOpen(false)} />
+                                                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-2xl shadow-2xl border border-slate-100 py-2 z-[101] animate-in fade-in zoom-in-95 duration-150">
+                                                        <button
+                                                            onClick={handleDeleteConversation}
+                                                            className="w-full flex items-center gap-3 px-4 py-2 text-xs font-bold text-red-600 hover:bg-red-50 transition-colors"
+                                                        >
+                                                            <Trash2 size={14} /> Delete Chat
+                                                        </button>
+                                                        <button
+                                                            onClick={handleClearConversation}
+                                                            className="w-full flex items-center gap-3 px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors"
+                                                        >
+                                                            <Square size={14} /> Clear Conversation
+                                                        </button>
+                                                        <button
+                                                            onClick={() => {
+                                                                handleBulkAction('archive');
+                                                                setIsChatActionOpen(false);
+                                                            }}
+                                                            className="w-full flex items-center gap-3 px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors"
+                                                        >
+                                                            <Archive size={14} /> Archive Lead
+                                                        </button>
+                                                    </div>
+                                                </>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-4 text-gray-400">
-                                <Video size={20} className="hover:text-gray-600 cursor-pointer" />
-                                <Phone size={18} className="hover:text-gray-600 cursor-pointer" />
-                                <MoreVertical size={20} className="hover:text-gray-600 cursor-pointer" />
+
+                            {/* Messages Container */}
+                            <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-slate-50/50 backdrop-blur-sm no-scrollbar relative">
+                                {/* Deployment Verification Banner */}
+                                <div className="sticky top-0 z-50 flex justify-center py-1">
+                                    <div className="bg-emerald-500 text-white text-[8px] font-black uppercase tracking-[0.2em] px-3 py-1 rounded-full shadow-lg animate-bounce">
+                                        WABOT CORE V4.2 LIVE
+                                    </div>
+                                </div>
+                                <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-[0.02] pointer-events-none" />
+                                {messages.filter(m => !m._deleted).map((msg, i) => {
+                                    const isOutbound = msg.direction === "OUTBOUND";
+                                    const isTemplate = msg.type === "TEMPLATE";
+
+                                    return (
+                                        <div key={msg.id} id={`msg-${msg.id}`} className={`flex flex-col mb-4 ${isOutbound ? 'items-end' : 'items-start animate-in slide-in-from-left-4'}`}>
+                                            {(() => {
+                                                const type = msg.type?.toUpperCase();
+                                                const rawContent = msg.content;
+                                                let content: any = {};
+                                                try {
+                                                    content = typeof rawContent === 'string' ? JSON.parse(rawContent) : (rawContent || {});
+                                                } catch (e) {
+                                                    content = { body: String(rawContent) };
+                                                }
+
+                                                // Nuclear Media Discovery (Regex Fallback)
+                                                const findMediaLink = (obj: any, depth = 0): string => {
+                                                    if (!obj || depth > 15) return "";
+                                                    const str = JSON.stringify(obj);
+
+                                                    // 1. Direct Keys
+                                                    const keys = ['link', 'url', 'media_url', 'image_url', 'thumbnail_url', 'thumbnail', 'image', 'video', 'document', 'header', 'body', 'footer', 'raw', 'interactive'];
+                                                    if (typeof obj === 'object') {
+                                                        for (const k of keys) {
+                                                            if (obj[k] && typeof obj[k] === 'string') {
+                                                                let url = obj[k].trim();
+                                                                if (url.startsWith('http') || url.startsWith('/') || url.startsWith('data:image')) return url;
+                                                            }
+                                                            if (obj[k] && typeof obj[k] === 'object') {
+                                                                const res = findMediaLink(obj[k], depth + 1);
+                                                                if (res) return res;
+                                                            }
+                                                        }
+                                                    }
+
+                                                    // 2. Nuclear Regex Fallback
+                                                    const urlMatch = str.match(/https?:\/\/[^\s"']+(\.jpg|\.jpeg|\.png|\.gif|\.webp|\.mp4|\.pdf)/i);
+                                                    if (urlMatch) return urlMatch[0];
+
+                                                    // 3. String Search
+                                                    if (typeof obj === 'string') {
+                                                        let url = obj.trim();
+                                                        if (url.includes('/uploads/')) return '/uploads/' + url.split('/uploads/')[1];
+                                                        if (url.startsWith('http') || url.startsWith('/') || url.startsWith('data:image')) return url;
+                                                    }
+
+                                                    return "";
+                                                };
+
+                                                const link = findMediaLink(content);
+                                                if (process.env.NODE_ENV === 'development') {
+                                                    console.log(`[MSG ${msg.id}] type=${type} link=${link}`, content);
+                                                }
+
+                                                const isImage = (url: string) => /\.(jpg|jpeg|png|gif|webp|heic|avif|bmp|tiff)(\?.*)?$/i.test(url) || url.includes('fbcdn.net') || url.includes('pps.whatsapp.net') || url.includes('cloudinary') || url.includes('img') || url.includes('uploads') || content.image;
+                                                const isVideo = (url: string) => /\.(mp4|webm|mov|3gp)(\?.*)?$/i.test(url) || content.video;
+                                                const isDoc = (url: string) => /\.(pdf|doc|docx|xls|xlsx|txt|ppt|pptx)(\?.*)?$/i.test(url) || content.document;
+                                                const isAudio = (url: string) => /\.(mp3|ogg|wav|m4a|weba|opus|aac)(\?.*)?$/i.test(url) || content.audio;
+
+                                                const isCarousel = content.interactiveType === 'carousel' || content.type === 'carousel' || content.action?.cards || content.raw?.interactive?.action?.cards;
+                                                const isProduct = type === 'PRODUCT' || type === 'INTERACTIVE' && (content.interactiveType?.includes('product') || content.raw?.interactive?.type?.includes('product')) || content.catalog_id;
+
+                                                let contentType = isCarousel ? 'CAROUSEL' : isProduct ? 'PRODUCT' : isImage(link) ? 'IMAGE' : isVideo(link) ? 'VIDEO' : isDoc(link) ? 'DOCUMENT' : isAudio(link) ? 'AUDIO' : (content.contentType?.toUpperCase() || '');
+                                                if (!contentType && link) contentType = 'IMAGE';
+
+                                                return (
+                                                    <div className={`max-w-[75%] group relative flex flex-col ${isOutbound ? 'items-end' : 'items-start'}`}>
+                                                        {/* Nuclear Action Toolbar */}
+                                                        <div className={`flex items-center gap-1.5 mb-1.5 transition-all opacity-100 ${isOutbound ? 'justify-end' : 'justify-start'} z-50`}>
+                                                            <button
+                                                                onClick={() => { console.log(`MSG CONTENT [${msg.id}]:`, content); alert(JSON.stringify(content, null, 2)); }}
+                                                                className="p-1.5 bg-white border border-slate-200 rounded-lg text-slate-400 hover:text-indigo-600 hover:border-indigo-200 shadow-md transition-all cursor-pointer"
+                                                                title="Inspect Data"
+                                                            >
+                                                                <Bug size={12} />
+                                                            </button>
+                                                            <button
+                                                                onClick={() => { if (confirm("Permanently delete for you?")) handleMessageAction(msg.id, 'me'); }}
+                                                                className="p-1.5 bg-white border border-slate-200 rounded-lg text-slate-400 hover:text-red-500 hover:border-red-200 shadow-md transition-all cursor-pointer"
+                                                                title="Delete Me"
+                                                            >
+                                                                <Trash2 size={12} />
+                                                            </button>
+                                                            {isOutbound && (
+                                                                <button
+                                                                    onClick={() => { if (confirm("Recall from everyone's phone?")) handleMessageAction(msg.id, 'all'); }}
+                                                                    className="p-1.5 bg-white border border-slate-200 rounded-lg text-slate-400 hover:text-red-600 hover:border-red-300 shadow-md transition-all cursor-pointer"
+                                                                    title="Delete for Everyone"
+                                                                >
+                                                                    <Globe size={12} />
+                                                                </button>
+                                                            )}
+                                                        </div>
+
+                                                        <div className={`px-4 py-3 rounded-2xl shadow-sm relative overflow-hidden ${isOutbound
+                                                            ? 'bg-gradient-to-br from-emerald-600 to-emerald-700 text-white rounded-tr-none'
+                                                            : 'bg-white border border-slate-200 text-slate-800 rounded-tl-none'
+                                                            }`}>
+
+                                                            {/* Media Rendering */}
+                                                            {contentType === 'IMAGE' && link && (
+                                                                <div className="mb-2 -mx-4 -mt-3 overflow-hidden bg-slate-100 relative group/media">
+                                                                    <img src={link} className="w-full h-auto max-h-80 object-cover cursor-zoom-in" alt="Media" onError={(e) => { (e.target as HTMLImageElement).src = `https://placehold.co/400x300/f8fafc/64748b?text=Media+Not+Found` }} />
+                                                                    <div className="absolute top-1 left-1 bg-black/50 text-white text-[7px] font-bold px-1 rounded uppercase tracking-tighter shadow-sm">{contentType}</div>
+                                                                </div>
+                                                            )}
+
+                                                            {contentType === 'CAROUSEL' && (
+                                                                <div className="mb-2 -mx-4 -mt-3 flex overflow-x-auto no-scrollbar gap-2 p-2 bg-slate-50 border-b">
+                                                                    {(content.action?.cards || content.raw?.interactive?.action?.cards || []).map((card: any, idx: number) => {
+                                                                        const cardLink = findMediaLink(card);
+                                                                        return (
+                                                                            <div key={idx} className="min-w-[150px] bg-white rounded-lg border shadow-sm overflow-hidden text-slate-800">
+                                                                                {cardLink && <img src={cardLink} className="h-20 w-full object-cover" />}
+                                                                                <div className="p-2">
+                                                                                    <div className="text-[10px] font-bold truncate">{card.title || card.header?.text}</div>
+                                                                                    <div className="text-[8px] text-slate-400 line-clamp-1">{card.description || card.body?.text}</div>
+                                                                                </div>
+                                                                            </div>
+                                                                        );
+                                                                    })}
+                                                                </div>
+                                                            )}
+
+                                                            {contentType === 'PRODUCT' && (
+                                                                <div className="mb-2 -mx-4 -mt-3 bg-slate-50 border-b overflow-hidden">
+                                                                    {link ? (
+                                                                        <div className="relative aspect-square">
+                                                                            <img src={link} className="w-full h-full object-cover" alt="Product" />
+                                                                            <div className="absolute top-2 right-2 p-1.5 bg-white/90 backdrop-blur rounded-full shadow-sm">
+                                                                                <ShoppingBag size={14} className="text-purple-600" />
+                                                                            </div>
+                                                                        </div>
+                                                                    ) : (
+                                                                        <div className="p-8 flex flex-col items-center justify-center gap-2 text-slate-400">
+                                                                            <ShoppingBag size={24} />
+                                                                            <div className="text-[9px] font-black uppercase tracking-widest">Catalog Item</div>
+                                                                        </div>
+                                                                    )}
+                                                                    <div className="p-3">
+                                                                        {content.product_retailer_id && <div className="text-[9px] font-bold text-slate-400 mb-1">ID: {content.product_retailer_id}</div>}
+                                                                        <div className="text-[12px] font-black text-slate-800">{content.body || content.text || "View Product"}</div>
+                                                                    </div>
+                                                                </div>
+                                                            )}
+
+                                                            {type === 'ORDER' && (
+                                                                <div className="p-3 bg-orange-50 rounded-xl mb-2 border border-orange-100 min-w-[200px]">
+                                                                    <div className="flex items-center gap-2 mb-2 pb-2 border-b border-orange-200/50">
+                                                                        <ShoppingBag className="text-orange-600" size={16} />
+                                                                        <div className="text-[11px] font-black uppercase text-orange-900">Order Received</div>
+                                                                    </div>
+                                                                    <div className="space-y-1">
+                                                                        {(content.product_items || []).map((item: any, idx: number) => (
+                                                                            <div key={idx} className="flex justify-between text-[11px] font-bold text-slate-800">
+                                                                                <span>{item.item_retailer_id} (x{item.quantity})</span>
+                                                                                <span className="text-orange-600">₹{item.item_price || '0'}</span>
+                                                                            </div>
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+                                                            )}
+
+                                                            {/* Text Body */}
+                                                            <div className="text-[14px] leading-relaxed whitespace-pre-wrap break-words font-medium">
+                                                                {content.body || content.text || content.caption ||
+                                                                    content.raw?.interactive?.body?.text ||
+                                                                    content.raw?.text?.body ||
+                                                                    (type === 'INTERACTIVE' ? <span className="text-[10px] italic opacity-50">Interactive Flow Message</span> : "")}
+                                                            </div>
+
+                                                            {/* Interactive Buttons */}
+                                                            {(content.buttons || content.raw?.interactive?.action?.buttons) && (
+                                                                <div className="mt-3 space-y-1.5">
+                                                                    {(content.buttons || content.raw?.interactive?.action?.buttons || []).map((b: any, bi: number) => (
+                                                                        <div key={bi} className={`py-1.5 px-3 rounded-lg border text-[10px] font-black uppercase text-center ${isOutbound ? 'bg-white/10 border-white/20' : 'bg-slate-50 border-slate-200'}`}>
+                                                                            {b.reply?.title || b.title || b}
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+
+                                                            {/* Status line */}
+                                                            <div className="mt-1 flex items-center justify-end gap-1 opacity-60">
+                                                                <span className="text-[9px] font-bold">{safeFormat(msg.created_at, "HH:mm")}</span>
+                                                                {isOutbound && (msg.status === 'READ' ? <CheckCheck size={10} className="text-blue-200" /> : <Check size={10} />)}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })()}
+                                        </div>
+                                    );
+                                })}
+                                <div ref={messagesEndRef} />
+                            </div>
+
+                            {/* Advanced Composer Box */}
+                            <div className="p-6 bg-white border-t border-gray-100 shrink-0">
+
+                                {/* Suggestion Bar */}
+                                {suggestions.length > 0 && (
+                                    <div className="mb-4 flex gap-2 overflow-x-auto no-scrollbar py-1">
+                                        {suggestions.map((s, i) => (
+                                            <button
+                                                key={i}
+                                                onClick={() => setReplyText(s)}
+                                                className="shrink-0 px-4 py-2 bg-green-50/50 hover:bg-green-100 text-green-700 rounded-2xl text-[12px] font-black uppercase tracking-tight border border-green-100 transition-all flex items-center gap-2 group whitespace-nowrap"
+                                            >
+                                                <Sparkles size={12} className="text-green-500 group-hover:animate-spin" /> {s}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+
+                                {/* Attachment Preview */}
+                                {attachedFile && (
+                                    <div className="mb-4 p-4 bg-gray-50 rounded-3xl flex items-center justify-between border-2 border-dashed border-gray-200 animate-in slide-in-from-bottom-2 group">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-14 h-14 bg-white rounded-2xl border border-emerald-100 flex items-center justify-center shadow-md group-hover:scale-105 transition-all">
+                                                {attachedFile.type.includes('image') ? <ImageIcon size={24} className="text-emerald-500" /> : <FileText size={24} className="text-blue-500" />}
+                                            </div>
+                                            <div>
+                                                <div className="text-[13px] font-black text-gray-800 truncate max-w-[200px]">{attachedFile.filename}</div>
+                                                <div className="flex items-center gap-2">
+                                                    <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Waiting to send</div>
+                                                    <div className="w-1 h-1 bg-gray-300 rounded-full" />
+                                                    <div className="text-[10px] text-green-600 font-bold uppercase tracking-widest">Ready</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <button onClick={() => setAttachedFile(null)} className="p-3 bg-white text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-2xl transition-all shadow-sm">
+                                            <X size={20} />
+                                        </button>
+                                    </div>
+                                )}
+
+                                <div className="flex items-end gap-3 w-full">
+                                    <div className="flex items-center gap-1 pb-1">
+                                        <button
+                                            title="Attach file"
+                                            onClick={() => fileInputRef.current?.click()}
+                                            className="p-3 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-2xl transition-all active:scale-90"
+                                        >
+                                            <Paperclip size={22} className={uploading ? "animate-spin" : ""} />
+                                            <input type="file" className="hidden" ref={fileInputRef} onChange={handleFileUpload} />
+                                        </button>
+                                        <button
+                                            title="AI Suggestion"
+                                            onClick={fetchAISuggestions}
+                                            disabled={fetchingSuggestions}
+                                            className={`p-3 rounded-2xl transition-all ${fetchingSuggestions ? 'text-green-600 animate-pulse' : 'text-gray-400 hover:text-green-600 hover:bg-green-50'}`}
+                                        >
+                                            <Sparkles size={22} />
+                                        </button>
+                                        <button className="p-3 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-2xl transition-all hidden sm:flex">
+                                            <Mic size={22} />
+                                        </button>
+                                    </div>
+
+                                    <div className="flex-1 bg-slate-100/80 border border-slate-200 focus-within:bg-white focus-within:border-emerald-500/30 rounded-[1.25rem] flex items-end transition-all shadow-sm relative group overflow-hidden">
+                                        <textarea
+                                            rows={1}
+                                            value={replyText}
+                                            onChange={e => {
+                                                setReplyText(e.target.value);
+                                                e.target.style.height = 'auto';
+                                                e.target.style.height = Math.min(e.target.scrollHeight, 150) + 'px';
+                                            }}
+                                            onKeyDown={onKeyDown}
+                                            placeholder="Type your message here..."
+                                            className="w-full bg-transparent border-none px-6 py-4 text-[14px] focus:ring-0 outline-none resize-none font-medium placeholder:text-gray-400"
+                                        />
+                                        <div className="absolute right-4 bottom-3 opacity-30 group-focus-within:opacity-100 transition-opacity">
+                                            <Command size={14} className="text-gray-400" />
+                                        </div>
+                                    </div>
+
+                                    <button
+                                        onClick={handleSend}
+                                        disabled={sending || (!replyText.trim() && !attachedFile)}
+                                        className="bg-emerald-600 text-white p-4 rounded-xl hover:bg-emerald-700 active:bg-emerald-800 transition-all flex items-center justify-center shadow-lg shadow-emerald-200 disabled:bg-slate-200 disabled:shadow-none h-14 w-14 shrink-0 group"
+                                    >
+                                        {sending ? <Loader2 size={24} className="animate-spin" /> : <Send size={22} fill="currentColor" className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />}
+                                    </button>
+                                </div>
+                                <div className="mt-4 flex flex-wrap gap-2.5 items-center justify-center sm:justify-start border-t border-slate-50 pt-4">
+                                    <button onClick={() => setShowDripModal(true)} className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-[#5C5CFF] bg-[#5C5CFF]/5 hover:bg-[#5C5CFF]/10 px-3 py-2 rounded-lg transition-all border border-[#5C5CFF]/10">
+                                        <Zap size={10} fill="currentColor" /> Enroll in Drip
+                                    </button>
+                                    <button onClick={() => setShowFollowUpModal(true)} className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-emerald-600 bg-emerald-50 hover:bg-emerald-100 px-3 py-2 rounded-lg transition-all border border-emerald-100">
+                                        <Calendar size={10} /> Schedule Follow Up
+                                    </button>
+                                    <button className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-slate-400 bg-slate-50 hover:bg-slate-100 px-3 py-2 rounded-lg transition-all border border-slate-200">
+                                        <FilePlus size={10} /> Template
+                                    </button>
+                                </div>
                             </div>
                         </div>
 
-                        <div className="flex-1 overflow-y-auto p-6 space-y-4 scroll-smooth z-10 no-scrollbar">
-                            {messages.map((msg, i) => {
-                                const isOutbound = msg.direction === "OUTBOUND";
-                                return (
-                                    <div key={msg.id} className={`flex ${isOutbound ? 'justify-end' : 'justify-start'}`}>
-                                        <div className={`max-w-[75%] rounded-[1.25rem] px-4 py-2 shadow-sm ${isOutbound
-                                            ? 'bg-[#dcf8c6] text-gray-800 rounded-tr-none'
-                                            : 'bg-white border border-gray-100 text-gray-800 rounded-tl-none'
-                                            }`}>
-                                            {msg.type === 'IMAGE' && (
-                                                <div className="mb-2 -mx-1 -mt-1">
-                                                    <img src={msg.content.link} className="rounded-xl max-h-64 h-full w-full object-cover border border-black/5" />
-                                                </div>
-                                            )}
-                                            {msg.type === 'DOCUMENT' && (
-                                                <div className="flex items-center gap-3 bg-black/5 p-3 rounded-xl mb-2 hover:bg-black/10 transition-colors cursor-pointer">
-                                                    <FileText size={20} className="text-red-500" />
-                                                    <div className="flex-1 min-w-0">
-                                                        <div className="text-xs font-bold truncate">{msg.content.filename}</div>
-                                                        <div className="text-[10px] text-gray-500">Document • PDF</div>
-                                                    </div>
-                                                </div>
-                                            )}
-                                            <p className="text-sm leading-relaxed whitespace-pre-wrap">{(msg.content as any).body || (msg.content as any).caption}</p>
-                                            <div className="mt-1 flex items-center gap-1.5 justify-end">
-                                                <span className="text-[9px] font-medium text-gray-500">
-                                                    {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                </span>
-                                                {isOutbound && (
-                                                    msg.status === 'READ' ? <CheckCheck size={14} className="text-blue-500" /> : <Check size={14} className="text-gray-400" />
+                        {/* CRM SIDE PANEL: Perfil & Detalhes */}
+                        {
+                            showCRM && (
+                                <div className="hidden xl:flex w-[340px] bg-white border-l border-slate-100 flex flex-col overflow-y-auto no-scrollbar shrink-0 relative animate-in slide-in-from-right-10 duration-700 shadow-[20px_0_40px_rgba(0,0,0,0.02)]">
+                                    <div className="p-8 space-y-8">
+                                        {/* CRM Header */}
+                                        <div className="text-center space-y-4">
+                                            <div className="w-24 h-24 mx-auto bg-white rounded-[2.5rem] shadow-xl shadow-gray-200/50 flex items-center justify-center relative group">
+                                                {activeConversation?.contact?.avatar_url ? (
+                                                    <img src={activeConversation.contact.avatar_url} alt="" className="w-full h-full object-cover rounded-[2.5rem]" />
+                                                ) : (
+                                                    <User size={40} className="text-gray-200" />
                                                 )}
+                                                <button className="absolute -right-2 -bottom-2 p-2.5 bg-green-600 text-white rounded-2xl shadow-lg border-2 border-white hover:scale-110 transition-all opacity-0 group-hover:opacity-100">
+                                                    <Camera size={16} />
+                                                </button>
+                                            </div>
+                                            <div className="space-y-1">
+                                                <h4 className="text-xl font-black text-gray-900 tracking-tight">{activeConversation?.contact?.name || activeConversation?.contact?.phone || "Contact"}</h4>
+                                                <div className="flex justify-center">
+                                                    <LeadScoreBadge score={85} />
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Info Grid */}
+                                        <div className="space-y-4">
+                                            <h5 className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                                                <Info size={14} /> Contact Information
+                                            </h5>
+                                            <div className="grid gap-3">
+                                                {[
+                                                    { icon: Phone, label: 'WhatsApp', value: activeConversation?.contact?.phone || '—' },
+                                                    { icon: Mail, label: 'Email', value: activeConversation?.contact?.email || '—' },
+                                                    { icon: LayoutDashboard, label: 'Workspace', value: 'Default Workspace' },
+                                                    { icon: Clock, label: 'Created', value: safeFormat(activeConversation?.contact?.created_at, "MMM d, yyyy", '—') },
+                                                ].map((field, idx) => (
+                                                    <div key={idx} className="bg-white px-5 py-4 rounded-2xl border border-gray-100 flex items-center gap-4 hover:border-green-100 transition-colors shadow-sm">
+                                                        <field.icon size={16} className="text-gray-400" />
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{field.label}</p>
+                                                            <p className="text-[12px] font-bold text-gray-800 truncate">{field.value}</p>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        {/* Tags / Labels */}
+                                        <div className="space-y-4">
+                                            <div className="flex justify-between items-center">
+                                                <h5 className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                                                    <Tag size={14} /> Labels & Segmentation
+                                                </h5>
+                                                <button className="text-[9px] font-black text-green-600 hover:bg-green-50 px-2 py-1 rounded-lg">EDIT</button>
+                                            </div>
+                                            <div className="flex flex-wrap gap-2">
+                                                {activeConversation?.contact?.tags?.map((tag: any, i: number) => (
+                                                    <span key={i} className="px-3 py-1.5 bg-white border border-gray-200 text-gray-600 text-[10px] font-bold rounded-xl shadow-sm hover:border-green-600 hover:text-green-600 cursor-pointer transition-all">
+                                                        {tag}
+                                                    </span>
+                                                ))}
+                                                <button className="w-8 h-8 rounded-xl border-2 border-dashed border-gray-200 flex items-center justify-center text-gray-300 hover:text-green-600 hover:border-green-600 transition-all">
+                                                    <PlusCircle size={14} />
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {/* Internal Notes */}
+                                        <div className="space-y-4">
+                                            <h5 className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                                                <FileText size={14} /> Internal Notes
+                                            </h5>
+                                            <div className="space-y-3">
+                                                <div className="relative">
+                                                    <textarea
+                                                        value={newNote}
+                                                        onChange={e => setNewNote(e.target.value)}
+                                                        placeholder="Add a private note..."
+                                                        className="w-full bg-white border border-gray-100 rounded-2xl px-4 py-3 text-xs font-medium outline-none focus:border-green-600/30 transition-all resize-none shadow-sm"
+                                                        rows={2}
+                                                    />
+                                                    <button
+                                                        onClick={handleAddNote}
+                                                        disabled={savingNote || !newNote.trim()}
+                                                        className="absolute right-2 bottom-2 p-1.5 bg-green-600 text-white rounded-xl hover:bg-slate-900 transition-all disabled:opacity-50"
+                                                    >
+                                                        {savingNote ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+                                                    </button>
+                                                </div>
+                                                <div className="space-y-2 max-h-[200px] overflow-y-auto no-scrollbar">
+                                                    {contactNotes.map((note, i) => (
+                                                        <div key={i} className="bg-gray-50/50 p-3 rounded-2xl border border-gray-100/50">
+                                                            <p className="text-[11px] text-gray-700 font-medium leading-relaxed">{note.content}</p>
+                                                            <div className="flex justify-between items-center mt-2">
+                                                                <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{note.user?.first_name || 'Agent'}</span>
+                                                                <span className="text-[9px] text-gray-400 font-bold">{safeFormat(note.created_at, "MMM d, HH:mm", "...")}</span>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Follow Up Section */}
+                                        <div className="space-y-4">
+                                            <h5 className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                                                <Calendar size={14} /> Follow Up
+                                            </h5>
+                                            {contactFollowUps.length > 0 ? (
+                                                contactFollowUps.filter(f => f.status === "PENDING").map((fu, i) => (
+                                                    <div key={i} className="bg-green-600 rounded-[1.5rem] p-5 text-white shadow-xl shadow-green-100 relative overflow-hidden group hover:scale-[1.02] transition-all cursor-pointer">
+                                                        <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-white/10 rounded-full group-hover:scale-125 transition-transform" />
+                                                        <div className="relative">
+                                                            <p className="text-[10px] font-bold opacity-80 uppercase tracking-widest mb-1">Next Contact</p>
+                                                            <h4 className="text-lg font-black tracking-tight">{safeFormat(fu.scheduled_at, "MMM d, yyyy", "TBD")}</h4>
+                                                            <p className="text-[11px] font-medium opacity-90 mt-2">“{fu.notes || 'No notes'}”</p>
+                                                        </div>
+                                                    </div>
+                                                ))
+                                            ) : (
+                                                <div onClick={() => setShowFollowUpModal(true)} className="bg-white border-2 border-dashed border-gray-200 rounded-[1.5rem] p-6 text-center group cursor-pointer hover:border-green-600 transition-all">
+                                                    <Calendar className="mx-auto text-gray-300 group-hover:text-green-600 transition-colors mb-2" size={24} />
+                                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest group-hover:text-green-600">No Follow Up Scheduled</p>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Active Automation */}
+                                        <div className="space-y-4 pb-20">
+                                            <h5 className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                                                <Zap size={14} /> Automation Activity
+                                            </h5>
+                                            <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm space-y-4">
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-10 h-10 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-500 shadow-sm"><Zap size={20} /></div>
+                                                        <div>
+                                                            <p className="text-[11px] font-black text-gray-800">Drip: Onboarding v2</p>
+                                                            <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Active • Step 3/5</p>
+                                                        </div>
+                                                    </div>
+                                                    <button className="p-2.5 bg-gray-50 text-gray-400 hover:text-red-500 rounded-xl transition-all">
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                </div>
+                                                <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                                    <div className="w-[60%] h-full bg-indigo-500" />
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
-                                )
-                            })}
-                            <div ref={messagesEndRef} />
-                        </div>
-
-                        {/* Reply Area */}
-                        <div className="p-4 bg-white/80 backdrop-blur-md border-t border-gray-100 z-10">
-                            {/* Suggestions */}
-                            {suggestions.length > 0 && (
-                                <div className="mb-4 flex gap-2 overflow-x-auto no-scrollbar pb-1">
-                                    {suggestions.map((s, i) => (
-                                        <button
-                                            key={i}
-                                            onClick={() => setReplyText(s)}
-                                            className="shrink-0 px-4 py-2 bg-[#27954D]/5 hover:bg-[#27954D]/10 text-[#042f94] rounded-2xl text-xs font-medium border border-[#27954D]/10 transition-all flex items-center gap-2 group"
-                                        >
-                                            <Sparkles size={12} className="group-hover:animate-pulse" /> {s}
-                                        </button>
-                                    ))}
                                 </div>
-                            )}
-
-                            {attachedFile && (
-                                <div className="mb-3 p-3 bg-gray-50 rounded-2xl flex items-center justify-between border border-gray-100 animate-in slide-in-from-bottom-2">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-12 h-12 bg-white rounded-xl border flex items-center justify-center shadow-sm">
-                                            {attachedFile.type.includes('image') ? <ImageIcon size={20} className="text-[#27954D]" /> : <FileText size={20} className="text-blue-500" />}
-                                        </div>
-                                        <div>
-                                            <div className="text-xs font-bold text-gray-800 truncate max-w-[200px]">{attachedFile.filename}</div>
-                                            <div className="text-[10px] text-gray-400 font-medium">Ready to upload</div>
-                                        </div>
-                                    </div>
-                                    <button onClick={() => setAttachedFile(null)} className="p-2 hover:bg-gray-200 rounded-full transition-colors">
-                                        <X size={16} className="text-gray-500" />
-                                    </button>
-                                </div>
-                            )}
-
-                            <div className="flex items-end gap-3 max-w-5xl mx-auto">
-                                <div className="flex items-center gap-1 pb-1">
-                                    <button
-                                        type="button"
-                                        onClick={() => fileInputRef.current?.click()}
-                                        className="p-3 text-gray-500 hover:text-[#27954D] hover:bg-gray-50 rounded-full transition-all"
-                                    >
-                                        <Paperclip size={24} className={uploading ? "animate-spin" : ""} />
-                                        <input type="file" className="hidden" ref={fileInputRef} onChange={handleFileUpload} />
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={fetchAISuggestions}
-                                        disabled={fetchingSuggestions}
-                                        className={`p-3 rounded-full transition-all ${fetchingSuggestions ? 'text-[#27954D] animate-pulse' : 'text-gray-500 hover:text-[#27954D] hover:bg-gray-50'}`}
-                                    >
-                                        <Sparkles size={24} />
-                                    </button>
-                                </div>
-
-                                <div className="flex-1 bg-gray-100/80 border border-transparent focus-within:bg-white focus-within:border-[#27954D]/20 rounded-[1.5rem] flex items-end transition-all shadow-inner">
-                                    <textarea
-                                        rows={1}
-                                        value={replyText}
-                                        onChange={e => {
-                                            setReplyText(e.target.value);
-                                            e.target.style.height = 'auto';
-                                            e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
-                                        }}
-                                        onKeyDown={onKeyDown}
-                                        placeholder="Type a message..."
-                                        className="w-full bg-transparent border-none px-5 py-3 text-sm focus:ring-0 outline-none resize-none font-medium placeholder:text-gray-400"
-                                    />
-                                    <button className="p-3 text-gray-400 hover:text-gray-600">
-                                        <Mic size={20} />
-                                    </button>
-                                </div>
-
-                                <button
-                                    onClick={handleSend}
-                                    disabled={sending || (!replyText.trim() && !attachedFile)}
-                                    className="bg-[#27954D] text-white p-4 rounded-full hover:bg-[#042f94] hover:scale-105 disabled:bg-gray-200 disabled:scale-100 transition-all flex items-center justify-center shadow-lg shadow-green-100 active:scale-95"
-                                >
-                                    {sending ? <Loader2 size={24} className="animate-spin" /> : <Send size={24} fill="currentColor" />}
-                                </button>
-                            </div>
-                        </div>
-                    </>
+                            )
+                        }
+                    </div>
                 ) : (
                     <div className="flex-1 flex flex-col items-center justify-center text-center p-8 z-10">
-                        <div className="w-24 h-24 bg-white rounded-[2.5rem] shadow-xl shadow-green-100/20 flex items-center justify-center mb-8">
-                            <div className="w-16 h-16 bg-gradient-to-br from-[#27954D] to-[#042f94] rounded-2xl flex items-center justify-center text-white shadow-lg shadow-green-200">
-                                <MessageSquare size={32} />
+                        <div className="w-32 h-32 bg-white rounded-[3.5rem] shadow-2xl shadow-green-100/50 flex items-center justify-center mb-10 relative">
+                            <div className="absolute inset-0 bg-green-600 blur-3xl opacity-10 animate-pulse" />
+                            <div className="w-20 h-20 bg-gradient-to-br from-green-500 to-green-800 rounded-3xl flex items-center justify-center text-white shadow-xl shadow-green-200 relative">
+                                <MessageSquare size={40} fill="currentColor" />
                             </div>
                         </div>
-                        <h3 className="text-2xl font-bold text-gray-800 tracking-tight">Select a Chat</h3>
-                        <p className="text-sm text-gray-500 mt-3 max-w-xs leading-relaxed font-medium">
-                            Choose a conversation from the sidebar to start messaging. Your official WhatsApp API is ready.
+                        <h3 className="text-3xl font-black text-gray-900 tracking-tight">Ready for Sales?</h3>
+                        <p className="text-sm text-gray-400 mt-4 max-w-sm leading-relaxed font-bold uppercase tracking-wide">
+                            Select a conversation to start closing deals. Your WhatsApp command center is ready.
                         </p>
-                        <div className="mt-8 flex gap-2">
-                            <div className="px-4 py-2 bg-white border border-gray-100 rounded-2xl text-[10px] font-bold text-gray-400 uppercase tracking-widest shadow-sm">
-                                <Command size={10} className="inline mr-1" /> K to search
+
+                        <div className="mt-12 grid grid-cols-2 gap-4 w-full max-w-md">
+                            <div className="bg-white p-4 rounded-3xl border border-gray-100 shadow-sm flex flex-col items-center gap-2">
+                                <div className="text-2xl font-black text-green-600">24</div>
+                                <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Open</div>
+                            </div>
+                            <div className="bg-white p-4 rounded-3xl border border-gray-100 shadow-sm flex flex-col items-center gap-2">
+                                <div className="text-2xl font-black text-amber-500">8</div>
+                                <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Urgent</div>
+                            </div>
+                        </div>
+
+                        <div className="mt-12 flex gap-3">
+                            <div className="px-5 py-2.5 bg-slate-900 border border-slate-800 rounded-2xl text-[10px] font-black text-white uppercase tracking-[0.2em] shadow-xl shadow-slate-200 flex items-center gap-2">
+                                <Command size={12} /> Press K to search
                             </div>
                         </div>
                     </div>
                 )}
             </div>
+
+            {/* Modals */}
+            {showDripModal && <DripEnrollModal contact={activeConversation?.contact} onClose={() => setShowDripModal(false)} />}
+            {showFollowUpModal && <FollowUpModal contact={activeConversation?.contact} onClose={() => setShowFollowUpModal(false)} />}
+
+            {
+                isNewChatModalOpen && (
+                    <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+                        <div className="w-full max-w-lg bg-white rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+                            <div className="p-10 text-center">
+                                <div className="w-20 h-20 bg-emerald-50 text-emerald-600 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-sm">
+                                    <UserPlus size={40} />
+                                </div>
+                                <h3 className="text-2xl font-black text-gray-900 mb-2">Start Conversation</h3>
+                                <p className="text-xs text-gray-400 font-bold uppercase tracking-widest mb-8">Establish Live Connection</p>
+
+                                <div className="space-y-4">
+                                    <input
+                                        type="text"
+                                        placeholder="Phone number (e.g. 5511...)"
+                                        value={newChatPhone}
+                                        onChange={(e) => setNewChatPhone(e.target.value)}
+                                        className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-6 py-4 text-sm font-bold outline-none focus:border-emerald-500/50 focus:bg-white transition-all"
+                                    />
+                                    <button
+                                        onClick={handleInitializeChat}
+                                        disabled={startingChat || !newChatPhone.trim()}
+                                        className="w-full bg-slate-900 text-white py-5 rounded-[2rem] font-black uppercase tracking-[0.2em] text-xs hover:bg-emerald-600 hover:shadow-xl hover:shadow-emerald-500/20 active:scale-95 transition-all disabled:opacity-50"
+                                    >
+                                        {startingChat ? <Loader2 className="animate-spin mx-auto" size={20} /> : "Initialize Chat Engine"}
+                                    </button>
+                                    <button onClick={() => setIsNewChatModalOpen(false)} className="w-full py-2 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-600 transition-colors">
+                                        Dismiss Request
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
         </div>
-    )
+    );
+}
+
+function SidebarLink({ href, icon: Icon, label, active }: { href: string; icon: any; label: string; active: boolean }) {
+    return (
+        <Link
+            href={href}
+            title={label}
+            className={`p-4 rounded-2xl transition-all relative group ${active ? 'bg-emerald-500 text-white shadow-xl shadow-emerald-500/30' : 'text-slate-500 hover:text-white hover:bg-slate-900'}`}
+        >
+            <Icon size={22} />
+            {active && (
+                <div className="absolute -right-1 top-1/2 -translate-y-1/2 w-1.5 h-6 bg-emerald-400 rounded-l-full shadow-[0_0_15px_rgba(52,211,153,0.8)]" />
+            )}
+        </Link>
+    );
 }

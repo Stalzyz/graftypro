@@ -15,7 +15,7 @@ export async function GET(
 
     // Resolve correct base URL for production
     const protocol = request.headers.get("x-forwarded-proto") || "http";
-    const host = request.headers.get("x-forwarded-host") || request.headers.get("host") || "app.grekam.in";
+    const host = request.headers.get("x-forwarded-host") || request.headers.get("host") || "grafty.pro";
     const baseUrl = `${protocol}://${host}`;
 
     console.log(`🔗 Referral Join: ${code} on ${baseUrl}`);

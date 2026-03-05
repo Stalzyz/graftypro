@@ -1,0 +1,219 @@
+/* Grafty Authority SaaS Design System */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@600;700;800&display=swap');
+
+:root {
+    --brand-light: var(--wa-brand, #228557);
+    --brand-dark: var(--wa-secondary, #0D4C7F);
+    --brand-gradient: linear-gradient(90deg, var(--wa-brand, #228557) 0%, var(--wa-secondary, #0D4C7F) 100%);
+    --bg-main: #FFFFFF;
+    --bg-alt: #F8FAFC;
+    --text-main: #0F172A;
+    --text-muted: #64748B;
+    --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+    --radius: 12px;
+}
+
+.g-body {
+    font-family: 'Inter', sans-serif;
+    background: var(--bg-main);
+    color: var(--text-main);
+    overflow-x: hidden;
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* Typography */
+.g-h1 {
+    font-family: 'Poppins', sans-serif;
+    font-size: clamp(2.5rem, 5vw, 4rem);
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    color: var(--text-main);
+}
+
+.g-h2 {
+    font-family: 'Poppins', sans-serif;
+    font-size: clamp(2rem, 4vw, 3rem);
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+}
+
+.g-h3 {
+    font-family: 'Poppins', sans-serif;
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+.g-p {
+    font-size: 1.125rem;
+    line-height: 1.7;
+    color: var(--text-muted);
+}
+
+/* Buttons */
+.g-btn-primary {
+    background: var(--brand-gradient);
+    color: white;
+    padding: 1rem 2rem;
+    font-weight: 600;
+    border-radius: var(--radius);
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 10px 15px -3px rgba(34, 133, 87, 0.2);
+}
+
+.g-btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 20px 25px -5px rgba(34, 133, 87, 0.3);
+    filter: brightness(1.1);
+}
+
+.g-btn-outline {
+    background: white;
+    color: var(--text-main);
+    padding: 1rem 2rem;
+    font-weight: 600;
+    border-radius: var(--radius);
+    border: 1px solid #E2E8F0;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.g-btn-outline:hover {
+    background: #F8FAFC;
+    border-color: #CBD5E1;
+}
+
+/* Layout Units */
+.section-white {
+    background: var(--bg-main);
+    padding: 100px 0;
+}
+
+.section-gray {
+    background: var(--bg-alt);
+    padding: 100px 0;
+}
+
+.g-card {
+    background: white;
+    padding: 2rem;
+    border-radius: var(--radius);
+    box-shadow: var(--card-shadow);
+    border: 1px solid #F1F5F9;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.g-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05);
+}
+
+/* Hero Special */
+.hero-gradient {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 600px;
+    background: radial-gradient(circle at 50% 0%, rgba(34, 133, 87, 0.05) 0%, transparent 70%);
+    z-index: -1;
+}
+
+/* Mobile-First Adjustments */
+@media (max-width: 768px) {
+
+    .section-white,
+    .section-gray {
+        padding: 60px 0;
+    }
+
+    .g-btn-primary,
+    .g-btn-outline {
+        width: 100%;
+    }
+}
+
+/* Navbar Links */
+.g-nav-link {
+    font-size: 0.9375rem;
+    font-weight: 500;
+    color: var(--text-main);
+    transition: color 0.2s;
+}
+
+.g-nav-link:hover {
+    color: var(--brand-dark);
+}
+
+/* Utilities */
+.text-gradient {
+    background: var(--brand-gradient);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.animate-up {
+    animation: fadeInUp 0.8s ease-out forwards;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Dark Mode Overrides for Landing Components */
+.dark :root {
+    --bg-main: #09090b;
+    --bg-alt: #121212;
+    --text-main: #FFFFFF;
+    --text-muted: #A1A1AA;
+}
+
+.dark .g-body {
+    background: var(--bg-main);
+    color: var(--text-main);
+}
+
+.dark .g-btn-outline {
+    background: transparent;
+    border-color: #27272a;
+    color: white;
+}
+
+.dark .g-btn-outline:hover {
+    background: #18181b;
+}
+
+.dark .g-card {
+    background: #121212;
+    border-color: #27272a;
+}
+
+.dark .g-nav-link {
+    color: #A1A1AA;
+}
+
+.dark .g-nav-link:hover {
+    color: white;
+}
+
+.dark .hero-gradient {
+    background: radial-gradient(circle at 50% 0%, rgba(34, 133, 87, 0.1) 0%, transparent 70%);
+}

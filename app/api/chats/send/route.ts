@@ -1,8 +1,11 @@
 
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
-import { getCurrentUser } from "@/lib/auth";
-import { WhatsAppService } from "@/lib/whatsapp/service";
+import { prisma } from "../../../../lib/db";
+import { getCurrentUser } from "../../../../lib/auth";
+import { WhatsAppService } from "../../../../lib/whatsapp/service";
+import { decrypt } from "../../../../lib/security/encryption";
+
+export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
     try {
@@ -53,12 +56,13 @@ export async function POST(req: Request) {
         // 4. Send Message via Meta API
         let metaId = null;
         let finalContent = {};
+        const token = decrypt(waba.access_token);
 
         try {
             if (type === 'template' && template) {
                 const res = await WhatsAppService.sendTemplate(
                     waba.phone_number_id,
-                    waba.access_token,
+                    token,
                     conversation.contact.phone,
                     template.name,
                     template.language?.code || "en"
@@ -68,7 +72,7 @@ export async function POST(req: Request) {
             } else if (text) {
                 const res = await WhatsAppService.sendText(
                     waba.phone_number_id,
-                    waba.access_token,
+                    token,
                     conversation.contact.phone,
                     text
                 );

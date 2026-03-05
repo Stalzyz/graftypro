@@ -3,174 +3,221 @@
 
 import { useState, useEffect } from "react";
 import {
-    CreditCard,
-    Save,
-    Zap,
-    ShieldCheck,
-    AlertCircle,
-    Power,
-    RefreshCw,
-    ExternalLink
+    Settings, ShieldCheck, Lock, Unlock, AlertTriangle, Calendar,
+    FileText, CheckCircle2, Info, ArrowRight, Ban, Zap
 } from "lucide-react";
 
-export default function PaymentSettings() {
+export default function FinanceSettings() {
+    const [config, setConfig] = useState<any>(null);
     const [loading, setLoading] = useState(true);
-    const [saving, setSaving] = useState(false);
-    const [gateways, setGateways] = useState<any[]>([]);
+    const [locking, setLocking] = useState(false);
 
     useEffect(() => {
-        // Mock fetch or actual API
-        setGateways([
-            { provider: "Razorpay", key_id: "rzp_test_...", key_secret: "••••••••", is_live: false, is_active: true },
-            { provider: "Stripe", key_id: "pk_test_...", key_secret: "••••••••", is_live: false, is_active: false },
-        ]);
-        setLoading(false);
+        fetchConfig();
     }, []);
 
-    const handleSave = () => {
-        setSaving(true);
-        setTimeout(() => setSaving(false), 1500);
+    const fetchConfig = async () => {
+        try {
+            const res = await fetch("/api/super-admin/finance/config");
+            const data = await res.json();
+            setConfig(data.config);
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setLoading(false);
+        }
     };
 
-    return (
-        <div className="max-w-6xl space-y-12 pb-20">
-            <header className="flex items-end justify-between">
-                <div>
-                    <div className="flex items-center gap-3 mb-2">
-                        <div className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center shadow-lg">
-                            <CreditCard className="text-white" size={20} />
-                        </div>
-                        <h1 className="text-3xl font-black text-slate-900 tracking-tight">Fintech Pipeline</h1>
-                    </div>
-                    <p className="text-slate-400 font-medium text-sm">Configure payment gateways, webhooks, and treasury credentials.</p>
-                </div>
+    const handleLockMonth = async (month: number, year: number) => {
+        if (!confirm(`Are you sure you want to lock ${month}/${year}? This is an immutable action for the audit period.`)) return;
 
-                <div className="flex gap-4">
-                    <button className="px-6 py-4 bg-slate-100 text-slate-900 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] flex items-center gap-2 hover:bg-slate-200 transition-all active:scale-95">
-                        <Zap size={14} />
-                        Test All Connections
-                    </button>
-                    <button
-                        onClick={handleSave}
-                        className="px-8 py-4 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] flex items-center gap-2 hover:bg-black transition-all shadow-xl shadow-slate-200 active:scale-95"
-                    >
-                        {saving ? <RefreshCw className="animate-spin" size={14} /> : <Save size={14} />}
-                        Save Infrastructure
-                    </button>
+        setLocking(true);
+        try {
+            const res = await fetch("/api/super-admin/finance/config/lock", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ month, year })
+            });
+            if (res.ok) {
+                alert("Accounting month locked successfully.");
+                fetchConfig();
+            }
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setLocking(false);
+        }
+    };
+
+    if (loading) return <div className="p-20 text-center font-black text-slate-300 uppercase tracking-widest animate-pulse">Initializing Financial Core...</div>;
+
+    const currentMonth = new Date().getMonth() + 1;
+    const currentYear = new Date().getFullYear();
+
+    return (
+        <div className="max-w-4xl mx-auto space-y-10 pb-20 animate-fade-in">
+            <header className="flex flex-col gap-2">
+                <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-2xl bg-slate-900 flex items-center justify-center">
+                        <Settings className="text-white" size={24} />
+                    </div>
+                    <h1 className="text-3xl font-black text-slate-900 tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-slate-900 to-slate-500">Finance Control Panel</h1>
                 </div>
+                <p className="text-slate-400 font-medium ml-15">Configure tax compliance, audit locks, and immutable financial rules.</p>
             </header>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-                {gateways.map((gw, idx) => (
-                    <GatewayCard key={idx} gateway={gw} />
-                ))}
-
-                <button className="h-[400px] border-2 border-dashed border-slate-200 rounded-[40px] flex flex-col items-center justify-center gap-4 text-slate-300 hover:border-slate-400 hover:text-slate-500 transition-all group">
-                    <div className="w-16 h-16 rounded-3xl bg-slate-50 flex items-center justify-center group-hover:scale-110 transition-transform">
-                        <CreditCard size={24} />
-                    </div>
-                    <span className="text-xs font-black uppercase tracking-widest">Connect New Gateway</span>
-                </button>
-            </div>
-
-            <section className="bg-white rounded-[40px] border border-slate-100 p-12 space-y-8 shadow-sm">
-                <div className="flex items-center justify-between border-b border-slate-50 pb-8">
+            {/* Audit & Lock Status */}
+            <section className="bg-white rounded-[40px] border border-slate-100 shadow-sm overflow-hidden p-8 space-y-8">
+                <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                        <ShieldCheck className="text-green-500" size={20} />
-                        <h2 className="text-xl font-black text-slate-900 tracking-tight">Global Webhook Shield</h2>
+                        <ShieldCheck className="text-[#27954D]" size={20} />
+                        <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Accounting Enforcer</h3>
                     </div>
-                    <div className="px-4 py-2 bg-slate-900 rounded-full text-[10px] font-black text-white uppercase tracking-widest">
-                        Status: Listening
+                    <div className="px-4 py-1.5 rounded-full bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest border border-slate-800">
+                        System Active
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-                    <div className="space-y-4">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Primary Webhook Endpoint</label>
-                        <div className="flex items-center gap-2">
-                            <code className="flex-1 bg-slate-50 p-5 rounded-2xl text-[11px] font-bold text-slate-900 border border-slate-100 break-all">
-                                https://app.grekam.in/api/billing/webhook
-                            </code>
-                            <button className="p-5 bg-slate-50 rounded-2xl hover:bg-slate-100 transition-colors">
-                                <ExternalLink size={14} className="text-slate-400" />
-                            </button>
+                <div className="bg-slate-50 rounded-3xl p-8 flex items-center justify-between border border-slate-100 group hover:border-slate-200 transition-all">
+                    <div className="space-y-1">
+                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Last Locked Audit Period</div>
+                        <div className="text-2xl font-black text-slate-900">
+                            {config?.last_locked_month ? `${config.last_locked_month} / ${config.last_locked_year}` : "NO PERIODS LOCKED"}
                         </div>
                     </div>
-                    <div className="space-y-4">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Master Signing Secret</label>
+                    <div className="w-14 h-14 rounded-2xl bg-white flex items-center justify-center shadow-lg border border-slate-100 group-hover:scale-110 transition-transform">
+                        {config?.last_locked_month ? <Lock className="text-rose-500" /> : <Unlock className="text-slate-300" />}
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="p-6 rounded-3xl border border-rose-100 bg-rose-50/30 space-y-4">
+                        <div className="flex items-center gap-2 text-rose-500 text-xs font-black uppercase">
+                            <AlertTriangle size={14} /> Critical Warning
+                        </div>
+                        <p className="text-xs font-bold text-slate-600 leading-relaxed italic">
+                            Locking a month prevents any new invoices, modifications, or deletions for that period. This is mandatory for GST filing integrity.
+                        </p>
+                    </div>
+
+                    <div className="flex items-center justify-end">
+                        <button
+                            onClick={() => handleLockMonth(currentMonth - 1 || 12, currentMonth === 1 ? currentYear - 1 : currentYear)}
+                            disabled={locking}
+                            className="px-8 py-5 bg-rose-500 text-white rounded-2xl font-black text-[11px] uppercase tracking-[0.2em] shadow-xl shadow-rose-100 hover:bg-rose-600 active:scale-95 transition-all disabled:opacity-50"
+                        >
+                            {locking ? 'Securing Ledger...' : `Lock Audit Month (${currentMonth - 1 || 12}/${currentMonth === 1 ? currentYear - 1 : currentYear})`}
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            {/* GST Configuration */}
+            <section className="bg-white rounded-[40px] border border-slate-100 shadow-sm overflow-hidden p-8 space-y-8 h-fit">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <CheckCircle2 className="text-blue-500" size={20} />
+                        <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">GST & Tax Matrix</h3>
+                    </div>
+                    {config?.tax_config && (
+                        <div className="px-4 py-1.5 rounded-full bg-blue-50 text-blue-600 text-[10px] font-black uppercase tracking-widest border border-blue-100">
+                            Dynamic Config Active
+                        </div>
+                    )}
+                </div>
+
+                <div className="grid grid-cols-4 gap-6">
+                    <EditableStatBox
+                        label="CGST Rate"
+                        value={(config?.tax_config?.cgst_rate || 0.09) * (config?.tax_config?.cgst_rate < 1 ? 100 : 1)}
+                        onChange={(v: number) => setConfig({ ...config, tax_config: { ...config.tax_config, cgst_rate: v } })}
+                    />
+                    <EditableStatBox
+                        label="SGST Rate"
+                        value={(config?.tax_config?.sgst_rate || 0.09) * (config?.tax_config?.sgst_rate < 1 ? 100 : 1)}
+                        onChange={(v: number) => setConfig({ ...config, tax_config: { ...config.tax_config, sgst_rate: v } })}
+                    />
+                    <EditableStatBox
+                        label="IGST Rate"
+                        value={(config?.tax_config?.igst_rate || 0.18) * (config?.tax_config?.igst_rate < 1 ? 100 : 1)}
+                        onChange={(v: number) => setConfig({ ...config, tax_config: { ...config.tax_config, igst_rate: v } })}
+                    />
+                    <div className="p-6 rounded-3xl bg-slate-50 border border-slate-100 text-center space-y-2 group hover:border-blue-200 transition-all">
+                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Default HSN</div>
                         <input
-                            type="password"
-                            className="w-full bg-slate-50 border border-transparent rounded-2xl px-6 py-5 text-sm font-bold text-slate-900 focus:bg-white focus:border-slate-200 focus:outline-none transition-all"
-                            value="whsec_••••••••••••••••"
+                            type="text"
+                            value={config?.tax_config?.hsn_code || "998311"}
+                            onChange={(e) => setConfig({ ...config, tax_config: { ...config.tax_config, hsn_code: e.target.value } })}
+                            className="text-xl font-black text-slate-900 bg-transparent text-center outline-none w-full"
                         />
                     </div>
+                </div>
+
+                <div className="flex justify-end">
+                    <SaveTaxConfigButton config={config?.tax_config} />
                 </div>
             </section>
         </div>
     );
 }
 
-function GatewayCard({ gateway }: { gateway: any }) {
+function EditableStatBox({ label, value, onChange }: any) {
     return (
-        <div className="bg-white rounded-[40px] border border-slate-100 overflow-hidden shadow-sm hover:shadow-2xl hover:shadow-slate-200/50 transition-all duration-500 group">
-            <div className="p-10 space-y-8">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                        <div className="w-14 h-14 bg-slate-900 rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-500">
-                            <span className="text-white font-black text-lg">{gateway.provider[0]}</span>
-                        </div>
-                        <div>
-                            <h3 className="text-xl font-black text-slate-900 tracking-tight">{gateway.provider}</h3>
-                            <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Payment Processor</span>
-                        </div>
-                    </div>
-                    <div className={`p-4 rounded-2xl transition-all ${gateway.is_active ? 'bg-green-500/10 text-green-500' : 'bg-slate-100 text-slate-400'}`}>
-                        <Power size={20} />
-                    </div>
-                </div>
-
-                <div className="space-y-6">
-                    <div className="space-y-2">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">API Key ID</label>
-                        <input
-                            type="text"
-                            className="w-full bg-slate-50 border border-transparent rounded-2xl px-6 py-4 text-xs font-bold text-slate-900 font-mono shadow-inner"
-                            value={gateway.key_id}
-                        />
-                    </div>
-                    <div className="space-y-2">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">API Key Secret</label>
-                        <input
-                            type="password"
-                            className="w-full bg-slate-50 border border-transparent rounded-2xl px-6 py-4 text-xs font-bold text-slate-900 font-mono shadow-inner"
-                            value={gateway.key_secret}
-                        />
-                    </div>
-                </div>
-
-                <div className="pt-6 flex items-center gap-6">
-                    <label className="flex items-center gap-3 cursor-pointer">
-                        <div className={`w-10 h-5 rounded-full relative transition-all ${gateway.is_live ? 'bg-[#27954D]' : 'bg-orange-500'}`}>
-                            <div className={`absolute top-1 w-3 h-3 rounded-full bg-white transition-all ${gateway.is_live ? 'right-1' : 'left-1'}`} />
-                        </div>
-                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
-                            {gateway.is_live ? 'Live Mode' : 'Sandbox'}
-                        </span>
-                    </label>
-
-                    <button className="ml-auto text-[10px] font-black text-blue-600 uppercase tracking-widest hover:underline">
-                        Configure Webhooks
-                    </button>
-                </div>
+        <div className="p-6 rounded-3xl bg-slate-50 border border-slate-100 text-center space-y-2 group hover:border-blue-200 transition-all">
+            <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{label}</div>
+            <div className="relative">
+                <input
+                    type="number"
+                    step="0.01"
+                    value={value}
+                    onChange={(e) => onChange(parseFloat(e.target.value))}
+                    className="text-xl font-black text-slate-900 bg-transparent text-center outline-none w-full"
+                />
+                <span className="text-xs font-bold text-slate-400 absolute right-4 top-1.5 group-hover:text-blue-500 transition-colors">%</span>
             </div>
-
-            {!gateway.is_active && (
-                <div className="bg-slate-50 p-6 flex items-center gap-3 px-10">
-                    <AlertCircle size={14} className="text-slate-400" />
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Gateway is currently dormant</span>
-                    <button className="ml-auto text-[10px] font-black text-slate-900 border-b border-slate-900">Activate Provider</button>
-                </div>
-            )}
         </div>
+    );
+}
+
+function SaveTaxConfigButton({ config }: any) {
+    const [saving, setSaving] = useState(false);
+
+    const handleSave = async () => {
+        setSaving(true);
+        try {
+            const res = await fetch("/api/super-admin/finance/config/tax", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    tax_config: {
+                        cgst_rate: (config?.cgst_rate || 9) > 1 ? config?.cgst_rate / 100 : config?.cgst_rate,
+                        sgst_rate: (config?.sgst_rate || 9) > 1 ? config?.sgst_rate / 100 : config?.sgst_rate,
+                        igst_rate: (config?.igst_rate || 18) > 1 ? config?.igst_rate / 100 : config?.igst_rate,
+                        hsn_code: config?.hsn_code || "998311"
+                    }
+                })
+            });
+            if (res.ok) {
+                alert("Tax configuration updated successfully.");
+            } else {
+                alert("Failed to update tax configuration.");
+            }
+        } catch (e) {
+            console.error(e);
+            alert("Error saving config.");
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    return (
+        <button
+            onClick={handleSave}
+            disabled={saving}
+            className="px-8 py-4 bg-slate-900 text-white rounded-2xl font-black text-[11px] uppercase tracking-[0.2em] hover:bg-slate-800 transition-all shadow-lg active:scale-95 disabled:opacity-50 flex items-center gap-2"
+        >
+            {saving ? <div className="animate-spin w-4 h-4 border-2 border-white/20 border-t-white rounded-full" /> : <Zap size={14} />}
+            {saving ? 'Saving...' : 'Update Compliance Matrix'}
+        </button>
     );
 }

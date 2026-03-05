@@ -31,7 +31,7 @@ const tutorials = [
         desc: "How to generate temporary and permanent system user tokens.",
         icon: <Key size={24} />,
         time: "3:30",
-        steps: ["Generate System User", "Assign WhatsApp Assets", "Generate Token", "Copy to WAVO Dashboard"]
+        steps: ["Generate System User", "Assign WhatsApp Assets", "Generate Token", "Copy to Grafty Dashboard"]
     },
     {
         title: "Mobile Number Verification",

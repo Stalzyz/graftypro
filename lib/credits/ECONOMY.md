@@ -1,6 +1,6 @@
 # Enterprise Credit System: Phase 0 — Credit Economy & Margin Model
 
-This document defines the financial logic and "Constitution" of the Wabot BSP Credit System. 
+This document defines the financial logic and "Constitution" of the Grafty BSP Credit System. 
 
 ## 1. Credit Formula & Pricing Strategy
 The system uses a multi-tier pricing model to ensure the platform, resellers, and Meta are all covered, with a guaranteed margin for the platform.

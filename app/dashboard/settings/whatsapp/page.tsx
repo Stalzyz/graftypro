@@ -1,8 +1,10 @@
 "use client";
-
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Script from "next/script";
-import { CheckCircle, AlertTriangle, MessageSquare, RefreshCw, Zap, Phone, Globe, ShieldCheck, Settings2, ArrowLeft, Activity } from "lucide-react";
+import {
+    CheckCircle, AlertTriangle, MessageSquare, RefreshCw, Zap, Phone, Globe,
+    ShieldCheck, Settings2, ArrowLeft, Activity, Camera, Edit2, X, Upload, Shield, Flame
+} from "lucide-react";
 import ManualIntegrationWizard from "@/components/whatsapp/ManualIntegrationWizard";
 
 declare global {
@@ -18,9 +20,39 @@ export default function WhatsAppSettingsPage() {
     const [wabaDetails, setWabaDetails] = useState<any>(null);
     const [showManualWizard, setShowManualWizard] = useState(false);
 
+    // Edit Modal State
+    const [isEditing, setIsEditing] = useState(false);
+    const [editForm, setEditForm] = useState({
+        connection_name: "",
+        access_token: "******",
+        waba_id: "",
+        phone_number_id: "",
+        app_id: "",
+        app_secret: "******"
+    });
+
+    // Picture upload state
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [uploadingPic, setUploadingPic] = useState(false);
+
+    const [publicConfig, setPublicConfig] = useState<any>(null);
+
     useEffect(() => {
         fetchStatus();
+        fetchPublicConfig();
     }, []);
+
+    const fetchPublicConfig = async () => {
+        try {
+            const res = await fetch("/api/config/public");
+            const data = await res.json();
+            if (data.success) {
+                setPublicConfig(data);
+            }
+        } catch (e) {
+            console.error("Failed to fetch public config", e);
+        }
+    };
 
     const fetchStatus = async () => {
         try {
@@ -29,6 +61,14 @@ export default function WhatsAppSettingsPage() {
             if (data.status === 'CONNECTED') {
                 setStatus("CONNECTED");
                 setWabaDetails(data.account);
+                setEditForm({
+                    connection_name: data.account.connection_name || "WhatsApp Channel",
+                    access_token: "******",
+                    waba_id: data.account.waba_id,
+                    phone_number_id: data.account.phone_number_id,
+                    app_id: data.account.app_id || "",
+                    app_secret: "******"
+                });
             } else {
                 setStatus("DISCONNECTED");
             }
@@ -37,10 +77,75 @@ export default function WhatsAppSettingsPage() {
         }
     };
 
+    const handlePictureUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        if (file.size > 2 * 1024 * 1024) {
+            alert("Image too large. Maximum size is 2MB.");
+            return;
+        }
+
+        const validTypes = ["image/jpeg", "image/png", "image/webp", "image/jpg"];
+        if (!validTypes.includes(file.type)) {
+            alert("Invalid image format. Use JPG, PNG, or WEBP.");
+            return;
+        }
+
+        setUploadingPic(true);
+        const data = new FormData();
+        data.append("file", file);
+
+        try {
+            const res = await fetch("/api/whatsapp/profile/upload", {
+                method: "POST",
+                body: data
+            });
+            const result = await res.json();
+            if (res.ok) {
+                alert("Profile Updated Successfully");
+                fetchStatus();
+            } else {
+                alert("Meta Error: " + result.error);
+            }
+        } catch (err) {
+            alert("Connection error occurred.");
+        } finally {
+            setUploadingPic(false);
+            if (fileInputRef.current) fileInputRef.current.value = "";
+        }
+    };
+
+    const handleSaveEdit = async () => {
+        try {
+            setLoading(true);
+            const res = await fetch("/api/whatsapp/edit", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(editForm)
+            });
+            const data = await res.json();
+            if (res.ok) {
+                alert("Connection Updated Successfully");
+                setIsEditing(false);
+                fetchStatus();
+            } else {
+                alert(data.error || "Failed to update connection");
+            }
+        } catch (e) {
+            alert("Network error.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const initFacebook = () => {
+        const appId = publicConfig?.meta_app_id || process.env.NEXT_PUBLIC_META_APP_ID;
+        if (!appId) return;
+
         window.fbAsyncInit = function () {
             window.FB.init({
-                appId: process.env.NEXT_PUBLIC_META_APP_ID,
+                appId: appId,
                 autoLogAppEvents: true,
                 xfbml: true,
                 version: 'v18.0'
@@ -49,8 +154,11 @@ export default function WhatsAppSettingsPage() {
     };
 
     const launchWhatsAppSignup = () => {
-        if (!process.env.NEXT_PUBLIC_META_APP_ID || !process.env.NEXT_PUBLIC_META_CONFIG_ID) {
-            alert("Configuration Missing: META_APP_ID or CONFIG_ID is not set in environment.");
+        const appId = publicConfig?.meta_app_id || process.env.NEXT_PUBLIC_META_APP_ID;
+        const configId = publicConfig?.meta_config_id || process.env.NEXT_PUBLIC_META_CONFIG_ID;
+
+        if (!appId || !configId) {
+            alert("Meta Configuration Missing. Please contact support or set it in the Admin panel.");
             return;
         }
 
@@ -64,7 +172,7 @@ export default function WhatsAppSettingsPage() {
                 setLoading(false);
             }
         }, {
-            config_id: process.env.NEXT_PUBLIC_META_CONFIG_ID,
+            config_id: configId,
             response_type: 'code',
             override_default_response_type: true,
             extras: {
@@ -126,7 +234,7 @@ export default function WhatsAppSettingsPage() {
     }
 
     return (
-        <div className="max-w-4xl mx-auto space-y-8 animate-fade-in">
+        <div className="max-w-4xl mx-auto space-y-8 animate-fade-in mb-20">
             <Script
                 src="https://connect.facebook.net/en_US/sdk.js"
                 onLoad={initFacebook}
@@ -148,13 +256,45 @@ export default function WhatsAppSettingsPage() {
             {status === "CONNECTED" && wabaDetails ? (
                 <div className="space-y-6">
                     {/* Hero Status Card */}
-                    <div className="bg-gradient-to-br from-[#27954D]/5 to-white border border-[#27954D]/10 rounded-[3rem] p-10 flex flex-col md:flex-row items-center justify-between gap-8 shadow-sm">
-                        <div className="flex items-center gap-8">
-                            <div className="w-24 h-24 bg-white border border-slate-100 rounded-full flex items-center justify-center text-[#27954D] shadow-xl shadow-green-100/20">
-                                <Phone size={36} strokeWidth={1.5} />
+                    <div className="bg-gradient-to-br from-[#27954D]/5 to-white border border-[#27954D]/10 rounded-[3rem] p-10 flex flex-col md:flex-row items-center justify-between gap-8 shadow-sm relative overflow-hidden">
+                        <div className="flex items-center gap-8 z-10">
+                            {/* Profile Image with Upload Trigger */}
+                            <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+                                <div className="w-32 h-32 bg-white border border-slate-100 rounded-full flex items-center justify-center text-[#27954D] shadow-xl shadow-green-100/20 overflow-hidden relative">
+                                    {wabaDetails.profile_picture_url ? (
+                                        <img src={wabaDetails.profile_picture_url} className="w-full h-full object-cover" alt="WABA" />
+                                    ) : (
+                                        <Phone size={48} strokeWidth={1} />
+                                    )}
+                                    {uploadingPic && (
+                                        <div className="absolute inset-0 bg-white/60 flex items-center justify-center">
+                                            <RefreshCw className="w-8 h-8 animate-spin" />
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="absolute bottom-1 right-1 bg-white border border-slate-100 p-2.5 rounded-2xl shadow-lg group-hover:scale-110 transition-transform">
+                                    <Camera size={18} className="p-0.5" />
+                                </div>
+                                <input
+                                    type="file"
+                                    ref={fileInputRef}
+                                    className="hidden"
+                                    accept="image/*"
+                                    onChange={handlePictureUpload}
+                                />
                             </div>
+
                             <div>
-                                <h2 className="text-3xl font-bold text-gray-800 tracking-tight">{wabaDetails.display_name}</h2>
+                                <div className="flex items-center gap-3">
+                                    <h2 className="text-3xl font-bold text-gray-800 tracking-tight">{wabaDetails.display_name}</h2>
+                                    <button
+                                        onClick={() => setIsEditing(true)}
+                                        className="p-2.5 bg-slate-50 hover:bg-slate-100 rounded-xl text-slate-400 hover:text-[#27954D] transition-all"
+                                        title="Edit Display Name"
+                                    >
+                                        <Edit2 size={18} />
+                                    </button>
+                                </div>
                                 <p className="text-[#042f94] font-bold text-xl mt-1">+{wabaDetails.phone_number}</p>
                                 <div className="flex items-center gap-3 mt-4">
                                     <span className="text-[10px] bg-slate-50 text-slate-400 border border-slate-100 px-3 py-1.5 rounded-xl flex items-center gap-2 font-bold uppercase tracking-wider">
@@ -171,7 +311,7 @@ export default function WhatsAppSettingsPage() {
                                 </div>
                             </div>
                         </div>
-                        <div className="flex flex-col items-end gap-3">
+                        <div className="flex flex-col items-end gap-3 z-10">
                             <div className="text-right">
                                 <div className="text-[10px] text-gray-400 uppercase font-black tracking-widest mb-1">Tier & Capacity</div>
                                 <div className="text-gray-800 font-bold text-xl">{wabaDetails.rate_limit_tier || "Tier 1 (1k)"}</div>
@@ -226,18 +366,93 @@ export default function WhatsAppSettingsPage() {
                         </div>
                     </div>
 
-                    <div className="pt-8 text-center">
+                    <div className="pt-8 text-center border-t border-slate-100">
                         <button
-                            onClick={() => {
-                                if (confirm("Are you sure you want to disconnect? This will pause all active campaigns.")) {
-                                    // Handle disconnect logic
+                            onClick={async () => {
+                                if (confirm("⚠️ NUCLEAR WARNING: Are you sure you want to disconnect? This will server ALL Meta connections immediately.")) {
+                                    try {
+                                        setLoading(true);
+                                        const res = await fetch("/api/whatsapp/disconnect", { method: "DELETE" });
+                                        if (res.ok) {
+                                            alert("Meta Connection successfully purged.");
+                                            setStatus("DISCONNECTED");
+                                            setWabaDetails(null);
+                                        } else {
+                                            const data = await res.json().catch(() => ({}));
+                                            alert("Failed to disconnect: " + (data.error || res.statusText));
+                                        }
+                                    } catch (e) {
+                                        alert("Network Error during disconnect.");
+                                    } finally {
+                                        setLoading(false);
+                                    }
                                 }
                             }}
-                            className="text-red-400 hover:text-red-600 text-[10px] font-bold uppercase tracking-[0.2em] transition-all"
+                            disabled={loading}
+                            className={`text-red-600 font-black uppercase tracking-[0.2em] text-[10px] transition-all bg-red-50 px-6 py-3 rounded-xl border border-red-100 ${loading ? "opacity-50" : "hover:bg-red-100 active:scale-95"}`}
                         >
-                            Deactivate Integration
+                            {loading ? "Deactivating..." : "Deactivate Integration (Nuclear)"}
                         </button>
                     </div>
+
+                    {/* EDIT MODAL */}
+                    {isEditing && (
+                        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100] flex items-center justify-center p-4">
+                            <div className="bg-white rounded-[3rem] shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200">
+                                <div className="p-10 pb-6 bg-slate-50/50 border-b border-slate-100/50 flex justify-between items-center">
+                                    <div>
+                                        <h2 className="text-2xl font-bold text-slate-800">Connection Settings</h2>
+                                        <p className="text-sm text-slate-400 mt-1">Update your Meta credentials</p>
+                                    </div>
+                                    <button onClick={() => setIsEditing(false)} className="w-12 h-12 flex items-center justify-center rounded-2xl hover:bg-white text-slate-400 transition-colors shadow-sm"><X size={20} /></button>
+                                </div>
+                                <div className="p-10 pt-8 space-y-6">
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Friendly Name</label>
+                                        <input
+                                            value={editForm.connection_name}
+                                            onChange={(e) => setEditForm({ ...editForm, connection_name: e.target.value })}
+                                            className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-bold focus:ring-4 focus:ring-green-50 outline-none transition-all"
+                                            placeholder="e.g. Primary Support"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Meta App ID</label>
+                                        <input
+                                            value={editForm.app_id}
+                                            onChange={(e) => setEditForm({ ...editForm, app_id: e.target.value })}
+                                            className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-bold focus:ring-4 focus:ring-green-50 outline-none transition-all font-mono"
+                                        />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">WABA ID</label>
+                                            <input
+                                                value={editForm.waba_id}
+                                                onChange={(e) => setEditForm({ ...editForm, waba_id: e.target.value })}
+                                                className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-[12px] font-bold focus:ring-4 focus:ring-green-50 outline-none transition-all font-mono"
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Phone ID</label>
+                                            <input
+                                                value={editForm.phone_number_id}
+                                                onChange={(e) => setEditForm({ ...editForm, phone_number_id: e.target.value })}
+                                                className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-[12px] font-bold focus:ring-4 focus:ring-green-50 outline-none transition-all font-mono"
+                                            />
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={handleSaveEdit}
+                                        disabled={loading}
+                                        className="w-full py-5 bg-[#27954D] text-white font-black rounded-[2rem] shadow-xl shadow-green-100/50 hover:scale-[1.02] active:scale-95 transition-all text-sm mt-4 uppercase tracking-widest disabled:opacity-50"
+                                    >
+                                        {loading ? "Updating..." : "Save Configuration"}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             ) : (
                 <div className="bg-white border border-slate-100 rounded-[3rem] p-16 text-center max-w-2xl mx-auto flex flex-col items-center shadow-xl shadow-slate-200/20">
@@ -248,41 +463,23 @@ export default function WhatsAppSettingsPage() {
                     </div>
                     <h2 className="text-3xl font-bold text-gray-800 mb-4 tracking-tight">Expand to WhatsApp</h2>
                     <p className="text-slate-400 font-medium max-w-sm mx-auto mb-12 leading-relaxed">
-                        Connect your official Business API and start reaching customers where they are most active.
+                        Connect your official Business API to start configuring your flow builder, inbox, and drips.
                     </p>
-
-                    <div className="space-y-6 w-full max-w-sm">
+                    <div className="flex flex-col gap-4 w-full max-w-sm">
                         <button
                             onClick={launchWhatsAppSignup}
                             disabled={loading}
-                            className="w-full bg-[#1877F2] hover:bg-blue-600 text-white px-8 py-5 rounded-2xl font-bold transition-all disabled:opacity-50 flex items-center justify-center gap-3 shadow-xl shadow-blue-100/50"
+                            className="w-full flex items-center justify-center gap-3 py-5 text-white font-bold text-sm bg-gradient-to-br from-[#27954D] to-[#218141] hover:scale-105 active:scale-95 border-b-4 border-[#165a2d] rounded-2xl transition-all shadow-xl shadow-green-100 disabled:opacity-50"
                         >
-                            {loading ? <RefreshCw className="animate-spin" /> : (
-                                <svg className="w-6 h-6 fill-current" viewBox="0 0 24 24">
-                                    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
-                                </svg>
-                            )}
-                            {loading ? "Initializing..." : "Connect with Facebook"}
+                            <Zap size={18} /> {loading ? "Connecting..." : "Connect Official Account"}
                         </button>
-
-                        <div className="relative">
-                            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-100"></div></div>
-                            <div className="relative flex justify-center text-[10px] uppercase tracking-widest font-black text-slate-300 bg-white px-4">OR</div>
-                        </div>
-
                         <button
                             onClick={() => setShowManualWizard(true)}
-                            className="w-full flex items-center justify-center gap-2 py-4 text-slate-500 hover:text-slate-800 font-bold text-xs bg-slate-50 border border-slate-100 rounded-2xl transition-all"
+                            className="w-full py-4 text-slate-400 hover:text-slate-600 font-bold text-xs uppercase tracking-widest transition-all"
                         >
-                            <Settings2 size={16} />
-                            Advanced: Manual Provisioning
+                            Manual Credentials Entry
                         </button>
                     </div>
-
-                    <p className="mt-12 text-[10px] text-slate-300 font-bold uppercase tracking-widest flex items-center gap-2">
-                        <ShieldCheck size={14} className="text-[#27954D]" />
-                        Secure Enterprise Connection Protocol
-                    </p>
                 </div>
             )}
         </div>
@@ -291,20 +488,28 @@ export default function WhatsAppSettingsPage() {
 
 function DetailRow({ label, value, isMono = false }: { label: string; value: string; isMono?: boolean }) {
     return (
-        <div className="space-y-1.5">
-            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em] pl-1">{label}</span>
-            <div className={`p-4 bg-slate-50 rounded-2xl border border-slate-100 text-xs font-semibold text-slate-600 ${isMono ? 'font-mono' : ''} shadow-inner truncate`}>
+        <div className="space-y-1.5 flex flex-col">
+            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest pl-1">{label}</span>
+            <div className={`p-4 bg-slate-50/50 rounded-2xl border border-slate-100/50 text-xs font-bold text-slate-700 ${isMono ? 'font-mono' : ''} truncate`}>
                 {value}
             </div>
         </div>
     );
 }
 
-function CapabilityItem({ label, active }: { label: string; active: boolean }) {
+function CapabilityItem({ label, active }: { label: string; active?: boolean }) {
     return (
-        <div className="flex justify-between items-center bg-slate-50/50 p-4 border border-slate-100 rounded-2xl transition-all hover:bg-white shadow-sm">
-            <span className="text-xs text-slate-500 font-bold uppercase tracking-tight">{label}</span>
-            <span className="bg-green-50 text-green-600 text-[10px] font-black px-3 py-1 rounded-lg uppercase tracking-widest">Active</span>
+        <div className="flex items-center justify-between p-4 bg-slate-50/50 border border-slate-100/50 rounded-2xl">
+            <span className="text-xs font-bold text-slate-700">{label}</span>
+            {active ? (
+                <div className="flex items-center gap-2 text-[10px] font-black text-green-600 bg-green-100/50 px-3 py-1 rounded-lg uppercase tracking-wider">
+                    <CheckCircle size={12} /> Active
+                </div>
+            ) : (
+                <div className="flex items-center gap-2 text-[10px] font-black text-slate-300 bg-slate-100 px-3 py-1 rounded-lg uppercase tracking-wider">
+                    Locked
+                </div>
+            )}
         </div>
     );
 }

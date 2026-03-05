@@ -25,11 +25,15 @@ import {
     ShieldCheck,
     PenTool,
     Coins,
-    GraduationCap
+    GraduationCap,
+    Target,
+    Zap,
+    Shield
 } from "lucide-react";
-import { Logo } from "@/components/ui/Logo";
+import { Logo } from "../../../components/ui/Logo";
 
 export default function SuperAdminLayout({ children }: { children: React.ReactNode }) {
+    const pathname = usePathname();
     return (
         <div className="flex min-h-screen bg-[#FAFAFA]">
             {/* Sidebar */}
@@ -43,52 +47,49 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
                     <NavLink href="/super-admin/dashboard" icon={<LayoutDashboard size={18} strokeWidth={1.5} />} label="Operational Hub" />
 
                     <div className="pt-6 pb-2 px-5">
+                        <span className="text-[10px] font-bold text-slate-300 uppercase tracking-[0.2em] block">Revenue Engine</span>
+                    </div>
+                    <NavLink href="/super-admin/dashboard/crm" icon={<Target size={18} strokeWidth={1.5} />} label="Sales War Room" />
+                    <NavLink href="/super-admin/dashboard/finance" icon={<BarChart3 size={18} strokeWidth={1.5} />} label="Financial Ledger" />
+                    <NavLink href="/super-admin/dashboard/finance/settings" icon={<Settings2 size={18} strokeWidth={1.5} />} label="HSN/GST Settings" />
+                    <NavLink href="/super-admin/dashboard/proposals" icon={<PenTool size={18} strokeWidth={1.5} />} label="Client Proposals" />
+
+                    <div className="pt-6 pb-2 px-5">
                         <span className="text-[10px] font-bold text-slate-300 uppercase tracking-[0.2em] block">Governance</span>
                     </div>
+                    <NavLink href="/super-admin/dashboard/settings/rbac" icon={<ShieldCheck size={18} strokeWidth={1.5} />} label="RBAC Configuration" />
                     <NavLink href="/super-admin/dashboard/branding" icon={<Palette size={18} strokeWidth={1.5} />} label="Branding Control" />
                     <NavLink href="/super-admin/dashboard/packages" icon={<Package size={18} strokeWidth={1.5} />} label="Packages & Pricing" />
-                    <NavLink href="/super-admin/dashboard/modules" icon={<Settings2 size={18} strokeWidth={1.5} />} label="Module Manager" />
                     <NavLink href="/super-admin/dashboard/theme" icon={<Box size={18} strokeWidth={1.5} />} label="Theme Control" />
 
                     <div className="pt-6 pb-2 px-5">
                         <span className="text-[10px] font-bold text-slate-300 uppercase tracking-[0.2em] block">Infrastructure</span>
                     </div>
                     <NavLink href="/super-admin/dashboard/landing-page" icon={<Globe size={18} strokeWidth={1.5} />} label="Landing Page" />
-                    <NavLink href="/super-admin/dashboard/email" icon={<Mail size={18} strokeWidth={1.5} />} label="Email Automation" />
+                    <NavLink href="/super-admin/dashboard/settings/smtp" icon={<Mail size={18} strokeWidth={1.5} />} label="SMTP Relay Matrix" />
+                    <NavLink href="/super-admin/dashboard/settings/meta" icon={<Activity size={18} strokeWidth={1.5} />} label="Meta Architecture" />
+                    <NavLink href="/super-admin/dashboard/settings/automation" icon={<Zap size={18} strokeWidth={1.5} />} label="Automation Engine" />
                     <NavLink href="/super-admin/dashboard/infra" icon={<Server size={18} strokeWidth={1.5} />} label="System Instance" />
-
-                    <div className="pt-6 pb-2 px-5">
-                        <span className="text-[10px] font-bold text-slate-300 uppercase tracking-[0.2em] block">Financials</span>
-                    </div>
-                    <NavLink href="/super-admin/dashboard/finance/settings" icon={<CreditCard size={18} strokeWidth={1.5} />} label="Payment Methods" />
-                    <NavLink href="/super-admin/dashboard/finance/invoices" icon={<FileText size={18} strokeWidth={1.5} />} label="Invoice & GST" />
-                    <NavLink href="/super-admin/dashboard/proposals" icon={<PenTool size={18} strokeWidth={1.5} />} label="Client Proposals" />
-                    <NavLink href="/super-admin/dashboard/finance/revenue" icon={<BarChart3 size={18} strokeWidth={1.5} />} label="Revenue Analytics" />
-                    <NavLink href="/super-admin/dashboard/credits" icon={<Coins size={18} strokeWidth={1.5} />} label="Conversation Credits" />
-
-                    <div className="pt-6 pb-2 px-5">
-                        <span className="text-[10px] font-bold text-slate-300 uppercase tracking-[0.2em] block">Academy</span>
-                    </div>
-                    <NavLink href="/how-to-use" icon={<GraduationCap size={18} strokeWidth={1.5} />} label="How to Use" />
 
                     <div className="pt-6 pb-2 px-5">
                         <span className="text-[10px] font-bold text-slate-300 uppercase tracking-[0.2em] block">Entities</span>
                     </div>
                     <NavLink href="/super-admin/dashboard/vendors" icon={<Users size={18} strokeWidth={1.5} />} label="Vendor Registry" />
-                    <NavLink href="/super-admin/dashboard/partners" icon={<Handshake size={18} strokeWidth={1.5} />} label="Partner Network" />
-                    <NavLink href="/super-admin/dashboard/white-label" icon={<ShieldCheck size={18} strokeWidth={1.5} />} label="White Label Hub" />
+                    <NavLink href="/super-admin/dashboard/partners" icon={<Handshake size={18} strokeWidth={1.5} />} label="Affiliate Network" />
+                    <NavLink href="/super-admin/dashboard/white-label" icon={<ShieldCheck size={18} strokeWidth={1.5} />} label="Platform Partner" />
 
                     <div className="pt-6 pb-2 px-5">
                         <span className="text-[10px] font-bold text-slate-300 uppercase tracking-[0.2em] block">Monitoring</span>
                     </div>
-                    <NavLink href="/super-admin/dashboard/audit" icon={<Activity size={18} strokeWidth={1.5} />} label="Audit Trail" />
+                    <NavLink href="/super-admin/dashboard/settings/retention" icon={<Activity size={18} strokeWidth={1.5} />} label="Audit & Retention" />
+                    <NavLink href="/super-admin/dashboard/audit" icon={<Shield size={18} strokeWidth={1.5} />} label="Audit Trail" />
                     <NavLink href="/super-admin/dashboard/risk" icon={<ShieldAlert size={18} strokeWidth={1.5} />} label="Security & Risk" />
-                    <NavLink href="/super-admin/dashboard/settings" icon={<Settings size={18} strokeWidth={1.5} />} label="System Settings" />
+                    <NavLink href="/super-admin/dashboard/settings" icon={<Settings size={18} strokeWidth={1.5} />} label="Global Settings" />
                 </nav>
 
                 <div className="p-6 border-t border-slate-50 bg-slate-50/30">
-                    <div className="flex items-center gap-4 px-4 py-3 bg-white rounded-2xl shadow-sm border border-slate-100">
-                        <div className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center shadow-lg">
+                    <Link href="/super-admin/dashboard/account" className="flex items-center gap-4 px-4 py-3 bg-white rounded-2xl shadow-sm border border-slate-100 hover:border-slate-200 transition-all hover:shadow-md group">
+                        <div className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform">
                             <span className="text-xs font-black text-white">SA</span>
                         </div>
                         <div className="flex-1 overflow-hidden">
@@ -96,15 +97,16 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
                             <div className="text-[10px] font-bold text-[#27954D] uppercase tracking-wider">System Master</div>
                         </div>
                         <button
-                            onClick={async () => {
+                            onClick={async (e) => {
+                                e.preventDefault();
                                 await fetch("/api/super-admin/auth/logout", { method: "POST" });
                                 window.location.href = "/super-admin/login";
                             }}
-                            className="text-slate-300 hover:text-rose-500 transition-colors p-2"
+                            className="text-slate-300 hover:text-rose-500 transition-colors p-2 z-10"
                         >
                             <LogOut size={16} />
                         </button>
-                    </div>
+                    </Link>
                 </div>
             </aside>
 
@@ -118,7 +120,7 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
                             <input
                                 type="text"
                                 placeholder="Universal Command Search..."
-                                className="w-full bg-slate-50 border border-transparent rounded-2xl pl-12 pr-4 py-3 text-sm text-slate-900 focus:outline-none focus:bg-white focus:border-slate-200 focus:ring-4 focus:ring-slate-50 transition-all placeholder:text-slate-300 font-medium"
+                                className="w-full bg-slate-50 border border-transparent rounded-2xl pl-12 pr-4 py-3 text-sm text-slate-900 focus:outline-none focus:bg-white focus:border-slate-200 focus:ring-4 focus:ring-slate-50 transition-all placeholder:text-slate-500 font-medium"
                             />
                         </div>
                     </div>
@@ -133,9 +135,13 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
                     </div>
                 </header>
 
-                <div className="p-12 animate-fade-in max-w-[1600px]">
-                    {children}
-                </div>
+                {pathname.startsWith('/super-admin/dashboard/landing-page/') && pathname.split('/').length > 5 ? (
+                    children
+                ) : (
+                    <div className="p-12 animate-fade-in max-w-[1600px]">
+                        {children}
+                    </div>
+                )}
             </main>
         </div>
     );

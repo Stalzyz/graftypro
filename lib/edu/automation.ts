@@ -1,5 +1,6 @@
-import { prisma } from "@/lib/db";
-import { WhatsAppService } from "@/lib/whatsapp/service";
+import { prisma } from "../db";
+import { WhatsAppService } from "../whatsapp/service";
+import { decrypt } from "../security/encryption";
 
 export class EduAutomation {
     /**
@@ -29,7 +30,7 @@ export class EduAutomation {
 
             await WhatsAppService.sendText(
                 waba.phone_number_id,
-                waba.access_token,
+                decrypt(waba.access_token),
                 lead.whatsapp_number,
                 message
             );
@@ -64,7 +65,7 @@ export class EduAutomation {
 
             await WhatsAppService.sendText(
                 waba.phone_number_id,
-                waba.access_token,
+                decrypt(waba.access_token),
                 lead.whatsapp_number,
                 message
             );

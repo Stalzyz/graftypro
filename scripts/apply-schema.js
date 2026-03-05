@@ -17,7 +17,7 @@ try {
     const result = execSync('npx prisma db push --skip-generate', {
         cwd: path.join(__dirname, '..'),
         stdio: 'inherit',
-        env: { ...process.env, npm_config_cache: '/tmp/wabot_npm' }
+        env: { ...process.env, npm_config_cache: '/tmp/grafty_npm' }
     });
 
     console.log('\n✅ Schema synchronized successfully!');

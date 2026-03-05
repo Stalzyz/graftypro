@@ -98,17 +98,17 @@ export default function BrandingPanel() {
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                             <div className="space-y-2">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Platform Name</label>
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Platform Name</label>
                                 <input
                                     type="text"
                                     value={config.platform_name}
                                     onChange={e => setConfig({ ...config, platform_name: e.target.value })}
                                     className="w-full bg-slate-50 border border-transparent rounded-2xl px-6 py-4 text-sm font-bold text-slate-900 focus:bg-white focus:border-slate-200 focus:outline-none transition-all"
-                                    placeholder="e.g. WAVO"
+                                    placeholder="e.g. Grafty"
                                 />
                             </div>
                             <div className="space-y-2">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Tagline</label>
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Tagline</label>
                                 <input
                                     type="text"
                                     value={config.platform_tagline}
@@ -120,9 +120,9 @@ export default function BrandingPanel() {
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                            <LogoUpload label="Main Logo" value={config.logo_url} onChange={val => setConfig({ ...config, logo_url: val })} />
-                            <LogoUpload label="Favicon" value={config.favicon_url} onChange={val => setConfig({ ...config, favicon_url: val })} />
-                            <LogoUpload label="Login Logo" value={config.login_logo_url} onChange={val => setConfig({ ...config, login_logo_url: val })} />
+                            <LogoUpload label="Main Logo" value={config.logo_url} onChange={(val: string) => setConfig({ ...config, logo_url: val })} />
+                            <LogoUpload label="Favicon" value={config.favicon_url} onChange={(val: string) => setConfig({ ...config, favicon_url: val })} />
+                            <LogoUpload label="Login Logo" value={config.login_logo_url} onChange={(val: string) => setConfig({ ...config, login_logo_url: val })} />
                         </div>
                     </section>
 
@@ -136,12 +136,12 @@ export default function BrandingPanel() {
                             <ColorPicker
                                 label="Primary Brand Color"
                                 value={config.primary_color}
-                                onChange={val => setConfig({ ...config, primary_color: val })}
+                                onChange={(val: string) => setConfig({ ...config, primary_color: val })}
                             />
                             <ColorPicker
                                 label="Secondary Brand Color"
                                 value={config.secondary_color}
-                                onChange={val => setConfig({ ...config, secondary_color: val })}
+                                onChange={(val: string) => setConfig({ ...config, secondary_color: val })}
                             />
                         </div>
 
@@ -161,21 +161,20 @@ export default function BrandingPanel() {
                         </div>
 
                         <div className="space-y-4">
-                            <ModuleToggle label="Commerce Hub" active={config.modules?.commerce} onChange={v => setConfig({ ...config, modules: { ...config.modules, commerce: v } })} />
-                            <ModuleToggle label="Drip Automation" active={config.modules?.drips} onChange={v => setConfig({ ...config, modules: { ...config.modules, drips: v } })} />
-                            <ModuleToggle label="Reseller Network" active={config.modules?.reseller} onChange={v => setConfig({ ...config, modules: { ...config.modules, reseller: v } })} />
-                            <ModuleToggle label="White Labeling" active={config.modules?.white_label} onChange={v => setConfig({ ...config, modules: { ...config.modules, white_label: v } })} />
-                            <ModuleToggle label="Developer APIs" active={config.modules?.api_access} onChange={v => setConfig({ ...config, modules: { ...config.modules, api_access: v } })} />
+                            <ModuleToggle label="Commerce Hub" active={config.features?.commerce} onChange={(v: boolean) => setConfig({ ...config, features: { ...config.features, commerce: v } })} />
+                            <ModuleToggle label="Drip Automation" active={config.features?.drips} onChange={(v: boolean) => setConfig({ ...config, features: { ...config.features, drips: v } })} />
+                            <ModuleToggle label="Flow Builder" active={config.features?.flows} onChange={(v: boolean) => setConfig({ ...config, features: { ...config.features, flows: v } })} />
+                            <ModuleToggle label="Platform APIs" active={config.features?.api} onChange={(v: boolean) => setConfig({ ...config, features: { ...config.features, api: v } })} />
                         </div>
                     </section>
 
                     <section className="bg-white rounded-[32px] border border-slate-100 p-8 space-y-6">
                         <div className="flex items-center gap-3 border-b border-slate-50 pb-4">
                             <Smartphone className="text-slate-400" size={18} />
-                            <h2 className="text-xs font-black uppercase tracking-widest">Support Links</h2>
+                            <h2 className="text-xs font-black text-slate-900 uppercase tracking-widest">Support Links</h2>
                         </div>
-                        <InputSmall label="Support Email" value={config.support_email} onChange={v => setConfig({ ...config, support_email: v })} />
-                        <InputSmall label="Support WhatsApp" value={config.support_whatsapp} onChange={v => setConfig({ ...config, support_whatsapp: v })} />
+                        <InputSmall label="Support Email" value={config.support_email} onChange={(v: string) => setConfig({ ...config, support_email: v })} />
+                        <InputSmall label="Support WhatsApp" value={config.support_whatsapp} onChange={(v: string) => setConfig({ ...config, support_whatsapp: v })} />
                     </section>
                 </div>
             </div>
@@ -184,19 +183,63 @@ export default function BrandingPanel() {
 }
 
 function LogoUpload({ label, value, onChange }: any) {
+    const [uploading, setUploading] = useState(false);
+
+    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setUploading(true);
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("module", "branding");
+
+        try {
+            const res = await fetch("/api/media/upload", {
+                method: "POST",
+                body: formData,
+            });
+            const data = await res.json();
+            if (res.ok && data.url) {
+                onChange(data.url);
+            } else {
+                alert(data.error || "Upload failed");
+            }
+        } catch (error) {
+            console.error("Upload error:", error);
+            alert("Upload failed");
+        } finally {
+            setUploading(false);
+        }
+    };
+
     return (
         <div className="space-y-3">
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">{label}</span>
-            <div className="h-32 bg-slate-50 border-2 border-dashed border-slate-100 rounded-3xl flex flex-col items-center justify-center gap-2 group cursor-pointer hover:bg-slate-100 transition-all overflow-hidden relative">
+            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">{label}</span>
+            <label className="h-32 bg-slate-50 border-2 border-dashed border-slate-100 rounded-3xl flex flex-col items-center justify-center gap-2 group cursor-pointer hover:bg-slate-100 transition-all overflow-hidden relative">
+                <input
+                    type="file"
+                    className="hidden"
+                    accept="image/*"
+                    onChange={handleFileChange}
+                    disabled={uploading}
+                />
+
+                {uploading ? (
+                    <div className="absolute inset-0 flex items-center justify-center bg-white/80 z-10">
+                        <RefreshCw className="animate-spin text-slate-400" size={24} />
+                    </div>
+                ) : null}
+
                 {value ? (
-                    <img src={value} className="w-full h-full object-contain p-4" />
+                    <img src={value} className="w-full h-full object-contain p-4" alt="Logo" />
                 ) : (
                     <>
-                        <Upload size={20} className="text-slate-300 group-hover:text-slate-900 transition-colors" />
-                        <span className="text-[9px] font-black text-slate-300 group-hover:text-slate-900 uppercase">Upload</span>
+                        <Upload size={20} className="text-slate-500 group-hover:text-slate-900 transition-colors" />
+                        <span className="text-[9px] font-black text-slate-500 group-hover:text-slate-900 uppercase">Upload</span>
                     </>
                 )}
-            </div>
+            </label>
         </div>
     );
 }
@@ -204,7 +247,7 @@ function LogoUpload({ label, value, onChange }: any) {
 function ColorPicker({ label, value, onChange }: any) {
     return (
         <div className="space-y-3">
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">{label}</span>
+            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">{label}</span>
             <div className="flex items-center gap-4 bg-slate-50 rounded-2xl p-4">
                 <input
                     type="color"
@@ -251,7 +294,7 @@ function ThemeToggle({ label, active, onClick }: any) {
 function InputSmall({ label, value, onChange }: any) {
     return (
         <div className="space-y-1.5">
-            <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">{label}</label>
+            <label className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em]">{label}</label>
             <input
                 type="text"
                 value={value}

@@ -1,0 +1,75 @@
+#!/usr/bin/expect -f
+
+# 🚀 Grafty BSP: Automated VPS Deployment with Password
+# This script uses expect to automate password entry
+
+set timeout -1
+set password "Photoshop09@"
+set server "root@72.61.231.187"
+set remote_path "/root/grafty_bsp"
+
+puts "------------------------------------------------"
+puts "📦 Preparing Deployment: Interactive Commerce Engine"
+puts "------------------------------------------------"
+puts ""
+
+# 1. Sync files via rsync
+puts "🔄 Syncing files to VPS ($server)..."
+
+spawn rsync -avz --exclude node_modules --exclude .next --exclude .git --exclude temp_project --exclude tmp_cache --exclude "*.zip" --exclude "*.tar.gz" ./ $server:$remote_path/
+
+expect {
+    "password:" {
+        send "$password\r"
+        exp_continue
+    }
+    "Are you sure you want to continue connecting" {
+        send "yes\r"
+        exp_continue
+    }
+    eof
+}
+
+puts "✅ Sync Complete."
+
+# 2. Run remote deployment commands
+puts "🔧 Executing remote deployment commands..."
+
+spawn ssh $server {bash -s <<'EOF'
+    cd /root/grafty_bsp
+    
+    echo "☢️ Performing Nuclear Fix: Force-clearing port 3001..."
+    docker compose -f docker-compose.prod.yml down --remove-orphans
+    fuser -k 3001/tcp || true
+    
+    GHOST_CID=$(docker ps -q --filter "publish=3001")
+    if [ ! -z "$GHOST_CID" ]; then
+        echo "🛑 Killing ghost container: $GHOST_CID"
+        docker stop $GHOST_CID && docker rm $GHOST_CID
+    fi
+
+    echo "🏗️ Rebuilding & Starting Fresh Containers..."
+    docker compose -f docker-compose.prod.yml up -d --build
+    
+    echo "⏳ Waiting 15 seconds for application to boot..."
+    sleep 15
+    
+    echo "📊 Syncing Database Schema..."
+    docker compose -f docker-compose.prod.yml exec -T web npx prisma db push --accept-data-loss
+    
+    echo "✨ Deployment Finished Successfully!"
+EOF
+}
+
+expect {
+    "password:" {
+        send "$password\r"
+        exp_continue
+    }
+    eof
+}
+
+puts "------------------------------------------------"
+puts "🎉 SUCCESS: Interactive Commerce Engine is LIVE!"
+puts "URL: http://72.61.231.187:3001"
+puts "------------------------------------------------"

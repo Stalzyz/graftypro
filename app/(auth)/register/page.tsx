@@ -1,231 +1,237 @@
+
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Mail, Lock, Building, Phone, Globe, ArrowRight, AlertCircle, Loader2, Sparkles, CheckCircle, ChevronLeft } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Loader2, Eye, EyeOff, Check, ArrowRight, Star } from "lucide-react";
+import { Logo } from "../../../components/ui/Logo";
 
-type AccountType = "VENDOR" | "RESELLER" | "ENTERPRISE";
-
-export default function RegisterAdvancedPage() {
+export default function RegisterPage() {
     const router = useRouter();
-    const [accountType, setAccountType] = useState<AccountType>("VENDOR");
-    const [step, setStep] = useState(1); // 1: Contact Info, 2: Verification, 3: Password & Complete
-
-    const [formData, setFormData] = useState({
-        businessName: "",
-        website: "",
-        fullName: "",
-        email: "",
-        phone: "",
-        password: "",
-        otpEmail: ""
-    });
-
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
-    const [verificationSent, setVerificationSent] = useState(false);
+    const [success, setSuccess] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
 
-    const handleSendOTP = async () => {
-        if (!formData.email) {
-            setError("Email is required.");
-            return;
-        }
-        setStep(3); // Direct bypass
-    };
+    const [formData, setFormData] = useState({
+        firstName: "", lastName: "", email: "", password: "", mobile: "", team: "", referral: ""
+    });
 
-    const handleVerifyOTP = async () => {
-        setStep(3);
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+        setFormData({ ...formData, [e.target.name]: e.target.value });
     };
 
     const handleRegister = async (e: React.FormEvent) => {
         e.preventDefault();
-        setLoading(true);
         setError("");
+        setLoading(true);
+
+        if (formData.password.length < 8) {
+            setError("Password must be at least 8 characters");
+            setLoading(false);
+            return;
+        }
 
         try {
             const res = await fetch("/api/auth/register", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    business_name: formData.businessName,
-                    full_name: formData.fullName,
-                    website: formData.website,
+                    firstName: formData.firstName,
+                    lastName: formData.lastName,
                     email: formData.email,
-                    phone: formData.phone,
                     password: formData.password,
-                    role: accountType === "RESELLER" ? "RESELLER_APPLICANT" : "OWNER", // Map accordingly
-                    // context: accountType
-                }),
+                    confirmPassword: formData.password,
+                    mobile: formData.mobile,
+                    businessName: formData.team || "My Organization",
+                    location: "India"
+                })
             });
 
             const data = await res.json();
-            if (!res.ok) throw new Error(data.error || "Registration failed");
-
-            // Redirect based on type
-            if (accountType === "RESELLER") router.push("/reseller/dashboard"); // or confirmation
-            else if (accountType === "ENTERPRISE") router.push("/contact/success");
-            else router.push("/profiling");
-
-        } catch (err: any) {
-            setError(err.message);
+            if (res.ok) { setSuccess(true); } else { setError(data.error || "Registration failed"); }
+        } catch (err) {
+            setError("Network error. Please try again.");
         } finally {
             setLoading(false);
         }
     };
 
-    return (
-        <div className="max-w-lg mx-auto w-full">
-            {/* Header / Type Selector */}
-            <div className="text-center mb-8">
-                <h2 className="text-2xl font-bold text-gray-800 mb-2">Create Your Account</h2>
-                <div className="flex justify-center gap-1 bg-gray-100 p-1 rounded-xl inline-flex mb-6">
-                    <TypeButton active={accountType === "VENDOR"} onClick={() => setAccountType("VENDOR")} label="Business" />
-                    <TypeButton active={accountType === "RESELLER"} onClick={() => setAccountType("RESELLER")} label="Reseller" />
-                    <TypeButton active={accountType === "ENTERPRISE"} onClick={() => setAccountType("ENTERPRISE")} label="Enterprise" />
+    if (success) {
+        return (
+            <div className="min-h-screen bg-[#F8F9FA] flex items-center justify-center p-4 font-sans">
+                <div className="bg-white rounded-3xl shadow-xl p-12 text-center max-w-lg w-full border border-slate-100">
+                    <div className="w-20 h-20 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <Check className="text-[#25D366] w-10 h-10" strokeWidth={3} />
+                    </div>
+                    <h2 className="text-3xl font-bold text-slate-900 mb-4">Registration Successful!</h2>
+                    <p className="text-slate-600 mb-8 text-lg leading-relaxed">
+                        Please check your inbox at <span className="font-bold text-slate-900">{formData.email}</span> to verify your email.
+                    </p>
+                    <Link href="/login" className="inline-block w-full bg-[#25D366] text-white font-bold py-4 rounded-full hover:bg-green-600 transition-all shadow-lg">
+                        Go to Login
+                    </Link>
                 </div>
-                <p className="text-sm text-gray-500">
-                    {accountType === "VENDOR" && "Automate your customer engagement."}
-                    {accountType === "RESELLER" && "Partner with us and earn recurring revenue."}
-                    {accountType === "ENTERPRISE" && "Custom white-label solutions at scale."}
-                </p>
+            </div>
+        );
+    }
+
+    return (
+        <div className="min-h-screen w-full flex bg-white font-sans">
+            {/* LEFT SIDE */}
+            <div className="hidden lg:flex lg:w-1/2 bg-[#0F172A] relative flex-col justify-between p-12 xl:p-20 overflow-hidden text-white">
+                <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-[#25D366] rounded-full blur-[180px] opacity-10 translate-x-1/2 -translate-y-1/2"></div>
+                <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-[#042F94] rounded-full blur-[180px] opacity-20 -translate-x-1/2 translate-y-1/2"></div>
+
+                <div className="relative z-10">
+                    <div className="flex items-center gap-3 mb-10">
+                        <Logo variant="light" size={40} showText={false} href="/" />
+                    </div>
+                    <h1 className="text-4xl xl:text-5xl font-extrabold leading-[1.15] tracking-tight mb-8">
+                        Turn conversations <br /> into <span className="text-[#4ade80]">revenue</span>.
+                    </h1>
+                    <ul className="space-y-5 max-w-lg">
+                        {["Official WhatsApp Business API Partner", "Zero setup fees, pay only for what you use", "AI-powered automated support flows", "Real-time analytics and broadcast tracking"].map((item, i) => (
+                            <li key={i} className="flex items-start gap-4">
+                                <div className="mt-1 w-5 h-5 rounded-full bg-[#25D366]/20 flex items-center justify-center flex-shrink-0">
+                                    <Check size={12} className="text-[#4ade80] stroke-[4]" />
+                                </div>
+                                <span className="text-slate-300 font-medium text-lg leading-snug">{item}</span>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+
+                <div className="relative z-10 bg-white/5 backdrop-blur-md rounded-2xl p-6 border border-white/10 mt-10">
+                    <div className="flex gap-1 text-[#fbbf24] mb-3">
+                        {[1, 2, 3, 4, 5].map(i => <Star key={i} size={16} fill="currentColor" />)}
+                    </div>
+                    <p className="text-slate-200 text-xl leading-relaxed font-medium mb-4">
+                        "Grafty transformed how we handle customer queries. Response times dropped by 80% and sales doubled in just one month."
+                    </p>
+                    <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-full bg-indigo-500 flex items-center justify-center font-bold text-white">SK</div>
+                        <div>
+                            <p className="font-bold text-white text-sm">Sarah Kern</p>
+                            <p className="text-slate-400 text-xs uppercase tracking-wider font-semibold">CTO at TechCorp</p>
+                        </div>
+                    </div>
+                </div>
             </div>
 
-            {/* ERROR ALERT */}
-            {error && (
-                <div className="bg-red-50 border border-red-100 text-red-600 p-3 rounded-xl text-xs font-medium flex items-center gap-2 mb-6">
-                    <AlertCircle size={16} /> {error}
+            {/* RIGHT SIDE */}
+            <div className="w-full lg:w-1/2 flex flex-col justify-center overflow-y-auto h-screen bg-[#FAFAFA]">
+                {/* Mobile Logo */}
+                <div className="lg:hidden p-6 pb-0">
+                    <Logo size={40} showText={false} href="/" />
                 </div>
-            )}
 
-            {/* STEPS */}
-            <form onSubmit={step === 3 ? handleRegister : (e) => { e.preventDefault(); step === 1 ? handleSendOTP() : handleVerifyOTP(); }}>
+                <div className="w-full max-w-[520px] mx-auto p-6 sm:p-10 lg:p-12 my-auto">
+                    <div className="mb-10 text-center lg:text-left">
+                        <h2 className="text-3xl font-bold text-slate-900 mb-2">Create your free account</h2>
+                        <p className="text-slate-500 text-base">Get started with your 14-day free trial. No credit card required.</p>
+                    </div>
 
-                {/* STEP 1: CONTACT INFO */}
-                {step === 1 && (
-                    <div className="space-y-4 animate-in slide-in-from-right duration-300">
-                        {/* Google Auth Button */}
-                        <button
-                            type="button"
-                            onClick={() => window.location.href = "/api/auth/google/mock"}
-                            className="w-full bg-white border border-gray-200 text-gray-700 py-3 rounded-xl font-medium flex items-center justify-center gap-3 hover:bg-gray-50 transition-all mb-4"
-                        >
-                            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-5 h-5" alt="Google" />
-                            Continue with Google {process.env.NODE_ENV === "development" ? "(Mock)" : ""}
-                        </button>
+                    <div className="grid grid-cols-1 gap-4 mb-8">
+                        <Link href="/api/auth/google" className="flex items-center justify-center gap-2 bg-white border border-slate-200 rounded-xl py-3 hover:bg-slate-50 transition-all shadow-sm">
+                            <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" className="w-5 h-5" />
+                            <span className="text-slate-700 font-bold text-sm">Sign up with Google</span>
+                        </Link>
+                    </div>
 
-                        <div className="relative flex py-2 items-center">
-                            <div className="flex-grow border-t border-gray-200"></div>
-                            <span className="flex-shrink mx-4 text-gray-400 text-xs uppercase font-bold">Or register with email</span>
-                            <div className="flex-grow border-t border-gray-200"></div>
+                    <div className="relative mb-8">
+                        <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-200"></div></div>
+                        <div className="relative flex justify-center text-xs uppercase tracking-widest font-bold text-slate-400">
+                            <span className="bg-[#FAFAFA] px-4">OR REGISTER WITH EMAIL</span>
+                        </div>
+                    </div>
+
+                    {error && (
+                        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-center gap-3">
+                            <div className="w-2 h-2 rounded-full bg-red-600"></div>
+                            <span className="text-red-600 text-sm font-semibold">{error}</span>
+                        </div>
+                    )}
+
+                    <form onSubmit={handleRegister} className="space-y-5">
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-1.5">
+                                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider ml-1">First Name</label>
+                                <input name="firstName" required className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-slate-900 text-sm focus:outline-none focus:border-[#25D366] focus:ring-4 focus:ring-[#25D366]/10 transition-all" placeholder="John" value={formData.firstName} onChange={handleChange} />
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider ml-1">Last Name</label>
+                                <input name="lastName" required className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-slate-900 text-sm focus:outline-none focus:border-[#25D366] focus:ring-4 focus:ring-[#25D366]/10 transition-all" placeholder="Doe" value={formData.lastName} onChange={handleChange} />
+                            </div>
                         </div>
 
-                        <Input label="Full Name" icon={<Sparkles size={16} />} value={formData.fullName} onChange={v => setFormData({ ...formData, fullName: v })} required placeholder="Enter your name" />
+                        <div className="space-y-1.5">
+                            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider ml-1">Business Email</label>
+                            <input name="email" type="email" required className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-slate-900 text-sm focus:outline-none focus:border-[#25D366] focus:ring-4 focus:ring-[#25D366]/10 transition-all" placeholder="name@company.com" value={formData.email} onChange={handleChange} />
+                        </div>
+
+                        <div className="space-y-1.5">
+                            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider ml-1">Password</label>
+                            <div className="relative">
+                                <input name="password" type={showPassword ? "text" : "password"} required className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 pr-11 text-slate-900 text-sm focus:outline-none focus:border-[#25D366] focus:ring-4 focus:ring-[#25D366]/10 transition-all" placeholder="Min. 8 characters" value={formData.password} onChange={handleChange} />
+                                <button type="button" className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600" onClick={() => setShowPassword(!showPassword)}>
+                                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="space-y-1.5">
+                            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider ml-1">WhatsApp Number</label>
+                            <div className="flex gap-2">
+                                <div className="flex items-center gap-2 border border-slate-200 rounded-xl px-3 bg-white min-w-[80px]">
+                                    <span className="text-lg">🇮🇳</span>
+                                    <span className="text-xs font-bold text-slate-500">+91</span>
+                                </div>
+                                <input name="mobile" type="tel" required className="flex-1 bg-white border border-slate-200 rounded-xl px-4 py-3 text-slate-900 text-sm focus:outline-none focus:border-[#25D366] focus:ring-4 focus:ring-[#25D366]/10 transition-all" placeholder="98765 43210" value={formData.mobile} onChange={handleChange} />
+                            </div>
+                        </div>
 
                         <div className="grid grid-cols-2 gap-4">
-                            <Input label="Business Name" icon={<Building size={16} />} value={formData.businessName} onChange={v => setFormData({ ...formData, businessName: v })} required />
-                            <Input label="Website" icon={<Globe size={16} />} value={formData.website} onChange={v => setFormData({ ...formData, website: v })} placeholder="https://" />
-                        </div>
-
-                        <Input label="Official Email" icon={<Mail size={16} />} type="email" value={formData.email} onChange={v => setFormData({ ...formData, email: v })} required />
-                        <Input label="Phone Number" icon={<Phone size={16} />} type="tel" value={formData.phone} onChange={v => setFormData({ ...formData, phone: v })} required />
-                    </div>
-                )}
-
-                {/* STEP 2: VERIFICATION */}
-                {step === 2 && (
-                    <div className="space-y-4 animate-in slide-in-from-right duration-300">
-                        <div className="text-center mb-6">
-                            <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-3">
-                                <Mail size={24} />
+                            <div className="space-y-1.5">
+                                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider ml-1">Team</label>
+                                <div className="relative">
+                                    <select name="team" required className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-slate-900 text-sm focus:outline-none focus:border-[#25D366] appearance-none cursor-pointer" value={formData.team} onChange={handleChange}>
+                                        <option value="" disabled>Select Team</option>
+                                        <option>Marketing</option><option>Sales</option><option>Support</option><option>Operations</option><option>Other</option>
+                                    </select>
+                                </div>
                             </div>
-                            <h3 className="font-bold text-gray-800">Verify your email</h3>
-                            <p className="text-xs text-gray-500 mt-1">We sent a verification code to {formData.email}</p>
+                            <div className="space-y-1.5">
+                                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider ml-1">Source</label>
+                                <div className="relative">
+                                    <select name="referral" required className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-slate-900 text-sm focus:outline-none focus:border-[#25D366] appearance-none cursor-pointer" value={formData.referral} onChange={handleChange}>
+                                        <option value="" disabled>Select Source</option>
+                                        <option>Google Search</option><option>Social Media</option><option>Friend</option><option>Email</option><option>Other</option>
+                                    </select>
+                                </div>
+                            </div>
                         </div>
 
-                        <Input label="Verification Code" placeholder="123456" value={formData.otpEmail} onChange={v => setFormData({ ...formData, otpEmail: v })} required />
+                        <button type="submit" disabled={loading}
+                            className="w-full bg-[#0F172A] hover:bg-[#1E293B] disabled:opacity-70 text-white font-bold py-4 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 mt-6 active:scale-[0.98]">
+                            {loading ? <Loader2 className="animate-spin w-5 h-5" /> : (<>Create Account <ArrowRight size={18} /></>)}
+                        </button>
 
-                        <button type="button" onClick={() => setStep(1)} className="text-xs text-blue-600 hover:underline w-full text-center mt-2">Change Contact Info</button>
-                    </div>
-                )}
-
-                {/* STEP 3: PASSWORD & FINISH */}
-                {step === 3 && (
-                    <div className="space-y-4 animate-in slide-in-from-right duration-300">
-                        <div className="bg-green-50 border border-green-100 p-4 rounded-xl flex items-center gap-3 text-green-700 text-sm mb-4">
-                            <CheckCircle size={20} /> Contacts Verified Successfully!
-                        </div>
-
-                        <Input label="Set Password" icon={<Lock size={16} />} type="password" value={formData.password} onChange={v => setFormData({ ...formData, password: v })} required minLength={8} />
-
-                        <div className="flex items-center gap-2">
-                            <input type="checkbox" required className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
-                            <label className="text-xs text-gray-500">I agree to the <Link href="#" className="underline">Terms of Service</Link> & <Link href="#" className="underline">Privacy Policy</Link></label>
-                        </div>
-                    </div>
-                )}
-
-                {/* FOOTER ACTIONS */}
-                <div className="mt-8">
-                    <button
-                        type="submit"
-                        disabled={loading}
-                        className="w-full bg-[#1e293b] text-white py-4 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-[#0f172a] transition-all disabled:opacity-50"
-                    >
-                        {loading ? <Loader2 size={18} className="animate-spin" /> : (step === 3 ? "Create Account" : "Next Step")}
-                        {!loading && <ArrowRight size={18} />}
-                    </button>
+                        <p className="text-center text-sm text-slate-500 font-medium">
+                            Already have an account?{" "}
+                            <Link href="/login" className="text-[#25D366] font-bold hover:underline">Sign in</Link>
+                        </p>
+                    </form>
                 </div>
-            </form>
 
-            <div className="pt-6 text-center">
-                <p className="text-gray-500 text-sm">
-                    Already have an account?{" "}
-                    <Link href="/login" className="text-blue-600 font-bold hover:underline">
-                        Log in
-                    </Link>
-                </p>
-            </div>
-        </div>
-    );
-}
-
-function TypeButton({ active, onClick, label }: { active: boolean, onClick: () => void, label: string }) {
-    return (
-        <button
-            type="button"
-            onClick={onClick}
-            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${active ? "bg-white shadow-sm text-gray-900" : "text-gray-500 hover:text-gray-700 hover:bg-gray-200/50"}`}
-        >
-            {label}
-        </button>
-    );
-}
-
-function Input({ label, value, onChange, type = "text", placeholder, icon, required, minLength }: {
-    label: string,
-    value: string,
-    onChange: (v: string) => void,
-    type?: string,
-    placeholder?: string,
-    icon?: React.ReactNode,
-    required?: boolean,
-    minLength?: number
-}) {
-    return (
-        <div className="space-y-1.5 w-full">
-            <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">{label}</label>
-            <div className="relative group">
-                {icon && <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 transition-colors">{icon}</div>}
-                <input
-                    type={type}
-                    value={value}
-                    onChange={(e) => onChange(e.target.value)}
-                    placeholder={placeholder}
-                    required={required}
-                    minLength={minLength}
-                    className={`w-full bg-gray-50 border-transparent focus:bg-white focus:border-blue-500/30 rounded-xl ${icon ? "pl-11" : "pl-4"} pr-4 py-3 text-sm font-medium outline-none transition-all shadow-inner focus:ring-4 focus:ring-blue-500/5`}
-                />
+                <div className="w-full text-center lg:text-left lg:pl-12 py-10">
+                    <div className="flex justify-center lg:justify-start gap-6 text-[11px] font-bold text-slate-400 uppercase tracking-widest">
+                        <Link href="/terms" className="hover:text-slate-600 transition-colors">Terms</Link>
+                        <Link href="/privacy" className="hover:text-slate-600 transition-colors">Privacy</Link>
+                        <Link href="/support" className="hover:text-slate-600 transition-colors">Help</Link>
+                    </div>
+                </div>
             </div>
         </div>
     );

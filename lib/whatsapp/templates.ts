@@ -33,8 +33,8 @@ export class MetaTemplateService {
                         }
                         if (['IMAGE', 'VIDEO', 'DOCUMENT'].includes(c.format)) {
                             // For media headers, Meta requires a 'example' file handle or link during submission
-                            // In many cases, we can use a generic placeholder link if the user hasn't uploaded one
-                            component.example = { header_handle: ["placeholder_media_id"] };
+                            const mediaUrl = c.media_url || "https://grafty.pro/placeholder_media.png";
+                            component.example = { header_url: [mediaUrl] };
                         }
                     }
 

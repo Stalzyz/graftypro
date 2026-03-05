@@ -1,39 +1,89 @@
-
 import { NextResponse } from "next/server";
-import { writeFile, mkdir } from "fs/promises";
-import { join } from "path";
-import { v4 as uuidv4 } from "uuid";
+import { ImageUploadService, UploadModule } from "../../../../lib/services/upload";
+import { getCurrentUser } from "../../../../lib/auth";
+
+export const dynamic = 'force-dynamic';
+
+export async function GET() {
+    return NextResponse.json({ message: "Upload endpoint ready. Use POST to upload files." });
+}
 
 export async function POST(req: Request) {
+    let stage = "AUTH_INIT";
     try {
-        const formData = await req.formData();
-        const file = formData.get("file") as File;
+        const headersObj = Object.fromEntries(req.headers.entries());
+        console.log(`[API Upload] Start POST request. Headers:`, {
+            "x-user-id": headersObj["x-user-id"],
+            "x-workspace-id": headersObj["x-workspace-id"],
+            "content-type": headersObj["content-type"]
+        });
 
-        if (!file) {
-            return NextResponse.json({ error: "No file uploaded" }, { status: 400 });
+        // 1. Auth Guard
+        stage = "AUTH_CHECK";
+        const user = await getCurrentUser(req);
+        if (!user) {
+            console.error(`[API Upload] Unauthorized access attempt - No user found in request context`);
+            return NextResponse.json({ error: "Unauthorized. Please log in again." }, { status: 401 });
+        }
+        console.log(`[API Upload] User context established: User=${user.userId}, Workspace=${user.workspaceId}`);
+
+        // 2. Body Parsing
+        stage = "BODY_PARSING";
+        let formData: FormData;
+        try {
+            formData = await req.formData();
+        } catch (e: any) {
+            console.error(`[API Upload] FormData parsing failed at stage ${stage}:`, e);
+            return NextResponse.json({
+                error: "Failed to parse form data. The request might be malformed or too large.",
+                details: e.message
+            }, { status: 400 });
         }
 
-        const bytes = await file.arrayBuffer();
-        const buffer = Buffer.from(bytes);
+        const file = formData.get("file");
+        const module = (formData.get("module") as UploadModule) || "general";
 
-        // Save to public/uploads
-        const filename = `${uuidv4()}_${file.name}`;
-        const uploadDir = join(process.cwd(), "public", "uploads");
+        // Hybrid check for File objects (instanceof can sometimes fail in certain Node environments)
+        const isFile = file && typeof (file as any).arrayBuffer === 'function' && typeof (file as any).name === 'string';
 
+        if (!isFile) {
+            console.error(`[API Upload] Validation failed: Field 'file' is missing or not a valid File object. Received:`, typeof file);
+            return NextResponse.json({ error: "No valid file provided in the 'file' field" }, { status: 400 });
+        }
+
+        const validFile = file as File;
+        console.log(`[API Upload] Processing file: ${validFile.name}, Size: ${validFile.size}, Module: ${module}`);
+
+        // 3. Service-Layer Upload
+        stage = "SERVICE_UPLOAD";
         try {
-            await mkdir(uploadDir, { recursive: true });
-        } catch (e) { }
+            const result = await ImageUploadService.uploadImage(validFile, {
+                module: module,
+                tenantId: user.workspaceId,
+                maxSize: 50 * 1024 * 1024
+            });
 
-        const path = join(uploadDir, filename);
-        await writeFile(path, buffer);
+            return NextResponse.json({
+                success: true,
+                url: result.url,
+                filename: result.filename,
+                originalName: result.originalName,
+                mime: result.mimeType,
+                size: result.size
+            });
 
-        // In a real production app we'd use S3/Cloudinary. 
-        // For local we return the public URL.
-        const url = `/uploads/${filename}`;
+        } catch (error: any) {
+            console.error(`[API Upload] Service layer error (stage: ${stage}):`, error.message);
+            return NextResponse.json({ error: error.message }, { status: 422 });
+        }
 
-        return NextResponse.json({ url, filename: file.name, type: file.type });
     } catch (error: any) {
-        console.error("Upload Error:", error);
-        return NextResponse.json({ error: "Upload failed" }, { status: 500 });
+        console.error(`[API Upload] CRITICAL EXCEPTION at stage ${stage}:`, error);
+        return NextResponse.json({
+            error: "Internal Server Error during upload processing",
+            stage: stage,
+            message: error.message,
+            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        }, { status: 500 });
     }
 }

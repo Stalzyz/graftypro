@@ -138,7 +138,7 @@ export default function WhiteLabelLanding() {
 
             {/* Footer Copy */}
             <footer className="py-12 border-t border-white/5 text-center text-slate-500 text-xs tracking-widest uppercase">
-                &copy; 2026 Wabot White-Label Program. All Rights Reserved.
+                &copy; 2026 Grafty White-Label Program. All Rights Reserved.
             </footer>
         </div>
     );

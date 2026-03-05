@@ -1,8 +1,11 @@
 
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
-import { getCurrentUser } from "@/lib/auth";
-import { MetaTemplateService } from "@/lib/whatsapp/templates";
+import { prisma } from "../../../../../lib/db";
+import { getCurrentUser } from "../../../../../lib/auth";
+import { MetaTemplateService } from "../../../../../lib/whatsapp/templates";
+import { decrypt } from "../../../../../lib/security/encryption";
+
+export const dynamic = "force-dynamic";
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
     try {
@@ -30,9 +33,10 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         }
 
         // 2. Submit to Meta
+        const token = decrypt(waba.access_token);
         const metaResult = await MetaTemplateService.submitTemplate(
             waba.waba_id,
-            waba.access_token,
+            token,
             template
         );
 

@@ -1,6 +1,6 @@
 #!/usr/bin/expect -f
 set timeout 60
-spawn ssh root@72.61.231.187 "ls -d /root/wabot_bsp"
+spawn ssh root@72.61.231.187 "ls -d /root/grafty_bsp"
 expect {
     "Are you sure you want to continue connecting" {
         send "yes\r"

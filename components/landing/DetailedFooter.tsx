@@ -2,7 +2,7 @@
 "use client";
 import React from 'react';
 import Link from 'next/link';
-import { Logo } from '@/components/ui/Logo';
+import { Logo } from '../ui/Logo';
 import {
     Facebook,
     Instagram,
@@ -49,7 +49,10 @@ export default function DetailedFooter() {
                         <h4 className="text-white font-black uppercase text-[10px] tracking-[0.2em] mb-8">Company</h4>
                         <ul className="space-y-4">
                             <li><Link href="/how-to-use" className="text-slate-500 hover:text-white text-sm transition-colors">How to Use</Link></li>
-                            {['Success Stories', 'Affiliate Program', 'Pricing', 'Terms of Service', 'Privacy Policy'].map((item, i) => (
+                            <li><Link href="/privacy-policy" className="text-slate-500 hover:text-white text-sm transition-colors">Privacy Policy</Link></li>
+                            <li><Link href="/terms-and-conditions" className="text-slate-500 hover:text-white text-sm transition-colors">Terms & Conditions</Link></li>
+                            <li><Link href="/reseller-register" className="text-slate-500 hover:text-white text-sm transition-colors">Reseller Registration</Link></li>
+                            {['Success Stories', 'Affiliate Program', 'Pricing'].map((item, i) => (
                                 <li key={i}><Link href="#" className="text-slate-500 hover:text-white text-sm transition-colors">{item}</Link></li>
                             ))}
                         </ul>
@@ -60,7 +63,7 @@ export default function DetailedFooter() {
                         <h4 className="text-white font-black uppercase text-[10px] tracking-[0.2em] mb-8">Get in Touch</h4>
                         <ul className="space-y-4">
                             <li className="flex gap-3 items-center text-slate-500 text-sm">
-                                <Mail size={16} className="text-wa-green" /> admin@grekam.in
+                                <Mail size={16} className="text-wa-green" /> support@grafty.pro
                             </li>
                             <li className="flex gap-3 items-center text-slate-500 text-sm">
                                 <Phone size={16} className="text-wa-green" /> +91 9789359407
@@ -81,7 +84,7 @@ export default function DetailedFooter() {
 
                 <div className="pt-12 border-t border-slate-900 flex flex-col md:flex-row justify-between items-center gap-6">
                     <div className="text-slate-600 text-[10px] font-bold uppercase tracking-widest">
-                        &copy; {new Date().getFullYear()} WAVO Global Platforms. All rights reserved.
+                        &copy; {new Date().getFullYear()} Grafty Pro. All rights reserved.
                     </div>
                     <div className="flex gap-8 text-[10px] font-bold uppercase tracking-widest text-slate-600">
                         <Link href="#" className="hover:text-white transition-colors">Cookie Policy</Link>

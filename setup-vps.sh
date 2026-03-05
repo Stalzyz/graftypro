@@ -1,12 +1,12 @@
 #!/bin/bash
 
-# Wabot BSP - VPS Setup & Deployment Script
+# Grafty BSP - VPS Setup & Deployment Script
 # This script installs Docker, Docker Compose, and Nginx on Ubuntu/Debian.
 
 set -e
 
 echo "------------------------------------------------"
-echo "🚀 Wabot BSP: VPS Environment Setup"
+echo "🚀 Grafty BSP: VPS Environment Setup"
 echo "------------------------------------------------"
 
 # 1. Update System
@@ -39,16 +39,16 @@ echo "Installing Nginx and Certbot for SSL..."
 sudo apt-get install -y nginx certbot python3-certbot-nginx
 
 # 5. Create Project Directory
-mkdir -p ~/wabot_bsp
-echo "✅ Directory ~/wabot_bsp created."
+mkdir -p ~/grafty_bsp
+echo "✅ Directory ~/grafty_bsp created."
 
 echo ""
 echo "------------------------------------------------"
 echo "🎉 Setup Complete!"
 echo "------------------------------------------------"
 echo "NEXT STEPS:"
-echo "1. Upload your project files to ~/wabot_bsp"
+echo "1. Upload your project files to ~/grafty_bsp"
 echo "2. Copy .env.example to .env and fill in your production values"
-echo "3. Run (inside ~/wabot_bsp):"
+echo "3. Run (inside ~/grafty_bsp):"
 echo "   ./deploy.sh"
 echo "------------------------------------------------"

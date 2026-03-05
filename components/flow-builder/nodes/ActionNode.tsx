@@ -26,11 +26,30 @@ const ActionNode = ({ data, isConnectable, selected }: NodeProps) => {
                 <div className="text-sm font-medium text-gray-700">
                     {data.actionType === 'start_drip' ? 'Start Drip Campaign' :
                         data.actionType === 'stop_drip' ? 'Stop Drip Campaign' :
-                            'Select Action'}
+                            data.actionType === 'webhook' ? 'Trigger Outbound Webhook' :
+                                data.actionType === 'save_to_crm' ? 'Sync to CRM (Lead)' :
+                                    data.actionType === 'google_sheet' ? 'Append to Google Sheet' :
+                                        data.actionType === 'send_email' ? 'Send Notification Email' :
+                                            'Select Action'}
                 </div>
                 {data.actionType === 'start_drip' && data.dripName && (
                     <div className="text-[10px] bg-amber-100 text-amber-800 px-2 py-1 rounded mt-1 truncate">
                         {data.dripName}
+                    </div>
+                )}
+                {data.actionType === 'send_email' && data.emailAddress && (
+                    <div className="text-[10px] bg-blue-100 text-blue-800 px-2 py-1 shadow-sm rounded mt-1 truncate font-bold">
+                        📧 {data.emailAddress}
+                    </div>
+                )}
+                {data.actionType === 'google_sheet' && (data.spreadsheetId || data.sheetName) && (
+                    <div className="text-[10px] bg-emerald-100 text-emerald-800 px-2 py-1 shadow-sm rounded mt-1 truncate font-bold">
+                        📊 {data.sheetName || 'Sheet'} [{data.spreadsheetId ? data.spreadsheetId.substring(0, 6) : '...'}...]
+                    </div>
+                )}
+                {data.actionType === 'webhook' && data.webhookUrl && (
+                    <div className="text-[10px] bg-slate-100 text-slate-800 px-2 py-1 shadow-sm rounded mt-1 truncate font-bold">
+                        🔗 {data.webhookUrl}
                     </div>
                 )}
                 {data.actionType === 'stop_drip' && (

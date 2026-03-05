@@ -115,12 +115,13 @@ export default function NewTemplatePage() {
                         <button
                             type="submit"
                             disabled={loading}
-                            className="bg-blue-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700 flex items-center gap-2 disabled:opacity-50"
+                            className="flex items-center justify-center gap-2 px-8 py-2.5 bg-[#27954D] text-white font-bold transition-all hover:bg-[#1f7a3f] active:scale-95 shadow-lg disabled:opacity-50"
+                            style={{ borderRadius: '12px', height: '48px' }}
                         >
                             {loading ? "Creating..." : (
                                 <>
                                     <span>Continue to Editor</span>
-                                    <Check size={18} />
+                                    <Check size={20} />
                                 </>
                             )}
                         </button>

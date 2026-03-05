@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
-import { requireSuperAdmin } from "@/lib/admin-auth";
+import { prisma } from "../../../../../lib/db";
+import { requireSuperAdmin } from "../../../../../lib/admin-auth";
+
+export const dynamic = "force-dynamic";
 
 /**
  * PHASE 6: PRICING MANAGEMENT
@@ -51,6 +53,20 @@ export async function POST(req: Request) {
                 platform_margin,
                 reseller_margin,
                 final_vendor_price: finalPrice
+            }
+        });
+
+        // Audit Log
+        const admin = await requireSuperAdmin();
+        await prisma.auditLog.create({
+            data: {
+                admin_id: admin.id,
+                admin_email: admin.email || 'system',
+                action_type: 'UPDATE_PRICING',
+                target_type: 'PRICING',
+                target_id: pricing.id,
+                after_value: { message_type, country, finalPrice },
+                reason: `Updating pricing for ${message_type} in ${country}`
             }
         });
 

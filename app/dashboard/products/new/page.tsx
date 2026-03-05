@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Save, Loader2, Image as ImageIcon } from "lucide-react";
+import { SmartUploader } from "../../../../components/ui/SmartUploader";
 
 export default function NewProductPage() {
     const router = useRouter();
@@ -113,22 +114,12 @@ export default function NewProductPage() {
                     <div className="space-y-4 pt-4">
                         <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wide border-b border-gray-100 pb-2">Media</h3>
 
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Image URL</label>
-                            <div className="flex gap-2">
-                                <span className="flex items-center justify-center w-10 bg-gray-100 border border-gray-300 rounded-l-lg text-gray-500">
-                                    <ImageIcon size={18} />
-                                </span>
-                                <input
-                                    type="url"
-                                    className="flex-1 border border-gray-300 border-l-0 rounded-r-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500"
-                                    placeholder="https://example.com/image.jpg"
-                                    value={formData.image_url}
-                                    onChange={e => setFormData({ ...formData, image_url: e.target.value })}
-                                />
-                            </div>
-                            <p className="text-xs text-gray-400 mt-2">Paste a direct link to your product image.</p>
-                        </div>
+                        <SmartUploader
+                            label="Product Image"
+                            module="ecommerce"
+                            defaultValue={formData.image_url}
+                            onUploadSuccess={(url) => setFormData({ ...formData, image_url: url })}
+                        />
                     </div>
                 </div>
 

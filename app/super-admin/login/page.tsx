@@ -1,15 +1,13 @@
 "use client";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Lock, AlertCircle } from "lucide-react";
-import { Logo } from "@/components/ui/Logo";
+import { Logo } from "../../../components/ui/Logo";
 
 export default function AdminLogin() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
-    const router = useRouter();
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -19,20 +17,24 @@ export default function AdminLogin() {
         try {
             const res = await fetch("/api/super-admin/auth/login", {
                 method: "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
                 body: JSON.stringify({ email, password }),
             });
 
-            if (res.ok) {
-                router.push("/super-admin/dashboard");
+            const data = await res.json();
+
+            if (res.ok && data.success) {
+                // Hard redirect so browser fully picks up the new cookie
+                window.location.href = "/super-admin/dashboard";
             } else {
-                const data = await res.json();
                 const errorMsg = data.details
                     ? `${data.error}: ${data.details}`
-                    : (data.error || "Login failed");
-                throw new Error(errorMsg);
+                    : (data.error || "Invalid credentials");
+                setError(errorMsg);
             }
         } catch (err: any) {
-            setError(err.message || "Network error");
+            setError("Network error — please try again");
         } finally {
             setLoading(false);
         }
@@ -71,7 +73,7 @@ export default function AdminLogin() {
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 className="w-full p-4 bg-slate-50/50 border border-slate-100 rounded-2xl focus:border-[#27954D]/30 outline-none transition-all font-medium text-sm text-slate-700"
-                                placeholder="admin@wavo.ai"
+                                placeholder="admin@grafty.ai"
                                 required
                             />
                         </div>
@@ -98,7 +100,7 @@ export default function AdminLogin() {
                 </div>
 
                 <p className="mt-12 text-center text-[9px] text-slate-300 font-bold uppercase tracking-[0.4em]">
-                    WAVO Enterprise Portal
+                    Grafty Enterprise Portal
                 </p>
             </div>
         </div>

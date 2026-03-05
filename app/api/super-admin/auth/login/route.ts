@@ -1,9 +1,11 @@
 
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { prisma } from "../../../../../lib/db";
 import bcrypt from "bcryptjs";
-import { signAdminToken } from "@/lib/admin-auth";
+import { signAdminToken } from "../../../../../lib/admin-auth";
 import { cookies } from "next/headers";
+
+export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
     try {
@@ -20,11 +22,13 @@ export async function POST(req: Request) {
         });
 
         if (!admin) {
-            console.log(`Login failed: Admin with email ${email} not found.`);
+            console.log(`[AUTH-DEBUG] No admin found for email: [${email}]`);
             return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
         }
 
         const isValid = await bcrypt.compare(password, admin.password_hash);
+        console.log(`[AUTH-DEBUG] Login attempt for: [${email}] | Exists: true | ValidPass: ${isValid}`);
+
         if (!isValid) {
             return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
         }
@@ -37,7 +41,11 @@ export async function POST(req: Request) {
         });
 
         // Set Cookie
-        const isHttps = req.url.startsWith("https");
+        // Behind a reverse proxy (Nginx), req.url is always http:// internally.
+        // Use x-forwarded-proto to detect the actual client-facing protocol.
+        const forwardedProto = req.headers.get("x-forwarded-proto");
+        const isHttps = forwardedProto === "https" || req.url.startsWith("https") || process.env.NODE_ENV === "production";
+
         cookies().set("admin_token", token, {
             httpOnly: true,
             secure: isHttps,

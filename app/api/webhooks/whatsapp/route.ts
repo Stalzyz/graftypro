@@ -1,275 +1,253 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { prisma } from "../../../../lib/db";
+import { decrypt } from "../../../../lib/security/encryption";
+import { WhatsAppMediaDownloader } from "../../../../lib/whatsapp/media-downloader";
+
+export const dynamic = "force-dynamic";
 
 // 1. Verification Challenge (GET)
 export async function GET(req: Request) {
-    const { searchParams } = new URL(req.url);
-    const mode = searchParams.get("hub.mode");
-    const token = searchParams.get("hub.verify_token");
-    const challenge = searchParams.get("hub.challenge");
+    try {
+        const { searchParams } = new URL(req.url);
+        const mode = searchParams.get("hub.mode");
+        const token = searchParams.get("hub.verify_token");
+        const challenge = searchParams.get("hub.challenge");
 
-    const VERIFY_TOKEN = process.env.META_WEBHOOK_VERIFY_TOKEN;
+        console.log(`[Webhook GET] mode=${mode}, token=${token}, challenge=${challenge}`);
 
-    if (mode === "subscribe" && token === VERIFY_TOKEN) {
-        return new NextResponse(challenge, { status: 200 });
+        const VERIFY_TOKEN = process.env.META_WEBHOOK_VERIFY_TOKEN || "grafty_verification_token";
+
+        if (mode === "subscribe" && token === VERIFY_TOKEN) {
+            console.log("✅ Webhook Verification Successful!");
+            return new NextResponse(challenge, { status: 200 });
+        }
+
+        console.error(`❌ Verification Failed. Needed: '${VERIFY_TOKEN}', Got: '${token}'`);
+        return new NextResponse("Forbidden", { status: 403 });
+    } catch (e) {
+        console.error("Webhook GET Error:", e);
+        return new NextResponse("Internal Server Error", { status: 500 });
     }
-
-    return new NextResponse("Forbidden", { status: 403 });
 }
 
 // 2. Event Ingestion (POST)
 export async function POST(req: Request) {
     const startTime = Date.now();
+    let body;
+
     try {
-        const body = await req.json();
+        const rawBody = await req.text();
+        if (!rawBody) return NextResponse.json({ status: "ignored_empty_body" });
+        body = JSON.parse(rawBody);
+    } catch (err) {
+        console.error("Webhook JSON Parsing Error:", err);
+        return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+    }
 
-        // 1. Immediate 200 OK (Important for Meta)
-        // We strictly should process async, but for MVP we do simplified logic here.
-        // Ideally: Push 'body' to Redis Queue -> Return 200 -> Worker processes it.
-
+    try {
         const entry = body.entry?.[0];
         const changes = entry?.changes?.[0];
         const value = changes?.value;
 
-        if (!value) return NextResponse.json({ status: "ignored" });
+        if (!value) return NextResponse.json({ status: "ignored_no_value" });
 
-        // Handle Template Status Updates
-        if (changes?.field === "message_template_status_update") {
-            const { event, message_template_name, message_template_language } = value;
-            const wabaIdFromMeta = entry.id;
-
-            const waba = await prisma.whatsAppAccount.findFirst({
-                where: { waba_id: wabaIdFromMeta }
-            });
-
-            if (waba) {
-                await prisma.template.updateMany({
-                    where: {
-                        workspace_id: waba.workspace_id,
-                        name: message_template_name,
-                        language: message_template_language
-                    },
-                    data: {
-                        status: event as any
-                    }
-                });
-                return NextResponse.json({ status: "template_updated" });
-            }
-        }
-
-        // Handle Messages
+        // ── Handle Inbound Messages ──────────────────────────────────────
         if (value.messages) {
             const message = value.messages[0];
             const contactProfile = value.contacts?.[0];
             const wabaId = value.metadata?.phone_number_id;
 
-            // A. Find Workspace by WABA ID
-            // In a real scenario, we cache this mapping.
-            const waba = await prisma.whatsAppAccount.findUnique({
-                where: { phone_number_id: wabaId },
+            console.log(`[Webhook] ▶️ Message from ${message.from} to WABA ID: "${wabaId}"`);
+
+            // A. Find Workspace by WABA ID (with Auto-Connect Support)
+            let waba = await prisma.whatsAppAccount.findUnique({
+                where: { phone_number_id: String(wabaId) },
                 include: { workspace: true },
             });
 
-            if (waba) {
-                // B. Find/Create Contact
-                const phone = message.from;
+            if (!waba) {
+                console.log(`⚠️ WABA ${wabaId} not found. Auto-connecting...`);
+                let pendingWorkspace = await prisma.workspace.findFirst({ where: { name: "Pending Connections" } });
 
-                const contact = await prisma.contact.upsert({
-                    where: {
-                        workspace_id_phone: {
-                            workspace_id: waba.workspace_id,
-                            phone: phone,
-                        },
-                    },
-                    update: {
-                        name: contactProfile?.profile?.name || undefined,
-                    },
-                    create: {
-                        workspace_id: waba.workspace_id,
-                        phone: phone,
-                        name: contactProfile?.profile?.name || "Unknown",
-                    },
-                });
-
-                // C. Log Conversation Event (Simplified)
-                // In real system: check if existing conversation is open, else open new.
-                let conversation = await prisma.conversation.findFirst({
-                    where: {
-                        contact_id: contact.id,
-                        status: "OPEN",
-                    },
-                });
-
-                if (!conversation) {
-                    conversation = await prisma.conversation.create({
-                        data: {
-                            workspace_id: waba.workspace_id,
-                            contact_id: contact.id,
-                            status: "OPEN"
-                        }
-                    });
-                } else {
-                    // Update timestamp to bring to top of inbox
-                    await prisma.conversation.update({
-                        where: { id: conversation.id },
-                        data: { updated_at: new Date() }
-                    });
-                }
-
-                // C2. Save Message (Timeline)
-                let msgType = "TEXT";
-                let msgContent = {};
-
-                if (message.text) {
-                    msgType = "TEXT";
-                    msgContent = { body: message.text.body };
-                } else if (message.image) {
-                    msgType = "IMAGE";
-                    msgContent = message.image;
-                } else if (message.interactive) {
-                    msgType = "INTERACTIVE";
-                    msgContent = message.interactive;
-                } else {
-                    msgType = "UNKNOWN";
-                    msgContent = { raw: message };
-                }
-
-                // @ts-ignore
-                await prisma.message.create({
-                    data: {
-                        workspace_id: waba.workspace_id,
-                        contact_id: contact.id,
-                        conversation_id: conversation.id,
-                        meta_id: message.id,
-                        type: msgType as any, // Enum
-                        direction: "INBOUND",
-                        content: msgContent,
-                        status: "DELIVERED"
-                    }
-                });
-
-                // Update Contact Last Active
-                await prisma.contact.update({
-                    where: { id: contact.id },
-                    // @ts-ignore
-                    data: { last_active_at: new Date() }
-                });
-
-                // D. Consent Engine (Phase 2)
-                const textBody = message.text?.body?.toLowerCase()?.trim();
-
-                // STOP DROPS ON REPLY (Intelligent Follow-up)
-                if (textBody !== "start") {
-                    // Update: Only stop if sequence allows it
-                    const activeDrips = await prisma.dripEnrollment.findMany({
-                        where: {
-                            contact_id: contact.id,
-                            is_stopped: false,
-                            // @ts-ignore
-                            drip: { stop_on_reply: true }
-                        }
-                    });
-
-                    if (activeDrips.length > 0) {
-                        await prisma.dripEnrollment.updateMany({
-                            where: { id: { in: activeDrips.map(d => d.id) } },
-                            // @ts-ignore
-                            data: { is_stopped: true, stop_reason: "USER_REPLIED" }
-                        });
-                        console.log(`Stopped ${activeDrips.length} drips for contact ${contact.phone} due to reply.`);
-                    }
-                }
-
-                if (textBody === "stop" || textBody === "unsubscribe") {
-                    await prisma.contact.update({
-                        where: { id: contact.id },
-                        // @ts-ignore
-                        data: { opt_in: false }
-                    });
-                    // Optional: Send "You have been unsubscribed" via API (outside scope of webhook return)
-                    return NextResponse.json({ status: "opted_out" });
-                }
-
-                if (textBody === "start" || textBody === "subscribe") {
-                    await prisma.contact.update({
-                        where: { id: contact.id },
-                        // @ts-ignore
-                        data: { opt_in: true }
-                    });
-                }
-
-                // @ts-ignore
-                if (!contact.opt_in && textBody !== "start") {
-                    // Ignore messages from opted-out users unless they resubscribe
-                    return NextResponse.json({ status: "ignored_blocked" });
-                }
-
-                // E. Trigger Flow Engine
-                const { FlowRunner } = await import("@/lib/engine/flow-runner");
-
-                if (message.text && message.text.body) {
-                    await FlowRunner.processMessage(
-                        waba.workspace_id,
-                        contact.id,
-                        message.text.body
-                    );
-                } else if (message.interactive && message.interactive.type === 'nfm_reply') {
-                    // META FLOW RESPONSE
-                    const responseJson = message.interactive.nfm_reply.response_json;
-                    const data = JSON.parse(responseJson);
-
-                    // Map attributes to Contact
-                    await prisma.contact.update({
-                        where: { id: contact.id },
-                        // @ts-ignore
-                        data: {
-                            // @ts-ignore
-                            attributes: {
-                                // @ts-ignore
-                                ...(contact.attributes as object || {}),
-                                ...data,
-                                meta_flow_last_submitted_at: new Date().toISOString()
-                            }
-                        }
-                    });
-
-                    // --- EDU MODULE INTEGRATION ---
+                if (!pendingWorkspace) {
                     try {
-                        const { EduService } = require("@/lib/edu/service");
-                        await EduService.handleMetaFlowSubmission(waba.workspace_id, contact.phone, data);
-                    } catch (eduError) {
-                        console.error("[Webhook] Edu Meta Flow Error:", eduError);
+                        pendingWorkspace = await prisma.workspace.create({
+                            data: { name: "Pending Connections", status: "SUSPENDED" }
+                        });
+                    } catch {
+                        pendingWorkspace = await prisma.workspace.findFirst();
                     }
+                }
 
-                    // Resume Flow
-                    await FlowRunner.processMessage(
-                        waba.workspace_id,
-                        contact.id,
-                        "FLOW_SUBMITTED_SUCCESSFULLY"
-                    );
+                if (pendingWorkspace) {
+                    waba = await prisma.whatsAppAccount.create({
+                        data: {
+                            workspace_id: pendingWorkspace.id,
+                            phone_number_id: wabaId,
+                            waba_id: entry.id || `unknown_${Date.now()}`,
+                            phone_number: value.metadata?.display_phone_number || "Unknown",
+                            access_token: "PLACEHOLDER",
+                            status: "CONNECTED",
+                            integration_status: "ACTIVE"
+                        },
+                        include: { workspace: true }
+                    });
+                    console.log(`✅ Auto-Created WABA ${wabaId}`);
+                }
+            }
 
-                } else if (message.interactive && message.interactive.type === 'list_reply') {
-                    // INTERACTIVE LIST RESPONSE
-                    const selectedId = message.interactive.list_reply.id;
+            if (!waba) {
+                console.error(`CRITICAL: Failed to auto-connect WABA ${wabaId}`);
+                return NextResponse.json({ status: "error_no_waba" });
+            }
 
-                    // Trigger Flow with selection
-                    await FlowRunner.processMessage(
-                        waba.workspace_id,
-                        contact.id,
-                        `LIST_SELECT_ID:${selectedId}`
-                    );
+            // B. Upsert Contact
+            const phone = message.from;
+            const contact = await prisma.contact.upsert({
+                where: { workspace_id_phone: { workspace_id: waba.workspace_id, phone } },
+                update: { name: contactProfile?.profile?.name || undefined },
+                create: { workspace_id: waba.workspace_id, phone, name: contactProfile?.profile?.name || "Unknown" },
+            });
+
+            // C. Ensure open conversation exists
+            let conversation = await prisma.conversation.findFirst({
+                where: { contact_id: contact.id, status: "OPEN" }
+            });
+            if (!conversation) {
+                conversation = await prisma.conversation.create({
+                    data: { workspace_id: waba.workspace_id, contact_id: contact.id, status: "OPEN" }
+                });
+            } else {
+                await prisma.conversation.update({ where: { id: conversation.id }, data: { updated_at: new Date() } });
+            }
+
+            // D. Deduplicate inbound messages
+            const metaMessageId = message.id;
+            const existing = await prisma.message.findFirst({ where: { meta_id: metaMessageId } });
+            if (existing) {
+                console.log(`[Webhook] Skipping duplicate: ${metaMessageId}`);
+                return NextResponse.json({ status: "skipped_duplicate" });
+            }
+
+            // E. Build message content for storage
+            let msgContent: any = {};
+            let msgType: any = "TEXT";
+
+            if (message.text) {
+                msgContent = { body: message.text.body };
+                msgType = "TEXT";
+            } else if (message.image) {
+                const token = decrypt(waba.access_token);
+                const localUrl = await WhatsAppMediaDownloader.downloadAndSaveMedia(message.image.id, token, waba.workspace_id);
+                msgContent = { media_id: message.image.id, caption: message.image.caption, link: localUrl };
+                msgType = "IMAGE";
+            } else if (message.document) {
+                const token = decrypt(waba.access_token);
+                const localUrl = await WhatsAppMediaDownloader.downloadAndSaveMedia(message.document.id, token, waba.workspace_id);
+                msgType = "DOCUMENT";
+                msgContent = { media_id: message.document.id, filename: message.document.filename, link: localUrl };
+            } else if (message.audio) {
+                const token = decrypt(waba.access_token);
+                const localUrl = await WhatsAppMediaDownloader.downloadAndSaveMedia(message.audio.id, token, waba.workspace_id);
+                msgType = "AUDIO";
+                msgContent = { media_id: message.audio.id, link: localUrl };
+            } else if (message.video) {
+                const token = decrypt(waba.access_token);
+                const localUrl = await WhatsAppMediaDownloader.downloadAndSaveMedia(message.video.id, token, waba.workspace_id);
+                msgType = "VIDEO";
+                msgContent = { media_id: message.video.id, link: localUrl };
+            } else if (message.interactive) {
+                msgType = "INTERACTIVE";
+                msgContent = message.interactive;
+            } else if (message.button) {
+                msgType = "INTERACTIVE";
+                msgContent = { button_text: message.button.text, button_payload: message.button.payload };
+            } else if (message.order) {
+                msgType = "ORDER";
+                msgContent = {
+                    catalog_id: message.order.catalog_id,
+                    text: message.order.text,
+                    product_items: message.order.product_items
+                };
+                try {
+                    const { CommerceService } = await import("../../../../lib/services/commerce-service");
+                    await CommerceService.processWhatsAppOrder(waba.workspace_id, contact.id, msgContent);
+                } catch (err) {
+                    console.error("Order process error", err);
+                }
+            } else {
+                msgContent = { raw: message };
+                msgType = "UNKNOWN";
+            }
+
+            // F. Save inbound message
+            await prisma.message.create({
+                data: {
+                    workspace_id: waba.workspace_id,
+                    contact_id: contact.id,
+                    conversation_id: conversation.id,
+                    meta_id: metaMessageId,
+                    type: msgType,
+                    direction: "INBOUND",
+                    content: msgContent,
+                    status: "DELIVERED"
+                }
+            });
+            console.log(`✅ Inbound message saved: ${metaMessageId}`);
+
+            // G. 🔥 Enterprise Flow Engine — NON-BLOCKING
+            try {
+                const { normalizeMessage } = await import("../../../../lib/engine/message-normalizer");
+                const { FlowRunner } = await import("../../../../lib/engine/flow-runner");
+                const normalizedMsg = normalizeMessage(message, value);
+
+                console.log(`[Webhook] 🔥 FlowEngine: type=${normalizedMsg.type} value="${normalizedMsg.value}"`);
+
+                FlowRunner.processMessage(waba.workspace_id, contact.id, normalizedMsg)
+                    .then(() => console.log(`[Webhook] ✅ FlowEngine done in ${Date.now() - startTime}ms`))
+                    .catch(e => console.error("[Webhook] FlowEngine error:", e));
+            } catch (flowError) {
+                console.error("Flow Trigger Error:", flowError);
+            }
+        }
+
+        // ── Handle Message Status Updates ──────────────────────────────
+        if (value.statuses) {
+            for (const statusUpdate of value.statuses) {
+                const messageMetaId = statusUpdate.id;
+                const statusStr = statusUpdate.status.toUpperCase();
+                const timestamp = statusUpdate.timestamp ? new Date(parseInt(statusUpdate.timestamp) * 1000) : new Date();
+
+                let updateData: any = {};
+                if (statusStr === "FAILED" && statusUpdate.errors?.length > 0) {
+                    const err = statusUpdate.errors[0];
+                    let errMsg = err.title || err.message || "Unknown error";
+                    if (err.code === 131026) errMsg = "Invalid Phone Number";
+                    else if (err.code === 131048) errMsg = "User blocked your number";
+                    else if (err.code === 131056) errMsg = "Rate limit exceeded";
+                    else if (err.code === 131047) errMsg = "More than 24 hours passed";
+                    updateData = { error_code: `${err.code}`, error_message: errMsg, failed_at: timestamp };
+                }
+
+                if (statusStr === "SENT") updateData.sent_at = timestamp;
+                if (statusStr === "DELIVERED") updateData.delivered_at = timestamp;
+                if (statusStr === "READ") updateData.read_at = timestamp;
+
+                try {
+                    await prisma.message.update({
+                        where: { meta_id: messageMetaId },
+                        data: { status: statusStr, ...updateData }
+                    });
+                } catch {
+                    // Not in DB — ignore
                 }
             }
         }
 
-        console.log(`[Webhook] POST processed in ${Date.now() - startTime}ms`);
         return NextResponse.json({ status: "processed" });
 
-    } catch (error) {
+    } catch (error: any) {
         console.error("Webhook Error:", error);
-        return NextResponse.json(
-            { error: "Internal Server Error" },
-            { status: 500 }
-        );
+        return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
     }
 }

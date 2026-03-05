@@ -7,7 +7,7 @@ import Link from 'next/link';
 export default function InteractiveWidgets() {
     const [isChatOpen, setIsChatOpen] = useState(false);
     const [messages, setMessages] = useState([
-        { role: 'assistant', text: 'Hi! I am the WAVO AI assistant. How can I help you grow your business on WhatsApp today?' }
+        { role: 'assistant', text: 'Hi! I am the Grafty AI assistant. How can I help you grow your business on WhatsApp today?' }
     ]);
     const [input, setInput] = useState('');
 
@@ -50,7 +50,7 @@ export default function InteractiveWidgets() {
                                 <Bot className="text-white" size={20} />
                             </div>
                             <div>
-                                <div className="text-white font-black text-sm tracking-tight">WAVO AI Bot</div>
+                                <div className="text-white font-black text-sm tracking-tight">Grafty AI Bot</div>
                                 <div className="text-white/70 text-[10px] font-bold uppercase">Online & Learning</div>
                             </div>
                         </div>

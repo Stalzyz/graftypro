@@ -1,13 +1,19 @@
 
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
-import { WhatsAppService } from "@/lib/whatsapp/service";
+import { prisma } from "../../../../lib/db";
+import { WhatsAppService } from "../../../../lib/whatsapp/service";
+import { decrypt } from "../../../../lib/security/encryption";
 
 // Ensure this isn't cached as it needs to run on schedule
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request) {
     try {
+        const authHeader = req.headers.get("Authorization");
+        if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+            return NextResponse.json({ error: "Unauthorized Cron" }, { status: 401 });
+        }
+
         const now = new Date();
 
         // 1. Find due enrollments
@@ -99,9 +105,10 @@ export async function GET(req: Request) {
 
                 // EXECUTE SEND
                 // Note: interactive components/variables support would go here
+                const token = decrypt(waba.access_token);
                 await WhatsAppService.sendTemplate(
                     waba.phone_number_id,
-                    waba.access_token,
+                    token,
                     contact.phone,
                     template.name,
                     template.language

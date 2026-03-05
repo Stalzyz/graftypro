@@ -1,8 +1,10 @@
 
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
-import { getAdminSession } from "@/lib/admin-auth";
-import { signToken } from "@/lib/auth";
+import { prisma } from "../../../../../lib/db";
+import { getAdminSession } from "../../../../../lib/admin-auth";
+import { signToken } from "../../../../../lib/auth";
+
+export const dynamic = "force-dynamic";
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
     try {
@@ -38,7 +40,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     }
 }
 
-// UPDATE VENDOR (Plan, Status)
+// UPDATE VENDOR (Plan, Status, Profile, Password)
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
     try {
         const session = await getAdminSession();
@@ -47,15 +49,42 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
         }
 
         const body = await req.json();
-        const { plan, status } = body;
+        const { plan, status, business_name, phone, password } = body;
 
-        // Perform Update
-        const updated = await prisma.workspace.update({
-            where: { id: params.id },
-            data: {
-                ...(plan && { plan }),
-                ...(status && { status })
+        // Perform Update in Transaction
+        const updated = await prisma.$transaction(async (tx) => {
+            // Update Workspace
+            const ws = await tx.workspace.update({
+                where: { id: params.id },
+                data: {
+                    ...(plan && { plan }),
+                    ...(status && { status }),
+                    ...(business_name && { name: business_name, business_name })
+                }
+            });
+
+            // Update Owner Profile (Phone, Password)
+            if (phone || password) {
+                const owner = await tx.user.findFirst({
+                    where: { workspace_id: params.id, role: "OWNER" }
+                });
+
+                if (owner) {
+                    const data: any = {};
+                    if (phone) data.phone = phone;
+                    if (password) {
+                        const hash = await require("bcryptjs").hash(password, 10);
+                        data.password_hash = hash;
+                    }
+
+                    await tx.user.update({
+                        where: { id: owner.id },
+                        data
+                    });
+                }
             }
+
+            return ws;
         });
 
         // Audit Log
@@ -65,14 +94,46 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
                 admin_id: session.id,
                 action: "UPDATE_VENDOR",
                 resource: params.id,
-                details: body
+                details: { ...body, password: password ? "[REDACTED]" : undefined }
             }
         });
 
         return NextResponse.json({ success: true, workspace: updated });
 
-    } catch (e) {
-        return NextResponse.json({ error: "Update Failed" }, { status: 500 });
+    } catch (e: any) {
+        console.error(e);
+        return NextResponse.json({ error: "Update Failed: " + e.message }, { status: 500 });
+    }
+}
+
+// DELETE VENDOR
+export async function DELETE(req: Request, { params }: { params: { id: string } }) {
+    try {
+        const session = await getAdminSession();
+        if (!session || session.role !== 'SUPER_ADMIN') {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        // Delete Workspace (Cascades to Users, Waba, etc.)
+        await prisma.workspace.delete({
+            where: { id: params.id }
+        });
+
+        // Audit Log
+        // @ts-ignore
+        await prisma.adminAuditLog.create({
+            data: {
+                admin_id: session.id,
+                action: "DELETE_VENDOR",
+                resource: params.id
+            }
+        });
+
+        return NextResponse.json({ success: true });
+
+    } catch (e: any) {
+        console.error(e);
+        return NextResponse.json({ error: "Deletion Failed" }, { status: 500 });
     }
 }
 

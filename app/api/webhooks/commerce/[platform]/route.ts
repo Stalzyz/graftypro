@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
-import { CommerceService, CommercePlatform } from "@/lib/commerce/service";
+import { CommerceService, CommercePlatform } from "../../../../../lib/commerce/service";
+
+export const dynamic = "force-dynamic";
 
 export async function POST(req: Request, { params }: { params: { platform: string } }) {
     try {

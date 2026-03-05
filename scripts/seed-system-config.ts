@@ -11,7 +11,7 @@ async function main() {
         update: {},
         create: {
             id: "global",
-            platform_name: "WAVO",
+            platform_name: "Grafty",
             platform_tagline: "Enterprise Grade WhatsApp BSP",
             primary_color: "#27954D",
             secondary_color: "#042F94",

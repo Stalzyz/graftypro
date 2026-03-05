@@ -15,6 +15,7 @@ interface PlanDetail {
     max_flows: number;
     max_campaigns: number;
     max_messages: number;
+    max_users: number; // Added
     api_access: boolean;
     crm_access: boolean;
     flow_builder_access: boolean;
@@ -22,7 +23,7 @@ interface PlanDetail {
 }
 
 export default function BillingPage() {
-    const [currentPlan, setCurrentPlan] = useState<string>("FREE");
+    const [currentPlan, setCurrentPlan] = useState<string>("PRIME STARTER");
     const [availablePlans, setAvailablePlans] = useState<PlanDetail[]>([]);
     const [loading, setLoading] = useState(true);
     const [upgrading, setUpgrading] = useState(false);
@@ -65,7 +66,7 @@ export default function BillingPage() {
             const options = {
                 "key": process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
                 "subscription_id": data.subscriptionId,
-                "name": "WAVO Enterprise",
+                "name": "Grafty Enterprise",
                 "description": `Upgrade to ${planName}`,
                 "handler": async function (response: any) {
                     await fetch("/api/billing/verify", {
@@ -124,19 +125,19 @@ export default function BillingPage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                {/* Legacy FREE PLAN always shown if no plans exist or as first option */}
+                {/* Fallback to PRIME STARTER if no plans exist or during load failures */}
                 {availablePlans.length === 0 && (
                     <div className="p-10 rounded-[40px] border-2 border-slate-100 bg-white shadow-sm flex flex-col">
                         <div className="mb-8">
-                            <h3 className="font-black text-2xl text-slate-900 mb-1">Standard Free</h3>
+                            <h3 className="font-black text-2xl text-slate-900 mb-1">Prime Starter</h3>
                             <p className="text-sm font-bold text-slate-400 uppercase tracking-wider italic">Entry Point Access</p>
                         </div>
-                        <div className="text-4xl font-black text-slate-900 mb-10 tracking-tighter">FREE</div>
+                        <div className="text-4xl font-black text-slate-900 mb-10 tracking-tighter">₹1,999</div>
                         <div className="space-y-4 mb-10 flex-1">
-                            <FeatureItem text="100 Contacts" />
-                            <FeatureItem text="1 Broadcast Channel" />
-                            <FeatureItem text="Standard Flow Logic" />
-                            <FeatureItem text="Core Live Chat" />
+                            <FeatureItem text="1,000 Contacts" />
+                            <FeatureItem text="10 Automated Flows" />
+                            <FeatureItem text="2,500 Messages / mo" />
+                            <FeatureItem text="Shared Inbox (2 Agents)" />
                         </div>
                         <button disabled className="w-full bg-slate-50 text-slate-300 font-black py-5 rounded-2xl uppercase tracking-widest text-xs cursor-not-allowed border border-slate-100">
                             Current Infrastructure
@@ -155,12 +156,23 @@ export default function BillingPage() {
                             <div className="mb-8">
                                 <h3 className="font-black text-2xl text-slate-900 mb-1">{plan.name}</h3>
                                 <p className="text-sm font-bold text-slate-400 uppercase tracking-wider">{plan.description || 'Full Module Access'}</p>
+                                <div className="flex items-center gap-2">
+                                    <Check className="w-4 h-4 text-emerald-500" />
+                                    <span className="text-sm text-slate-400 font-medium">Up to {plan.max_users} Multi-User Roles</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <Check className="w-4 h-4 text-emerald-500" />
+                                    <span className="text-sm text-slate-400 font-medium">{plan.max_messages} Messages/mo</span>
+                                </div>
                             </div>
 
                             <div className="mb-10 flex items-end gap-1">
                                 <span className="text-sm font-bold text-slate-400 mb-2">{plan.currency}</span>
                                 <span className="text-5xl font-black text-slate-900 tracking-tighter">{plan.price.toLocaleString()}</span>
-                                <span className="text-xs font-bold text-slate-300 uppercase tracking-widest mb-2">/ {plan.billing_cycle === 'MONTHLY' ? 'mo' : 'yr'}</span>
+                                <div className="flex flex-col">
+                                    <span className="text-slate-400 font-bold uppercase tracking-widest text-[8px] leading-none">+ GST</span>
+                                    <span className="text-xs font-bold text-slate-300 uppercase tracking-widest leading-normal">/ {plan.billing_cycle === 'MONTHLY' ? 'mo' : 'yr'}</span>
+                                </div>
                             </div>
 
                             <div className="space-y-4 mb-10 flex-1">
@@ -183,7 +195,7 @@ export default function BillingPage() {
                                     disabled={upgrading}
                                     className="w-full bg-slate-900 text-white font-black py-5 rounded-3xl uppercase tracking-widest text-xs hover:bg-[#27954D] transition-all hover:shadow-2xl shadow-slate-200 flex items-center justify-center gap-2 group-hover:scale-[0.98]"
                                 >
-                                    {upgrading ? "Provisioning..." : <>Command Upgrade <ArrowRight size={14} strokeWidth={3} /></>}
+                                    {upgrading ? "Provisioning..." : <>Start 14 days trial <ArrowRight size={14} strokeWidth={3} /></>}
                                 </button>
                             )}
                         </div>

@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
-import { getCurrentUser } from "@/lib/auth";
+import { prisma } from "../../../lib/db";
+import { getCurrentUser } from "../../../lib/auth";
 
 export const dynamic = 'force-dynamic';
-import { campaignQueue } from "@/lib/queue";
+import { campaignQueue } from "../../../lib/queue";
 
 // POST /api/campaigns - Create and Launch
 export async function POST(req: Request) {

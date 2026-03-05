@@ -15,7 +15,11 @@ import {
     Filter,
     MoreHorizontal,
     ExternalLink,
-    Globe
+    Globe,
+    Clock,
+    Radio,
+    ShieldCheck,
+    Mail
 } from "lucide-react";
 
 export default function SuperAdminDashboard() {
@@ -44,7 +48,7 @@ export default function SuperAdminDashboard() {
     }
 
     return (
-        <div className="animate-fade-in max-w-7xl mx-auto space-y-12 pb-20">
+        <div className="animate-fade-in w-full space-y-12 pb-20">
             {/* Minimal Executive Header */}
             <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                 <div className="space-y-1">
@@ -94,7 +98,7 @@ export default function SuperAdminDashboard() {
                                 </div>
                                 <Link
                                     href={`/super-admin/dashboard/vendors/${alert.id}`}
-                                    className="p-2.5 hover:bg-slate-50 rounded-xl transition-colors text-slate-300 hover:text-slate-600"
+                                    className="p-2.5 hover:bg-slate-50 rounded-xl transition-colors text-slate-500 hover:text-slate-600"
                                 >
                                     <ArrowRight size={18} strokeWidth={1.5} />
                                 </Link>
@@ -164,12 +168,12 @@ export default function SuperAdminDashboard() {
                                     <tr key={v.id} className="hover:bg-slate-50/50 transition-all group">
                                         <td className="px-8 py-5">
                                             <div className="font-semibold text-slate-700 text-sm group-hover:text-[#042f94] transition-colors">{v.name}</div>
-                                            <div className="text-[10px] text-slate-300 font-medium tracking-tight mt-0.5 uppercase tracking-widest">ID: {v.id.slice(0, 8)}</div>
+                                            <div className="text-[10px] text-slate-500 font-medium tracking-tight mt-0.5 uppercase tracking-widest">ID: {v.id.slice(0, 8)}</div>
                                         </td>
                                         <td className="px-8 py-5">
                                             <span className={`px-3 py-1 rounded-full text-[9px] font-bold tracking-[0.05em] uppercase border ${v.plan === 'ENTERPRISE' ? 'bg-indigo-50/30 text-indigo-500 border-indigo-100' :
                                                 v.plan === 'PRO' ? 'bg-[#27954D]/5 text-[#042f94] border-[#27954D]/10' :
-                                                    'bg-slate-50 text-slate-400 border-slate-100'
+                                                    'bg-slate-50 text-slate-600 border-slate-200'
                                                 }`}>
                                                 {v.plan || 'BASIC'}
                                             </span>
@@ -191,38 +195,59 @@ export default function SuperAdminDashboard() {
 
                 {/* Operations Sidebar */}
                 <div className="space-y-8">
+                    <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] px-1">Growth Infrastructure</h3>
+                    <QuickActionCard
+                        title="Landing Page CMS"
+                        description="Direct node content control"
+                        href="/super-admin/dashboard/landing-page"
+                        icon={<Globe size={18} strokeWidth={1.5} />}
+                        color="blue"
+                    />
+
                     <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] px-1">Network Management</h3>
 
-                    <div className="space-y-4">
-                        <QuickActionCard
-                            title="Cloud Nexus"
-                            description="API health & monitoring"
-                            href="/super-admin/dashboard/infra"
-                            icon={<Globe size={18} strokeWidth={1.5} />}
-                            color="indigo"
-                        />
-                        <QuickActionCard
-                            title="Vendor Ledger"
-                            description="Organization management"
-                            href="/super-admin/dashboard/vendors"
-                            icon={<Users size={18} strokeWidth={1.5} />}
-                            color="green"
-                        />
-                        <QuickActionCard
-                            title="Revenue Core"
-                            description="Financial settlement audit"
-                            href="/super-admin/dashboard/finance/revenue"
-                            icon={<IndianRupee size={18} strokeWidth={1.5} />}
-                            color="emerald"
-                        />
-                        <QuickActionCard
-                            title="Infra Logs"
-                            description="Edge node health status"
-                            href="/super-admin/dashboard/audit"
-                            icon={<Zap size={18} strokeWidth={1.5} />}
-                            color="teal"
-                        />
-                    </div>
+                    <QuickActionCard
+                        title="RBAC Matrix"
+                        description="Role & permission control"
+                        href="/super-admin/dashboard/settings/rbac"
+                        icon={<ShieldCheck size={18} strokeWidth={1.5} />}
+                        color="indigo"
+                    />
+                    <QuickActionCard
+                        title="Automation Engine"
+                        description="Job scheduling & triggers"
+                        href="/super-admin/dashboard/settings/automation"
+                        icon={<Zap size={18} strokeWidth={2} />}
+                        color="green"
+                    />
+                    <QuickActionCard
+                        title="SMTP Matrix"
+                        description="Email relay infrastructure"
+                        href="/super-admin/dashboard/settings/smtp"
+                        icon={<Mail size={18} strokeWidth={1.5} />}
+                        color="blue"
+                    />
+                    <QuickActionCard
+                        title="Audit & Retention"
+                        description="Data lifecycle policies"
+                        href="/super-admin/dashboard/settings/retention"
+                        icon={<Activity size={18} strokeWidth={1.5} />}
+                        color="indigo"
+                    />
+                    <QuickActionCard
+                        title="System API Keys"
+                        description="Provision master access"
+                        href="/super-admin/dashboard/settings/api-keys"
+                        icon={<Radio size={18} strokeWidth={1.5} />}
+                        color="green"
+                    />
+                    <QuickActionCard
+                        title="Revenue Core"
+                        description="Financial settlement audit"
+                        href="/super-admin/dashboard/finance/revenue"
+                        icon={<IndianRupee size={18} strokeWidth={1.5} />}
+                        color="emerald"
+                    />
 
                     {/* Scale Card - Executive Calm */}
                     <div className="p-8 bg-white border border-slate-100 rounded-[2.5rem] shadow-sm relative overflow-hidden group">
@@ -280,6 +305,8 @@ function QuickActionCard({ title, description, href, icon, color }: any) {
         green: "bg-green-50 text-[#042f94]",
         teal: "bg-teal-50 text-teal-600",
         emerald: "bg-emerald-50 text-emerald-600",
+        blue: "bg-blue-50 text-blue-600",
+        indigo: "bg-indigo-50 text-indigo-600",
     };
 
     return (
@@ -295,7 +322,7 @@ function QuickActionCard({ title, description, href, icon, color }: any) {
                     <div className="font-semibold text-slate-700 text-sm group-hover:text-[#042f94] transition-colors">{title}</div>
                     <div className="text-[11px] font-medium text-slate-400">{description}</div>
                 </div>
-                <div className="p-2 rounded-lg bg-slate-50 text-slate-300 opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all duration-300">
+                <div className="p-2 rounded-lg bg-slate-50 text-slate-500 opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all duration-300">
                     <ArrowUpRight size={14} strokeWidth={2.5} />
                 </div>
             </div>

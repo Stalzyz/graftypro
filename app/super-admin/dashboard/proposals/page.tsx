@@ -1,34 +1,53 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
-    FileText,
     Plus,
     Search,
-    MoreVertical,
     Download,
     Send,
-    Clock,
     CheckCircle2,
     ArrowUpRight,
     Building2,
-    Users,
-    Mail,
     IndianRupee,
     Printer,
-    PenTool
+    PenTool,
+    X,
+    Loader2
 } from "lucide-react";
 
 export default function ProposalsModule() {
-    const [proposals, setProposals] = useState([
-        { id: "PROP-2026-001", client: "Zomato Corp", status: "SENT", amount: "₹1,20,000", date: "2 mins ago" },
-        { id: "PROP-2026-002", client: "Airtel India", status: "ACCEPTED", amount: "₹4,50,000", date: "1 hour ago" },
-        { id: "PROP-2026-003", client: "Reliance Ind", status: "DRAFT", amount: "₹8,00,000", date: "5 hours ago" },
-    ]);
+    const [proposals, setProposals] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [page, setPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+    const [totalRecords, setTotalRecords] = useState(0);
+    const [showCreateModal, setShowCreateModal] = useState(false);
+
+    useEffect(() => {
+        fetchProposals();
+    }, [page]);
+
+    const fetchProposals = async () => {
+        setLoading(true);
+        try {
+            const res = await fetch(`/api/super-admin/proposals?page=${page}&limit=50`);
+            const data = await res.json();
+            if (data.success) {
+                setProposals(data.data || []);
+                setTotalPages(data.pagination.totalPages);
+                setTotalRecords(data.pagination.total);
+            }
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     return (
-        <div className="max-w-7xl space-y-12 pb-20 font-sans">
+        <div className="max-w-7xl space-y-12 pb-20 font-sans relative">
             <header className="flex items-end justify-between">
                 <div>
                     <div className="flex items-center gap-3 mb-2">
@@ -41,7 +60,10 @@ export default function ProposalsModule() {
                 </div>
 
                 <div className="flex gap-4">
-                    <button className="px-8 py-4 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] flex items-center gap-2 hover:bg-black transition-all shadow-xl shadow-slate-200 active:scale-95">
+                    <button
+                        onClick={() => setShowCreateModal(true)}
+                        className="px-8 py-4 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] flex items-center gap-2 hover:bg-black transition-all shadow-xl shadow-slate-200 active:scale-95"
+                    >
                         <Plus size={14} />
                         Forge New Proposal
                     </button>
@@ -49,7 +71,7 @@ export default function ProposalsModule() {
             </header>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                <ProposalStatCard label="Live Proposals" value="42" icon={<Send />} color="blue" />
+                <ProposalStatCard label="Live Proposals" value={totalRecords} icon={<Send />} color="blue" />
                 <ProposalStatCard label="Conversion Rate" value="68%" icon={<CheckCircle2 />} color="green" />
                 <ProposalStatCard label="Pipeline Value" value="₹84.2 L" icon={<IndianRupee />} color="emerald" />
             </div>
@@ -67,62 +89,104 @@ export default function ProposalsModule() {
                     </div>
                 </div>
 
-                <div className="overflow-x-auto">
-                    <table className="w-full">
-                        <thead>
-                            <tr className="bg-slate-50/50">
-                                <th className="text-left px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Protocol ID</th>
-                                <th className="text-left px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Counterparty</th>
-                                <th className="text-left px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Proposed Value</th>
-                                <th className="text-left px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Lifecycle</th>
-                                <th className="text-right px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Command</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-50">
-                            {proposals.map((prop) => (
-                                <tr key={prop.id} className="hover:bg-slate-50/30 transition-colors group">
-                                    <td className="px-10 py-8">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-1.5 h-6 bg-slate-200 group-hover:bg-slate-900 transition-colors rounded-full" />
-                                            <span className="text-xs font-black text-slate-900 font-mono italic">{prop.id}</span>
-                                        </div>
-                                    </td>
-                                    <td className="px-10 py-8">
-                                        <div className="flex items-center gap-2">
-                                            <Building2 className="text-slate-300" size={14} />
-                                            <span className="text-xs font-bold text-slate-700">{prop.client}</span>
-                                        </div>
-                                    </td>
-                                    <td className="px-10 py-8 text-xs font-black text-slate-900">{prop.amount}</td>
-                                    <td className="px-10 py-8">
-                                        <span className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest ${prop.status === 'ACCEPTED' ? 'bg-[#27954D]/10 text-[#27954D]' :
-                                                prop.status === 'SENT' ? 'bg-blue-500/10 text-blue-500' :
-                                                    'bg-slate-200/50 text-slate-500'
-                                            }`}>
-                                            {prop.status}
-                                        </span>
-                                    </td>
-                                    <td className="px-10 py-8 text-right flex justify-end gap-2">
-                                        <button className="p-3 bg-slate-50 rounded-xl hover:bg-slate-900 hover:text-white transition-all shadow-sm">
-                                            <Download size={14} />
-                                        </button>
-                                        <button className="p-3 bg-slate-50 rounded-xl hover:bg-slate-900 hover:text-white transition-all shadow-sm">
-                                            <Printer size={14} />
-                                        </button>
-                                    </td>
+                <div className="overflow-x-auto min-h-[400px]">
+                    {loading ? (
+                        <div className="flex items-center justify-center h-64 text-slate-400 gap-2">
+                            <Loader2 size={24} className="animate-spin" /> Loading Proposals...
+                        </div>
+                    ) : (
+                        <table className="w-full">
+                            <thead>
+                                <tr className="bg-slate-50/50">
+                                    <th className="text-left px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Protocol ID</th>
+                                    <th className="text-left px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Counterparty</th>
+                                    <th className="text-left px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Proposed Value</th>
+                                    <th className="text-left px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Lifecycle</th>
+                                    <th className="text-right px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Command</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody className="divide-y divide-slate-50">
+                                {proposals.map((prop) => (
+                                    <tr key={prop.id} className="hover:bg-slate-50/30 transition-colors group">
+                                        <td className="px-10 py-8">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-1.5 h-6 bg-slate-200 group-hover:bg-slate-900 transition-colors rounded-full" />
+                                                <span className="text-xs font-black text-slate-900 font-mono italic">{prop.protocol_id || prop.id}</span>
+                                            </div>
+                                        </td>
+                                        <td className="px-10 py-8">
+                                            <div className="flex flex-col">
+                                                <span className="text-xs font-bold text-slate-900">{prop.client_name}</span>
+                                                <div className="flex items-center gap-1 mt-1">
+                                                    <Building2 className="text-slate-300" size={10} />
+                                                    <span className="text-[10px] font-bold text-slate-400">{prop.client_company}</span>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="px-10 py-8 text-xs font-black text-slate-900">₹{parseFloat(prop.amount).toLocaleString()}</td>
+                                        <td className="px-10 py-8">
+                                            <span className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest ${prop.status === 'ACCEPTED' ? 'bg-[#27954D]/10 text-[#27954D]' :
+                                                    prop.status === 'SENT' ? 'bg-blue-500/10 text-blue-500' :
+                                                        prop.status === 'REJECTED' ? 'bg-red-500/10 text-red-500' :
+                                                            'bg-slate-200/50 text-slate-500'
+                                                }`}>
+                                                {prop.status}
+                                            </span>
+                                        </td>
+                                        <td className="px-10 py-8 text-right flex justify-end gap-2">
+                                            <button className="p-3 bg-slate-50 rounded-xl hover:bg-slate-900 hover:text-slate-700 transition-all shadow-sm">
+                                                <Download size={14} />
+                                            </button>
+                                            <button className="p-3 bg-slate-50 rounded-xl hover:bg-slate-900 hover:text-slate-700 transition-all shadow-sm">
+                                                <Printer size={14} />
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    )}
                 </div>
 
                 <div className="p-8 bg-slate-50/50 flex items-center justify-between border-t border-slate-50">
-                    <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Proposal Template v4.2 in effect</span>
-                    <button className="text-[10px] font-black text-blue-600 uppercase tracking-widest hover:underline flex items-center gap-2">
-                        Customize Design Header/Footer <ArrowUpRight size={12} />
-                    </button>
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                        Page {page} of {totalPages} ({totalRecords} Forged)
+                    </span>
+                    <div className="flex gap-4">
+                        <button
+                            onClick={() => setPage(p => Math.max(1, p - 1))}
+                            disabled={page === 1}
+                            className="px-6 py-3 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            Prev
+                        </button>
+                        <button
+                            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                            disabled={page === totalPages || totalPages === 0}
+                            className="px-6 py-3 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            Next
+                        </button>
+                    </div>
                 </div>
             </div>
+
+            {showCreateModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 animate-fade-in">
+                    <div className="bg-white rounded-[32px] w-full max-w-lg shadow-2xl p-8 space-y-6">
+                        <div className="flex items-center justify-between">
+                            <h3 className="text-xl font-black text-slate-900">Forge Proposal</h3>
+                            <button onClick={() => setShowCreateModal(false)} className="p-2 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-900">
+                                <X size={20} />
+                            </button>
+                        </div>
+                        <CreateProposalForm onSuccess={() => {
+                            setShowCreateModal(false);
+                            fetchProposals();
+                        }} />
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
@@ -149,5 +213,76 @@ function ProposalStatCard({ label, value, icon, color }: any) {
                 <h3 className="text-3xl font-black text-slate-900 tracking-tighter">{value}</h3>
             </div>
         </div>
+    );
+}
+
+function CreateProposalForm({ onSuccess }: { onSuccess: () => void }) {
+    const [loading, setLoading] = useState(false);
+    const [formData, setFormData] = useState({
+        client_name: "",
+        client_company: "",
+        amount: "",
+        items: [] as any[] // Placeholder for simple item logic
+    });
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setLoading(true);
+        try {
+            const res = await fetch("/api/super-admin/proposals", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(formData)
+            });
+            if (res.ok) {
+                onSuccess();
+            }
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+                <label className="text-xs font-black uppercase tracking-wider text-slate-400">Client Name</label>
+                <input
+                    required
+                    value={formData.client_name}
+                    onChange={e => setFormData({ ...formData, client_name: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-slate-900 transition-all"
+                    placeholder="E.g. Elon Musk"
+                />
+            </div>
+            <div className="space-y-2">
+                <label className="text-xs font-black uppercase tracking-wider text-slate-400">Company</label>
+                <input
+                    value={formData.client_company}
+                    onChange={e => setFormData({ ...formData, client_company: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-slate-900 transition-all"
+                    placeholder="E.g. Tesla Inc."
+                />
+            </div>
+            <div className="space-y-2">
+                <label className="text-xs font-black uppercase tracking-wider text-slate-400">Total Value (INR)</label>
+                <input
+                    type="number"
+                    required
+                    value={formData.amount}
+                    onChange={e => setFormData({ ...formData, amount: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-slate-900 transition-all"
+                    placeholder="50000"
+                />
+            </div>
+            <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] hover:bg-black transition-all disabled:opacity-50"
+            >
+                {loading ? "Forging..." : "Create Proposal"}
+            </button>
+        </form>
     );
 }

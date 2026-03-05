@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/db";
+import { prisma } from "../db";
 import { startOfMonth, subDays, endOfDay, startOfDay } from "date-fns";
 
 export class ResellerAnalyticsService {

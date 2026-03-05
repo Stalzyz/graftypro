@@ -1,9 +1,9 @@
-// This is your Prisma schema file,
+// This is your Prisma schema file - FORCED UPDATE 2026
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
   provider      = "prisma-client-js"
-  binaryTargets = ["native"]
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
 }
 
 datasource db {
@@ -49,11 +49,28 @@ model Workspace {
   current_plan_id    String?  // Link to SubscriptionPlan
   subscription_id    String?  // Razorpay Sub ID
   subscription_status String? // active, created, halted
+  
+  // Billing Metadata
+  billing_address   String?  @db.Text
+  billing_state     String?
+  billing_city      String?
+  billing_pincode   String?
+  billing_gstin     String?
+  billing_email     String?
+  
+  // Bank / Payment Details
+  bank_name         String?
+  account_number    String?
+  ifsc_code         String?
 
   plan_details       SubscriptionPlan? @relation(fields: [current_plan_id], references: [id])
 
   // Settings stored as JSON for flexibility
   settings      Json?           @default("{}") 
+
+  // API Integration (Webhooks & External Requests)
+  api_key       String?         @unique
+  webhook_url   String?
 
   // Relations
   users         User[]
@@ -74,9 +91,19 @@ model Workspace {
   drips         DripSequence[]
   messages      Message[]
   segments      Segment[]
+  follow_ups    FollowUp[]
+  internal_notes InternalNote[]
+  
+  // CRM Engine
+  crm_leads      UniversalCrmLead[]
+  crm_columns    UniversalCrmColumn[]
+  crm_stages     UniversalCrmStage[]
+  crm_activities UniversalCrmActivity[]
   // Reseller Migration (Phase 2: Permanent Mapping)
   reseller_id   String?
   reseller      Reseller?  @relation(fields: [reseller_id], references: [id])
+  coupon_id     String?
+  used_coupon   ResellerCoupon? @relation(fields: [coupon_id], references: [id])
 
   // Finance
   transactions  Transaction[]
@@ -117,70 +144,234 @@ model Lead {
 
 // ... (existing models)
 
+
 // --------------------------------------
-// COMMERCE ENGINE (Phase 1)
+// COMMERCE ENGINE (Ultimate WhatsApp Commerce)
 // --------------------------------------
 
 enum CommercePlatform {
   WOOCOMMERCE
   SHOPIFY
-  CUSTOM
+  NATIVE
 }
 
 model CommerceStore {
   id                    String           @id @default(uuid())
   workspace_id          String
-  platform             CommercePlatform
-  encrypted_credentials Json             // Encrypted API keys/tokens
+  name                  String           @default("My Store")
+  platform             CommercePlatform @default(NATIVE)
   status               String           @default("ACTIVE")
-  last_sync_at         DateTime?
   
+  // Integration Secrets (Encrypted)
+  encrypted_credentials Json?            
+  webhook_secret        String?          @unique 
+
+  // Store Configuration
+  currency              String           @default("INR")
+  timezone              String           @default("Asia/Kolkata")
+  
+  // GST & Billing Configuration
+  gst_enabled           Boolean          @default(false)
+  gst_number            String?
+  pan_number            String?
+  business_address      String?          @db.Text
+  business_state        String?
+  
+  // Shipping Configuration
+  shipping_provider     String?          // SHIPROCKET, DELHIVERY
+  shipping_config       Json?            // API keys for shipping
+
+  // Features
+  cod_enabled           Boolean          @default(true)
+  cod_fixed_fee         Decimal          @default(0.00) @db.Decimal(10, 2)
+  referral_enabled      Boolean          @default(false)
+
+  last_sync_at         DateTime?
   created_at           DateTime         @default(now())
   updated_at           DateTime         @updatedAt
 
   workspace            Workspace        @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
   products             CommerceProduct[]
   orders               CommerceOrder[]
+  coupons              CommerceCoupon[]
+  categories           CommerceCategory[]
+  referrals            CommerceReferral[]
 
   @@map("commerce_stores")
 }
 
-model CommerceProduct {
-  id                  String         @id @default(uuid())
-  store_id            String
-  external_id         String         // ID from Shopify/Woo
-  name                String
-  description         String?
-  price               Decimal
-  currency            String         @default("INR")
-  stock               Int            @default(0)
-  image_urls          String[]       // Array of URLs
-  category            String?
+model CommerceCategory {
+  id           String           @id @default(uuid())
+  store_id     String
+  name         String
+  external_id  String?          // For sync
   
-  created_at          DateTime       @default(now())
-  updated_at          DateTime       @updatedAt
-
-  store               CommerceStore  @relation(fields: [store_id], references: [id], onDelete: Cascade)
+  store        CommerceStore    @relation(fields: [store_id], references: [id], onDelete: Cascade)
+  products     CommerceProduct[]
 
   @@unique([store_id, external_id])
+  @@map("commerce_categories")
+}
+
+model CommerceProduct {
+  id            String             @id @default(uuid())
+  store_id      String
+  category_id   String?
+  name          String
+  description   String?            @db.Text
+  price         Decimal            @db.Decimal(10, 2)
+  compare_at_price Decimal?        @db.Decimal(10, 2)
+  sku           String?
+  stock         Int                @default(0)
+  image_urls    String[]
+  
+  // Sync Meta
+  external_id   String?            
+  platform_url  String?            
+
+  // GST Compliance
+  hsn_code      String?
+  gst_rate      Decimal            @default(18.00) @db.Decimal(10, 2)
+  
+  // Shipping
+  weight_grams  Int                @default(0)
+  is_cod_available Boolean         @default(true)
+
+  is_active     Boolean            @default(true)
+  created_at    DateTime           @default(now())
+  updated_at    DateTime           @updatedAt
+
+  store         CommerceStore      @relation(fields: [store_id], references: [id], onDelete: Cascade)
+  category      CommerceCategory?  @relation(fields: [category_id], references: [id])
+  variants      CommerceProductVariant[]
+  order_items   CommerceOrderItem[]
+
+  @@unique([store_id, external_id])
+  @@index([store_id])
   @@map("commerce_products")
 }
 
-model CommerceOrder {
-  id                  String         @id @default(uuid())
-  store_id            String
-  external_id         String         // ID from Shopify/Woo
-  customer_phone      String?
-  total_amount        Decimal
-  status              String
-  synced_at           DateTime       @default(now())
-  
-  events              CommerceEvent[]
+model CommerceProductVariant {
+  id            String             @id @default(uuid())
+  product_id    String
+  name          String             // e.g. "Red / XL"
+  sku           String?
+  price         Decimal            @db.Decimal(10, 2)
+  stock         Int                @default(0)
+  external_id   String?
 
-  store               CommerceStore  @relation(fields: [store_id], references: [id], onDelete: Cascade)
+  product       CommerceProduct    @relation(fields: [product_id], references: [id], onDelete: Cascade)
+
+  @@unique([product_id, external_id])
+  @@map("commerce_product_variants")
+}
+
+model CommerceOrder {
+  id                  String             @id @default(uuid())
+  store_id            String
+  contact_id          String
+  
+  external_id         String?            // External Order ID
+  order_number        String             @unique // Our internal number
+  
+  status              String             @default("PLACED") // PLACED, PAID, SHIPPED, DELIVERED, CANCELLED, REFUNDED
+  payment_status      String             @default("PENDING") // PENDING, PAID, FAILED, REFUNDED
+  payment_method      String?            // RAZORPAY, STRIPE, COD, WALLET
+  
+  // Amount Details
+  subtotal            Decimal            @db.Decimal(10, 2)
+  tax_total           Decimal            @db.Decimal(10, 2)
+  shipping_total      Decimal            @db.Decimal(10, 2)
+  discount_total      Decimal            @db.Decimal(10, 2)
+  total_amount        Decimal            @db.Decimal(10, 2)
+  
+  // GST Snapshot
+  cgst                Decimal            @default(0.00) @db.Decimal(10, 2)
+  sgst                Decimal            @default(0.00) @db.Decimal(10, 2)
+  igst                Decimal            @default(0.00) @db.Decimal(10, 2)
+  customer_gstin      String?
+
+  // Shipping details
+  shipping_address    Json?              // { name, address, city, state, pincode, phone }
+  billing_address     Json?              
+  tracking_id         String?
+  courier_name        String?
+
+  // Referral / Rewards
+  referral_id         String?
+  
+  metadata            Json?              @default("{}")
+  
+  created_at          DateTime           @default(now())
+  updated_at          DateTime           @updatedAt
+
+  store               CommerceStore      @relation(fields: [store_id], references: [id], onDelete: Cascade)
+  contact             Contact            @relation(fields: [contact_id], references: [id], onDelete: Cascade)
+  items               CommerceOrderItem[]
+  referral            CommerceReferral?  @relation("OrderReferral", fields: [referral_id], references: [id])
+  events              CommerceEvent[]
 
   @@unique([store_id, external_id])
   @@map("commerce_orders")
+}
+
+model CommerceOrderItem {
+  id                  String             @id @default(uuid())
+  order_id            String
+  product_id          String
+  variant_id          String?
+  
+  name                String             // Snapshot name
+  quantity            Int
+  price               Decimal            @db.Decimal(10, 2)
+  tax_rate            Decimal            @default(0.00) @db.Decimal(10, 2)
+  tax_amount          Decimal            @default(0.00) @db.Decimal(10, 2)
+  total               Decimal            @db.Decimal(10, 2)
+
+  order               CommerceOrder      @relation(fields: [order_id], references: [id], onDelete: Cascade)
+  product             CommerceProduct    @relation(fields: [product_id], references: [id])
+
+  @@map("commerce_order_items")
+}
+
+model CommerceCoupon {
+  id                  String             @id @default(uuid())
+  store_id            String
+  code                String             @unique
+  description         String?
+  
+  discount_type       String             // PERCENTAGE, FLAT
+  discount_value      Decimal            @db.Decimal(10, 2)
+  
+  min_order_value     Decimal?           @db.Decimal(10, 2)
+  max_discount_amount Decimal?           @db.Decimal(10, 2)
+  
+  start_at            DateTime?
+  end_at              DateTime?
+  usage_limit         Int?
+  usage_count         Int                @default(0)
+  
+  is_active           Boolean            @default(true)
+
+  store               CommerceStore      @relation(fields: [store_id], references: [id], onDelete: Cascade)
+
+  @@map("commerce_coupons")
+}
+
+model CommerceReferral {
+  id                  String             @id @default(uuid())
+  store_id            String
+  referrer_contact_id String
+  referee_contact_id  String             @unique
+  
+  referral_code       String
+  reward_amount       Decimal            @default(0.00) @db.Decimal(10, 2)
+  status              String             @default("PENDING") // PENDING, SUCCESS, FAILED
+  
+  store               CommerceStore      @relation(fields: [store_id], references: [id], onDelete: Cascade)
+  orders              CommerceOrder[]    @relation("OrderReferral")
+
+  @@map("commerce_referrals")
 }
 
 model CommerceEvent {
@@ -254,14 +445,34 @@ model EduLead {
   // Custom Attributes
   attributes        Json          @default("{}")
   
+  // Tracking
+  lead_source       String?       // WhatsApp Flow, QR, Landing Page, Ad
+  follow_up_count   Int           @default(0)
+  last_contacted_at DateTime?
+  
   created_at        DateTime      @default(now())
   updated_at        DateTime      @updatedAt
 
   workspace         Workspace     @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
   form              EduForm?      @relation(fields: [form_id], references: [id])
+  activities        EduLeadActivity[]
 
   @@index([workspace_id, status])
   @@map("edu_leads")
+}
+
+model EduLeadActivity {
+  id           String   @id @default(uuid())
+  lead_id      String
+  type         String   // STATUS_CHANGE, NOTE_ADDED, MESSAGE_SENT, PAYMENT_LINK, DEMO_SCHEDULED
+  content      String   // Description of activity
+  old_status   String?
+  new_status   String?
+  created_at   DateTime @default(now())
+  
+  lead         EduLead  @relation(fields: [lead_id], references: [id], onDelete: Cascade)
+
+  @@map("edu_lead_activities")
 }
 
 model Segment {
@@ -285,7 +496,7 @@ model User {
   id             String    @id @default(uuid())
   workspace_id   String
   email          String
-  password_hash  String
+  password_hash  String?
   role           UserRole  @default(AGENT)
   first_name     String?
   last_name      String?
@@ -294,14 +505,66 @@ model User {
   google_id      String?   // OAuth
   email_verified DateTime?
   welcome_offer_claimed Boolean @default(false)
+  avatar_url     String?   // User Profile Picture
+  bio            String?   @db.Text
+  job_title      String?
+  
+  // --- Security Hardening ---
+  failed_login_attempts Int      @default(0)
+  locked_until         DateTime?
+  last_login_at        DateTime?
+  last_login_ip        String?
+  two_factor_enabled   Boolean   @default(false)
+  email_otp_verified   Boolean   @default(false)
+  remember_token_hash  String?   // Hashed Token for Remember Me
+  
   created_at     DateTime  @default(now())
   updated_at     DateTime  @updatedAt
 
   workspace      Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
   teams          TeamMember[]
+  assigned_chats Conversation[] @relation("AgentConversations")
+  auth_logs      AuthAuditLog[]
+  remember_tokens RememberMeToken[]
+  follow_ups     FollowUp[]
+  internal_notes InternalNote[]
+  crm_leads      UniversalCrmLead[]
+  crm_activities UniversalCrmActivity[]
 
   @@unique([workspace_id, email]) // Email unique per workspace
   @@map("users")
+}
+
+model RememberMeToken {
+  id           String   @id @default(uuid())
+  user_id      String
+  token_hash   String   @unique
+  expires_at   DateTime
+  created_at   DateTime @default(now())
+
+  user         User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@map("remember_me_tokens")
+}
+
+model AuthAuditLog {
+  id            String   @id @default(uuid())
+  user_id       String?
+  email         String   // Track email even if user not found (for failed logins)
+  action        String   // LOGIN_SUCCESS, LOGIN_FAILURE, GOOGLE_LOGIN, OTP_VERIFY, PASS_RESET, ACCOUNT_LOCK
+  status        String   // SUCCESS, FAILURE
+  ip_address    String?
+  user_agent    String?
+  details       Json?    // Any extra data like device info
+  created_at    DateTime @default(now())
+
+  user          User?    @relation(fields: [user_id], references: [id], onDelete: SetNull)
+
+  @@index([user_id])
+  @@index([email])
+  @@index([created_at])
+  @@map("auth_audit_logs")
 }
 
 model Team {
@@ -368,6 +631,10 @@ model WhatsAppAccount {
   health_status      HealthStatus      @default(UNKNOWN)
   status             WabaStatus       @default(CONNECTED) // Legacy field
   
+  // Custom Settings
+  connection_name    String           @default("WhatsApp Channel")
+  profile_picture_url String?
+  
   // Meta Credentials (Enhanced)
   app_id             String?           // Meta App ID
   app_secret         String?           // Encrypted
@@ -388,8 +655,13 @@ model WhatsAppAccount {
   required_permissions Json?           // Array of required permissions
   permission_check_at  DateTime?       // Last permission check
   
-  // Health Metrics
+  // Health Metrics & Status
   last_health_check_at DateTime?
+  last_error           String?
+  token_valid          Boolean @default(true)
+  webhook_status       String  @default("OK")
+  api_status           String  @default("OK")
+  
   last_successful_send_at DateTime?
   consecutive_failures Int @default(0)
   
@@ -550,6 +822,7 @@ model Contact {
   phone        String
   name         String?
   email        String?
+  avatar_url   String?
   
   tags         String[] @default([])
   attributes   Json     @default("{}") // Custom key-value pairs
@@ -569,6 +842,10 @@ model Contact {
   appointments  Appointment[]
   drip_enrollments DripEnrollment[]
   messages         Message[]
+  follow_ups       FollowUp[]
+  commerce_orders CommerceOrder[]
+  internal_notes   InternalNote[]
+  crm_leads        UniversalCrmLead[]
 
   @@unique([workspace_id, phone])
   @@map("contacts")
@@ -589,6 +866,8 @@ model Conversation {
   @@map("conversations")
   
   messages     Message[]
+  assigned_to  String?  // User ID assigned to this chat
+  agent        User?    @relation("AgentConversations", fields: [assigned_to], references: [id])
 }
 
 enum MessageType {
@@ -618,7 +897,23 @@ model Message {
   direction    MessageDirection
   
   content      Json     // The body/text/media url: { body: "Hello" } or { link: "..." }
-  status       String   @default("SENT") // SENT, DELIVERED, READ, FAILED
+  status       String   @default("SENT") // PENDING, SENT, DELIVERED, READ, FAILED
+  
+  // --- Delivery Intelligence Enhancements ---
+  error_code   String?  // Meta error code (e.g. 131026)
+  error_message String? // Human-readable translated message
+  
+  template_id  String?  // If this message was a template
+  template_name String? // For quick grouping in analytics
+  
+  conversation_category String? // MARKETING, UTILITY, AUTHENTICATION, SERVICE
+  
+  // Lifecycle timestamps
+  sent_at      DateTime?
+  delivered_at DateTime?
+  read_at      DateTime?
+  failed_at    DateTime?
+  // -------------------------------------------
   
   created_at   DateTime @default(now())
 
@@ -919,6 +1214,7 @@ enum IntegrationType {
   STRIPE
   SHOPIFY
   CALENDLY
+  GOOGLE_CALENDAR
 }
 
 model Integration {
@@ -1109,13 +1405,76 @@ model AdminUser {
   password_hash String
   role          AdminRole @default(SUPER_ADMIN)
   name          String?
+  avatar_url    String?
+  bio           String?   @db.Text
   
   created_at    DateTime  @default(now())
   updated_at    DateTime  @updatedAt
 
-  audit_logs    AdminAuditLog[]
+  audit_logs      AdminAuditLog[]
+  assigned_leads  CRMLead[]       @relation("SalesAssigned")
+  crm_activities  CRMActivity[]
 
   @@map("admin_users")
+}
+
+model CRMLead {
+  id              String   @id @default(uuid())
+  type            String   @default("VENDOR") // VENDOR, RESELLER, WHITE_LABEL
+  stage           String   @default("LEAD_CAPTURED") // LEAD_CAPTURED, CONTACTED, DEMO_SCHEDULED, PROPOSAL_SENT, NEGOTIATION, WON, LOST
+  name            String
+  email           String
+  phone           String?
+  company_name    String?
+  source          String?  // Website, Referral, Ads, etc.
+  
+  deal_value      Decimal  @default(0.00)
+  probability     Int      @default(10) // 0-100
+  expected_close  DateTime?
+  
+  assigned_to     String?  // AdminUser ID
+  manager         AdminUser? @relation("SalesAssigned", fields: [assigned_to], references: [id])
+  
+  notes           String?  @db.Text
+  metadata        Json?    @default("{}") // Additional flexible data
+  
+  activities      CRMActivity[]
+  
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  @@map("crm_leads")
+}
+
+model CRMActivity {
+  id          String   @id @default(uuid())
+  lead_id     String
+  admin_id    String?
+  action      String   // CALL, EMAIL, DEMO, NOTE, STAGE_CHANGE, PROPOSAL_GENERATED
+  description String?  @db.Text
+  details     Json?    // { old_stage: "...", new_stage: "..." }
+  
+  created_at  DateTime @default(now())
+  
+  lead        CRMLead  @relation(fields: [lead_id], references: [id], onDelete: Cascade)
+  admin       AdminUser? @relation(fields: [admin_id], references: [id])
+
+  @@map("crm_activities")
+}
+
+model SalesTarget {
+  id              String   @id @default(uuid())
+  year            Int
+  month           Int
+  type            String   // REVENUE, VENDORS, RESELLERS, WHITE_LABEL
+  target_value    Decimal
+  current_value   Decimal  @default(0.00)
+  
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  @@unique([year, month, type])
+  @@map("sales_targets")
 }
 
 model AdminAuditLog {
@@ -1152,17 +1511,33 @@ enum KYCStatus {
   REJECTED
 }
 
+enum PartnerRole {
+  AFFILIATE
+  PLATFORM
+}
+
 model Reseller {
   id                String         @id @default(uuid())
   email             String         @unique
   password_hash     String?        // For portal access
   name              String
   business_name     String?
+  avatar_url        String?
+  bio               String?        @db.Text
   last_login        DateTime?
   referral_code     String         @unique // short code e.g. "GREK123"
   
   status            ResellerStatus @default(PENDING)
+  role              PartnerRole    @default(AFFILIATE)
+  email_verified    Boolean        @default(false)
+  
+  // KYC & Compliance
   kyc_status        KYCStatus      @default(NONE)
+  kyc_type          String?        // 'PERSONAL' | 'BUSINESS'
+  kyc_data          Json?          // { id_type, id_number, documents: [], business_reg_number }
+  kyc_notes         String?
+  kyc_submitted_at  DateTime?
+  kyc_verified_at   DateTime?
   
   // Commission Logic (Phase 3)
   base_commission   Decimal        @default(20.00) // Percentage
@@ -1179,9 +1554,12 @@ model Reseller {
   primary_color     String?         @default("#0F172A") // Default Slate 900
   secondary_color   String?         @default("#3B82F6") // Default Blue 500
   custom_domain     String?         @unique // e.g. "dashboard.reseller.com"
+  domain_verified   Boolean?        @default(false)
+  theme_mode        String?         @default("LIGHT")
 
   is_frozen         Boolean        @default(false)
   freeze_reason     String?
+  risk_score        Int            @default(0) // 0-100
   
   tier_id           String?
   tier              ResellerTier?  @relation(fields: [tier_id], references: [id])
@@ -1196,6 +1574,19 @@ model Reseller {
   bank_account_number    String?        // Encrypted
   bank_ifsc              String?        // Encrypted
   bank_name              String?
+  
+  invoice_config         Json?          // White-label invoice settings
+  
+  // White-label Infrastructure
+  smtp_config            Json?          // { host, port, user, pass, from_name, from_email }
+  domain_settings        Json?          // { domain, status, ssl_active, verified_at }
+  branding_settings     Json?          // { logo_url, dark_logo_url, favicon_url, primary_color, secondary_color }
+  payment_gateways      Json?          // [{ provider: "Razorpay", key_id: "...", key_secret: "...", is_live: false, is_active: true }]
+  
+  // Sub-Reseller Support (Multi-Tier)
+  parent_reseller_id    String?
+  parent_reseller       Reseller?      @relation("SubResellers", fields: [parent_reseller_id], references: [id])
+  sub_resellers         Reseller[]     @relation("SubResellers")
   
   // Auto-Onboarding
   onboarding_bonus       Decimal        @default(0.00)
@@ -1217,7 +1608,15 @@ model Reseller {
   risk_logs         ResellerRiskLog[]
   fraud_proofs      ResellerFraudProof[]
   feedbacks         Feedback[]
+  custom_plans      SubscriptionPlan[] @relation("ResellerPlans")
   
+  coupons           ResellerCoupon[]
+  leads             ResellerLead[]
+  offers            ResellerOffer[]
+  proposals         ResellerProposal[]
+  vendor_invoices   Invoice[]
+  
+  monthly_stats     ResellerMonthlyStats[]
   created_at        DateTime       @default(now())
   updated_at        DateTime       @updatedAt
 
@@ -1244,6 +1643,10 @@ model ResellerTier {
   name              String     @unique // Starter, Growth, Empire
   min_vendors       Int        @default(0)
   commission_rate    Decimal    @default(20.00)
+  
+  // Tier Bonus System
+  monthly_revenue_threshold Decimal @default(0.00)
+  bonus_percentage          Decimal @default(0.00) // Applied on top of profit
   
   resellers         Reseller[]
   
@@ -1276,6 +1679,12 @@ enum LedgerEntryType {
   PAYOUT
   REFUND_REVERSAL
   ADJUSTMENT
+  BASE_COST_SPLIT
+  PROFIT_SHARE
+  WALLET_MARGIN
+  TIER_BONUS
+  REVENUE_SHARE
+  BONUS_PAYOUT
 }
 
 model ResellerLedger {
@@ -1295,6 +1704,7 @@ model ResellerLedger {
   
   reseller        Reseller        @relation(fields: [reseller_id], references: [id])
 
+  @@unique([reference_id, type])
   @@index([reseller_id])
   @@map("reseller_ledger")
 }
@@ -1349,6 +1759,80 @@ model ResellerFraudProof {
 
   @@index([reseller_id])
   @@map("reseller_fraud_proofs")
+}
+
+model ResellerCoupon {
+  id              String   @id @default(uuid())
+  reseller_id     String
+  code            String   @unique
+  discount_type   String   // PERCENTAGE, FLAT
+  discount_value  Decimal
+  valid_until     DateTime?
+  usage_limit     Int?     @default(100)
+  usage_count     Int      @default(0)
+  is_active       Boolean  @default(true)
+  
+  // Rules
+  plan_restrictions Json?    // Array of plan IDs
+  new_users_only    Boolean  @default(true)
+  
+  created_at      DateTime @default(now())
+  reseller        Reseller @relation(fields: [reseller_id], references: [id])
+  
+  // Relations
+  workspaces      Workspace[] // Workspaces that used this coupon
+  
+  @@map("reseller_coupons")
+}
+
+model ResellerLead {
+  id              String   @id @default(uuid())
+  reseller_id     String
+  name            String
+  email           String?
+  phone           String?
+  business_name   String?
+  status          String   @default("NEW") // NEW, CONTACTED, PROPOSAL_SENT, CONVERTED
+  notes           String?
+  source          String?  // Website, Referral, etc.
+  
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+  reseller        Reseller @relation(fields: [reseller_id], references: [id])
+  
+  @@map("reseller_leads")
+}
+
+model ResellerOffer {
+  id              String   @id @default(uuid())
+  reseller_id     String
+  title           String
+  description     String?
+  offer_type      String   // BUNDLE, DISCOUNT, FREE_CREDITS
+  plan_id         String?
+  discount_code   String?
+  valid_until     DateTime?
+  share_link      String?  @unique
+  
+  created_at      DateTime @default(now())
+  reseller        Reseller @relation(fields: [reseller_id], references: [id])
+  
+  @@map("reseller_offers")
+}
+
+model ResellerProposal {
+  id              String   @id @default(uuid())
+  reseller_id     String
+  lead_id         String?  // Optional relation to lead
+  title           String
+  items           Json     // JSON array of plans/features/prices
+  total_amount    Decimal
+  status          String   @default("DRAFT") // DRAFT, SENT, ACCEPTED, REJECTED
+  
+  created_at      DateTime @default(now())
+  reseller        Reseller @relation(fields: [reseller_id], references: [id])
+  
+  @@map("reseller_proposals")
 }
 
 enum InvoiceStatus {
@@ -1421,11 +1905,16 @@ model Transaction {
 
 model SystemConfig {
   id                String   @id @default("global")
-  platform_name     String   @default("WAVO")
+  platform_name     String   @default("Grafty")
   platform_tagline  String?
-  logo_url          String?
+  logo_url          String?  // Main Logo
+  dark_logo_url     String?  // Logo for dark themes
   favicon_url       String?
   login_logo_url    String?
+  dashboard_logo_url String?
+  reseller_logo_url String?
+  partner_logo_url  String?
+  footer_logo_url   String?
   
   // Theme Controls
   primary_color     String   @default("#27954D")
@@ -1433,19 +1922,75 @@ model SystemConfig {
   theme_mode        String   @default("LIGHT") // LIGHT, DARK
   border_radius     String   @default("12px")
   
-  // Contact Info
+  // Platform Capabilities
+  features          Json     @default("{\"commerce\":true,\"flows\":true,\"drips\":true,\"edu\":false,\"api\":true}")
+  payment_gateways  Json     @default("[{\"provider\":\"Razorpay\",\"key_id\":\"\",\"key_secret\":\"\",\"is_live\":false,\"is_active\":true}]")
+  
+  // Meta Onboarding Config
+  meta_app_id       String?
+  meta_app_secret_enc String?
+  meta_config_id    String? // Embedded Signup Configuration ID
+  meta_waba_id      String?
+  meta_business_id  String?
+  meta_system_token_enc String?
+  
+  // Advanced Revenue Engine Settings
+  rev_base_platform_cost   Decimal  @default(2000.00)
+  rev_min_selling_price    Decimal  @default(3500.00)
+  rev_default_wallet_margin Decimal  @default(0.15)
+  rev_tier_threshold_1     Decimal  @default(50000.00)
+  rev_tier_bonus_1         Decimal  @default(2.00)
+  rev_tier_threshold_2     Decimal  @default(200000.00)
+  rev_tier_bonus_2         Decimal  @default(5.00)
+  rev_enable_tier_bonus    Boolean  @default(true)
+  rev_enable_wallet_margin Boolean  @default(true)
+  rev_lock_pricing_floor   Boolean  @default(true)
+  meta_permanent_token_enc String?
+  meta_credit_line_id String?
+  meta_onboarding_mode String @default("TECH_PROVIDER") // TECH_PROVIDER, SOLUTION_PARTNER
+  
+  // SMTP Config
+  smtp_host         String?
+  smtp_port         Int?     @default(587)
+  smtp_user         String?
+  smtp_pass_enc     String?
+  smtp_from_name    String?
+  smtp_from_email   String?
+  smtp_encryption   String   @default("TLS") // TLS, SSL
+  
+  // GST Compliance (Primary Company: Grekam Academy)
+  company_name      String   @default("Grekam Academy")
+  company_gstin     String?
+  company_pan       String?
+  company_address   String?  @db.Text
+  company_state     String?
+  company_pincode   String?
+  company_bank_details Json? // { bank_name, acc_no, ifsc, branch }
+  invoice_config    Json?    // { header_text, footer_text, signature_url, declaration }
+  tax_config        Json?    @default("{}") // { gst_rate: 18, cgst_rate: 9, sgst_rate: 9, igst_rate: 18 }
+  
+  // Info
   support_email     String?
   support_phone     String?
   support_whatsapp  String?
-  address           String?
   
   // SEO & Social
   meta_title        String?
   meta_description  String?
   social_links      Json?    @default("{}") // { twitter: "", facebook: "" }
+  landing_page_config Json?  @default("{}") // Stores sections, banner, cta
   
-  // Global Feature Toggles
-  modules           Json?    @default("{}") // { commerce: true, drips: true, etc }
+  // OAuth Config
+  google_client_id        String?
+  google_client_secret_enc String?
+  facebook_client_id      String?
+  facebook_client_secret_enc String?
+  
+  // Pusher Config
+  pusher_app_id           String?
+  pusher_key              String?
+  pusher_secret_enc       String?
+  pusher_cluster          String?
   
   updated_at        DateTime @updatedAt
 
@@ -1479,32 +2024,135 @@ model PaymentGatewayConfig {
   @@map("payment_gateway_configs")
 }
 
+model InvoiceSequence {
+  id          String   @id @default(uuid())
+  entity_id   String   @default("SYSTEM") // "SYSTEM" or Reseller ID
+  year        Int
+  next_number Int      @default(1)
+  
+  updated_at  DateTime @updatedAt
+  
+  @@unique([entity_id, year])
+  @@map("invoice_sequences")
+}
+
 model Invoice {
   id              String   @id @default(uuid())
+  invoice_number  String   @unique  // INV-2024-0001
   workspace_id    String
+  wallet_id       String?
+  reseller_id     String?
   
-  invoice_number  String   @unique // INV-2024-0001
-  amount_total    Decimal  @default(0.00)
-  amount_subtotal Decimal  @default(0.00)
-  tax_total       Decimal  @default(0.00)
-  tax_details     Json?    // { cgst: 0, sgst: 0, igst: 18 }
+  // Financial Details
+  net_amount      Decimal  // Amount before GST
+  gst_amount      Decimal  // Total GST (18%)
+  cgst_amount     Decimal  @default(0.00)  // Central GST (9%)
+  sgst_amount     Decimal  @default(0.00)  // State GST (9%)
+  igst_amount     Decimal  @default(0.00)  // Integrated GST (18%)
+  total_amount    Decimal  // Amount after GST
   
-  status          String   @default("PAID")
-  pdf_url         String?  
+  // GST Compliance Fields
+  hsn_code        String   @default("998311") // Management consulting and IT services
+  is_reverse_charge Boolean @default(false)
+  place_of_supply String?  // State Name
   
-  billing_period_start DateTime
-  billing_period_end   DateTime
+  // Billing Details (Customer)
+  billing_name    String
+  billing_address String   @db.Text
+  billing_gstin   String?  // Customer's GSTIN (optional)
+  billing_state   String
+  billing_pincode String
+  billing_email   String?
+  billing_phone   String?
   
-  // GST / Billing Details at time of issue
-  billing_name     String?
-  billing_address  String?
-  billing_gstin    String?
+  // Company Details (Grekam Academy)
+  company_name    String   @default("Grekam Academy")
+  company_gstin   String?
+  company_address String?  @db.Text
+  company_state   String?
+  company_pincode String?
   
+  // Security & Audit
+  authorized_signature_url String?
+  invoice_hash     String?   @unique // Immutable hash for audit
+  
+  // Payment Details
+  payment_method  String   @default("Razorpay")
+  payment_id      String?  // Razorpay payment_id
+  payment_status  String   @default("PAID")  // PAID, PENDING, FAILED
+  
+  // Invoice Status
+  status          String   @default("ACTIVE")  // ACTIVE, CANCELLED
+  cancelled_reason String?
+  cancelled_at    DateTime?
+  
+  // PDF Storage
+  pdf_url         String?
+  pdf_generated_at DateTime?
+  
+  // Email Status
+  email_sent      Boolean  @default(false)
+  email_sent_at   DateTime?
+  
+  // Metadata
+  customer_type   String   @default("B2C") // B2B, B2C
+  notes           String?  @db.Text
   created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
 
-  workspace       Workspace @relation(fields: [workspace_id], references: [id])
+  // Relations
+  workspace       Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  wallet          VendorWallet? @relation("WalletInvoices", fields: [wallet_id], references: [id])
+  transactions    CreditTransaction[] @relation("TransactionInvoice")
+  reseller        Reseller? @relation(fields: [reseller_id], references: [id])
+  items           InvoiceItem[]
 
+  @@index([workspace_id])
+  @@index([wallet_id])
+  @@index([invoice_number])
+  @@index([created_at])
+  @@index([payment_status])
   @@map("invoices")
+}
+
+model FinanceConfig {
+  id              String @id @default("global")
+  last_locked_month Int? // 1-12
+  last_locked_year  Int?
+  
+  invoice_header  String? @db.Text
+  invoice_footer  String? @db.Text
+  company_gstin   String?
+  company_pan     String?
+  bank_details    Json?   // { bank, account, ifsc, branch }
+  upi_id          String?
+  
+  @@map("finance_config")
+}
+
+model InvoiceItem {
+  id              String   @id @default(uuid())
+  invoice_id      String
+  
+  description     String
+  hsn_code        String?
+  quantity        Decimal
+  rate            Decimal
+  taxable_value   Decimal
+  
+  // Tax breakdown per item
+  cgst_rate       Decimal  @default(0.00)
+  cgst_amount     Decimal  @default(0.00)
+  sgst_rate       Decimal  @default(0.00)
+  sgst_amount     Decimal  @default(0.00)
+  igst_rate       Decimal  @default(0.00)
+  igst_amount     Decimal  @default(0.00)
+  
+  total_amount    Decimal
+  
+  invoice         Invoice  @relation(fields: [invoice_id], references: [id], onDelete: Cascade)
+  
+  @@map("invoice_items")
 }
 
 // --------------------------------------
@@ -1514,18 +2162,51 @@ model Invoice {
 model VendorWallet {
   id               String   @id @default(uuid())
   workspace_id     String   @unique
+  
+  // Balances
   current_balance  Decimal  @default(0.00)
   locked_balance   Decimal  @default(0.00)
   total_purchased  Decimal  @default(0.00)
   total_used       Decimal  @default(0.00)
   
-  // Fraud Protection (Phase 7)
+  // Auto Top-up Settings
+  auto_recharge_enabled   Boolean @default(false)
+  auto_recharge_threshold Decimal @default(500.00)
+  auto_recharge_amount    Decimal @default(1000.00)
+  razorpay_customer_id    String? // For stored payment methods
+  razorpay_token_id       String? // Stored card token for auto-charge
+  
+  // Fraud Detection Settings
+  max_daily_velocity      Decimal @default(10000.00) // Max credits allowed per day
+  velocity_alert_threshold Float  @default(2.0)      // Multiplier of avg usage to trigger alert
+  is_automated_blocked    Boolean @default(false)    // System-level block if fraud detected
+  
+  // GST Details
+  gst_registered   Boolean  @default(false)
+  gstin            String?  @db.VarChar(15)  // GST Identification Number
+  billing_name     String?
+  billing_address  String?  @db.Text
+  billing_state    String?
+  billing_pincode  String?  @db.VarChar(6)
+  billing_email    String?
+  billing_phone    String?
+  
+  // Security & Fraud Protection
   is_frozen        Boolean  @default(false)
   freeze_reason    String?
+  frozen_at        DateTime?
+  frozen_by        String?  // Admin ID who froze the wallet
   
-  workspace        Workspace @relation(fields: [workspace_id], references: [id])
+  // Metadata
+  created_at       DateTime @default(now())
+  updated_at       DateTime @default(now()) @updatedAt
+  
+  // Relations
+  workspace        Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
   ledger_entries   CreditTransaction[]
+  invoices         Invoice[] @relation("WalletInvoices")
 
+  @@index([workspace_id])
   @@map("vendor_wallets")
 }
 
@@ -1538,24 +2219,66 @@ enum CreditTransactionType {
 }
 
 model CreditTransaction {
-  id               String   @id @default(uuid())
+  id               String                 @id @default(uuid())
   workspace_id     String
+  wallet_id        String?  // Made optional for migration
+  
+  // Transaction Details
   type             CreditTransactionType
-  amount           Decimal
+  amount           Decimal  // Can be negative for deductions
+  
+  // Balance Snapshots (Critical for audit)
   balance_before   Decimal
   balance_after    Decimal
   
-  related_message_id String?
-  related_payment_id String?
-  description      String?
+  // GST Breakdown (for PURCHASE type)
+  net_amount       Decimal  @default(0.00)  // Amount before GST
+  gst_amount       Decimal  @default(0.00)  // Total GST
+  cgst_amount      Decimal  @default(0.00)  // Central GST (9%)
+  sgst_amount      Decimal  @default(0.00)  // State GST (9%)
+  igst_amount      Decimal  @default(0.00)  // Integrated GST (18%)
+  total_amount     Decimal  @default(0.00)  // Amount after GST
   
+  // References (for idempotency)
+  related_payment_id String?  @unique  // Razorpay payment_id
+  related_message_id String?  @unique  // WhatsApp message_id
+  meta_message_id    String?           // Meta's message ID
+  invoice_id         String?
+  
+  // Message Details (for DEDUCTION type)
+  message_category   String?  // MARKETING, UTILITY, AUTH, SERVICE
+  country_code       String?
+  meta_cost          Decimal  @default(0.00)  // What Meta charged us
+  our_charge         Decimal  @default(0.00)  // What we charged vendor
+  margin             Decimal  @default(0.00)  // Our profit
+  
+  // Fraud/Analytics
+  velocity_score     Float?   // Calculated velocity at time of TX
+  
+  // Metadata
+  description      String?
+  initiated_by     String?  // User ID or SYSTEM
+  ip_address       String?
+  user_agent       String?
+  
+  // Status
+  status           String   @default("COMPLETED")  // COMPLETED, FAILED, REVERSED
+  failure_reason   String?
+  
+  // Timestamps
   created_at       DateTime @default(now())
-
-  wallet           VendorWallet @relation(fields: [workspace_id], references: [workspace_id])
+  reversed_at      DateTime?
+  
+  // Relations
+  wallet           VendorWallet? @relation(fields: [wallet_id], references: [id])
+  invoice          Invoice?      @relation("TransactionInvoice", fields: [invoice_id], references: [id])
 
   @@index([workspace_id])
-  @@index([workspace_id, type])
+  @@index([wallet_id])
+  @@index([type])
   @@index([created_at])
+  @@index([related_payment_id])
+  @@index([related_message_id])
   @@map("credit_transactions")
 }
 
@@ -1597,15 +2320,20 @@ model SubscriptionPlan {
   id               String   @id @default(uuid())
   name             String   @unique
   description      String?
-  price            Decimal  @default(0.00)
+  price            Decimal  @default(0.00) // Deprecated: Use monthly_price
+  monthly_price    Decimal  @default(0.00)
+  yearly_price     Decimal  @default(0.00)
   currency         String   @default("INR")
-  billing_cycle    String   @default("MONTHLY")
+  billing_cycle    String   @default("MONTHLY") // Deprecated
+  min_reseller_price Decimal @default(0.00) // Margin protection
   
   // Control Modules (Limits)
   max_contacts     Int      @default(100)
   max_flows        Int      @default(3)
   max_campaigns    Int      @default(1)
   max_messages     Int      @default(500)
+  max_users        Int      @default(1)    // Added limit
+  max_teams        Int      @default(0)    // Added limit
   
   // Module Access
   api_access       Boolean  @default(false)
@@ -1615,10 +2343,18 @@ model SubscriptionPlan {
   commerce_access   Boolean  @default(false)
   edu_engine_access Boolean  @default(false)
 
+  // UI/UX Metadata
+  credits          Int      @default(0)
+  features_list    Json?    @default("[]")
+  is_featured      Boolean  @default(false)
+
   is_public        Boolean  @default(true)
   is_active        Boolean  @default(true)
   
   workspaces       Workspace[]
+  
+  reseller_id      String?
+  reseller         Reseller? @relation("ResellerPlans", fields: [reseller_id], references: [id])
   
   created_at       DateTime @default(now())
   updated_at       DateTime @updatedAt
@@ -1636,4 +2372,315 @@ model VerificationOTP {
 
   @@unique([identifier, code])
   @@map("verification_otps")
+}
+
+// --------------------------------------
+// GST & AUDIT SYSTEM
+// --------------------------------------
+
+model GSTReport {
+  id                 String   @id @default(uuid())
+  
+  // Period
+  month              Int      // 1-12
+  year               Int      // 2024
+  
+  // Aggregated Amounts
+  total_sales        Decimal  @default(0.00)  // Sum of all net amounts
+  total_gst          Decimal  @default(0.00)  // Sum of all GST
+  total_cgst         Decimal  @default(0.00)
+  total_sgst         Decimal  @default(0.00)
+  total_igst         Decimal  @default(0.00)
+  
+  // Statistics
+  invoice_count      Int      @default(0)
+  transaction_count  Int      @default(0)
+  
+  // Report Status
+  status             String   @default("DRAFT")  // DRAFT, FINALIZED
+  finalized_at       DateTime?
+  
+  // PDF Export
+  pdf_url            String?
+  
+  // Metadata
+  generated_at       DateTime @default(now())
+  generated_by       String?  // Admin ID
+  notes              String?  @db.Text
+  
+  @@unique([month, year])
+  @@index([year, month])
+  @@index([status])
+  @@map("gst_reports")
+}
+
+model AuditLog {
+  id                 String   @id @default(uuid())
+  
+  // Actor
+  admin_id           String
+  admin_email        String
+  
+  // Action
+  action_type        String   // ADJUST_CREDITS, FREEZE_WALLET, REFUND, etc.
+  target_type        String   // WALLET, TRANSACTION, INVOICE
+  target_id          String
+  target_workspace   String?
+  
+  // Changes
+  before_value       Json?
+  after_value        Json?
+  
+  // Reason & Context
+  reason             String   @db.Text
+  ip_address         String?
+  user_agent         String?
+  
+  // Metadata
+  created_at         DateTime @default(now())
+  
+  @@index([admin_id])
+  @@index([target_workspace])
+  @@index([action_type])
+  @@index([created_at])
+  @@map("audit_logs")
+}
+
+// --------------------------------------
+// SUPER ADMIN CRM (Proposals)
+// --------------------------------------
+
+model Proposal {
+  id              String   @id @default(uuid())
+  protocol_id     String   @unique // PROP-2024-001
+  
+  client_name     String
+  client_email    String?
+  client_company  String?
+  
+  amount          Decimal  @default(0.00)
+  currency        String   @default("INR")
+  
+  status          String   @default("DRAFT") // DRAFT, SENT, ACCEPTED, REJECTED, EXPIRED
+  
+  valid_until     DateTime?
+  sent_at         DateTime?
+  accepted_at     DateTime?
+  
+  items           Json     @default("[]") // [{ description, quantity, price, total }]
+  notes           String?  @db.Text
+  
+  // Metadata
+  created_by      String?  // Admin ID
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+  
+  @@index([status])
+  @@index([client_company])
+  @@map("proposals")
+}
+
+model ResellerMonthlyStats {
+  id              String   @id @default(uuid())
+  reseller_id     String
+  month           Int      // 1-12
+  year            Int
+  
+  total_revenue   Decimal  @default(0.00) // Gross revenue generated by vendors
+  net_profit      Decimal  @default(0.00) // Partner's share
+  bonus_earned    Decimal  @default(0.00)
+  is_locked       Boolean  @default(false)
+  processed_at    DateTime?
+  
+  reseller        Reseller @relation(fields: [reseller_id], references: [id])
+
+  @@unique([reseller_id, month, year])
+  @@index([reseller_id])
+  @@map("reseller_monthly_stats")
+}
+model FollowUp {
+  id           String   @id @default(uuid())
+  workspace_id String
+  contact_id   String
+  user_id      String
+  scheduled_at DateTime
+  reminder_at  DateTime?
+  status       String   @default("PENDING") // PENDING, COMPLETED, OVERDUE, SNOOZED
+  notes        String?
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  workspace    Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  contact      Contact   @relation(fields: [contact_id], references: [id], onDelete: Cascade)
+  user         User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("follow_ups")
+}
+
+model InternalNote {
+  id           String   @id @default(uuid())
+  workspace_id String
+  contact_id   String
+  user_id      String
+  content      String
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  workspace    Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  contact      Contact   @relation(fields: [contact_id], references: [id], onDelete: Cascade)
+  user         User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("internal_notes")
+}
+
+// --------------------------------------
+// Landing Page CMS Engine
+// --------------------------------------
+
+model LandingPage {
+  id              String           @id @default(uuid())
+  slug            String           @unique // home, reseller, partner, etc.
+  title           String
+  description     String?
+  seo_config      Json?            @default("{\"title\":\"\",\"description\":\"\",\"keywords\":\"\",\"og_image\":\"\"}")
+  status          String           @default("DRAFT") // DRAFT, PUBLISHED
+  banner_config   Json?            @default("{\"text\":\"\",\"image\":\"\",\"link\":\"\",\"is_active\":false}")
+  custom_css      String?          @db.Text
+  published_data  Json?            // Stores the current live snapshot
+  
+  sections        LandingSection[]
+  versions        LandingVersion[]
+  
+  created_at      DateTime         @default(now())
+  updated_at      DateTime         @updatedAt
+
+  @@map("landing_pages")
+}
+
+model LandingSection {
+  id              String      @id @default(uuid())
+  page_id         String
+  type            String      // HERO, FEATURES, PRICING, FAQ, CUSTOM_HTML, etc.
+  content         Json        // Modular content based on type
+  style_config    Json?       @default("{}") // CSS/Style overrides
+  order           Int         @default(0)
+  is_active       Boolean     @default(true)
+  
+  page            LandingPage @relation(fields: [page_id], references: [id], onDelete: Cascade)
+
+  @@index([page_id])
+  @@map("landing_sections")
+}
+
+model LandingVersion {
+  id              String      @id @default(uuid())
+  page_id         String
+  version_number  Int
+  snapshot        Json        // Full JSON snapshot of the page at that time
+  published_by    String?
+  created_at      DateTime    @default(now())
+  
+  page            LandingPage @relation(fields: [page_id], references: [id], onDelete: Cascade)
+
+  @@index([page_id])
+  @@map("landing_versions")
+}
+
+// --------------------------------------
+// ENTERPRISE UNIVERSAL CRM MODULE
+// --------------------------------------
+
+model UniversalCrmColumn {
+  id           String    @id @default(uuid())
+  workspace_id String
+  name         String
+  key          String    // Normalized key e.g., "property_type"
+  type         String    // TEXT, NUMBER, PHONE, EMAIL, DROPDOWN, MULTISELECT, DATE, CURRENCY, BOOLEAN, URL, FILE, NOTES
+  is_required  Boolean   @default(false)
+  is_visible   Boolean   @default(true)
+  options      Json?     // For dropdowns/multiselects
+  default_val  String?
+  order        Int       @default(0)
+  
+  created_at   DateTime  @default(now())
+  updated_at   DateTime  @updatedAt
+
+  workspace    Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+
+  @@unique([workspace_id, key])
+  @@map("universal_crm_columns")
+}
+
+model UniversalCrmStage {
+  id           String    @id @default(uuid())
+  workspace_id String
+  name         String
+  color        String?   @default("#94a3b8")
+  order        Int       @default(0)
+
+  created_at   DateTime  @default(now())
+  updated_at   DateTime  @updatedAt
+
+  workspace    Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  leads        UniversalCrmLead[]
+
+  @@map("universal_crm_stages")
+}
+
+model UniversalCrmLead {
+  id           String    @id @default(uuid())
+  workspace_id String
+  
+  // Core Fixed Fields (for easy querying & indexing)
+  name         String
+  phone        String?   
+  email        String?
+  source       String?
+  status       String    @default("NEW") // Legacy or high-level status
+  deal_value   Decimal   @default(0.00)
+  
+  // Relational Fields
+  stage_id     String?
+  assigned_to  String?   // User ID
+  
+  // Dynamic Structure
+  custom_data  Json      @default("{}") // All custom column data stored here
+  
+  // Quick Context Links
+  contact_id   String?   // Link to WhatsApp contact
+
+  created_at   DateTime  @default(now())
+  updated_at   DateTime  @updatedAt
+
+  workspace    Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  stage        UniversalCrmStage? @relation(fields: [stage_id], references: [id], onDelete: SetNull)
+  user         User?     @relation(fields: [assigned_to], references: [id], onDelete: SetNull)
+  contact      Contact?  @relation(fields: [contact_id], references: [id], onDelete: SetNull)
+  activities   UniversalCrmActivity[]
+
+  @@index([workspace_id])
+  @@index([stage_id])
+  @@index([phone])
+  @@index([email])
+  @@map("universal_crm_leads")
+}
+
+model UniversalCrmActivity {
+  id           String    @id @default(uuid())
+  workspace_id String
+  lead_id      String
+  user_id      String?
+  
+  type         String    // NOTE, STAGE_CHANGE, EMAIL_SENT, WHATSAPP_MSG, DRIP_TRIGGERED, PIPELINE_UPDATE
+  details      Json?     // Granular structured data about the event
+  notes        String?   @db.Text
+  
+  created_at   DateTime  @default(now())
+
+  workspace    Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  lead         UniversalCrmLead   @relation(fields: [lead_id], references: [id], onDelete: Cascade)
+  user         User?     @relation(fields: [user_id], references: [id], onDelete: SetNull)
+
+  @@index([lead_id])
+  @@map("universal_crm_activities")
 }

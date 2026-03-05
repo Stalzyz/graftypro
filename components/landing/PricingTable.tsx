@@ -58,6 +58,7 @@ const packages = [
 export default function PricingTable() {
     const [plans, setPlans] = React.useState<any[]>([]);
     const [loading, setLoading] = React.useState(true);
+    const [billingCycle, setBillingCycle] = React.useState<"MONTHLY" | "YEARLY">("MONTHLY");
 
     React.useEffect(() => {
         fetch("/api/billing/plans")
@@ -79,54 +80,93 @@ export default function PricingTable() {
     return (
         <section id="pricing-packages" className="py-24 bg-black relative">
             <div className="max-w-7xl mx-auto px-6 text-slate-100">
-                <div className="text-center mb-16">
+                <div className="text-center mb-10">
                     <h2 className="text-4xl md:text-6xl font-black mb-6 italic tracking-tight underline decoration-wa-green decoration-8 underline-offset-[12px]">Dynamic Plans</h2>
                     <p className="text-slate-400 text-lg font-medium">Predictable billing tailored to your scale. No hidden architecture fees.</p>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                    {plans.map((pkg, i) => (
-                        <div
-                            key={i}
-                            className={`relative glass-card p-10 flex flex-col border-2 transition-all hover:scale-[1.02] bg-slate-900/40 ${i === 1 ? 'border-wa-green shadow-[0_0_40px_rgba(35,211,102,0.15)]' : 'border-slate-800'}`}
+                {/* Toggle */}
+                <div className="flex justify-center mb-16">
+                    <div className="bg-slate-900/60 p-1 rounded-full flex relative border border-slate-800">
+                        <button
+                            onClick={() => setBillingCycle("MONTHLY")}
+                            className={`px-8 py-3 rounded-full text-xs font-black uppercase tracking-widest transition-all relative z-10 ${billingCycle === "MONTHLY" ? "text-black" : "text-slate-400 hover:text-white"}`}
                         >
-                            {i === 1 && (
-                                <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-wa-green text-black px-6 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-xl">
-                                    High Density Build
-                                </div>
-                            )}
-
-                            <div className={`w-16 h-16 rounded-2xl bg-wa-green/10 flex items-center justify-center mb-8 border border-wa-green/20`}>
-                                <Zap className="text-wa-green" size={32} />
+                            Monthly
+                        </button>
+                        <button
+                            onClick={() => setBillingCycle("YEARLY")}
+                            className={`px-8 py-3 rounded-full text-xs font-black uppercase tracking-widest transition-all relative z-10 ${billingCycle === "YEARLY" ? "text-black" : "text-slate-400 hover:text-white"}`}
+                        >
+                            Yearly
+                        </button>
+                        <div
+                            className={`absolute top-1 bottom-1 w-1/2 bg-wa-green rounded-full transition-all duration-300 ${billingCycle === "YEARLY" ? "left-[calc(50%-4px)] translate-x-1" : "left-1"}`}
+                        />
+                        {billingCycle === "YEARLY" && (
+                            <div className="absolute -top-3 -right-6 bg-amber-400 text-black text-[9px] font-black px-2 py-0.5 rounded-full animate-bounce">
+                                SAVE 20%
                             </div>
+                        )}
+                    </div>
+                </div>
 
-                            <h3 className="text-3xl font-black mb-2 text-white">{pkg.name}</h3>
-                            <p className="text-slate-500 text-sm mb-8 leading-relaxed font-bold h-12 line-clamp-2">{pkg.description || 'Enterprise module access enabled.'}</p>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    {plans.map((pkg, i) => {
+                        const price = billingCycle === "MONTHLY"
+                            ? (pkg.monthly_price || pkg.price)
+                            : (pkg.yearly_price || pkg.price * 12);
 
-                            <div className="mb-10">
-                                <div className="flex items-baseline gap-1">
-                                    <span className="text-slate-400 text-2xl font-bold italic">{pkg.currency === 'INR' ? '₹' : '$'}</span>
-                                    <span className="text-6xl font-black text-white tracking-tighter">{parseFloat(pkg.price).toLocaleString()}</span>
-                                    <span className="text-slate-500 font-bold uppercase tracking-widest text-[10px]">/ {pkg.billing_cycle === 'MONTHLY' ? 'mo' : 'yr'}</span>
-                                </div>
-                            </div>
-
-                            <div className="space-y-4 mb-12 flex-1">
-                                <PricingFeature text={`${pkg.max_contacts.toLocaleString()} Contacts`} />
-                                <PricingFeature text={`${pkg.max_messages.toLocaleString()} Messages`} />
-                                <PricingFeature text={`${pkg.max_flows} Automation Flows`} />
-                                {pkg.api_access && <PricingFeature text="Developer API Hub" active />}
-                                {pkg.drip_campaign_access && <PricingFeature text="Drip Sequence Engine" active />}
-                            </div>
-
-                            <Link
-                                href="/join"
-                                className={`w-full py-5 rounded-2xl font-black uppercase text-xs tracking-widest flex items-center justify-center gap-2 transition-all ${i === 1 ? 'bg-wa-green text-black hover:bg-white' : 'bg-slate-800 text-white hover:bg-slate-700'}`}
+                        return (
+                            <div
+                                key={i}
+                                className={`relative glass-card p-10 flex flex-col border-2 transition-all hover:scale-[1.02] bg-slate-900/40 ${i === 1 ? 'border-wa-green shadow-[0_0_40px_rgba(35,211,102,0.15)]' : 'border-slate-800'}`}
                             >
-                                Deploy Module <ArrowRight size={16} />
-                            </Link>
-                        </div>
-                    ))}
+                                {i === 1 && (
+                                    <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-wa-green text-black px-6 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-xl">
+                                        High Density Build
+                                    </div>
+                                )}
+
+                                <div className={`w-16 h-16 rounded-2xl bg-wa-green/10 flex items-center justify-center mb-8 border border-wa-green/20`}>
+                                    <Zap className="text-wa-green" size={32} />
+                                </div>
+
+                                <h3 className="text-3xl font-black mb-2 text-white">{pkg.name}</h3>
+                                <p className="text-slate-500 text-sm mb-8 leading-relaxed font-bold h-12 line-clamp-2">{pkg.description || 'Enterprise module access enabled.'}</p>
+
+                                <div className="mb-10">
+                                    <div className="flex items-baseline gap-1">
+                                        <span className="text-slate-400 text-2xl font-bold italic">{pkg.currency === 'INR' ? '₹' : '$'}</span>
+                                        <span className="text-6xl font-black text-white tracking-tighter">
+                                            {Number(price).toLocaleString()}
+                                        </span>
+                                        <div className="flex flex-col ml-2">
+                                            <span className="text-slate-500 font-bold uppercase tracking-widest text-[8px] leading-none mb-1">+ GST</span>
+                                            <span className="text-slate-500 font-bold uppercase tracking-widest text-[8px]">
+                                                / {billingCycle === "MONTHLY" ? "mo" : "yr"}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-4 mb-12 flex-1">
+                                    <PricingFeature text={`${pkg.max_contacts === -1 ? "Unlimited" : pkg.max_contacts.toLocaleString()} Contacts`} />
+                                    <PricingFeature text={`${pkg.max_messages === -1 ? "Unlimited" : pkg.max_messages.toLocaleString()} Messages`} />
+                                    <PricingFeature text={`${pkg.max_flows === -1 ? "Unlimited" : pkg.max_flows} Automation Flows`} />
+                                    {pkg.api_access && <PricingFeature text="Developer API Hub" active />}
+                                    {pkg.drip_campaign_access && <PricingFeature text="Drip Sequence Engine" active />}
+                                </div>
+
+                                <Link
+                                    href={`/register?plan=${pkg.id}&cycle=${billingCycle}`}
+                                    className={`w-full py-5 rounded-2xl font-black uppercase text-xs tracking-widest flex items-center justify-center gap-2 transition-all ${i === 1 ? 'bg-wa-green text-black hover:bg-white' : 'bg-slate-800 text-white hover:bg-slate-700'}`}
+                                >
+                                    Start 14 days trial <ArrowRight size={16} />
+                                </Link>
+                            </div>
+                        );
+                    })}
                 </div>
 
                 <div className="mt-16 text-center">

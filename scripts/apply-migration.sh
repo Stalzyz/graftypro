@@ -12,7 +12,7 @@ if [ -z "$DATABASE_URL" ]; then
     echo "❌ ERROR: DATABASE_URL environment variable is not set"
     echo ""
     echo "Please set it in your .env file or export it:"
-    echo "  export DATABASE_URL='postgresql://user:password@localhost:5432/wabot_bsp'"
+    echo "  export DATABASE_URL='postgresql://user:password@localhost:5432/grafty_bsp'"
     exit 1
 fi
 

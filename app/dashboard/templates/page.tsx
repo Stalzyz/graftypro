@@ -61,39 +61,91 @@ export default function TemplatesPage() {
         <div className="space-y-6 animate-fade-in">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-xl font-bold text-gray-800">Message Templates</h1>
-                    <p className="text-gray-500 text-sm">Create & manage WhatsApp templates for your campaigns.</p>
+                    <h1 className="text-2xl font-black text-gray-900 tracking-tight">Templates Dashboard</h1>
+                    <p className="text-gray-500 text-sm font-medium">Manage and sync your WhatsApp message templates.</p>
                 </div>
-                <div className="flex gap-3">
+                <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '12px' }}>
                     <button
                         onClick={syncFromMeta}
                         disabled={loading}
-                        className="btn-secondary"
+                        style={{
+                            all: 'unset',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '8px',
+                            padding: '0 24px',
+                            height: '44px',
+                            backgroundColor: '#FFFFFF',
+                            border: '1px solid #E5E7EB',
+                            borderRadius: '12px',
+                            color: '#374151',
+                            fontWeight: '700',
+                            fontSize: '14px',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                            boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                            whiteSpace: 'nowrap'
+                        }}
                     >
-                        <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
-                        Sync from Meta
+                        <RefreshCw size={18} className={loading ? "animate-spin" : ""} />
+                        Sync
                     </button>
-                    <Link href="/dashboard/templates/new">
-                        <button className="btn-primary">
-                            <Plus size={18} />
-                            New Template
+                    <Link href="/dashboard/templates/new" style={{ all: 'unset' }}>
+                        <button
+                            style={{
+                                all: 'unset',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '8px',
+                                padding: '0 24px',
+                                height: '44px',
+                                backgroundColor: '#27954D',
+                                borderRadius: '12px',
+                                color: '#FFFFFF',
+                                fontWeight: '700',
+                                fontSize: '14px',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s',
+                                boxShadow: '0 4px 12px rgba(39, 149, 77, 0.2)',
+                                whiteSpace: 'nowrap'
+                            }}
+                        >
+                            <Plus size={20} />
+                            New
                         </button>
                     </Link>
                 </div>
             </div>
 
             {/* Search */}
-            <div className="soft-card p-4 flex items-center gap-4">
-                <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                    <input
-                        type="text"
-                        placeholder="Search templates..."
-                        className="input pl-10"
-                        value={searchTerm}
-                        onChange={e => setSearchTerm(e.target.value)}
-                    />
-                </div>
+            <div
+                style={{
+                    backgroundColor: '#FFFFFF',
+                    border: '1px solid #E5E7EB',
+                    padding: '12px 16px',
+                    borderRadius: '16px',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px'
+                }}
+            >
+                <Search style={{ color: '#9CA3AF', flexShrink: 0 }} size={20} />
+                <input
+                    type="text"
+                    placeholder="Search templates..."
+                    style={{
+                        all: 'unset',
+                        flex: 1,
+                        fontSize: '14px',
+                        color: '#1F2937',
+                        width: '100%'
+                    }}
+                    value={searchTerm}
+                    onChange={e => setSearchTerm(e.target.value)}
+                />
             </div>
 
             {/* Templates Grid */}
@@ -110,7 +162,12 @@ export default function TemplatesPage() {
                     <h3 className="text-lg font-semibold text-gray-800 mb-2">No templates found</h3>
                     <p className="text-gray-500 text-sm mb-6">Create your first template to start sending broadcasts.</p>
                     <Link href="/dashboard/templates/new">
-                        <button className="btn-primary">Create Template</button>
+                        <button
+                            className="px-8 py-3 bg-[#27954D] text-white font-bold transition-all hover:bg-[#1f7a3f] active:scale-95 shadow-lg"
+                            style={{ borderRadius: '12px' }}
+                        >
+                            Create Template
+                        </button>
                     </Link>
                 </div>
             ) : (

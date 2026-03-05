@@ -1,11 +1,10 @@
-
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import {
     FileText,
     Download,
-    MoreVertical,
     Plus,
     Search,
     CheckCircle2,
@@ -13,31 +12,39 @@ import {
     Receipt,
     Percent,
     Building2,
-    Calendar,
+    RefreshCw,
     ArrowUpRight
 } from "lucide-react";
 
 export default function InvoiceGSTManager() {
+    const router = useRouter();
     const [activeTab, setActiveTab] = useState("all");
-    const [isManualModalOpen, setIsManualModalOpen] = useState(false);
-    const [newInvoice, setNewInvoice] = useState({
-        vendor: "",
-        amount: "",
-        tax_percent: 18,
-        status: "PENDING"
-    });
+    const [loading, setLoading] = useState(true);
+    const [invoices, setInvoices] = useState<any[]>([]);
 
-    const invoices = [
-        { id: "INV-2024-001", vendor: "Tesla Motors", amount: "₹45,000", tax: "₹8,100", date: "08 Feb 2024", status: "PAID" },
-        { id: "INV-2024-002", vendor: "SpaceX", amount: "₹1,20,000", tax: "₹21,600", date: "07 Feb 2024", status: "PENDING" },
-        { id: "INV-2024-003", vendor: "Starlink", amount: "₹25,000", tax: "₹4,500", date: "05 Feb 2024", status: "PAID" },
-    ];
+    useEffect(() => {
+        fetchInvoices();
+    }, []);
 
-    const handleGenerateInvoice = (e: any) => {
-        e.preventDefault();
-        alert("Manual Invoice Generated successfully! Distributing ledger entries...");
-        setIsManualModalOpen(false);
+    const fetchInvoices = async () => {
+        try {
+            const res = await fetch("/api/super-admin/finance/invoices");
+            const data = await res.json();
+            if (data.data) setInvoices(data.data);
+            setLoading(false);
+        } catch (e) {
+            console.error(e);
+        }
     };
+
+    const stats = {
+        taxable: invoices.reduce((acc, inv) => acc + Number(inv.net_amount), 0),
+        gst: invoices.reduce((acc, inv) => acc + Number(inv.gst_amount), 0),
+        pending: invoices.filter(inv => inv.payment_status === 'PENDING').reduce((acc, inv) => acc + Number(inv.total_amount), 0),
+        settled: invoices.filter(inv => inv.payment_status === 'PAID').reduce((acc, inv) => acc + Number(inv.total_amount), 0),
+    };
+
+    if (loading) return <div className="p-20 text-center"><RefreshCw className="animate-spin inline mr-2" /> Initializing Fiscal Data...</div>;
 
     return (
         <div className="max-w-7xl space-y-12 pb-20">
@@ -58,7 +65,7 @@ export default function InvoiceGSTManager() {
                         GST Settings
                     </button>
                     <button
-                        onClick={() => setIsManualModalOpen(true)}
+                        onClick={() => router.push("/super-admin/dashboard/finance/invoices/new")}
                         className="px-8 py-4 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] flex items-center gap-2 hover:bg-black transition-all shadow-xl shadow-slate-200 active:scale-95"
                     >
                         <Plus size={14} />
@@ -67,77 +74,11 @@ export default function InvoiceGSTManager() {
                 </div>
             </header>
 
-            {/* Manual Invoice Modal */}
-            {isManualModalOpen && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 backdrop-blur-xl bg-slate-900/40 animate-in fade-in duration-300">
-                    <div className="bg-white w-full max-w-xl rounded-[40px] shadow-3xl p-10 relative">
-                        <h2 className="text-2xl font-black text-slate-900 mb-2">Fiscal Override</h2>
-                        <p className="text-slate-400 font-bold uppercase text-[10px] tracking-widest mb-8">Manual Invoice Generation Protocol</p>
-
-                        <form onSubmit={handleGenerateInvoice} className="space-y-6">
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Client Organization</label>
-                                <input
-                                    required
-                                    type="text"
-                                    className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-6 py-4 font-bold text-slate-900 outline-none focus:bg-white focus:ring-4 focus:ring-slate-50 transition-all"
-                                    placeholder="Enter Vendor Name..."
-                                    value={newInvoice.vendor}
-                                    onChange={(e) => setNewInvoice({ ...newInvoice, vendor: e.target.value })}
-                                />
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Base Amount (₹)</label>
-                                    <input
-                                        required
-                                        type="number"
-                                        className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-6 py-4 font-bold text-slate-900 outline-none"
-                                        placeholder="0.00"
-                                        value={newInvoice.amount}
-                                        onChange={(e) => setNewInvoice({ ...newInvoice, amount: e.target.value })}
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">GST Rate (%)</label>
-                                    <select
-                                        className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-6 py-4 font-bold text-slate-900 outline-none appearance-none"
-                                        value={newInvoice.tax_percent}
-                                        onChange={(e) => setNewInvoice({ ...newInvoice, tax_percent: parseInt(e.target.value) })}
-                                    >
-                                        <option value={18}>18% Standard</option>
-                                        <option value={12}>12% Reduced</option>
-                                        <option value={5}>5% Essential</option>
-                                        <option value={0}>0% Exempt</option>
-                                    </select>
-                                </div>
-                            </div>
-
-                            <div className="pt-4 flex gap-4">
-                                <button
-                                    type="button"
-                                    onClick={() => setIsManualModalOpen(false)}
-                                    className="flex-1 px-8 py-4 bg-slate-50 text-slate-400 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] hover:bg-slate-100 transition-all"
-                                >
-                                    Abort
-                                </button>
-                                <button
-                                    type="submit"
-                                    className="flex-1 px-8 py-4 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] hover:bg-black transition-all shadow-xl shadow-slate-200"
-                                >
-                                    Generate & Issue
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
-
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                <StatCard label="Total Taxable" value="₹24.8L" icon={<Building2 />} color="blue" />
-                <StatCard label="GST Collected" value="₹4.4L" icon={<Percent />} color="green" />
-                <StatCard label="Pending Payments" value="₹1.2L" icon={<Clock />} color="orange" />
-                <StatCard label="Settled This Month" value="₹5.6L" icon={<CheckCircle2 />} color="emerald" />
+                <StatCard label="Total Taxable" value={`₹${stats.taxable.toLocaleString()}`} icon={<Building2 />} color="blue" />
+                <StatCard label="GST Collected" value={`₹${stats.gst.toLocaleString()}`} icon={<Percent />} color="green" />
+                <StatCard label="Pending Payments" value={`₹${stats.pending.toLocaleString()}`} icon={<Clock />} color="orange" />
+                <StatCard label="Settled To Date" value={`₹${stats.settled.toLocaleString()}`} icon={<CheckCircle2 />} color="emerald" />
             </div>
 
             <div className="bg-white rounded-[40px] border border-slate-100 shadow-sm overflow-hidden">
@@ -160,6 +101,9 @@ export default function InvoiceGSTManager() {
                             type="text"
                             placeholder="Find Invoice, Org..."
                             className="bg-slate-50 border-none rounded-xl pl-10 pr-6 py-2.5 text-xs font-bold w-64 focus:ring-2 focus:ring-slate-100 transition-all"
+                            onChange={(e) => {
+                                // Search filter logic here if needed
+                            }}
                         />
                     </div>
                 </div>
@@ -171,7 +115,7 @@ export default function InvoiceGSTManager() {
                                 <th className="text-left px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Identifier</th>
                                 <th className="text-left px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Organization</th>
                                 <th className="text-left px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Base Amount</th>
-                                <th className="text-left px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Tax (18%)</th>
+                                <th className="text-left px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Tax</th>
                                 <th className="text-left px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Date Issued</th>
                                 <th className="text-left px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
                                 <th className="text-center px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Action</th>
@@ -185,22 +129,40 @@ export default function InvoiceGSTManager() {
                                             <div className="w-8 h-8 rounded-lg bg-slate-900 flex items-center justify-center">
                                                 <FileText size={14} className="text-white" />
                                             </div>
-                                            <span className="text-xs font-black text-slate-900">{inv.id}</span>
+                                            <span className="text-xs font-black text-slate-900">{inv.invoice_number}</span>
                                         </div>
                                     </td>
                                     <td className="px-8 py-6">
-                                        <span className="text-xs font-bold text-slate-700">{inv.vendor}</span>
+                                        <span className="text-xs font-bold text-slate-700">{inv.billing_name}</span>
                                     </td>
-                                    <td className="px-8 py-6 text-xs font-bold text-slate-900">{inv.amount}</td>
-                                    <td className="px-8 py-6 text-xs font-medium text-slate-500">{inv.tax}</td>
-                                    <td className="px-8 py-6 text-xs font-medium text-slate-400 uppercase px-1">{inv.date}</td>
+                                    <td className="px-8 py-6 text-xs font-bold text-slate-900">₹{Number(inv.net_amount).toLocaleString()}</td>
+                                    <td className="px-8 py-6 text-xs font-medium text-slate-500">₹{Number(inv.gst_amount).toLocaleString()}</td>
+                                    <td className="px-8 py-6 text-xs font-medium text-slate-400 uppercase px-1">{new Date(inv.created_at).toLocaleDateString()}</td>
                                     <td className="px-8 py-6">
-                                        <span className={`px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest ${inv.status === 'PAID' ? 'bg-green-500/10 text-green-500' : 'bg-orange-500/10 text-orange-500'}`}>
-                                            {inv.status}
+                                        <span className={`px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest ${inv.payment_status === 'PAID' ? 'bg-green-500/10 text-green-500' : 'bg-orange-500/10 text-orange-500'}`}>
+                                            {inv.payment_status}
                                         </span>
                                     </td>
                                     <td className="px-8 py-6 text-center">
-                                        <button className="p-3 bg-slate-100 rounded-xl hover:bg-slate-900 hover:text-white transition-all">
+                                        <button
+                                            onClick={async () => {
+                                                try {
+                                                    const res = await fetch(`/api/finance/invoices/${inv.id}/pdf`);
+                                                    if (!res.ok) throw new Error("PDF load failed");
+                                                    const blob = await res.blob();
+                                                    const url = window.URL.createObjectURL(blob);
+                                                    const a = document.createElement('a');
+                                                    a.href = url;
+                                                    a.download = `Invoice-${inv.invoice_number}.pdf`;
+                                                    document.body.appendChild(a);
+                                                    a.click();
+                                                    a.remove();
+                                                } catch (e) {
+                                                    alert("Failed to download PDF");
+                                                }
+                                            }}
+                                            className="p-3 bg-slate-100 rounded-xl hover:bg-slate-900 hover:text-slate-700 transition-all"
+                                        >
                                             <Download size={14} />
                                         </button>
                                     </td>
@@ -211,7 +173,7 @@ export default function InvoiceGSTManager() {
                 </div>
 
                 <div className="p-8 bg-slate-50/50 flex items-center justify-between border-t border-slate-50">
-                    <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest italic">Automated Fiscal Engine v2.0 active</span>
+                    <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest italic">Automated Fiscal Engine active</span>
                     <button className="text-[10px] font-black text-blue-600 uppercase tracking-widest hover:underline flex items-center gap-2">
                         Export Full Year Ledger <ArrowUpRight size={12} />
                     </button>

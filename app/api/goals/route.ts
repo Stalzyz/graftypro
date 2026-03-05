@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
-import { getCurrentUser } from "@/lib/auth";
-import { GOAL_TEMPLATES } from "@/lib/goals/templates";
+import { prisma } from "../../../lib/db";
+import { getCurrentUser } from "../../../lib/auth";
+import { GOAL_TEMPLATES } from "../../../lib/goals/templates";
+
+export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
     try {

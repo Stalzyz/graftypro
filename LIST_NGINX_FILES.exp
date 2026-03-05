@@ -1,0 +1,15 @@
+#!/usr/bin/expect -f
+
+set timeout -1
+set password "Photoshop09@"
+set server "root@72.61.231.187"
+
+spawn ssh $server "ls /etc/nginx/sites-enabled/ && ls /etc/nginx/sites-available/"
+
+expect {
+    "password:" {
+        send "$password\r"
+        exp_continue
+    }
+    eof
+}

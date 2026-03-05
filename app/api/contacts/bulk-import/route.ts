@@ -1,7 +1,9 @@
 
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
-import { getCurrentUser } from "@/lib/auth";
+import { prisma } from "../../../../lib/db";
+import { getCurrentUser } from "../../../../lib/auth";
+
+export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
     try {
@@ -12,6 +14,14 @@ export async function POST(req: Request) {
 
         if (!Array.isArray(contacts)) {
             return NextResponse.json({ error: "Invalid data format" }, { status: 400 });
+        }
+
+        // BATCH LIMIT (DoS Protection)
+        const MAX_BATCH_SIZE = 1000;
+        if (contacts.length > MAX_BATCH_SIZE) {
+            return NextResponse.json({
+                error: `Batch size limit exceeded. Maximum allowed: ${MAX_BATCH_SIZE}. You sent: ${contacts.length}`
+            }, { status: 413 });
         }
 
         const stats = {

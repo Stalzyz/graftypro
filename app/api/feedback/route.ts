@@ -1,7 +1,9 @@
 
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
-import { getCurrentUser } from "@/lib/auth";
+import { prisma } from "../../../lib/db";
+import { getCurrentUser } from "../../../lib/auth";
+
+export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
     try {
@@ -20,7 +22,7 @@ export async function POST(req: Request) {
                 content,
                 rating: rating || 5,
                 workspace_id: user?.workspaceId || null,
-                reseller_id: reseller_id || (user?.role === 'RESELLER' ? user.reseller_id : null),
+                reseller_id: reseller_id || (user?.role === 'RESELLER' ? user.userId : null),
                 is_approved: false // Mandatory approval from Super Admin
             }
         });

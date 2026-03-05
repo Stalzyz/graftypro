@@ -1,21 +1,49 @@
 
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
-import { getCurrentUser } from "@/lib/auth";
+import { prisma } from "../../../lib/db";
+import { getCurrentUser } from "../../../lib/auth";
+
+export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
     try {
         const user = await getCurrentUser(req);
         if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-        const products = await prisma.product.findMany({
+        // 1. Fetch from Modern Commerce Engine
+        const commerceProducts = await (prisma as any).commerceProduct.findMany({
+            where: { store: { workspace_id: user.workspaceId } },
+            orderBy: { created_at: 'desc' },
+            include: { variants: true }
+        });
+
+        // 2. Fetch from Legacy/Manual Product model
+        const legacyProducts = await prisma.product.findMany({
             where: { workspace_id: user.workspaceId },
             orderBy: { created_at: 'desc' },
             include: { variants: true }
         });
 
-        return NextResponse.json({ data: products });
-    } catch (error) {
+        // 3. Merge and Map
+        const allProducts = [
+            ...commerceProducts.map((p: any) => ({
+                ...p,
+                source: 'COMMERCE',
+                image_url: p.image_urls?.[0] || null
+            })),
+            ...legacyProducts.map((p: any) => ({
+                ...p,
+                source: 'MANUAL',
+                price: Number(p.price) // Float to Number
+            }))
+        ];
+
+        // Sort by created_at desc
+        allProducts.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+        return NextResponse.json({ data: allProducts });
+    } catch (error: any) {
+        console.error("GET Products Error:", error);
         return NextResponse.json({ error: "Error fetching products" }, { status: 500 });
     }
 }

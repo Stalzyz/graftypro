@@ -1,57 +1,57 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
-import { ResellerService } from "@/lib/reseller/service";
+import { prisma } from "../../../../lib/db";
+import { getResellerSession } from "../../../../lib/reseller/auth-helper";
 
-/**
- * PHASE: PAYOUT REQUEST API
- * Allows resellers to request withdrawal of their earned commission.
- */
-export async function POST(req: Request) {
-    try {
-        const { resellerId, amount, paymentMethod, paymentDetails } = await req.json();
+export const dynamic = "force-dynamic";
 
-        if (!resellerId || !amount) {
-            return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
-        }
-
-        // 1. Submit Payout Request using Reseller Service (which handles Fraud/Balance checks)
-        const request = await ResellerService.requestPayout(resellerId, amount, paymentDetails);
-
-        // 2. Update Method
-        await prisma.resellerPayoutRequest.update({
-            where: { id: request.id },
-            data: { payment_method: paymentMethod }
-        });
-
-        return NextResponse.json({
-            success: true,
-            message: "Payout request submitted successfully. It will be reviewed by our finance team.",
-            data: request
-        });
-
-    } catch (error: any) {
-        console.error("Payout Submission Error:", error);
-        return NextResponse.json({ error: error.message }, { status: 400 });
-    }
-}
-
-/**
- * List payout history for a reseller
- */
 export async function GET(req: Request) {
     try {
-        const { searchParams } = new URL(req.url);
-        const resellerId = searchParams.get('resellerId');
-
-        if (!resellerId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        const session = await getResellerSession();
+        if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
         const payouts = await prisma.resellerPayoutRequest.findMany({
-            where: { reseller_id: resellerId },
-            orderBy: { created_at: 'desc' }
+            where: { reseller_id: session.userId },
+            orderBy: { created_at: "desc" }
         });
 
         return NextResponse.json({ success: true, data: payouts });
-    } catch (error: any) {
+    } catch (error) {
         return NextResponse.json({ error: "Failed to load payouts" }, { status: 500 });
+    }
+}
+
+export async function POST(req: Request) {
+    try {
+        const session = await getResellerSession();
+        if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+        const { amount, method, account_details } = await req.json();
+
+        if (!amount || amount <= 0) {
+            return NextResponse.json({ error: "Invalid amount" }, { status: 400 });
+        }
+
+        const reseller = await prisma.reseller.findUnique({
+            where: { id: session.userId },
+            select: { wallet_balance: true }
+        });
+
+        if (!reseller || Number(reseller.wallet_balance) < amount) {
+            return NextResponse.json({ error: "Insufficient wallet balance" }, { status: 400 });
+        }
+
+        const request = await prisma.resellerPayoutRequest.create({
+            data: {
+                reseller_id: session.userId,
+                amount,
+                method: method || "BANK_TRANSFER",
+                account_details: account_details || {},
+                status: "PENDING"
+            }
+        });
+
+        return NextResponse.json({ success: true, data: request });
+    } catch (error) {
+        return NextResponse.json({ error: "Failed to create payout request" }, { status: 500 });
     }
 }

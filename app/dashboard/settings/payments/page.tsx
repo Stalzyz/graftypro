@@ -123,7 +123,7 @@ export default function PaymentSettingsPage() {
                             <ExternalLink size={18} className="text-blue-600 mt-1 shrink-0" />
                             <div className="text-xs text-blue-700 leading-relaxed">
                                 <p className="font-bold mb-1">How to get these keys?</p>
-                                Login to your <a href="https://dashboard.razorpay.com" target="_blank" className="underline font-bold">Razorpay Dashboard</a>, go to <b>Settings &gt; API Keys</b> and generate a new key pair. Wabot uses these to create secure payment links for your customers.
+                                Login to your <a href="https://dashboard.razorpay.com" target="_blank" className="underline font-bold">Razorpay Dashboard</a>, go to <b>Settings &gt; API Keys</b> and generate a new key pair. Grafty uses these to create secure payment links for your customers.
                             </div>
                         </div>
 

@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
-import { EduService } from "@/lib/edu/service";
+import { EduService } from "../../../../../lib/edu/service";
+
+export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
     try {

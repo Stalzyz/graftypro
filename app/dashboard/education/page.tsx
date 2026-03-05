@@ -1,286 +1,243 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
     Users,
-    GraduationCap,
+    Zap,
     Target,
+    CreditCard,
     TrendingUp,
-    MessageSquare,
-    Search,
-    Plus,
-    Filter,
     ArrowRight,
-    DollarSign,
-    CheckCircle2,
-    Clock,
-    Zap
+    Plus,
+    LayoutDashboard,
+    FileText,
+    BarChart3,
+    ArrowUpRight
 } from "lucide-react";
 import Link from "next/link";
 
 export default function EducationDashboard() {
+    const [stats, setStats] = useState<any>(null);
     const [loading, setLoading] = useState(true);
-    const [analytics, setAnalytics] = useState<any>({
-        totalLeads: 0,
-        enrolledCount: 0,
-        conversionRate: 0,
-        revenue: 0,
-        pendingPayment: 0,
-        courseBreakdown: []
-    });
 
     useEffect(() => {
-        fetch("/api/edu/analytics")
+        fetch("/api/education/analytics")
             .then(res => res.json())
             .then(data => {
-                setAnalytics(data);
+                if (data.success) setStats(data.stats);
                 setLoading(false);
-            })
-            .catch(() => setLoading(false));
+            });
     }, []);
 
-    if (loading) {
-        return (
-            <div className="flex items-center justify-center h-96">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-            </div>
-        );
-    }
-
     return (
-        <div className="space-y-8 pb-20">
-            {/* Header */}
-            <div className="flex justify-between items-end">
+        <div className="space-y-10 animate-in fade-in duration-500">
+            {/* Header Area */}
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                 <div>
-                    <h1 className="text-3xl font-black text-slate-900 tracking-tight">Admission Conversion Engine</h1>
-                    <p className="text-slate-500 font-medium">Capture leads, automate follow-ups, and track enrollment revenue.</p>
+                    <div className="flex items-center gap-2 mb-2">
+                        <div className="px-2 py-0.5 bg-blue-100 text-blue-600 text-[10px] font-black uppercase tracking-widest rounded">EduTech CRM</div>
+                        <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div>
+                    </div>
+                    <h1 className="text-4xl font-black text-slate-900 tracking-tight leading-none mb-3">
+                        Lead → Admission <span className="text-blue-600">Machine</span>
+                    </h1>
+                    <p className="text-slate-500 font-medium">Turbocharge your institute revenue with automated WhatsApp follow-ups.</p>
                 </div>
+
                 <div className="flex gap-3">
-                    <Link href="/dashboard/education/leads" className="bg-white border border-slate-200 px-5 py-2.5 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all flex items-center gap-2">
-                        View Pipeline
+                    <Link
+                        href="/dashboard/education/forms"
+                        className="flex items-center gap-2 bg-white border border-slate-200 px-6 py-3 rounded-2xl text-sm font-bold text-slate-700 hover:bg-slate-50 transition-all shadow-sm"
+                    >
+                        <FileText size={18} /> Lead Forms
                     </Link>
-                    <Link href="/dashboard/education/forms" className="bg-blue-600 text-white px-6 py-2.5 rounded-xl text-sm font-black hover:bg-blue-700 transition-all flex items-center gap-2 shadow-lg shadow-blue-200">
-                        <Plus size={18} /> Create Lead Form
+                    <Link
+                        href="/dashboard/education/leads"
+                        className="flex items-center gap-2 bg-slate-900 text-white px-8 py-3 rounded-2xl text-sm font-bold hover:scale-105 transition-all shadow-xl shadow-slate-200"
+                    >
+                        <Plus size={18} /> Add Lead
                     </Link>
                 </div>
             </div>
 
-            {/* Growth Cards */}
+            {/* Quick Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <EduStatCard
+                <StatCard
                     label="Total Leads"
-                    value={analytics.totalLeads}
-                    icon={<Users className="text-blue-600" />}
-                    trend="+18% this month"
+                    value={loading ? "..." : stats?.totalLeads}
+                    sub="Lifetime Pipeline"
+                    icon={<Users className="text-blue-600" size={24} />}
+                    trend="+12%"
                 />
-                <EduStatCard
-                    label="Admission Rev"
-                    value={`₹${analytics.revenue.toLocaleString()}`}
-                    icon={<DollarSign className="text-green-600" />}
-                    trend="ROI Positive"
-                />
-                <EduStatCard
+                <StatCard
                     label="Conversion Rate"
-                    value={`${analytics.conversionRate}%`}
-                    icon={<Target className="text-purple-600" />}
-                    trend="Above Avg (12%)"
+                    value={loading ? "..." : `${stats?.conversionRate}%`}
+                    sub="Inquiry to Admission"
+                    icon={<Target className="text-emerald-600" size={24} />}
+                    trend="+1.2%"
                 />
-                <EduStatCard
-                    label="Pending Py"
-                    value={analytics.pendingPayment}
-                    icon={<Clock className="text-amber-600" />}
-                    trend="Needs Urgency Nudge"
+                <StatCard
+                    label="Enrollments"
+                    value={loading ? "..." : stats?.enrolledLeads}
+                    sub="Confirmed Admissions"
+                    icon={<Plus className="text-indigo-600" size={24} />}
+                    trend="+5"
+                />
+                <StatCard
+                    label="Revenue (Est.)"
+                    value={loading ? "..." : `₹${stats?.totalRevenue?.toLocaleString()}`}
+                    sub="WhatsApp Attributed"
+                    icon={<CreditCard className="text-amber-600" size={24} />}
+                    trend="ROI Focused"
                 />
             </div>
 
-            {/* Main Content */}
+            {/* Large CTA Section */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* REVENUE POTENTIAL METER (Edu Version) */}
                 <div className="lg:col-span-2 space-y-8">
-                    <div className="glass-card p-10 bg-slate-900 text-white relative overflow-hidden">
-                        <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600/10 blur-3xl rounded-full -mr-32 -mt-32"></div>
+                    {/* Pipeline Summary Card */}
+                    <div className="bg-white border border-slate-100 rounded-[2.5rem] p-10 shadow-xl shadow-slate-100/50 relative overflow-hidden group">
+                        <div className="absolute top-0 right-0 w-64 h-64 bg-slate-50 rounded-full translate-x-1/2 -translate-y-1/2 opacity-50 group-hover:scale-110 transition-transform duration-700"></div>
+
                         <div className="relative z-10">
-                            <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest mb-6">Edu Conversion Insight</h3>
-                            <div className="flex items-center gap-10">
-                                <div>
-                                    <span className="text-6xl font-black">₹{(analytics.pendingPayment * 15000).toLocaleString()}</span>
-                                    <p className="text-slate-400 mt-4 text-sm max-w-xs">
-                                        Potential revenue from <strong>{analytics.pendingPayment}</strong> leads in "Payment Pending" stage.
-                                        Trigger a discount nudge now?
-                                    </p>
-                                </div>
-                                <div className="flex-1 max-w-xs space-y-4">
-                                    <button className="w-full py-4 bg-blue-600 rounded-2xl font-black text-sm hover:bg-blue-700 transition-all flex items-center justify-center gap-2">
-                                        Trigger Urgency Drip <MessageSquare size={16} />
-                                    </button>
-                                    <button className="w-full py-4 bg-white/5 border border-white/10 rounded-2xl font-bold text-sm hover:bg-white/10 transition-all">
-                                        Book Counselor Call
-                                    </button>
-                                </div>
+                            <h3 className="text-2xl font-black text-slate-900 mb-2">Live Admission Pipeline</h3>
+                            <p className="text-slate-500 font-medium mb-8">Manage your students from inquiry to payment in one visual board.</p>
+
+                            <div className="grid grid-cols-3 gap-4 mb-10">
+                                <PipelineMiniStat label="New Inquiries" count={stats?.statusBreakdown?.find((s: any) => s.status === 'NEW')?._count || 0} color="blue" />
+                                <PipelineMiniStat label="Follow-ups" count={stats?.statusBreakdown?.find((s: any) => s.status === 'FOLLOW_UP')?._count || 0} color="amber" />
+                                <PipelineMiniStat label="Ready to Pay" count={stats?.statusBreakdown?.find((s: any) => s.status === 'PAYMENT_PENDING')?._count || 0} color="emerald" />
                             </div>
+
+                            <Link
+                                href="/dashboard/education/leads"
+                                className="inline-flex items-center gap-3 bg-blue-600 text-white px-8 py-4 rounded-3xl text-sm font-black hover:bg-blue-700 transition-all shadow-lg shadow-blue-100 group"
+                            >
+                                Open Kanban Pipeline <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                            </Link>
                         </div>
                     </div>
 
-                    {/* Course Performance Breakdown */}
-                    <div className="space-y-4">
-                        <div className="flex justify-between items-center">
-                            <h3 className="text-xl font-black text-slate-900">Course Performance</h3>
-                            <button className="text-xs font-black text-blue-600 uppercase tracking-widest">Full Report</button>
-                        </div>
-                        <div className="glass-card p-8 space-y-6">
-                            {analytics.courseBreakdown?.length > 0 ? (
-                                analytics.courseBreakdown.map((cb: any) => (
-                                    <div key={cb.course_interested} className="space-y-2">
-                                        <div className="flex justify-between items-end">
-                                            <span className="text-sm font-bold text-slate-700">{cb.course_interested || "Unspecified Course"}</span>
-                                            <span className="text-xs font-black text-slate-400">{cb._count.id} Leads</span>
-                                        </div>
-                                        <div className="w-full h-3 bg-slate-50 rounded-full overflow-hidden">
-                                            <div
-                                                className="h-full bg-blue-500 rounded-full transition-all duration-1000"
-                                                style={{ width: `${(cb._count.id / (analytics.totalLeads || 1)) * 100}%` }}
-                                            />
-                                        </div>
-                                    </div>
-                                ))
-                            ) : (
-                                <div className="text-center py-10">
-                                    <p className="text-xs font-black text-slate-300 uppercase tracking-widest">No course data yet</p>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
-                    <div className="space-y-4">
-                        <h3 className="text-xl font-black text-slate-900">Quick Setup Assets</h3>
-                        <div className="grid md:grid-cols-2 gap-4">
-                            <TemplateActionCard
-                                title="Admission Inquiry Flow"
-                                desc="Auto-capture name, parent info and grade from WhatsApp."
-                                status="Ready"
-                            />
-                            <TemplateActionCard
-                                title="Demo Class Sequence"
-                                desc="Send automated reminders 2h and 10m before demo."
-                                status="Ready"
-                            />
-                        </div>
+                    {/* Automation Cards */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <FeatureCard
+                            title="Instant Follow-up"
+                            desc="Send course brochure & fee structure the second they inquire."
+                            icon={<Zap className="text-yellow-500" />}
+                            active={true}
+                        />
+                        <FeatureCard
+                            title="Payment Reminders"
+                            desc="Auto-send Razorpay/Stripe links to students in 'Payment Pending'."
+                            icon={<CreditCard className="text-emerald-500" />}
+                            active={true}
+                        />
                     </div>
                 </div>
 
-                {/* Lead Aging Panel */}
+                {/* Sidebar Stats */}
                 <div className="space-y-6">
-                    <div className="glass-card p-6 border-amber-100 bg-amber-50/20">
-                        <div className="flex items-center gap-2 text-amber-900 font-black text-xs uppercase tracking-widest mb-4">
-                            <Clock size={14} className="text-amber-600" /> Lead Aging Warning
-                        </div>
-                        <p className="text-sm text-amber-700 font-medium mb-6">
-                            You have <strong>12 leads</strong> stuck in "Contacted" for more than 48 hours.
-                        </p>
-                        <button className="w-full py-3 bg-amber-600 text-white rounded-xl text-xs font-black shadow-lg shadow-amber-200">
-                            Bulk Re-engage (Discount Offer)
-                        </button>
-                    </div>
-
-                    <div className="soft-card p-6">
-                        <h4 className="text-sm font-black mb-4 flex items-center gap-2 text-slate-800">
-                            <CheckCircle2 size={16} className="text-green-500" /> Recent Enrolled
+                    <div className="bg-slate-950 rounded-[2.5rem] p-8 text-white shadow-2xl">
+                        <h4 className="text-lg font-black mb-6 flex items-center gap-2">
+                            <BarChart3 size={20} className="text-blue-400" /> Lead Sources
                         </h4>
                         <div className="space-y-4">
-                            {[1, 2, 3].map(i => (
-                                <div key={i} className="flex items-center justify-between border-b border-slate-50 pb-3 last:border-0 last:pb-0">
-                                    <div>
-                                        <p className="text-sm font-bold text-slate-800">Student Name {i}</p>
-                                        <p className="text-[10px] text-slate-400 font-medium">IIT-JEE Fastrack Batch</p>
+                            {stats?.sourceBreakdown?.map((src: any) => (
+                                <div key={src.lead_source} className="group cursor-pointer">
+                                    <div className="flex justify-between text-xs font-black uppercase tracking-widest text-slate-400 mb-2">
+                                        <span>{src.lead_source || "Direct/Unknown"}</span>
+                                        <span className="text-white">{src._count} leads</span>
                                     </div>
-                                    <span className="text-xs font-black text-green-600">+₹15,000</span>
+                                    <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                                        <div
+                                            className="h-full bg-blue-500 rounded-full group-hover:bg-blue-400 transition-all"
+                                            style={{ width: `${Math.min(100, (src._count / (stats.totalLeads || 1)) * 100)}%` }}
+                                        ></div>
+                                    </div>
                                 </div>
                             ))}
+                            {(!stats?.sourceBreakdown || stats?.sourceBreakdown?.length === 0) && (
+                                <p className="text-xs text-slate-500 italic">No lead data yet.</p>
+                            )}
                         </div>
-                        <button className="w-full mt-6 py-3 border border-slate-100 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-400 hover:bg-slate-50">
-                            Download Audit Report
-                        </button>
+
+                        <div className="mt-10 pt-8 border-t border-slate-800">
+                            <p className="text-xs text-slate-500 font-bold mb-4">OPTIMIZATION TIP</p>
+                            <p className="text-sm text-slate-300 font-medium leading-relaxed">
+                                Your <span className="text-blue-400">WhatsApp Flows</span> have the highest conversion rate. Increase budget on these forms.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="bg-white border border-slate-100 rounded-[2rem] p-6 shadow-lg">
+                        <h4 className="font-black text-slate-900 mb-4 tracking-tight">Need Help?</h4>
+                        <div className="flex gap-4 items-center group cursor-pointer">
+                            <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                                <LayoutDashboard size={20} />
+                            </div>
+                            <div>
+                                <p className="text-sm font-bold text-slate-800">Setup Guide</p>
+                                <p className="text-xs text-slate-500 font-medium">Follow 5 steps to convert.</p>
+                            </div>
+                            <ArrowUpRight size={16} className="ml-auto text-slate-300 group-hover:text-blue-600" />
+                        </div>
                     </div>
                 </div>
             </div>
-
-            {/* GETTING STARTED / INSTRUCTIONS */}
-            <div className="space-y-4 pt-12 border-t border-slate-100 mt-12">
-                <h3 className="text-xl font-black text-slate-900 flex items-center gap-2">
-                    <Zap size={20} className="text-amber-500 fill-amber-500" /> Getting Started: Your Admission Workflow
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <InstructionStep
-                        step="01"
-                        title="Capture Leads"
-                        desc="Create a Lead Form or sync a Meta Flow ID. Use the 'Inquiry' template to start capturing parent & student data."
-                        link="/dashboard/education/meta-flows"
-                    />
-                    <InstructionStep
-                        step="02"
-                        title="Auto-Followup"
-                        desc="The system automatically sends brochures & demo reminders based on lead status. Customize these in Automated Sequences."
-                        link="/dashboard/drips"
-                    />
-                    <InstructionStep
-                        step="03"
-                        title="Manage Pipeline"
-                        desc="Drag leads across the Kanban board. When a student is ready, hit 'Collect Payment' to generate a Razorpay link."
-                        link="/dashboard/education/leads"
-                    />
-                    <InstructionStep
-                        step="04"
-                        title="Scale Growth"
-                        desc="Use Bulk Broadcasts to re-engage dead leads or announce new batches to specific course interest groups."
-                        link="/dashboard/education/broadcast"
-                    />
-                </div>
-            </div>
         </div>
     );
 }
 
-function InstructionStep({ step, title, desc, link }: any) {
+function StatCard({ label, value, sub, icon, trend }: any) {
     return (
-        <Link href={link} className="soft-card p-6 bg-white hover:border-blue-500 transition-all group flex flex-col h-full">
-            <span className="text-4xl font-black text-slate-100 group-hover:text-blue-50 transition-colors mb-4 block tracking-tighter">{step}</span>
-            <h4 className="font-bold text-slate-900 mb-2">{title}</h4>
-            <p className="text-xs text-slate-500 font-medium leading-relaxed mb-6 flex-1">{desc}</p>
-            <span className="text-[10px] font-black uppercase tracking-widest text-blue-600 flex items-center gap-2">
-                Configure Module <ArrowRight size={12} />
-            </span>
-        </Link>
-    );
-}
-
-function EduStatCard({ label, value, icon, trend }: any) {
-    return (
-        <div className="soft-card p-6 hover:shadow-xl transition-all cursor-default">
-            <div className="flex justify-between items-start mb-4">
-                <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center">
+        <div className="bg-white border border-slate-100 p-8 rounded-[2rem] shadow-sm hover:shadow-xl hover:shadow-slate-100/50 transition-all group overflow-hidden relative">
+            <div className="absolute -bottom-4 -right-4 opacity-[0.03] group-hover:scale-150 transition-transform duration-700">
+                {icon}
+            </div>
+            <div className="flex justify-between items-start mb-6">
+                <div className="p-3 bg-slate-50 rounded-2xl group-hover:scale-110 transition-transform duration-500">
                     {icon}
                 </div>
-                <span className="text-[10px] font-bold text-slate-400">{trend}</span>
+                <div className="px-2 py-1 bg-green-50 text-green-600 text-[10px] font-black rounded-lg">
+                    {trend}
+                </div>
             </div>
-            <div className="space-y-1">
-                <h4 className="text-2xl font-black text-slate-900">{value}</h4>
-                <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">{label}</p>
+            <div>
+                <h3 className="text-3xl font-black text-slate-900 mb-1 tracking-tighter">{value}</h3>
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">{label}</p>
+                <p className="text-[10px] text-slate-300 font-bold">{sub}</p>
             </div>
         </div>
     );
 }
 
-function TemplateActionCard({ title, desc, status }: any) {
+function PipelineMiniStat({ label, count, color }: any) {
+    const colors: any = {
+        blue: "bg-blue-50 text-blue-600 border-blue-100",
+        amber: "bg-amber-50 text-amber-600 border-amber-100",
+        emerald: "bg-emerald-50 text-emerald-600 border-emerald-100"
+    };
     return (
-        <div className="soft-card p-6 group hover:border-blue-500 transition-all">
-            <div className="flex justify-between items-start mb-4">
-                <h4 className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors">{title}</h4>
-                <span className="text-[10px] font-black text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full">{status}</span>
+        <div className={`p-4 rounded-2xl border ${colors[color]} text-center`}>
+            <p className="text-2xl font-black mb-1">{count}</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest opacity-70">{label}</p>
+        </div>
+    );
+}
+
+function FeatureCard({ title, desc, icon, active }: any) {
+    return (
+        <div className="bg-white border border-slate-100 p-6 rounded-[2rem] flex items-start gap-4 hover:shadow-lg transition-shadow">
+            <div className="p-3 bg-slate-50 rounded-2xl shrink-0">
+                {icon}
             </div>
-            <p className="text-xs text-slate-500 font-medium leading-relaxed mb-6">{desc}</p>
-            <button className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2 group-hover:text-blue-600 transition-colors">
-                Activate Module <ArrowRight size={12} />
-            </button>
+            <div>
+                <div className="flex items-center gap-2 mb-1">
+                    <h4 className="text-sm font-black text-slate-900 tracking-tight">{title}</h4>
+                    {active && <span className="w-1 h-1 rounded-full bg-green-500" />}
+                </div>
+                <p className="text-xs text-slate-500 font-medium leading-relaxed">{desc}</p>
+            </div>
         </div>
     );
 }

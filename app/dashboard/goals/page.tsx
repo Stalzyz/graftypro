@@ -141,7 +141,7 @@ export default function GoalsPage() {
                         <div className="relative z-10">
                             <h4 className="text-2xl font-black mb-2">AI-Powered Optimization</h4>
                             <p className="text-indigo-200 leading-relaxed mb-6">
-                                When you create a goal, Wabot automatically generates a smart flow structure designed to convert.
+                                When you create a goal, Grafty automatically generates a smart flow structure designed to convert.
                                 We tracking every step and provide ROI analytics.
                             </p>
                             <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/10">

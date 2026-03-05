@@ -1,4 +1,4 @@
-import FlowBuilder from "@/components/flow-builder/FlowBuilder";
+import FlowBuilder from "../../../../components/flow-builder/FlowBuilder";
 
 export default function CreateFlowPage() {
     return (

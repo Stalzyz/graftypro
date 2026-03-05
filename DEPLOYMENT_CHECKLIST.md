@@ -27,7 +27,7 @@ RAZORPAY_WEBHOOK_SECRET="..."
 
 ### 3. Production Database URL
 ```bash
-DATABASE_URL="postgresql://username:password@your-db-host:5432/wabot_bsp?schema=public"
+DATABASE_URL="postgresql://username:password@your-db-host:5432/grafty_bsp?schema=public"
 ```
 
 ### 4. JWT Secrets (Change These!)

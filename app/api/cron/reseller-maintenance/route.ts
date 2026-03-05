@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
-import { ResellerService } from "@/lib/reseller/service";
+import { prisma } from "../../../../lib/db";
+import { ResellerService } from "../../../../lib/reseller/service";
+
+export const dynamic = "force-dynamic";
 
 /**
  * PHASE 11: STABILITY & MAINTENANCE CRON

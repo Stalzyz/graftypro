@@ -1,5 +1,5 @@
 import Razorpay from "razorpay";
-import { prisma } from "@/lib/db";
+import { prisma } from "../db";
 
 /**
  * PHASE: AUTOMATED PAYOUTS (RazorpayX)

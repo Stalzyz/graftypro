@@ -17,7 +17,7 @@ import {
     GraduationCap,
     HelpCircle
 } from 'lucide-react';
-import { Logo } from "@/components/ui/Logo";
+import { Logo } from "../../components/ui/Logo";
 
 const categories = [
     {
@@ -152,7 +152,7 @@ export default function HowToUse() {
                         <Link href="https://wa.me/919789359407" className="text-xs font-black text-[#27954D] uppercase tracking-widest">Support WhatsApp</Link>
                     </div>
                     <div className="text-[10px] font-black text-slate-300 uppercase tracking-widest">
-                        © 2026 WAVO ECOSYSTEM. ALL RIGHTS RESERVED.
+                        © 2026 Grafty ECOSYSTEM. ALL RIGHTS RESERVED.
                     </div>
                 </div>
             </footer>

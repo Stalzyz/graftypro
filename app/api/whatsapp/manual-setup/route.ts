@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
-import { getCurrentUser } from "@/lib/auth";
-import { WhatsAppService } from "@/lib/whatsapp/service";
-import { encrypt } from "@/lib/security/encryption";
+import { prisma } from "../../../../lib/db";
+import { getCurrentUser } from "../../../../lib/auth";
+import { WhatsAppService } from "../../../../lib/whatsapp/service";
+import { encrypt } from "../../../../lib/security/encryption";
+
+export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
     try {
@@ -32,6 +34,14 @@ export async function POST(req: Request) {
         // 2. Encrypt Secrets (PHASE 1)
         const encryptedSecret = encrypt(appSecret);
         const encryptedToken = encrypt(accessToken);
+
+        // De-conflict: If this phone is already registered to another workspace, remove it
+        await prisma.whatsAppAccount.deleteMany({
+            where: {
+                phone_number_id: phoneNumberId,
+                workspace_id: { not: user.workspaceId }
+            }
+        });
 
         // 3. Save to Database (PHASE 1)
         const account = await prisma.whatsAppAccount.upsert({

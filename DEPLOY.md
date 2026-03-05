@@ -10,17 +10,17 @@ This project consists of:
 
 ## Recommended: VPS Deployment (Docker)
 
-This is the most stable way to run Wabot BSP on a VPS (Ubuntu/Debian).
+This is the most stable way to run Grafty BSP on a VPS (Ubuntu/Debian).
 
 ### 1. Prerequisite Setup on VPS
 SSH into your VPS and run the setup script to install Docker, Nginx, and other dependencies:
 ```bash
 # On your local machine, upload the files
-scp -r . root@your-vps-ip:~/wabot_bsp
+scp -r . root@your-vps-ip:~/grafty_bsp
 
 # SSH into VPS
 ssh root@your-vps-ip
-cd ~/wabot_bsp
+cd ~/grafty_bsp
 
 # Run setup
 chmod +x setup-vps.sh deploy.sh
@@ -52,9 +52,9 @@ This script will:
 ### 4. Domain & SSL (Nginx)
 1. Copy the Nginx config:
    ```bash
-   sudo cp nginx.conf.example /etc/nginx/sites-available/wabot
-   sudo ln -s /etc/nginx/sites-available/wabot /etc/nginx/sites-enabled/
-   sudo nano /etc/nginx/sites-available/wabot # Update your-domain.com
+   sudo cp nginx.conf.example /etc/nginx/sites-available/grafty
+   sudo ln -s /etc/nginx/sites-available/grafty /etc/nginx/sites-enabled/
+   sudo nano /etc/nginx/sites-available/grafty # Update your-domain.com
    sudo nginx -t && sudo systemctl restart nginx
    ```
 2. Setup SSL with Certbot:

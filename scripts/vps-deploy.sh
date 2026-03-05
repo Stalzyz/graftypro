@@ -1,11 +1,11 @@
 #!/bin/bash
 
-# Full Deployment Script for Wabot BSP
+# Full Deployment Script for Grafty BSP
 # Syncs all new features: Feedback System, Training Academy, Localized Landing Page
 # Run from LOCAL machine: ./scripts/vps-deploy.sh
 
 SERVER="root@72.61.231.187"
-REMOTE_PATH="/root/wabot_bsp"
+REMOTE_PATH="/root/grafty_bsp"
 
 echo "🚀 Starting Full Deployment to VPS..."
 echo "======================================"
@@ -25,7 +25,7 @@ echo "✅ Code sync complete."
 
 echo "🔧 Step 2: Server-side build and migrations..."
 ssh $SERVER "bash -s" << 'EOF'
-    cd /root/wabot_bsp
+    cd /root/grafty_bsp
     
     # Ensure Docker containers are running and rebuild with new code
     echo "🏗️ Rebuilding Docker containers..."
@@ -48,6 +48,6 @@ EOF
 
 echo "======================================"
 echo "🎉 DEPLOYMENT SUCCESSFUL!"
-echo "WAVO is now live with the new features."
+echo "Grafty is now live with the new features."
 echo "URL: http://72.61.231.187:3001 (or your custom domain)"
 echo "======================================"

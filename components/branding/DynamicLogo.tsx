@@ -1,31 +1,66 @@
+
 'use client';
+
+import { Logo } from "../ui/Logo";
 
 interface DynamicLogoProps {
     logoUrl?: string;
     brandName?: string;
     className?: string;
+    size?: number;
+    showText?: boolean;
+    variant?: "light" | "dark" | "color";
 }
 
 /**
  * PHASE 2: WHITE-LABEL LOGO
- * Renders either the system logo or the Reseller's own logo.
+ * Renders either the system default or the Reseller/Enterprise logo dynamically.
  */
-import { Logo } from "@/components/ui/Logo";
-
-export function DynamicLogo({ logoUrl, brandName, className = "h-8" }: DynamicLogoProps) {
-    if (logoUrl) {
+export function DynamicLogo({
+    logoUrl,
+    brandName,
+    className = "",
+    size = 40,
+    showText = true,
+    variant = "color"
+}: DynamicLogoProps) {
+    if (logoUrl && logoUrl !== "/grafty.svg" && logoUrl !== "/grafty_fav.png") {
         return (
-            <div className={`flex items-center gap-2 ${className}`}>
-                <img
-                    src={logoUrl}
-                    alt={brandName || "Logo"}
-                    className="h-full object-contain"
-                />
-                {brandName && <span className="font-bold text-gray-900">{brandName}</span>}
+            <div className={`flex items-center gap-3 ${className}`}>
+                <div
+                    className="flex items-center justify-center shrink-0"
+                    style={{ height: size }}
+                >
+                    <img
+                        src={logoUrl}
+                        alt={brandName || "Logo"}
+                        style={{ height: '100%', width: 'auto' }}
+                        className="object-contain"
+                    />
+                </div>
+                {showText && brandName && (
+                    <span
+                        className={`font-black tracking-tighter whitespace-nowrap
+                            ${size > 40 ? 'text-2xl' : 'text-xl'}
+                            ${variant === 'light' ? 'text-white' : 'text-slate-900 dark:text-white'}
+                        `}
+                        style={{ lineHeight: 1 }}
+                    >
+                        {brandName}
+                    </span>
+                )}
             </div>
         );
     }
 
-    // System Default Logo (Wavo)
-    return <Logo className={className} variant="color" size={48} />;
+    // Default to the optimized System Logo
+    return (
+        <Logo
+            className={className}
+            size={size}
+            showText={showText}
+            variant={variant}
+            brandName={brandName}
+        />
+    );
 }

@@ -11,13 +11,13 @@ import {
 
 const ecosystems = [
     { name: "Meta", category: "Official API Partner", icon: "https://upload.wikimedia.org/wikipedia/commons/7/7b/Meta_Platforms_Inc._logo.svg" },
-    { name: "Shopify", category: "E-Commerce", icon: "https://upload.wikimedia.org/wikipedia/commons/0/0e/Shopify_logo_2018.svg" },
-    { name: "WooCommerce", category: "E-Commerce", icon: "https://upload.wikimedia.org/wikipedia/commons/2/2a/WooCommerce_Logo.svg" },
+    { name: "Shopify", category: "E-Commerce", icon: "https://upload.wikimedia.org/wikipedia/commons/e/e1/Shopify_Logo.png" },
+    { name: "WooCommerce", category: "E-Commerce", icon: "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2a/WooCommerce_Logo.svg/1200px-WooCommerce_Logo.svg.png" },
     { name: "Salesforce", category: "CRM", icon: "https://upload.wikimedia.org/wikipedia/commons/f/f9/Salesforce.com_logo.svg" },
-    { name: "HubSpot", category: "CRM", icon: "https://upload.wikimedia.org/wikipedia/commons/3/3f/HubSpot_Logo.svg" },
-    { name: "Zoho", category: "CRM", icon: "https://upload.wikimedia.org/wikipedia/commons/e/e3/Zoho_logo.svg" },
-    { name: "Google Ads", category: "Marketing", icon: "https://upload.wikimedia.org/wikipedia/commons/c/c7/Google_Ads_logo.svg" },
-    { name: "Zapier", category: "Automation", icon: "https://upload.wikimedia.org/wikipedia/commons/c/cc/Zapier_logo.svg" }
+    { name: "Zoho", category: "CRM", icon: "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e3/Zoho_logo.svg/1024px-Zoho_logo.svg.png" },
+    { name: "Make", category: "Automation", icon: "https://www.make.com/favicon.ico" },
+    { name: "n8n", category: "Automation", icon: "https://n8n.io/favicon.ico" },
+    { name: "Zapier", category: "Automation", icon: "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cc/Zapier_logo.svg/1200px-Zapier_logo.svg.png" }
 ];
 
 export default function Integrations() {
@@ -32,7 +32,7 @@ export default function Integrations() {
                             <span className="text-[#27954D]">Apps You Love.</span>
                         </h2>
                         <p className="text-slate-500 text-lg mb-10 leading-relaxed font-medium">
-                            WAVO bridges the gap between your existing software and WhatsApp. Sync data, automate notifications, and build cross-platform workflows in minutes.
+                            Grafty bridges the gap between your existing software and WhatsApp. Sync data, automate notifications, and build cross-platform workflows in minutes.
                         </p>
                         <div className="flex gap-6">
                             <div className="flex flex-col gap-2">

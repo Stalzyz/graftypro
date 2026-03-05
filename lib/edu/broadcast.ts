@@ -1,5 +1,5 @@
-import { prisma } from "@/lib/db";
-import { campaignQueue } from "@/lib/queue";
+import { prisma } from "../db";
+import { campaignQueue } from "../queue";
 
 export class EduBroadcastService {
     /**

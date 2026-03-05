@@ -1,9 +1,11 @@
 
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
-import { getAdminSession } from "@/lib/admin-auth";
+import { prisma } from "../../../../lib/db";
+import { getAdminSession } from "../../../../lib/admin-auth";
 import { Prisma } from "@prisma/client";
 import bcrypt from "bcryptjs";
+
+export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
     try {
@@ -16,20 +18,22 @@ export async function GET(req: Request) {
         const search = searchParams.get("search") || "";
         const page = parseInt(searchParams.get("page") || "1");
         const limit = parseInt(searchParams.get("limit") || "20");
+        const filterPlan = searchParams.get("plan") || "";
+        const filterStatus = searchParams.get("status") || "";
         const skip = (page - 1) * limit;
 
         // Build Filter
-        const where: Prisma.WorkspaceWhereInput = search ? {
-            OR: [
-                { name: { contains: search, mode: "insensitive" } },
-                { id: { equals: search } },
-                {
-                    users: {
-                        some: { email: { contains: search, mode: "insensitive" } }
-                    }
-                }
-            ]
-        } : {};
+        const where: Prisma.WorkspaceWhereInput = {
+            ...(filterPlan && { plan: filterPlan as any }),
+            ...(filterStatus && { status: filterStatus as any }),
+            ...(search && {
+                OR: [
+                    { name: { contains: search, mode: "insensitive" } },
+                    { id: { equals: search } },
+                    { users: { some: { email: { contains: search, mode: "insensitive" } } } }
+                ]
+            })
+        };
 
         // Fetch Data
         const [workspaces, total] = await Promise.all([
@@ -64,6 +68,7 @@ export async function GET(req: Request) {
                 name: w.name,
                 plan: w.plan,
                 status: w.status,
+                settings: w.settings,
                 joined_at: w.created_at,
                 stats: {
                     users: w._count.users,
@@ -138,5 +143,52 @@ export async function POST(req: Request) {
     } catch (e) {
         console.error("Vendor Create Error", e);
         return NextResponse.json({ error: "Failed to create vendor" }, { status: 500 });
+    }
+}
+// BULK UPDATE VENDOR
+export async function PATCH(req: Request) {
+    try {
+        const session = await getAdminSession();
+        if (!session || session.role !== 'SUPER_ADMIN') {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        const { ids, plan, status, action } = await req.json();
+
+        if (!ids || !Array.isArray(ids)) {
+            return NextResponse.json({ error: "Invalid IDs" }, { status: 400 });
+        }
+
+        if (action === 'delete') {
+            await prisma.workspace.deleteMany({
+                where: { id: { in: ids } }
+            });
+        } else {
+            const data: any = {};
+            if (plan) data.plan = plan;
+            if (status) data.status = status;
+
+            await prisma.workspace.updateMany({
+                where: { id: { in: ids } },
+                data
+            });
+        }
+
+        // Audit Log
+        // @ts-ignore
+        await prisma.adminAuditLog.create({
+            data: {
+                admin_id: session.id,
+                action: action === 'delete' ? "BULK_DELETE_VENDORS" : "BULK_UPDATE_VENDORS",
+                resource: ids.join(","),
+                details: { plan, status, action }
+            }
+        });
+
+        return NextResponse.json({ success: true });
+
+    } catch (e: any) {
+        console.error("Bulk Update Error", e);
+        return NextResponse.json({ error: "Bulk Operation Failed" }, { status: 500 });
     }
 }

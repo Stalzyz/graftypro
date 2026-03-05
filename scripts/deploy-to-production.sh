@@ -4,8 +4,8 @@
 # Run from your LOCAL machine: ./scripts/deploy-to-production.sh
 
 SERVER="root@72.61.231.187"
-REMOTE_PATH="/root/wabot_bsp"
-LOCAL_PATH="/Users/stalinkumar/Downloads/Wabot_BSP"
+REMOTE_PATH="/root/grafty_bsp"
+LOCAL_PATH="/Users/stalinkumar/Downloads/Grafty_BSP"
 
 echo "🚀 Deploying WhatsApp Integration to Production"
 echo "================================================"
@@ -53,7 +53,7 @@ echo ""
 echo "🔧 Step 2: Running server-side updates..."
 # We combine migration, generation, and restart into one session
 ssh $SERVER "bash -s" << 'EOF'
-    cd /root/wabot_bsp
+    cd /root/grafty_bsp
     
     echo "📊 Migrating database..."
     npx prisma@5.10.2 db push --schema=prisma/schema.prisma --accept-data-loss

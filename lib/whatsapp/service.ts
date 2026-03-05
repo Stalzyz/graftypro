@@ -25,12 +25,26 @@ export class WhatsAppService {
      * Send a message via Meta Cloud API
      */
     static async sendMessage(
-        phoneNumberId: string,
-        accessToken: string,
-        payload: SendMessagePayload
+        phoneId: string,
+        token: string,
+        payload: any
     ) {
+        // Sanitization: Ensure phone number is digits only
+        const sanitizedTo = payload.to.replace(/\D/g, "");
+        payload.to = sanitizedTo;
+
+        if (token.startsWith("MOCK_") || token === "test_token") {
+            console.log(`[WA_MOCK] Sending ${payload.type} to ${payload.to}`);
+            return {
+                messaging_product: "whatsapp",
+                contacts: [{ input: payload.to, wa_id: payload.to }],
+                messages: [{ id: "wamid.MOCK_" + Date.now() + Math.random() }]
+            };
+        }
+
         try {
-            const url = `${BASE_URL}/${phoneNumberId}/messages`;
+            const url = `${BASE_URL}/${phoneId}/messages`;
+            console.log(`[WA_API_SEND] Sending ${payload.type} to ${payload.to}...`);
 
             const response = await axios.post(url, {
                 messaging_product: "whatsapp",
@@ -38,25 +52,21 @@ export class WhatsAppService {
                 ...payload
             }, {
                 headers: {
-                    Authorization: `Bearer ${accessToken}`,
+                    Authorization: `Bearer ${token}`,
                     "Content-Type": "application/json",
                 },
             });
 
+            console.log(`[WA_API_SUCCESS] Meta ID: ${response.data.messages?.[0]?.id}`);
             return response.data;
         } catch (error: any) {
-            console.error("Meta API Error:", error.response?.data || error.message);
-            // Don't throw to avoid crashing flow runner
-            return null;
+            console.error("WhatsApp API Error:", error.response?.data || error.message);
+            console.error("Failed Payload:", JSON.stringify(payload, null, 2));
+            throw error;
         }
     }
 
-    static async sendText(
-        phoneId: string,
-        token: string,
-        to: string,
-        body: string
-    ) {
+    static async sendText(phoneId: string, token: string, to: string, body: string) {
         return this.sendMessage(phoneId, token, {
             to,
             type: "text",
@@ -83,13 +93,7 @@ export class WhatsAppService {
         });
     }
 
-    static async sendImage(
-        phoneId: string,
-        token: string,
-        to: string,
-        url: string,
-        caption?: string
-    ) {
+    static async sendImage(phoneId: string, token: string, to: string, url: string, caption?: string) {
         return this.sendMessage(phoneId, token, {
             to,
             type: "image",
@@ -100,13 +104,7 @@ export class WhatsAppService {
         });
     }
 
-    static async sendDocument(
-        phoneId: string,
-        token: string,
-        to: string,
-        url: string,
-        filename?: string
-    ) {
+    static async sendDocument(phoneId: string, token: string, to: string, url: string, filename?: string) {
         return this.sendMessage(phoneId, token, {
             to,
             type: "document",
@@ -117,13 +115,7 @@ export class WhatsAppService {
         });
     }
 
-    static async sendVideo(
-        phoneId: string,
-        token: string,
-        to: string,
-        url: string,
-        caption?: string
-    ) {
+    static async sendVideo(phoneId: string, token: string, to: string, url: string, caption?: string) {
         return this.sendMessage(phoneId, token, {
             to,
             type: "video",
@@ -134,12 +126,7 @@ export class WhatsAppService {
         });
     }
 
-    static async sendVoice(
-        phoneId: string,
-        token: string,
-        to: string,
-        url: string
-    ) {
+    static async sendVoice(phoneId: string, token: string, to: string, url: string) {
         return this.sendMessage(phoneId, token, {
             to,
             type: "audio",
@@ -154,9 +141,10 @@ export class WhatsAppService {
         token: string,
         to: string,
         body: string,
-        buttons: { id: string, title: string }[]
+        buttons: { id: string, title: string }[],
+        header?: { type: "image" | "video" | "document", link: string }
     ) {
-        return this.sendMessage(phoneId, token, {
+        const payload: any = {
             to,
             type: "interactive",
             interactive: {
@@ -169,21 +157,31 @@ export class WhatsAppService {
                     }))
                 }
             }
-        });
+        };
+
+        if (header) {
+            payload.interactive.header = {
+                type: header.type,
+                [header.type]: { link: header.link }
+            };
+        }
+
+        return this.sendMessage(phoneId, token, payload);
     }
 
-    static async sendCTAButtons(
+    static async sendURLButton(
         phoneId: string,
         token: string,
         to: string,
         body: string,
-        buttons: { type: "url" | "phone", title: string, value: string }[]
+        title: string,
+        url: string,
+        header?: { type: "image" | "video" | "document", link: string }
     ) {
-        // WhatsApp interactive call-to-action buttons are actually Template-only for now in Cloud API,
-        // or require specific interactive objects. For Cloud API "interactive" type, only 'reply' and 'list' and 'flow' are standard.
-        // For URL/Call, we usually use Templates.
-        // However, we can simulate them or use the new 'cta_url' interactive type if available.
-        return this.sendMessage(phoneId, token, {
+        // Ensure URL is absolute for Meta
+        const finalUrl = url.startsWith('http') ? url : `https://${url}`;
+
+        const payload: any = {
             to,
             type: "interactive",
             interactive: {
@@ -192,12 +190,37 @@ export class WhatsAppService {
                 action: {
                     name: "cta_url",
                     parameters: {
-                        display_text: buttons[0].title,
-                        url: buttons[0].value
+                        display_text: title,
+                        url: finalUrl
                     }
                 }
             }
-        });
+        };
+
+        if (header) {
+            payload.interactive.header = {
+                type: header.type,
+                [header.type]: { link: header.link }
+            };
+        }
+
+        return this.sendMessage(phoneId, token, payload);
+    }
+
+    static async sendPhoneButton(
+        phoneId: string,
+        token: string,
+        to: string,
+        body: string,
+        title: string,
+        phone: string
+    ) {
+        // Standard Cloud API doesn't support interactive phone buttons without templates.
+        // We send a beautifully formatted text message with a professional-looking link.
+        const cleanPhone = phone.replace(/[^0-9]/g, '');
+        const message = `${body}\n\n📞 *${title}*\n+${cleanPhone}`;
+
+        return this.sendText(phoneId, token, to, message);
     }
 
     static async sendMetaFlow(
@@ -240,8 +263,6 @@ export class WhatsAppService {
         to: string,
         cards: { image_url: string, title: string, description: string, buttons: { id: string, text: string }[] }[]
     ) {
-        // WhatsApp interactive carousel limit is actually 10 cards. 
-        // We enforce the 20-card limit in the UI/DB as requested, but split or truncate for API.
         const limitedCards = cards.slice(0, 10);
 
         return this.sendMessage(phoneId, token, {
@@ -273,9 +294,11 @@ export class WhatsAppService {
         to: string,
         body: string,
         buttonText: string,
-        sections: { title: string, rows: { id: string, title: string, description?: string }[] }[]
+        sections: { title: string, rows: { id: string, title: string, description?: string }[] }[],
+        header?: { type: "text" | "image" | "video" | "document", text?: string, link?: string },
+        footer?: string
     ) {
-        return this.sendMessage(phoneId, token, {
+        const payload: any = {
             to,
             type: "interactive",
             interactive: {
@@ -286,15 +309,55 @@ export class WhatsAppService {
                     sections: sections
                 }
             }
+        };
+
+        if (header) {
+            if (header.type === "text") {
+                payload.interactive.header = { type: "text", text: header.text };
+            } else {
+                payload.interactive.header = {
+                    type: header.type,
+                    [header.type]: { link: header.link }
+                };
+            }
+        }
+
+        if (footer) {
+            payload.interactive.footer = { text: footer };
+        }
+
+        return this.sendMessage(phoneId, token, payload);
+    }
+
+    static async sendMultiProductMessage(
+        phoneId: string,
+        token: string,
+        to: string,
+        catalogId: string,
+        bodyText: string,
+        sections: { title: string, product_retailer_ids: string[] }[]
+    ) {
+        return this.sendMessage(phoneId, token, {
+            to,
+            type: "interactive",
+            interactive: {
+                type: "product_list",
+                header: { type: "text", text: "Store Catalog" },
+                body: { text: bodyText },
+                footer: { text: "Tap to view items" },
+                action: {
+                    catalog_id: catalogId,
+                    sections: sections.map(s => ({
+                        title: s.title,
+                        product_items: s.product_retailer_ids.map(id => ({ product_retailer_id: id }))
+                    }))
+                }
+            }
         });
     }
-    /**
-     * validateCredentials (Phase 4, Step 3)
-     * Verifies that the Phone ID and Access Token are valid and have correct rights.
-     */
+
     static async validateCredentials(phoneNumberId: string, accessToken: string) {
-        // --- MOCK BYPASS FOR TESTING ---
-        if (accessToken === "test_token" || process.env.NODE_ENV === "development") {
+        if (accessToken === "test_token" || accessToken.startsWith("MOCK_") || process.env.NODE_ENV === "development") {
             return {
                 success: true,
                 data: {
@@ -328,6 +391,55 @@ export class WhatsAppService {
                 success: false,
                 error: error.response?.data?.error?.message || error.message || "Validation failed"
             };
+        }
+    }
+
+    /**
+     * Get Media Details from Meta
+     */
+    static async getMediaDetails(mediaId: string, token: string) {
+        const url = `${BASE_URL}/${mediaId}`;
+        const response = await axios.get(url, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        return response.data; // contains .url, .mime_type, .file_size, .id
+    }
+
+    /**
+     * Download Binary from Meta URL
+     */
+    static async downloadMediaBinary(url: string, token: string) {
+        const response = await axios.get(url, {
+            headers: { Authorization: `Bearer ${token}` },
+            responseType: 'arraybuffer'
+        });
+        return {
+            buffer: Buffer.from(response.data),
+            contentType: response.headers['content-type']
+        };
+    }
+
+    /**
+     * Revoke (Delete for everyone) a message
+     * Requires v21.0+ or specific permissions
+     */
+    static async revokeMessage(phoneId: string, token: string, messageId: string) {
+        try {
+            // Meta Cloud API v21.0+ Delete Endpoint
+            const url = `https://graph.facebook.com/v21.0/${phoneId}/messages`;
+            const response = await axios.post(url, {
+                status: "deleted",
+                message_id: messageId
+            }, {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "application/json",
+                },
+            });
+            return response.data;
+        } catch (error: any) {
+            console.error("[WhatsAppService] Revoke Error:", error.response?.data || error.message);
+            throw error;
         }
     }
 }

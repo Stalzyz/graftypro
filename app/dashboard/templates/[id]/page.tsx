@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ArrowLeft, Save, Send, Trash2, Plus, Image as ImageIcon, Link as LinkIcon, Phone, AlertCircle } from "lucide-react";
+import { ArrowLeft, Save, Send, Trash2, Plus, Image as ImageIcon, Link as LinkIcon, Phone, AlertCircle, RefreshCw } from "lucide-react";
+import { SmartUploader } from "../../../../components/ui/SmartUploader";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -11,6 +12,7 @@ export default function TemplateEditor({ params }: { params: { id: string } }) {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [submitting, setSubmitting] = useState(false);
+    const [refreshing, setRefreshing] = useState(false);
 
     // Components State
     const [headerType, setHeaderType] = useState("NONE"); // NONE, TEXT, IMAGE
@@ -100,9 +102,13 @@ export default function TemplateEditor({ params }: { params: { id: string } }) {
 
         if (buttons.length > 0) {
             const hasQuickReply = buttons.some(b => b.type === 'QUICK_REPLY');
-            const hasUrl = buttons.some(b => b.type === 'URL');
-            if (hasQuickReply && hasUrl) {
-                return "Meta does not allow mixing Quick Reply and URL buttons in the same template.";
+            const phoneButtons = buttons.filter(b => b.type === 'PHONE_NUMBER');
+            const hasCallToAction = buttons.some(b => b.type === 'URL' || b.type === 'PHONE_NUMBER');
+            if (hasQuickReply && hasCallToAction) {
+                return "Meta does not allow mixing Quick Reply buttons with URL or Call buttons in the same template.";
+            }
+            if (phoneButtons.length > 1) {
+                return "Meta allows a maximum of 1 Call button per template.";
             }
         }
 
@@ -125,7 +131,9 @@ export default function TemplateEditor({ params }: { params: { id: string } }) {
             components.push({
                 type: 'HEADER',
                 format: headerType,
-                text: headerType === 'TEXT' ? headerText : undefined
+                text: headerType === 'TEXT' ? headerText : undefined,
+                // Pass URL for media headers
+                media_url: headerType !== 'TEXT' && headerType !== 'NONE' ? headerText : undefined
             });
         }
 
@@ -198,6 +206,24 @@ export default function TemplateEditor({ params }: { params: { id: string } }) {
         }
     };
 
+    const handleRefreshStatus = async () => {
+        setRefreshing(true);
+        try {
+            const res = await fetch(`/api/templates/${params.id}/refresh`, { method: "POST" });
+            const data = await res.json();
+            if (res.ok) {
+                setTemplate({ ...template, status: data.status });
+            } else {
+                alert("Failed to refresh status: " + data.error);
+            }
+        } catch (e) {
+            console.error(e);
+            alert("Error refreshing status");
+        } finally {
+            setRefreshing(false);
+        }
+    };
+
     const addButton = (type: string) => {
         if (buttons.length >= 3) return alert("Max 3 buttons allowed");
         setButtons([...buttons, { type, text: "", url: "", phone_number: "" }]);
@@ -251,27 +277,39 @@ export default function TemplateEditor({ params }: { params: { id: string } }) {
                         <h2 className="font-bold text-gray-900 flex items-center gap-2 uppercase tracking-tight text-lg">
                             {template.name}
                             <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${template.status === 'APPROVED' ? 'bg-green-100 text-green-700' :
-                                    template.status === 'REJECTED' ? 'bg-red-100 text-red-700' : 'bg-gray-200 text-gray-600'
+                                template.status === 'REJECTED' ? 'bg-red-100 text-red-700' : 'bg-gray-200 text-gray-600'
                                 }`}>{template.status}</span>
                         </h2>
                     </div>
 
                     <div className="flex items-center gap-3">
                         <button
+                            onClick={handleRefreshStatus}
+                            disabled={refreshing}
+                            className="flex items-center justify-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 text-xs font-bold transition-all hover:bg-gray-50 active:scale-95 disabled:opacity-50 shadow-sm"
+                            style={{ borderRadius: '10px', height: '36px' }}
+                        >
+                            <RefreshCw size={14} className={refreshing ? "animate-spin" : ""} />
+                            Refresh Status
+                        </button>
+
+                        <button
                             onClick={() => handleSave()}
                             disabled={saving || submitting || !canEdit}
-                            className="text-gray-600 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-gray-100 disabled:opacity-50 flex items-center gap-2 transition-all"
+                            className="flex items-center justify-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 text-xs font-bold transition-all hover:bg-gray-50 active:scale-95 disabled:opacity-50 shadow-sm"
+                            style={{ borderRadius: '10px', height: '36px' }}
                         >
-                            <Save size={16} />
+                            <Save size={14} />
                             {saving ? "Saving..." : "Save Draft"}
                         </button>
 
                         <button
                             onClick={handleSubmitToMeta}
                             disabled={saving || submitting || !canEdit}
-                            className="bg-blue-600 text-white px-5 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2 transition-all active:scale-95 shadow-md"
+                            className="flex items-center justify-center gap-2 px-4 py-2 bg-[#27954D] text-white text-xs font-bold transition-all hover:bg-[#1f7a3f] active:scale-95 disabled:opacity-50 shadow-md"
+                            style={{ borderRadius: '10px', height: '36px' }}
                         >
-                            <Send size={16} />
+                            <Send size={14} />
                             {submitting ? "Submitting..." : "Submit to Meta"}
                         </button>
                     </div>
@@ -315,10 +353,12 @@ export default function TemplateEditor({ params }: { params: { id: string } }) {
                         )}
 
                         {headerType === 'IMAGE' && (
-                            <div className="h-40 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center text-gray-400 group hover:border-blue-400 hover:bg-blue-50 transition-all cursor-pointer">
-                                <ImageIcon size={24} className="mb-2" />
-                                <span className="text-[11px] font-bold uppercase tracking-wider">Image Placeholder</span>
-                            </div>
+                            <SmartUploader
+                                label="Header Image"
+                                module="templates"
+                                defaultValue={headerText} // re-using headerText for storage of image URL
+                                onUploadSuccess={(url: string) => setHeaderText(url)}
+                            />
                         )}
                     </div>
 
@@ -396,16 +436,23 @@ export default function TemplateEditor({ params }: { params: { id: string } }) {
                                 <button
                                     onClick={() => addButton("QUICK_REPLY")}
                                     disabled={!canEdit}
-                                    className="text-[10px] font-bold uppercase bg-indigo-50 text-indigo-600 px-3 py-1.5 rounded-lg hover:bg-indigo-100 disabled:opacity-50"
+                                    className="px-4 py-2 rounded-xl bg-indigo-50 text-indigo-600 text-[10px] font-bold uppercase hover:bg-indigo-100 transition-colors disabled:opacity-50"
                                 >
                                     + Quick Reply
                                 </button>
                                 <button
                                     onClick={() => addButton("URL")}
                                     disabled={!canEdit}
-                                    className="text-[10px] font-bold uppercase bg-orange-50 text-orange-600 px-3 py-1.5 rounded-lg hover:bg-orange-100 disabled:opacity-50"
+                                    className="px-4 py-2 rounded-xl bg-orange-50 text-orange-600 text-[10px] font-bold uppercase hover:bg-orange-100 transition-colors disabled:opacity-50"
                                 >
                                     + Web Link
+                                </button>
+                                <button
+                                    onClick={() => addButton("PHONE_NUMBER")}
+                                    disabled={!canEdit}
+                                    className="px-4 py-2 rounded-xl bg-green-50 text-green-600 text-[10px] font-bold uppercase hover:bg-green-100 transition-colors disabled:opacity-50"
+                                >
+                                    + Call Button
                                 </button>
                             </div>
                         </div>
@@ -436,6 +483,16 @@ export default function TemplateEditor({ params }: { params: { id: string } }) {
                                                 placeholder="https://..."
                                                 value={btn.url}
                                                 onChange={e => updateButton(idx, 'url', e.target.value)}
+                                                disabled={!canEdit}
+                                                className="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg outline-none disabled:bg-gray-50"
+                                            />
+                                        )}
+                                        {btn.type === 'PHONE_NUMBER' && (
+                                            <input
+                                                type="text"
+                                                placeholder="+1234567890 (no spaces or dashes)"
+                                                value={btn.phone_number}
+                                                onChange={e => updateButton(idx, 'phone_number', e.target.value)}
                                                 disabled={!canEdit}
                                                 className="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg outline-none disabled:bg-gray-50"
                                             />

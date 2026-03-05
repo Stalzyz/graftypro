@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
-import { getCurrentUser } from "@/lib/auth";
+import { prisma } from "../../../../lib/db";
+import { getCurrentUser } from "../../../../lib/auth";
 
 export const dynamic = 'force-dynamic';
 
@@ -27,7 +27,13 @@ export async function GET(req: Request) {
                     phone_number_id: account.phone_number_id,
                     integration_status: account.integration_status,
                     health_status: account.health_status,
-                    last_health_check_at: account.last_health_check_at
+                    last_health_check_at: account.last_health_check_at,
+                    connection_name: account.connection_name,
+                    profile_picture_url: account.profile_picture_url,
+                    token_valid: account.token_valid,
+                    webhook_status: account.webhook_status,
+                    api_status: account.api_status,
+                    last_error: account.last_error
                 }
             });
         }

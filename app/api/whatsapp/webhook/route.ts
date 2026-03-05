@@ -1,6 +1,16 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
-import { FlowRunner } from "@/lib/engine/flow-runner";
+import { prisma } from "../../../../lib/db";
+import { FlowRunner } from "../../../../lib/engine/flow-runner";
+import { normalizeMessage } from "../../../../lib/engine/message-normalizer";
+import { CommerceService } from "../../../../lib/services/commerce-service";
+import fs from 'fs';
+import path from 'path';
+
+function logToFile(message: string) {
+    const logPath = path.join(process.cwd(), 'webhook-debug.log');
+    const timestamp = new Date().toISOString();
+    fs.appendFileSync(logPath, `[LEGACY][${timestamp}] ${message}\n`);
+}
 
 export const dynamic = 'force-dynamic';
 
@@ -16,6 +26,8 @@ export async function GET(req: Request) {
     const mode = searchParams.get("hub.mode");
     const token = searchParams.get("hub.verify_token");
     const challenge = searchParams.get("hub.challenge");
+
+    logToFile(`GET Challenge: mode=${mode}, token=${token}, challenge=${challenge}`);
 
     const VERIFY_TOKEN = process.env.META_WEBHOOK_VERIFY_TOKEN;
 
@@ -33,7 +45,8 @@ export async function POST(req: Request) {
         const body = await req.json();
 
         // Log for debugging
-        console.log("📩 Webhook Event:", JSON.stringify(body, null, 2));
+        console.log("📩 [Legacy/Alt Webhook] Event:", JSON.stringify(body, null, 2));
+        logToFile(`POST Body: ${JSON.stringify(body)}`);
 
         // Meta sends events in batches
         const entry = body.entry?.[0];
@@ -62,7 +75,7 @@ export async function POST(req: Request) {
             // Process Messages
             if (value.messages) {
                 for (const msg of value.messages) {
-                    await handleIncomingMessage(workspaceId, msg, value.contacts?.[0]);
+                    await handleIncomingMessage(workspaceId, wabaId, msg, value.contacts?.[0]);
                 }
             }
 
@@ -85,7 +98,7 @@ export async function POST(req: Request) {
 /**
  * Handle Incoming Message
  */
-async function handleIncomingMessage(workspaceId: string, msg: any, contact: any) {
+async function handleIncomingMessage(workspaceId: string, wabaId: string, msg: any, contact: any) {
     const phone = msg.from;
     const messageId = msg.id;
     const timestamp = new Date(parseInt(msg.timestamp) * 1000);
@@ -115,6 +128,13 @@ async function handleIncomingMessage(workspaceId: string, msg: any, contact: any
     } else if (msg.button) {
         type = "INTERACTIVE";
         content = { button_text: msg.button.text, button_payload: msg.button.payload };
+    } else if (msg.order) {
+        type = "ORDER";
+        content = {
+            catalog_id: msg.order.catalog_id,
+            text: msg.order.text,
+            product_items: msg.order.product_items // Array of { product_retailer_id, quantity, item_price, currency }
+        };
     }
 
     // Extract Message Body for Flow Engine
@@ -125,6 +145,8 @@ async function handleIncomingMessage(workspaceId: string, msg: any, contact: any
         else if (msg.interactive.type === "button_reply") messageBody = msg.interactive.button_reply.id;
     } else if (msg.button) {
         messageBody = msg.button.payload;
+    } else if (msg.order) {
+        messageBody = "CART_SUBMITTED";
     }
 
     // Upsert Contact
@@ -142,6 +164,11 @@ async function handleIncomingMessage(workspaceId: string, msg: any, contact: any
             name: contact?.profile?.name || undefined
         }
     });
+
+    // Handle Order Processing after contact is defined
+    if (msg.order) {
+        CommerceService.processWhatsAppOrder(workspaceId, contactData.id, content).catch(err => console.error("Order process error", err));
+    }
 
     // Create or find conversation
     let conversation = await prisma.conversation.findFirst({
@@ -170,11 +197,10 @@ async function handleIncomingMessage(workspaceId: string, msg: any, contact: any
 
     console.log(`📥 Saved Message from ${phone}: ${type}`);
 
-    // 🔥 Trigger Flow Engine
+    // 🔥 Trigger Flow Engine (v2.0)
     try {
-        if (messageBody) {
-            await FlowRunner.processMessage(workspaceId, contactData.id, messageBody);
-        }
+        const normalized = normalizeMessage(msg, { metadata: { phone_number_id: wabaId }, contacts: [contact] });
+        await FlowRunner.processMessage(workspaceId, contactData.id, normalized);
     } catch (flowError) {
         console.error("Flow Engine Error:", flowError);
     }

@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/auth";
-import { CommerceService } from "@/lib/commerce/service";
+import { getCurrentUser } from "../../../../lib/auth";
+import { CommerceService } from "../../../../lib/commerce/service";
+
+export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
     try {
@@ -8,13 +10,13 @@ export async function POST(req: Request) {
         if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
         const body = await req.json();
-        const { platform, credentials } = body;
+        const { platform, credentials, storeId } = body;
 
         if (!platform || !credentials) {
             return NextResponse.json({ error: "Platform and credentials are required" }, { status: 400 });
         }
 
-        const store = await CommerceService.connectStore(user.workspaceId, platform, credentials);
+        const store = await CommerceService.connectStore(user.workspaceId, platform, credentials, storeId);
 
         return NextResponse.json({
             success: true,

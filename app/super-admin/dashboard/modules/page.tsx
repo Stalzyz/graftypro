@@ -1,21 +1,70 @@
-
 "use client";
 
-import { useState } from "react";
-import { Settings2, Zap, Shield, Check, X, ShieldCheck, Cpu } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Settings2, Zap, Shield, Check, X, ShieldCheck, Cpu, RefreshCw, Save } from "lucide-react";
 
 export default function ModuleManager() {
-    const [modules, setModules] = useState([
-        { id: "commerce", name: "WhatsApp Commerce", description: "Catalog, Carts, and Payments via WhatsApp", active: true },
-        { id: "flows", name: "Advanced Flows", description: "Complex multi-step user interaction flows", active: true },
-        { id: "drips", name: "Drip Campaigns", description: "Automated sequence messaging based on triggers", active: true },
-        { id: "edu", name: "Educational Engine", description: "LMS and course delivery via WhatsApp", active: false },
-        { id: "api", name: "Developer API", description: "External integration and webhook engine", active: true },
-    ]);
+    const [modules, setModules] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
+
+    const moduleDefs = [
+        { id: "commerce", name: "WhatsApp Commerce", description: "Catalog, Carts, and Payments via WhatsApp" },
+        { id: "flows", name: "Advanced Flows", description: "Complex multi-step user interaction flows" },
+        { id: "drips", name: "Drip Campaigns", description: "Automated sequence messaging based on triggers" },
+        { id: "edu", name: "Educational Engine", description: "LMS and course delivery via WhatsApp" },
+        { id: "api", name: "Developer API", description: "External integration and webhook engine" },
+    ];
+
+    useEffect(() => {
+        fetchModules();
+    }, []);
+
+    const fetchModules = async () => {
+        try {
+            const res = await fetch("/api/super-admin/modules");
+            const data = await res.json();
+            if (data.data) {
+                const combined = moduleDefs.map(def => ({
+                    ...def,
+                    active: data.data[def.id] !== undefined ? data.data[def.id] : true
+                }));
+                setModules(combined);
+            }
+            setLoading(false);
+        } catch (e) {
+            console.error(e);
+        }
+    };
 
     const toggleModule = (id: string) => {
         setModules(prev => prev.map(m => m.id === id ? { ...m, active: !m.active } : m));
     };
+
+    const handleSave = async () => {
+        setSaving(true);
+        try {
+            const features = modules.reduce((acc, m) => ({ ...acc, [m.id]: m.active }), {});
+            const res = await fetch("/api/super-admin/modules", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ features })
+            });
+            if (res.ok) {
+                alert("Global Module Schema updated successfully.");
+            }
+        } catch (e) {
+            alert("Save failed");
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    if (loading) return (
+        <div className="flex items-center justify-center min-h-[400px]">
+            <RefreshCw className="animate-spin text-slate-400" size={32} />
+        </div>
+    );
 
     return (
         <div className="max-w-7xl space-y-12 pb-20 font-sans">
@@ -29,6 +78,14 @@ export default function ModuleManager() {
                     </div>
                     <p className="text-slate-400 font-medium text-sm">Global feature toggles, module provisioning, and feature flags.</p>
                 </div>
+                <button
+                    onClick={handleSave}
+                    disabled={saving}
+                    className="px-8 py-4 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] flex items-center gap-2 hover:bg-black transition-all shadow-xl shadow-slate-200 active:scale-95 disabled:opacity-50"
+                >
+                    {saving ? <RefreshCw className="animate-spin" size={14} /> : <Save size={14} />}
+                    Save Protocol Changes
+                </button>
             </header>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">

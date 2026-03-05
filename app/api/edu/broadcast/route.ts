@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
-import { getCurrentUser } from "@/lib/auth";
-import { EduBroadcastService } from "@/lib/edu/broadcast";
+import { prisma } from "../../../../lib/db";
+import { getCurrentUser } from "../../../../lib/auth";
+import { EduBroadcastService } from "../../../../lib/edu/broadcast";
+
+export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
     try {

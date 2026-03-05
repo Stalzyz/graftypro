@@ -1,7 +1,9 @@
 
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
-import { FlowRunner } from "@/lib/engine/flow-runner";
+import { prisma } from "../../../../lib/db";
+import { FlowRunner } from "../../../../lib/engine/flow-runner";
+
+export const dynamic = "force-dynamic";
 
 /**
  * Handle Razorpay Webhooks

@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
-import { getCurrentUser } from "@/lib/auth";
-import { EduService } from "@/lib/edu/service";
+import { prisma } from "../../../../lib/db";
+import { getCurrentUser } from "../../../../lib/auth";
+import { EduService } from "../../../../lib/edu/service";
+
+export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
     try {

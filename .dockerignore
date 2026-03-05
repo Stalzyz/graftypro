@@ -1,15 +1,22 @@
+# Exclude build artifacts and dependencies
 node_modules
 .next
 .git
 .npm-cache
+.npm_cache
 tmp_cache
+
+# Exclude local env files (but we need .env for NEXT_PUBLIC_)
+# Actually, since we need it, we leave it commented or removed
+# .env
+
+# Exclude large binaries and zips
 *.zip
 *.tar.gz
-.env
-.env.local
-.env.production
-.env.development
-.vercel
-out
-build
-dist
+ngrok
+temp_project
+temp_project/
+
+# Exclude OS files
+.DS_Store
+Thumbs.db

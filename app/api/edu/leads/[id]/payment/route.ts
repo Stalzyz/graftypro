@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
-import { EduService } from "@/lib/edu/service";
+import { prisma } from "../../../../../../lib/db";
+import { EduService } from "../../../../../../lib/edu/service";
 import { getServerSession } from "next-auth/next"; // Adjust if using custom auth
+
+export const dynamic = "force-dynamic";
 
 export async function POST(
     req: Request,

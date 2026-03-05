@@ -3,12 +3,12 @@ version: '3.8'
 services:
   postgres:
     image: postgres:15-alpine
-    container_name: wabot_postgres
+    container_name: grafty_postgres
     restart: always
     environment:
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
-      POSTGRES_DB: wabot_bsp
+      POSTGRES_DB: grafty_bsp
     ports:
       - "5432:5432"
     volumes:
@@ -16,7 +16,7 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: wabot_redis
+    container_name: grafty_redis
     restart: always
     ports:
       - "6380:6379"

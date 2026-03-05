@@ -1,138 +1,320 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
+    Users,
     Search,
     Filter,
+    Plus,
     MoreVertical,
     MessageSquare,
     Phone,
+    Clock,
+    ChevronRight,
+    Loader2,
     Calendar,
-    CheckCircle2,
-    Lock,
-    ArrowRight,
-    UserCircle,
-    HandCoins
+    IndianRupee,
+    MapPin,
+    ArrowLeft
 } from "lucide-react";
+import Link from "next/link";
+
+const STAGES = [
+    { id: "NEW", name: "New Leads", color: "bg-blue-500" },
+    { id: "CONTACTED", name: "Contacted", color: "bg-indigo-500" },
+    { id: "FOLLOW_UP", name: "Follow-up", color: "bg-amber-500" },
+    { id: "DEMO_SCHEDULED", name: "Demo Class", color: "bg-purple-500" },
+    { id: "PAYMENT_PENDING", name: "Payment Pending", color: "bg-orange-500" },
+    { id: "ENROLLED", name: "Enrolled", color: "bg-emerald-500" },
+    { id: "LOST", name: "Lost", color: "bg-slate-400" }
+];
 
 export default function LeadPipeline() {
-    const statuses = [
-        { id: "NEW", label: "New Leads", color: "bg-blue-500" },
-        { id: "CONTACTED", label: "Contacted", color: "bg-purple-500" },
-        { id: "DEMO_SCHEDULED", label: "Demo Class", color: "bg-indigo-500" },
-        { id: "PAYMENT_PENDING", label: "Pending Pay", color: "bg-amber-500" },
-        { id: "ENROLLED", label: "Enrolled ✅", color: "bg-green-500" }
-    ];
+    const [leads, setLeads] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [selectedLead, setSelectedLead] = useState<any>(null);
+    const [updating, setUpdating] = useState<string | null>(null);
 
-    const [leads, setLeads] = useState<any[]>([
-        { id: "1", student_name: "Rahul Sharma", parent_name: "Sanjay", status: "NEW", course: "Class 10 Intensive", phone: "919876543210", revenue: 15000 },
-        { id: "2", student_name: "Priya Das", parent_name: "Anita", status: "DEMO_SCHEDULED", course: "Neet Prep", phone: "918877665544", revenue: 45000 },
-        { id: "3", student_name: "Amit Kumar", parent_name: "Rajesh", status: "PAYMENT_PENDING", course: "JEE Advanced", phone: "917766554433", revenue: 85000 },
-    ]);
+    // Modals
+    const [showAddModal, setShowAddModal] = useState(false);
+    const [showImportModal, setShowImportModal] = useState(false);
 
-    const handleCollectPayment = async (leadId: string) => {
+    const [newLead, setNewLead] = useState({
+        student_name: "",
+        whatsapp_number: "",
+        email: "",
+        course_interested: "",
+        city: "",
+        potential_revenue: ""
+    });
+
+    useEffect(() => {
+        fetchLeads();
+    }, []);
+
+    const fetchLeads = async () => {
         try {
-            const res = await fetch(`/api/edu/leads/${leadId}/payment`, { method: "POST" });
+            const res = await fetch("/api/education/leads?activities=true");
             const data = await res.json();
-
-            if (data.url) {
-                window.open(data.url, "_blank");
-                alert("Payment Link Generated & Opened!");
-            } else {
-                alert("Error: " + (data.error || "Failed to generate link"));
-            }
+            if (data.data) setLeads(data.data);
+            setLoading(false);
         } catch (e) {
-            alert("Connection error");
+            console.error(e);
         }
     };
 
+    const handleAddLead = async (e: React.FormEvent) => {
+        e.preventDefault();
+        try {
+            const res = await fetch("/api/education/leads", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(newLead)
+            });
+            if (res.ok) {
+                setShowAddModal(false);
+                setNewLead({ student_name: "", whatsapp_number: "", email: "", course_interested: "", city: "", potential_revenue: "" });
+                fetchLeads();
+            }
+        } catch (e) {
+            alert("Error creating lead");
+        }
+    };
+
+    const handleStageChange = async (leadId: string, newStage: string) => {
+        setUpdating(leadId);
+        try {
+            const res = await fetch(`/api/education/leads/${leadId}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ status: newStage })
+            });
+            if (res.ok) {
+                setLeads(prev => prev.map(l => l.id === leadId ? { ...l, status: newStage } : l));
+            }
+        } catch (e) {
+            alert("Failed to update status");
+        } finally {
+            setUpdating(null);
+        }
+    };
+
+    if (loading) {
+        return (
+            <div className="flex h-[70vh] items-center justify-center">
+                <Loader2 className="animate-spin text-blue-600" size={40} />
+            </div>
+        );
+    }
+
     return (
-        <div className="space-y-8 pb-32">
+        <div className="space-y-6 animate-in fade-in duration-500">
             {/* Header */}
             <div className="flex justify-between items-center">
-                <h1 className="text-2xl font-black text-slate-900 tracking-tight">Lead Pipeline Management</h1>
-                <div className="flex gap-4">
-                    <div className="relative">
-                        <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                        <input
-                            type="text"
-                            placeholder="Search Student..."
-                            className="pl-12 pr-6 py-2.5 bg-white border border-slate-100 rounded-xl text-sm outline-none focus:border-blue-500 transition-all w-64"
-                        />
+                <div>
+                    <div className="flex items-center gap-2 mb-1">
+                        <Link href="/dashboard/education" className="text-slate-400 hover:text-slate-900 transition-colors">
+                            <ArrowLeft size={18} />
+                        </Link>
+                        <h1 className="text-2xl font-black text-slate-900 tracking-tight">Lead Pipeline</h1>
                     </div>
-                    <button className="p-2.5 bg-white border border-slate-100 rounded-xl text-slate-400 hover:text-slate-600">
-                        <Filter size={18} />
+                    <p className="text-sm text-slate-500 font-medium">Manage your admission conversions from inquiry to enrollment.</p>
+                </div>
+
+                <div className="flex gap-3">
+                    <button
+                        onClick={() => setShowImportModal(true)}
+                        className="flex items-center gap-2 bg-white border border-slate-200 text-slate-700 px-4 py-3 rounded-2xl text-sm font-bold hover:bg-slate-50 transition-all shadow-sm"
+                    >
+                        <Users size={18} /> Import
                     </button>
-                    <button className="bg-blue-600 text-white px-6 py-2.5 rounded-xl text-sm font-black shadow-lg shadow-blue-200">
-                        Add Single Lead
+                    <button
+                        onClick={() => setShowAddModal(true)}
+                        className="flex items-center gap-2 bg-gradient-to-r from-[#27954D] to-[#042F94] text-white px-6 py-3 rounded-2xl text-sm font-bold shadow-xl hover:scale-[1.02] transition-all active:scale-95"
+                    >
+                        <Plus size={18} /> Add New Lead
                     </button>
                 </div>
             </div>
 
-            {/* PIPELINE VIEW */}
-            <div className="flex gap-6 overflow-x-auto pb-6 scrollbar-hide">
-                {statuses.map(status => (
-                    <div key={status.id} className="min-w-[320px] flex-shrink-0 space-y-4">
-                        <div className="flex items-center justify-between px-2">
-                            <div className="flex items-center gap-2">
-                                <div className={`w-2 h-2 rounded-full ${status.color}`} />
-                                <h3 className="text-xs font-black text-slate-700 uppercase tracking-widest">{status.label}</h3>
+            {/* Board Container */}
+            <div className="flex gap-6 overflow-x-auto pb-8 no-scrollbar scroll-smooth">
+                {STAGES.map(stage => (
+                    <div key={stage.id} className="min-w-[320px] w-[320px] flex flex-col h-full bg-[#F8FAFC] rounded-[2rem] border border-slate-100/50 p-4">
+                        {/* Stage Header */}
+                        <div className="flex items-center justify-between px-3 mb-6">
+                            <div className="flex items-center gap-3">
+                                <div className={`w-2 h-2 rounded-full ${stage.color}`} />
+                                <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest leading-none">{stage.name}</h3>
+                                <span className="text-[10px] font-black text-slate-400 bg-white px-2 py-0.5 rounded-full border border-slate-100">{leads.filter(l => l.status === stage.id).length}</span>
                             </div>
-                            <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
-                                {leads.filter(l => l.status === status.id).length}
-                            </span>
+                            <button className="text-slate-400 hover:text-slate-900"><MoreVertical size={16} /></button>
                         </div>
 
-                        <div className="space-y-3">
-                            {leads.filter(l => l.status === status.id).map(lead => (
-                                <LeadCard key={lead.id} lead={lead} onCollectPayment={handleCollectPayment} />
+                        {/* Cards List */}
+                        <div className="flex-1 space-y-4 overflow-y-auto no-scrollbar min-h-[500px]">
+                            {leads.filter(l => l.status === stage.id).map(lead => (
+                                <LeadCard
+                                    key={lead.id}
+                                    lead={lead}
+                                    onUpdate={handleStageChange}
+                                    isUpdating={updating === lead.id}
+                                />
                             ))}
-
-                            {leads.filter(l => l.status === status.id).length === 0 && (
-                                <div className="p-8 border-2 border-dashed border-slate-100 rounded-3xl text-center">
-                                    <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">No Leads Here</p>
+                            {leads.filter(l => l.status === stage.id).length === 0 && (
+                                <div className="border-2 border-dashed border-slate-200 rounded-2xl p-8 text-center bg-white/50">
+                                    <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest">No Leads</p>
                                 </div>
                             )}
                         </div>
                     </div>
                 ))}
             </div>
+
+            {/* Modals */}
+            {showAddModal && (
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[60] flex items-center justify-center p-4">
+                    <div className="bg-white rounded-[2.5rem] w-full max-w-lg shadow-2xl animate-in zoom-in-95 duration-200">
+                        <div className="p-8 border-b border-slate-50 flex justify-between items-center">
+                            <h3 className="text-xl font-black text-slate-900">Create New Lead</h3>
+                            <button onClick={() => setShowAddModal(false)} className="text-slate-400 hover:text-slate-900 transition-colors">
+                                <Plus size={24} className="rotate-45" />
+                            </button>
+                        </div>
+                        <form onSubmit={handleAddLead} className="p-8 space-y-6">
+                            <div className="grid grid-cols-2 gap-6">
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Student Name</label>
+                                    <input
+                                        required
+                                        className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3 text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none"
+                                        value={newLead.student_name}
+                                        onChange={e => setNewLead({ ...newLead, student_name: e.target.value })}
+                                        placeholder="Full Name"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">WhatsApp Number</label>
+                                    <input
+                                        required
+                                        className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3 text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none"
+                                        value={newLead.whatsapp_number}
+                                        onChange={e => setNewLead({ ...newLead, whatsapp_number: e.target.value })}
+                                        placeholder="1234567890"
+                                    />
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Course Interested</label>
+                                <input
+                                    className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3 text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none"
+                                    value={newLead.course_interested}
+                                    onChange={e => setNewLead({ ...newLead, course_interested: e.target.value })}
+                                    placeholder="e.g. Science Class"
+                                />
+                            </div>
+                            <button type="submit" className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-black transition-all shadow-xl shadow-slate-200">
+                                Save Lead to Pipeline
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {showImportModal && (
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[60] flex items-center justify-center p-4">
+                    <div className="bg-white rounded-[2.5rem] w-full max-w-md shadow-2xl animate-in zoom-in-95 duration-200">
+                        <div className="p-8 border-b border-slate-50 flex justify-between items-center">
+                            <h3 className="text-xl font-black text-slate-900">Import Leads</h3>
+                            <button onClick={() => setShowImportModal(false)} className="text-slate-400 hover:text-slate-900 transition-colors">
+                                <Plus size={24} className="rotate-45" />
+                            </button>
+                        </div>
+                        <div className="p-8 space-y-4">
+                            <button className="w-full flex items-center justify-between p-6 bg-slate-50 hover:bg-slate-100 rounded-3xl group transition-all">
+                                <div className="text-left">
+                                    <p className="font-black text-slate-900">Import from CSV</p>
+                                    <p className="text-xs text-slate-400 font-medium">Bulk upload your student database.</p>
+                                </div>
+                                <ChevronRight className="text-slate-300 group-hover:translate-x-1 transition-transform" />
+                            </button>
+                            <button className="w-full flex items-center justify-between p-6 bg-[#1877F2]/10 hover:bg-[#1877F2]/20 rounded-3xl group transition-all">
+                                <div className="text-left">
+                                    <p className="font-black text-[#1877F2]">Meta Lead Engine</p>
+                                    <p className="text-xs text-[#1877F2]/60 font-medium">Sync leads directly from Facebook/Instagram ads.</p>
+                                </div>
+                                <ChevronRight className="text-[#1877F2]/30 group-hover:translate-x-1 transition-transform" />
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
 
-function LeadCard({ lead, onCollectPayment }: { lead: any, onCollectPayment: (id: string) => void }) {
+function LeadCard({ lead, onUpdate, isUpdating }: any) {
+    const [showActions, setShowActions] = useState(false);
+
     return (
-        <div className="glass-card p-5 group hover:border-blue-500/30 transition-all cursor-move shadow-sm">
+        <div className={`p-5 bg-white rounded-2xl shadow-sm border border-slate-100 hover:border-blue-400 hover:shadow-xl hover:shadow-slate-200/50 transition-all cursor-pointer group relative ${isUpdating ? 'opacity-50 pointer-events-none' : ''}`}>
+            {isUpdating && <div className="absolute inset-0 flex items-center justify-center z-10 bg-white/50 rounded-2xl"><Loader2 className="animate-spin text-blue-600" /></div>}
+
             <div className="flex justify-between items-start mb-4">
-                <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center text-slate-400">
-                        <UserCircle size={20} />
-                    </div>
-                    <div>
-                        <h4 className="text-sm font-black text-slate-800">{lead.student_name}</h4>
-                        <p className="text-[10px] text-slate-400 font-medium">Class: {lead.course}</p>
-                    </div>
+                <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-slate-400 font-black text-lg group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors">
+                    {lead.student_name?.[0] || 'L'}
                 </div>
-                <button className="text-slate-300 hover:text-slate-600">
-                    <MoreVertical size={16} />
-                </button>
+                <div className="flex flex-col items-end">
+                    <div className="px-2 py-0.5 bg-slate-50 text-slate-400 text-[9px] font-black rounded uppercase tracking-tighter mb-1">
+                        {lead.lead_source || 'Unknown'}
+                    </div>
+                    <p className="text-[9px] text-slate-300 font-bold">{new Date(lead.created_at).toLocaleDateString()}</p>
+                </div>
             </div>
 
-            <div className="flex items-center gap-4 mb-4 text-[10px] font-bold text-slate-500">
-                <span className="flex items-center gap-1"><HandCoins size={12} className="text-green-600" /> ₹{lead.revenue.toLocaleString()}</span>
-                <span className="flex items-center gap-1"><MessageSquare size={12} className="text-blue-500" /> 2 Follow-ups</span>
+            <h4 className="text-sm font-black text-slate-800 leading-tight mb-1">{lead.student_name}</h4>
+            <p className="text-[11px] text-slate-500 font-bold mb-4">{lead.course_interested || "Not Specified"}</p>
+
+            <div className="space-y-2 mb-4">
+                <div className="flex items-center gap-2 text-[10px] text-slate-400 font-bold">
+                    <MapPin size={12} className="text-slate-300 shrink-0" /> {lead.city || "Unset"}
+                </div>
+                <div className="flex items-center gap-2 text-[10px] text-slate-400 font-bold">
+                    <IndianRupee size={12} className="text-slate-300 shrink-0" /> ₹{lead.potential_revenue || "0"}
+                </div>
             </div>
 
-            <div className="flex gap-2 pt-4 border-t border-slate-50">
-                <button
-                    onClick={() => onCollectPayment(lead.id)}
-                    className="flex-1 py-2 bg-amber-50 rounded-lg text-[10px] font-black uppercase text-amber-700 flex items-center justify-center gap-2 hover:bg-amber-500 hover:text-white transition-all">
-                    <HandCoins size={12} /> Collect Payment
-                </button>
-                <button className="p-2 bg-slate-50 rounded-lg text-slate-400 hover:bg-slate-200 transition-all">
-                    <MessageSquare size={14} />
-                </button>
+            <div className="flex items-center justify-between pt-4 border-t border-slate-50">
+                <div className="flex gap-1">
+                    <button
+                        onClick={(e) => { e.stopPropagation(); window.location.href = `/dashboard/chat?phone=${lead.whatsapp_number}`; }}
+                        className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center hover:bg-emerald-600 hover:text-white transition-all shadow-sm"
+                        title="Chat on WhatsApp"
+                    >
+                        <MessageSquare size={14} />
+                    </button>
+                    <button
+                        onClick={(e) => { e.stopPropagation(); onUpdate(lead.id, 'PAYMENT_PENDING'); }}
+                        className={`w-8 h-8 rounded-lg ${lead.status === 'PAYMENT_PENDING' ? 'bg-orange-500 text-white' : 'bg-orange-50 text-orange-600'} flex items-center justify-center hover:bg-orange-600 hover:text-white transition-all shadow-sm`}
+                        title="Mark as Payment Pending"
+                    >
+                        <IndianRupee size={14} />
+                    </button>
+                    <button
+                        onClick={(e) => { e.stopPropagation(); onUpdate(lead.id, 'ENROLLED'); }}
+                        className={`w-8 h-8 rounded-lg ${lead.status === 'ENROLLED' ? 'bg-emerald-500 text-white' : 'bg-blue-50 text-blue-600'} flex items-center justify-center hover:bg-blue-600 hover:text-white transition-all shadow-sm`}
+                        title="Mark as Enrolled"
+                    >
+                        <Plus size={14} />
+                    </button>
+                </div>
+                <select
+                    value={lead.status}
+                    onChange={(e) => onUpdate(lead.id, e.target.value)}
+                    className="text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-50 px-2 py-1 rounded outline-none cursor-pointer hover:bg-slate-100 transition-colors border border-transparent focus:border-slate-200"
+                >
+                    {STAGES.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
             </div>
         </div>
     );

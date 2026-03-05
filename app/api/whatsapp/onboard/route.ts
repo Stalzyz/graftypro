@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
-import { getCurrentUser } from "@/lib/auth";
-import { encrypt } from "@/lib/security/encryption";
+import { prisma } from "../../../../lib/db";
+import { getCurrentUser } from "../../../../lib/auth";
+import { encrypt } from "../../../../lib/security/encryption";
 
 export const dynamic = 'force-dynamic';
 import axios from "axios";
@@ -22,14 +22,18 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: "Missing OAuth code" }, { status: 400 });
         }
 
-        // Use process.env variables directly
-        const APP_ID = process.env.META_APP_ID;
-        const APP_SECRET = process.env.META_APP_SECRET;
+        // 1.5 Fetch Meta Credentials from SystemConfig (Priority) or .env (Fallback)
+        const { SystemConfigService } = await import("../../../../lib/services/system-config-service");
+        const config = await SystemConfigService.getConfig();
+        const secrets = await SystemConfigService.getDecryptedSecrets();
+
+        const APP_ID = config.meta_app_id || process.env.META_APP_ID;
+        const APP_SECRET = secrets.meta_app_secret || process.env.META_APP_SECRET;
 
         // Validation for credentials
         if (!APP_ID || !APP_SECRET) {
-            console.error("Meta Credentials Missing in .env");
-            return NextResponse.json({ error: "Server Misconfigured: Missing Meta Credentials" }, { status: 500 });
+            console.error("Meta Credentials Missing in SystemConfig and .env");
+            return NextResponse.json({ error: "Server Misconfigured: Missing Meta Credentials. Please set them in Super Admin > Meta Architecture." }, { status: 500 });
         }
 
         // 2. Exchange Code for User Access Token
@@ -125,6 +129,14 @@ export async function POST(req: Request) {
         // 6. Save to Database
         console.log(`Saving Account: ${phoneId} for Workspace: ${user.workspaceId}`);
         const encryptedToken = encrypt(accessToken);
+
+        // De-conflict: If this phone is already registered to another workspace, remove it
+        await prisma.whatsAppAccount.deleteMany({
+            where: {
+                phone_number_id: phoneId,
+                workspace_id: { not: user.workspaceId }
+            }
+        });
 
         await prisma.whatsAppAccount.upsert({
             where: { workspace_id: user.workspaceId },

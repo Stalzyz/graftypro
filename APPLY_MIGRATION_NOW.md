@@ -13,7 +13,7 @@ Due to macOS permission restrictions in this environment, I cannot run `npx` or 
 Open **your terminal** (outside this IDE) and run:
 
 ```bash
-cd /Users/stalinkumar/Downloads/Wabot_BSP
+cd /Users/stalinkumar/Downloads/Grafty_BSP
 npx prisma db push
 ```
 
@@ -37,7 +37,7 @@ npx prisma db push
 If you want proper migration tracking:
 
 ```bash
-cd /Users/stalinkumar/Downloads/Wabot_BSP
+cd /Users/stalinkumar/Downloads/Grafty_BSP
 npx prisma migrate dev --name enhance_whatsapp_integration
 ```
 
@@ -56,14 +56,14 @@ If you prefer manual control:
 
 ### Using psql:
 ```bash
-cd /Users/stalinkumar/Downloads/Wabot_BSP
-export DATABASE_URL="postgresql://user:password@localhost:5432/wabot_bsp?schema=public"
+cd /Users/stalinkumar/Downloads/Grafty_BSP
+export DATABASE_URL="postgresql://user:password@localhost:5432/grafty_bsp?schema=public"
 psql "$DATABASE_URL" -f prisma/migrations/20260205_enhance_whatsapp_integration/migration.sql
 ```
 
 ### Using a GUI Client:
 1. Open pgAdmin, DBeaver, or TablePlus
-2. Connect to your `wabot_bsp` database
+2. Connect to your `grafty_bsp` database
 3. Open and run: `prisma/migrations/20260205_enhance_whatsapp_integration/migration.sql`
 
 ---
@@ -73,7 +73,7 @@ psql "$DATABASE_URL" -f prisma/migrations/20260205_enhance_whatsapp_integration/
 If your app is running:
 
 ```bash
-cd /Users/stalinkumar/Downloads/Wabot_BSP
+cd /Users/stalinkumar/Downloads/Grafty_BSP
 npm run dev
 ```
 
@@ -167,7 +167,7 @@ Then tell me:
 **Run this in your terminal right now:**
 
 ```bash
-cd /Users/stalinkumar/Downloads/Wabot_BSP && npx prisma db push
+cd /Users/stalinkumar/Downloads/Grafty_BSP && npx prisma db push
 ```
 
 It's the fastest, safest, and simplest option. Takes 10 seconds.

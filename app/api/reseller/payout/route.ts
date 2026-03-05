@@ -1,8 +1,10 @@
 
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { prisma } from "../../../../lib/db";
 import { headers } from "next/headers";
-import { ResellerService } from "@/lib/reseller/service";
+import { ResellerService } from "../../../../lib/reseller/service";
+
+export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
     try {

@@ -1,6 +1,8 @@
 
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { prisma } from "../../../../lib/db";
+
+export const dynamic = "force-dynamic";
 
 // Mock Super Admin check - in real app, verify Admin JWT
 async function checkSuperAdmin(req: Request) {

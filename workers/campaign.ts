@@ -2,6 +2,7 @@
 import { Worker } from "bullmq";
 import { prisma } from "../lib/db";
 import { WhatsAppService } from "../lib/whatsapp/service";
+import { decrypt } from "../lib/security/encryption";
 
 const REDIS_CONNECTION = {
     host: process.env.REDIS_HOST || "localhost",
@@ -124,7 +125,7 @@ const worker = new Worker(
 
                     await WhatsAppService.sendTemplate(
                         waba.phone_number_id,
-                        waba.access_token,
+                        decrypt(waba.access_token),
                         contact.phone,
                         campaign.template_name,
                         langCode,

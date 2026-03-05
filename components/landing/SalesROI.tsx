@@ -14,7 +14,7 @@ export default function SalesROI() {
                             Unlock <span className="text-wa-green">3X Sales Efficiency</span> with Automation
                         </h2>
                         <p className="text-slate-400 text-lg mb-10 leading-relaxed">
-                            Stop losing leads to slow response times. WAVO enables real-time engagement that keeps customers in your sales funnel and drives consistent ROI.
+                            Stop losing leads to slow response times. Grafty enables real-time engagement that keeps customers in your sales funnel and drives consistent ROI.
                         </p>
 
                         <div className="space-y-8">
@@ -58,12 +58,12 @@ export default function SalesROI() {
 
                                 <div className="grid grid-cols-2 gap-6">
                                     <div className="bg-slate-900/80 p-6 rounded-3xl border border-slate-700">
-                                        <div className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-2">Before WAVO</div>
+                                        <div className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-2">Before Grafty</div>
                                         <div className="text-2xl font-black">₹4,00,000</div>
                                         <div className="text-[10px] text-red-400 font-bold mt-1">10% CR</div>
                                     </div>
                                     <div className="bg-emerald-500/10 p-6 rounded-3xl border border-emerald-500/30">
-                                        <div className="text-emerald-400 text-[10px] font-black uppercase tracking-widest mb-2">After WAVO</div>
+                                        <div className="text-emerald-400 text-[10px] font-black uppercase tracking-widest mb-2">After Grafty</div>
                                         <div className="text-2xl font-black">₹10,00,000</div>
                                         <div className="text-[10px] text-emerald-400 font-bold mt-1">25% CR</div>
                                     </div>

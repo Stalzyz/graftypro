@@ -1,7 +1,14 @@
+
 import { SignJWT, jwtVerify } from "jose";
 
-const JWT_SECRET = process.env.JWT_SECRET || "development-secret-key-change-this-in-prod-12345";
-const secretKey = new TextEncoder().encode(JWT_SECRET);
+const JWT_SECRET = process.env.JWT_SECRET;
+const secretKey = new TextEncoder().encode(JWT_SECRET || "fallback-dev-secret-40-chars-min-security-fix-12345");
+
+function checkSecret() {
+    if (!JWT_SECRET && process.env.NODE_ENV === "production") {
+        throw new Error("JWT_SECRET is not defined in production environment. Security breach risk.");
+    }
+}
 
 export interface UserPayload {
     userId: string;
@@ -12,6 +19,7 @@ export interface UserPayload {
 
 // Sign Token (Edge Compatible)
 export async function signToken(payload: UserPayload): Promise<string> {
+    checkSecret();
     return new SignJWT(payload)
         .setProtectedHeader({ alg: "HS256" })
         .setIssuedAt()
@@ -20,12 +28,14 @@ export async function signToken(payload: UserPayload): Promise<string> {
 }
 
 // Verify Token (Edge Compatible)
-export async function verifyToken(token: string): Promise<UserPayload | null> {
+export async function verifyToken(token: string | undefined): Promise<UserPayload | null> {
+    if (!token) return null;
     try {
+        checkSecret();
         const { payload } = await jwtVerify(token, secretKey);
         return payload as unknown as UserPayload;
     } catch (error) {
-        console.error("Token verification failed:", error);
+        // console.error("Token verification failed:", error);
         return null;
     }
 }

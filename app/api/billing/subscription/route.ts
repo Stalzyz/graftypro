@@ -1,8 +1,10 @@
 
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
-import { getCurrentUser } from "@/lib/auth";
-import { createSubscription, PLANS } from "@/lib/saas/razorpay";
+import { prisma } from "../../../../lib/db";
+import { getCurrentUser } from "../../../../lib/auth";
+import { createSubscription, PLANS } from "../../../../lib/saas/razorpay";
+
+export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
     try {

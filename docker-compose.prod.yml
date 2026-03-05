@@ -1,6 +1,6 @@
 services:
   web:
-    image: wabot-app:latest
+    image: grafty-app:latest
     build:
       context: .
     restart: always
@@ -9,42 +9,27 @@ services:
     env_file:
       - .env
     environment:
-      - DATABASE_URL=postgresql://user:password@postgres:5432/wabot_bsp?schema=public
-      - REDIS_URL=redis://redis:6379
-    depends_on:
-      - postgres
-      - redis
+      - DATABASE_URL=postgresql://user:password@grafty_bsp-postgres-1:5432/grafty_bsp?schema=public
+      - REDIS_URL=redis://grafty_bsp-redis-1:6379
+    volumes:
+      - ./public/uploads:/app/public/uploads
+    networks:
+      - grafty
 
   worker:
-    image: wabot-app:latest
+    image: grafty-app:latest
     restart: always
     env_file:
       - .env
     environment:
-      - DATABASE_URL=postgresql://user:password@postgres:5432/wabot_bsp?schema=public
-      - REDIS_HOST=redis
+      - DATABASE_URL=postgresql://user:password@grafty_bsp-postgres-1:5432/grafty_bsp?schema=public
+      - REDIS_HOST=grafty_bsp-redis-1
       - REDIS_PORT=6379
-    depends_on:
-      - postgres
-      - redis
     command: npx tsx worker.ts
+    networks:
+      - grafty
 
-  postgres:
-    image: postgres:15-alpine
-    restart: always
-    environment:
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: wabot_bsp
-    volumes:
-      - postgres_data_prod:/var/lib/postgresql/data
-
-  redis:
-    image: redis:7-alpine
-    restart: always
-    volumes:
-      - redis_data_prod:/data
-
-volumes:
-  postgres_data_prod:
-  redis_data_prod:
+networks:
+  grafty:
+    external: true
+    name: grafty_bsp_default

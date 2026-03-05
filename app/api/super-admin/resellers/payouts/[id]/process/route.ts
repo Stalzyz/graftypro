@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
-import { requireSuperAdmin } from "@/lib/admin-auth";
-import { ResellerService } from "@/lib/reseller/service";
+import { prisma } from "../../../../../../../lib/db";
+import { requireSuperAdmin } from "../../../../../../../lib/admin-auth";
+import { ResellerService } from "../../../../../../../lib/reseller/service";
+
+export const dynamic = "force-dynamic";
 
 /**
  * PHASE 6: ADMIN PAYOUT PROCESSING API

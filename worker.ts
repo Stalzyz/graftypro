@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { WhatsAppService } from "@/lib/whatsapp/service";
 import { FlowRunner } from "@/lib/engine/flow-runner";
 import { CreditService } from "@/lib/credits/service";
+import { decrypt } from "@/lib/security/encryption";
 
 // --- CONFIG ---
 const REDIS_CONNECTION = {
@@ -11,15 +12,28 @@ const REDIS_CONNECTION = {
     port: parseInt(process.env.REDIS_PORT || "6379"),
 };
 
-// --- STARTUP CONNECTIVITY TEST ---
+// --- STARTUP CONNECTIVITY TEST & HEALTH MONITORING ---
 (async () => {
     console.log("🚀 [Worker] Starting up...");
     console.log("🔗 [Worker] Testing Database Connection...");
     try {
         await prisma.$connect();
         console.log("✅ [Worker] Database Connected successfully.");
+
+        // Start Global Health Monitor
+        const { HealthMonitorService } = await import("@/lib/whatsapp/health-monitor");
+        console.log("🩺 [Worker] Initializing Connection Health Monitor...");
+
+        // Run once on startup
+        HealthMonitorService.runGlobalHealthCheck().catch(console.error);
+
+        // Then run every 6 hours (21600000 ms)
+        setInterval(() => {
+            HealthMonitorService.runGlobalHealthCheck().catch(console.error);
+        }, 6 * 60 * 60 * 1000);
+
     } catch (err) {
-        console.error("❌ [Worker] CRITICAL: Database connection failed at startup!", err);
+        console.error("❌ [Worker] CRITICAL: DB connection failed!", err);
     }
 })();
 
@@ -34,14 +48,25 @@ const campaignWorker = new Worker(
 
         try {
             // A. Fetch Campaign Details
+            // A. Fetch Campaign Details
             const campaign = await prisma.campaign.findUnique({
-                where: { id: campaignId },
-                include: { workspace: { include: { waba: true } } }
-            }) as any;
+                where: { id: campaignId }
+            });
 
-            if (!campaign || !campaign.workspace?.waba) return;
+            if (!campaign) {
+                console.error(`[Worker] Campaign ${campaignId} not found.`);
+                return;
+            }
 
-            const waba = campaign.workspace.waba;
+            // Fetch WABA separately to avoid Workspace schema issues
+            const waba = await prisma.whatsAppAccount.findUnique({
+                where: { workspace_id: campaign.workspace_id }
+            });
+
+            if (!waba) {
+                console.error(`[Worker] WABA not found for workspace ${campaign.workspace_id}`);
+                return;
+            }
 
             // B. Fetch Audience
             let recipients: { phone: string, name: string, id: string }[] = [];
@@ -104,14 +129,14 @@ const campaignWorker = new Worker(
                                 tx,
                                 workspaceId,
                                 cost,
-                                `CAMPAIGN-${campaignId}-${person.id}`,
+                                `CAMPAIGN-${campaignId}-${person.id}-${Date.now()}`,
                                 `Bulk Campaign: ${campaign.name}`
                             );
                         });
 
                         await WhatsAppService.sendTemplate(
                             waba.phone_number_id,
-                            waba.access_token,
+                            decrypt(waba.access_token),
                             person.phone,
                             campaign.template_name
                         );
@@ -121,11 +146,27 @@ const campaignWorker = new Worker(
                         await FlowRunner.startFlow(workspaceId, person.id, campaign.flow_id);
                         sentCount++;
                     }
-                } catch (err: any) {
-                    console.error(`[Worker] Failed for ${person.phone}:`, err.message);
+                } catch (error: any) {
+                    console.error(`[Worker] Failed for ${person.phone}:`, error);
                     failedCount++;
                 }
-                await new Promise(r => setTimeout(r, 100));
+
+                // Batch update stats every 50 messages for live monitoring
+                if ((sentCount + failedCount) % 50 === 0) {
+                    await prisma.campaignStats.updateMany({
+                        where: { campaign_id: campaignId },
+                        data: {
+                            sent: sentCount,
+                            failed: failedCount
+                        }
+                    });
+                }
+
+                if ((sentCount + failedCount) % 100 === 0) {
+                    console.log(`[Worker] Progress: ${sentCount + failedCount} / ${recipients.length}`);
+                }
+
+                await new Promise(r => setTimeout(r, 5));
             }
 
             // E. Complete
@@ -147,6 +188,14 @@ const campaignWorker = new Worker(
     },
     { connection: REDIS_CONNECTION }
 );
+
+// Worker Lifecycle Events
+campaignWorker.on('ready', () => console.log("✅ [Worker] Campaign Worker READY and Listening!"));
+campaignWorker.on('error', (err) => console.error("❌ [Worker] Campaign Worker Error:", err));
+campaignWorker.on('failed', (job, err) => console.error(`❌ [Worker] Job ${job?.id} Failed:`, err));
+campaignWorker.on('active', (job) => console.log(`▶️ [Worker] Job ${job.id} Active (Processing...)`));
+campaignWorker.on('stalled', (jobId) => console.warn(`⚠️ [Worker] Job ${jobId} Stalled`));
+
 
 // ---------------------------------------------------------
 // 2. DRIP SCHEDULER (Polling)
@@ -222,7 +271,7 @@ async function processDrips() {
 
                             await WhatsAppService.sendTemplate(
                                 waba.phone_number_id,
-                                waba.access_token,
+                                decrypt(waba.access_token),
                                 contact.phone,
                                 template.name
                             );
@@ -315,6 +364,12 @@ const automationWorker = new Worker(
                     }
                 }
             }
+        }
+
+        if (job.name === "process-flow") {
+            const { workspaceId, contactId, messageBody } = job.data;
+            console.log(`[Worker] Executing Flow for contact ${contactId}`);
+            await FlowRunner.processMessage(workspaceId, contactId, messageBody);
         }
 
         if (job.name === "edu-lead-followup") {

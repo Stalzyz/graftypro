@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { prisma } from "../../../../lib/db";
+
+export const dynamic = "force-dynamic";
 
 /**
  * PHASE 10: REPORTING & TAX READINESS

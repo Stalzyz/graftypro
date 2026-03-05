@@ -14,17 +14,45 @@ import ReactFlow, {
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import MessageNode from './nodes/MessageNode';
+import StartNode from './nodes/StartNode';
+import ConditionNode from './nodes/ConditionNode';
+import CatalogNode from './nodes/CatalogNode';
+import PaymentNode from './nodes/PaymentNode';
+import OrderTrackingNode from './nodes/OrderTrackingNode';
+import MetaFlowNode from './nodes/MetaFlowNode';
+import WaitNode from './nodes/WaitNode';
+import TimeWindowNode from './nodes/TimeWindowNode';
+import ListNode from './nodes/ListNode';
+import DripNode from './nodes/DripNode';
+import ActionNode from './nodes/ActionNode';
+import EndNode from './nodes/EndNode';
+import AppointmentNode from './nodes/AppointmentNode';
+import OrderSummaryNode from './nodes/OrderSummaryNode';
 
 const nodeTypes = {
     message: MessageNode,
+    start: StartNode,
+    condition: ConditionNode,
+    catalog: CatalogNode,
+    payment: PaymentNode,
+    order_tracking: OrderTrackingNode,
+    meta_flow: MetaFlowNode,
+    wait: WaitNode,
+    time_window: TimeWindowNode,
+    list: ListNode,
+    drip: DripNode,
+    action: ActionNode,
+    end: EndNode,
+    appointment: AppointmentNode,
+    order_summary: OrderSummaryNode,
 };
 
 const initialNodes = [
     {
-        id: '1',
+        id: 'start-1',
+        type: 'start',
         position: { x: 250, y: 50 },
-        data: { text: 'Hello! How can we help you?' },
-        type: 'message'
+        data: { label: 'HELLO' },
     },
 ];
 const initialEdges: Edge[] = [];
@@ -46,10 +74,10 @@ export default function FlowCanvas() {
         const newNode = {
             id: getId(),
             position: { x: Math.random() * 400, y: Math.random() * 400 },
-            data: { text: 'New Message', onChange: (txt: string) => console.log(txt) },
+            data: { label: 'New Message', text: '', onChange: (txt: string) => console.log(txt) },
             type: 'message',
         };
-        setNodes((nds) => nds.concat(newNode));
+        setNodes((nds) => nds.concat(newNode as any));
     };
 
     return (

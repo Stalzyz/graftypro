@@ -6,7 +6,7 @@ import {
     BarChart3, Zap, Target, MousePointer2, Settings2,
     CheckCircle2
 } from "lucide-react";
-import DripTimelineEditor from "@/components/drips/DripTimelineEditor";
+import DripTimelineEditor from "../../../components/drips/DripTimelineEditor";
 
 export default function DripsPage() {
     const [drips, setDrips] = useState<any[]>([]);
