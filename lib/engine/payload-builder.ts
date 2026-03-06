@@ -267,6 +267,60 @@ export function buildCTAUrlPayload(
 }
 
 // -----------------------------------------------------------------------
+// CTA CALL BUTTON
+// -----------------------------------------------------------------------
+export function buildCTACallPayload(
+    to: string,
+    body: string,
+    button: { title: string; value: string },
+    header?: { type: 'image' | 'video' | 'document'; link: string },
+    footer?: string
+): any | null {
+    const errors: ValidationError[] = [];
+    const bodyText = sanitizeText(body, 'Action required:');
+
+    if (!to) errors.push({ field: 'to', message: 'Phone required' });
+    if (!button.value) errors.push({ field: 'value', message: 'Phone number required' });
+    if (!button.title) errors.push({ field: 'title', message: 'Button label required' });
+
+    if (!validate(errors)) return null;
+
+    let phoneNumber = button.value.replace(/[^\d+]/g, '');
+    if (!phoneNumber.startsWith('+')) {
+        phoneNumber = '+' + phoneNumber;
+    }
+
+    const payload: any = {
+        to,
+        type: 'interactive',
+        interactive: {
+            type: 'cta_call',
+            body: { text: bodyText },
+            action: {
+                name: 'call_number',
+                parameters: {
+                    display_text: sanitizeButtonTitle(button.title),
+                    phone_number: phoneNumber
+                },
+            },
+        },
+    };
+
+    if (header) {
+        payload.interactive.header = {
+            type: header.type,
+            [header.type]: { link: header.link },
+        };
+    }
+
+    if (footer && footer.trim()) {
+        payload.interactive.footer = { text: footer.trim().substring(0, 60) };
+    }
+
+    return payload;
+}
+
+// -----------------------------------------------------------------------
 // CLOUD TEMPLATE
 // -----------------------------------------------------------------------
 export function buildTemplatePayload(
@@ -358,7 +412,8 @@ export function buildNodePayload(
     // PRESERVE ORIGINAL ORDER for processing
     const allButtons: any[] = (data.buttons || []).filter((b: any) =>
         (b.type === 'reply' && b.id && b.title) ||
-        (b.type === 'url' && b.value && b.title)
+        (b.type === 'url' && b.value && b.title) ||
+        (b.type === 'call' && b.value && b.title)
     );
 
     const replyButtons = allButtons.filter(b => b.type === 'reply');
@@ -367,8 +422,9 @@ export function buildNodePayload(
     const orderedReplyButtons = [...replyButtons];
 
     const urlButtons = allButtons.filter(b => b.type === 'url');
+    const callButtons = allButtons.filter(b => b.type === 'call');
 
-    let primaryActionType: 'reply' | 'url' | 'list' | 'none' = 'none';
+    let primaryActionType: 'reply' | 'url' | 'call' | 'list' | 'none' = 'none';
 
     // 3. Resolve Header
     let unifiedHeader: any = undefined;
@@ -377,7 +433,7 @@ export function buildNodePayload(
     }
 
     // 4. Resolve Extra Buttons (The "Stealth Link" Core)
-    // Rule: One native interactive allowed. URL Button always takes priority to keep link hidden.
+    // Rule: One native interactive allowed. URL/Call Button always takes priority to keep link hidden.
     let extraText = "";
     let buttonsToText: any[] = [];
 
@@ -385,8 +441,12 @@ export function buildNodePayload(
         // Option A: Primary is URL button. All replies become text.
         primaryActionType = 'url';
         buttonsToText = replyButtons;
+    } else if (callButtons.length > 0) {
+        // Option B: Primary is Call button. All replies become text.
+        primaryActionType = 'call';
+        buttonsToText = replyButtons;
     } else if (replyButtons.length > 0) {
-        // Option B: No URL buttons. Up to 3 replies stay native.
+        // Option C: No URL/Call buttons. Up to 3 replies stay native.
         primaryActionType = 'reply';
         if (replyButtons.length > 3) {
             buttonsToText = replyButtons.slice(3);
@@ -428,6 +488,10 @@ export function buildNodePayload(
         } else if (primaryActionType === 'url') {
             const targetBtn = urlButtons[0];
             finalPayload = buildCTAUrlPayload(to, bodyText, { title: targetBtn.title, value: targetBtn.value }, unifiedHeader, data.footer);
+            isInteractive = true;
+        } else if (primaryActionType === 'call') {
+            const targetBtn = callButtons[0];
+            finalPayload = buildCTACallPayload(to, bodyText, { title: targetBtn.title, value: targetBtn.value }, unifiedHeader, data.footer);
             isInteractive = true;
         } else {
             // No interactives -> Media or Text

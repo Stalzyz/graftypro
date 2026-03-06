@@ -655,26 +655,48 @@ async function runPaymentNode(ctx: ExecutionContext, node: any): Promise<void> {
 
     console.log(`[FlowExecutor] 💳 Payment data for node ${node.id}:`, JSON.stringify(data));
 
-    if (!data.amount) return;
+    if (!data.amount || isNaN(parseFloat(data.amount)) || parseFloat(data.amount) <= 0) {
+        console.error(`[FlowExecutor] ❌ Invalid payment amount for node ${node.id}: ${data.amount}`);
+        return;
+    }
+
+    const provider = data.paymentProvider || 'Razorpay';
+    const amountDisplay = `₹${data.amount}`;
+    const bodyText = `🛒 *Payment Request*\n\nFor: *${data.paymentTitle || 'Order'}*\nTotal: *${amountDisplay}*\n\nPlease click the button below to complete your payment securely.`;
+    const ctaTitle = `Pay ${amountDisplay} Now`;
 
     try {
-        const { RazorpayManager } = await import('../payments/razorpay');
-        const linkResponse = await RazorpayManager.createPaymentLink(
-            contact.workspace_id,
-            parseFloat(data.amount),
-            data.currency || 'INR',
-            data.paymentTitle || 'Payment Request',
-            { name: contact.name || 'Customer', contact: contact.phone, email: 'customer@email.com' }
-        );
+        let shortUrl: string;
 
-        const shortUrl = linkResponse.short_url;
-        console.log(`[FlowExecutor] 🔗 Generated Razorpay Link: ${shortUrl}`);
+        if (provider === 'PhonePe') {
+            const { PhonePeManager } = await import('../payments/phonepe');
+            const txnId = `FLOW_${session.id}_${Date.now()}`;
+            const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://grafty.pro';
+            const result = await PhonePeManager.createPaymentLinkForWorkspace(
+                contact.workspace_id,
+                parseFloat(data.amount),
+                txnId,
+                `usr_${contact.id}`,
+                `${baseUrl}/api/webhooks/phonepe`,
+                `${baseUrl}/payment-success?txnId=${txnId}`,
+                contact.phone
+            );
+            shortUrl = result.redirectUrl;
+            console.log(`[FlowExecutor] 🔗 Generated PhonePe Link: ${shortUrl}`);
+        } else {
+            const { RazorpayManager } = await import('../payments/razorpay');
+            const linkResponse = await RazorpayManager.createPaymentLink(
+                contact.workspace_id,
+                parseFloat(data.amount),
+                data.currency || 'INR',
+                data.paymentTitle || 'Payment Request',
+                { name: contact.name || 'Customer', contact: contact.phone, email: 'customer@email.com' }
+            );
+            shortUrl = linkResponse.short_url;
+            console.log(`[FlowExecutor] 🔗 Generated Razorpay Link: ${shortUrl}`);
+        }
 
         const { buildCTAUrlPayload } = await import('./payload-builder');
-        const amountDisplay = `₹${data.amount}`;
-        const bodyText = `🛒 *Payment Request*\n\nFor: *${data.paymentTitle || 'Order'}*\nTotal: *${amountDisplay}*\n\nPlease click the button below to complete your payment securely.`;
-        const ctaTitle = `Pay ${amountDisplay} Now`;
-
         const p = buildCTAUrlPayload(contact.phone, bodyText, { title: ctaTitle, value: shortUrl });
 
         if (p) {
@@ -690,7 +712,7 @@ async function runPaymentNode(ctx: ExecutionContext, node: any): Promise<void> {
             await saveOutboundMessage(waba, contact, metaId, p);
         }
     } catch (err: any) {
-        console.error(`[FlowExecutor] ❌ Aggressive Payment Failure: ${err.message}`);
+        console.error(`[FlowExecutor] ❌ Payment Failure (${provider}): ${err.message}`);
         const errorText = `❌ *Payment Generation Failed*\n\nReason: ${err.message || 'System error'}`;
         const p = buildTextPayload(contact.phone, errorText);
         if (p) await sendMessageDirect({ phoneNumberId: waba.phone_number_id, accessToken: waba.access_token, payload: p, sessionId: session.id, nodeId: node.id, workspaceId: session.workspace_id, contactId: contact.id });
@@ -993,7 +1015,9 @@ async function trackAnalytics(flowId: string, nodeId: string): Promise<void> {
             update: { hits: { increment: 1 }, last_hit_at: new Date() },
             create: { flow_id: flowId, node_id: nodeId, hits: 1 },
         });
-    } catch { }
+    } catch (err: any) {
+        console.error(`[FlowAnalytics] Failed to track hit for ${nodeId}: ${err.message}`);
+    }
 }
 
 function sleep(ms: number): Promise<void> {

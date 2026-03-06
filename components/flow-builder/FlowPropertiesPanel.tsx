@@ -27,6 +27,7 @@ export default function FlowPropertiesPanel({ selectedNode, onChange, onClose, o
     const [amount, setAmount] = useState("");
     const [currency, setCurrency] = useState("INR");
     const [paymentTitle, setPaymentTitle] = useState("");
+    const [paymentProvider, setPaymentProvider] = useState("Razorpay");
 
     // Meta Flow Data
     const [metaFlowId, setMetaFlowId] = useState("");
@@ -105,6 +106,7 @@ export default function FlowPropertiesPanel({ selectedNode, onChange, onClose, o
                 setAmount(selectedNode.data.amount || "0");
                 setCurrency(selectedNode.data.currency || "INR");
                 setPaymentTitle(selectedNode.data.paymentTitle || "Pay Now");
+                setPaymentProvider(selectedNode.data.paymentProvider || "Razorpay");
             }
 
             if (selectedNode.type === 'meta_flow') {
@@ -467,6 +469,7 @@ export default function FlowPropertiesPanel({ selectedNode, onChange, onClose, o
                                             >
                                                 <option value="reply">Reply</option>
                                                 <option value="url">URL</option>
+                                                <option value="call">Call</option>
                                             </select>
                                         </div>
                                         {btn.type !== 'reply' && (
@@ -647,8 +650,19 @@ export default function FlowPropertiesPanel({ selectedNode, onChange, onClose, o
                                 </select>
                             </div>
                         </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Gateway Provider</label>
+                            <select
+                                value={paymentProvider}
+                                onChange={(e) => handleUpdate("paymentProvider", e.target.value)}
+                                className="w-full border border-gray-300 rounded-lg p-2 text-sm bg-white"
+                            >
+                                <option value="Razorpay">Razorpay (Ind)</option>
+                                <option value="PhonePe">PhonePe (Ind)</option>
+                            </select>
+                        </div>
                         <p className="text-xs text-gray-400">
-                            The bot will generate a secure payment link via Razorpay/Stripe and send it to the user.
+                            The bot will generate a secure payment link via the selected provider and send it to the user.
                         </p>
                     </div>
                 )}
