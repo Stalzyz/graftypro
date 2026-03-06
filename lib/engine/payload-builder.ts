@@ -362,10 +362,9 @@ export function buildNodePayload(
     );
 
     const replyButtons = allButtons.filter(b => b.type === 'reply');
-    // Meta renders buttons in the order they are in the array, 
-    // but some clients/layouts might feel reversed. We'll try reversing them here
-    // to match the user's intended 'order of importance' which usually flows bottom-up in listing.
-    const orderedReplyButtons = [...replyButtons].reverse();
+    // Meta renders buttons in the order they are in the array.
+    // We will preserve the original order created by the user in the Flow Builder.
+    const orderedReplyButtons = [...replyButtons];
 
     const urlButtons = allButtons.filter(b => b.type === 'url');
 
