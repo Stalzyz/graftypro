@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { CreditCard, Key, ShieldCheck, Loader2, Link as LinkIcon, RefreshCcw } from 'lucide-react';
+import Script from 'next/script';
 
 export default function PartnerBillingSettings() {
     const [loading, setLoading] = useState(true);
@@ -11,6 +12,11 @@ export default function PartnerBillingSettings() {
     const [providerType, setProviderType] = useState('Razorpay');
     const [keyId, setKeyId] = useState('');
     const [keySecret, setKeySecret] = useState('');
+
+    // State for Test Net Wallet Top Up
+    const [topUpAmount, setTopUpAmount] = useState<number | ''>('');
+    const [toppingUp, setToppingUp] = useState(false);
+    const [walletBal, setWalletBal] = useState(0);
 
     useEffect(() => {
         fetchSettings();
@@ -34,6 +40,9 @@ export default function PartnerBillingSettings() {
                     setKeyId(rz.key_id || '');
                     setKeySecret(rz.key_secret || '');
                 }
+            }
+            if (data.data?.wallet_balance !== undefined) {
+                setWalletBal(Number(data.data.wallet_balance));
             }
         } catch (error) {
             console.error("Failed to load gateways", error);
@@ -74,6 +83,74 @@ export default function PartnerBillingSettings() {
         }
     };
 
+    const handleTopUp = async () => {
+        if (!topUpAmount || typeof topUpAmount !== 'number') return;
+        setToppingUp(true);
+        try {
+            // 1. Generate Razorpay Order
+            const generateRes = await fetch("/api/reseller/wallet/topup", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ amount: topUpAmount })
+            });
+
+            const genData = await generateRes.json();
+            if (!generateRes.ok || !genData.success) {
+                alert(genData.error || "Failed to initiate top-up");
+                setToppingUp(false);
+                return;
+            }
+
+            // 2. Open Razorpay Checkout Modal
+            const options = {
+                key: genData.order.razorpay_key,
+                amount: genData.order.amount,
+                currency: genData.order.currency,
+                name: "Grafty Master Deposit",
+                description: `Escrow Top-Up (₹${topUpAmount})`,
+                order_id: genData.order.id,
+                handler: async function (response: any) {
+                    // 3. Verify Payment Signature
+                    const verifyRes = await fetch("/api/reseller/wallet/verify", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            razorpay_payment_id: response.razorpay_payment_id,
+                            razorpay_order_id: response.razorpay_order_id,
+                            razorpay_signature: response.razorpay_signature,
+                            amount: topUpAmount,
+                        })
+                    });
+
+                    const verifyData = await verifyRes.json();
+                    if (verifyRes.ok && verifyData.success) {
+                        setWalletBal(verifyData.balance);
+                        setTopUpAmount('');
+                        alert(`Successfully added ₹${topUpAmount} to your Escrow Wallet!`);
+                    } else {
+                        alert("Payment Verification Failed. Contact support if debited.");
+                    }
+                },
+                theme: { color: "#27954D" }
+            };
+
+            const rzp = new (window as any).Razorpay(options);
+
+            rzp.on('payment.failed', function (response: any) {
+                console.error(response.error);
+                alert("Payment failed: " + response.error.description);
+            });
+
+            rzp.open();
+
+        } catch (error) {
+            alert("Network Error generating order");
+            console.error(error);
+        } finally {
+            setToppingUp(false);
+        }
+    };
+
     if (loading) return (
         <div className="flex justify-center py-20">
             <Loader2 className="animate-spin text-slate-300" size={32} />
@@ -84,6 +161,8 @@ export default function PartnerBillingSettings() {
 
     return (
         <div className="max-w-4xl mx-auto space-y-10 animate-in fade-in duration-500">
+            {/* Load Razorpay Script dynamically */}
+            <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" />
 
             {/* Header */}
             <div>
@@ -192,6 +271,52 @@ export default function PartnerBillingSettings() {
                 </div>
             </div>
 
+            {/* Escrow Top Up Logic (Test Net) */}
+            <div className="bg-white border border-slate-200 rounded-[3rem] p-10 shadow-sm relative overflow-hidden group">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-50 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-1000" />
+
+                <div className="relative z-10 space-y-8">
+                    <div className="flex items-center gap-4 border-b border-slate-100 pb-8 justify-between">
+                        <div className="flex items-center gap-4">
+                            <div className="p-3 bg-emerald-50 text-[#27954D] rounded-2xl border border-emerald-100">
+                                <ShieldCheck size={24} />
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-black text-slate-900 uppercase tracking-widest">Escrow Wallet Funding</h3>
+                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest italic">Pre-fund your engine to allow vendor provisioning</p>
+                            </div>
+                        </div>
+                        <div className="text-right">
+                            <div className="text-[10px] font-black tracking-widest text-slate-400 uppercase mb-1">Liquid Balance</div>
+                            <div className="text-3xl font-black text-[#27954D] italic tracking-tighter">₹{walletBal.toLocaleString()}</div>
+                        </div>
+                    </div>
+
+                    <div className="bg-slate-50 p-6 rounded-[2rem] border border-slate-100 flex items-end gap-4">
+                        <div className="flex-1 space-y-3">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2 block">Top-Up Amount (₹)</label>
+                            <div className="relative">
+                                <span className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400 font-black">₹</span>
+                                <input
+                                    type="number"
+                                    value={topUpAmount}
+                                    onChange={e => setTopUpAmount(parseInt(e.target.value) || '')}
+                                    placeholder="5000"
+                                    className="w-full bg-white border border-slate-200 rounded-2xl pl-12 pr-6 py-4.5 text-slate-900 focus:border-[#27954D] focus:ring-4 ring-emerald-500/10 outline-none transition-all font-black tracking-widest placeholder:text-slate-300 placeholder:font-normal tabular-nums shadow-sm"
+                                />
+                            </div>
+                        </div>
+                        <button
+                            onClick={handleTopUp}
+                            disabled={toppingUp || !topUpAmount || topUpAmount <= 0}
+                            className="px-8 py-4.5 bg-[#27954D] text-white font-black text-[10px] uppercase tracking-[0.2em] rounded-2xl hover:bg-emerald-700 transition-all shadow-xl shadow-emerald-500/20 active:scale-95 disabled:opacity-50 disabled:shadow-none h-[64px]"
+                        >
+                            {toppingUp ? <Loader2 className="animate-spin mx-auto" size={18} /> : "Process Funding"}
+                        </button>
+                    </div>
+                </div>
+            </div>
+
             {/* Escrow Disclaimer */}
             <div className="p-6 bg-slate-900 rounded-[2rem] flex items-center gap-4">
                 <ShieldCheck size={24} className="text-[#27954D] flex-shrink-0" />
@@ -199,6 +324,6 @@ export default function PartnerBillingSettings() {
                     <strong className="text-white">Escrow routing active.</strong> 100% of the retail price collected via this gateway will be deposited directly to your bank account. Upon successful authorization, Grafty will autonomously deduct the <strong className="text-white">Wholesale Cost</strong> mapping from your pre-paid Escrow Wallet.
                 </p>
             </div>
-        </div>
+        </div >
     );
 }

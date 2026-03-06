@@ -1685,6 +1685,7 @@ enum LedgerEntryType {
   TIER_BONUS
   REVENUE_SHARE
   BONUS_PAYOUT
+  SUBSCRIPTION_FEE  // W2R: Wholesale cost deducted when partner provisions a vendor
 }
 
 model ResellerLedger {

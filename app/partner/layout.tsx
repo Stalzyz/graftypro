@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation';
 import {
     LayoutDashboard, Users, Wallet, FileText, Settings,
     LogOut, ChevronRight, Ticket, Target,
-    Receipt, Globe, Mail, Zap, Activity, Shield
+    Receipt, Globe, Mail, Zap, Activity, Shield, CreditCard
 } from 'lucide-react';
 import { Logo } from "../../components/ui/Logo";
 
@@ -91,6 +91,20 @@ export default function PartnerLayout({ children }: { children: React.ReactNode 
                             <NavItem href="/partner/settings" icon={<Settings size={18} />} label="Branding" pathname={pathname} />
                             <NavItem href="/partner/domain" icon={<Globe size={18} />} label="Domain & DNS" pathname={pathname} />
                             <NavItem href="/partner/email" icon={<Mail size={18} />} label="SMTP Config" pathname={pathname} />
+                        </div>
+                    )}
+
+                    {!isPlatform && (
+                        <div className="space-y-1">
+                            <SectionHeader label="Settings" />
+                            <NavItem href="/partner/settings/billing" icon={<CreditCard size={18} />} label="Payment Gateway" pathname={pathname} />
+                        </div>
+                    )}
+
+                    {/* Add back Payment Gateway to Admin Settings as well */}
+                    {isPlatform && (
+                        <div className="space-y-1 mt-0">
+                            <NavItem href="/partner/settings/billing" icon={<CreditCard size={18} />} label="Payment Gateway" pathname={pathname} />
                         </div>
                     )}
                 </nav>

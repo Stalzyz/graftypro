@@ -74,36 +74,27 @@ export async function POST(req: Request) {
                 });
             }
 
-            // B. Create Global User
-            let user = await tx.user.findUnique({ where: { email: vendor_email } });
-            if (!user) {
-                const bcrypt = require('bcryptjs');
-                const hashedPassword = await bcrypt.hash(password || "vendordefault123", 10);
+            // B. Create Vendor Workspace first, then User inside it
+            // (User model requires workspace_id in this schema)
+            const bcrypt = require('bcryptjs');
+            const hashedPassword = await bcrypt.hash(password || "vendordefault123", 10);
+            const displayName = vendor_name || vendor_email.split('@')[0];
 
-                user = await tx.user.create({
-                    data: {
-                        name: vendor_name || vendor_email.split('@')[0],
-                        email: vendor_email,
-                        password_hash: hashedPassword,
-                        role: "USER"
-                    }
-                });
-            }
-
-            // C. Create Vendor Workspace assigned to Reseller
+            // C. Create Vendor Workspace assigned to Reseller (with Owner user inline)
             const workspace = await tx.workspace.create({
                 data: {
-                    name: business_name || `${user.name}'s Business`,
+                    name: business_name || `${displayName}'s Business`,
                     business_name: business_name,
-                    industry: "Other",
                     timezone: "Asia/Kolkata",
-                    phone_number: "",
                     reseller_id: reseller.id,
-                    plan_id: plan.id,
+                    current_plan_id: plan.id,
                     status: "ACTIVE",
                     users: {
                         create: {
-                            user_id: user.id,
+                            email: vendor_email,
+                            password_hash: hashedPassword,
+                            first_name: vendor_name?.split(" ")[0] || displayName,
+                            last_name: vendor_name?.split(" ").slice(1).join(" ") || undefined,
                             role: "OWNER"
                         }
                     }

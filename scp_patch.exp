@@ -1,0 +1,6 @@
+#!/usr/bin/expect -f
+set timeout -1
+spawn scp -o StrictHostKeyChecking=no escrow_gateway_patch.zip root@72.61.231.187:/root/Wabot_BSP/
+expect "password:"
+send "Photoshop09@\r"
+expect eof

@@ -69,8 +69,10 @@ export class ResellerFinanceEngine {
                 wallet_balance: { increment: amount },
                 total_earned: (type === 'COMMISSION' && amount > 0) ? { increment: amount } : undefined
             }
+        });
+
         return ledgerEntry;
-        }
+    }
 
     /**
      * UNIFIED WALLET LEDGER ESCROW SYSTEM (Phase 8)
@@ -78,19 +80,19 @@ export class ResellerFinanceEngine {
      * Throws an error if the Partner lacks sufficient prepaid funds, preventing vendor provisioning.
      */
     static async processPartnerSubscriptionDeduction(tx: any, {
-            resellerId,
-            workspaceId,
-            wholesaleCost,
-            retailPrice,
-            planName
-        }: {
-            resellerId: string;
-            workspaceId: string;
-            wholesaleCost: number;
-            retailPrice: number;
-            planName: string;
-        }) {
-            if(wholesaleCost <= 0) return true; // Free system plan
+        resellerId,
+        workspaceId,
+        wholesaleCost,
+        retailPrice,
+        planName
+    }: {
+        resellerId: string;
+        workspaceId: string;
+        wholesaleCost: number;
+        retailPrice: number;
+        planName: string;
+    }) {
+        if (wholesaleCost <= 0) return true; // Free system plan
 
         // 1. Lock Reseller Row (Atomic check)
         const resellers: any[] = await tx.$queryRaw`SELECT wallet_balance FROM resellers WHERE id = ${resellerId} FOR UPDATE`;

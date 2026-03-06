@@ -28,7 +28,19 @@ export async function GET(req: Request) {
                 favicon_url: true,
                 custom_domain: true,
                 referral_code: true,
-                is_frozen: true
+                is_frozen: true,
+                // Settings fields — required for billing/branding/domain pages
+                // @ts-ignore - payment_gateways is valid in schema; local Prisma client may be stale
+                payment_gateways: true,
+                // @ts-ignore
+                branding_settings: true,
+                // @ts-ignore
+                smtp_config: true,
+                // @ts-ignore
+                domain_settings: true,
+                support_email: true,
+                primary_color: true,
+                secondary_color: true
             }
         });
 

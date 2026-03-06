@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { prisma } from "../../../../lib/db";
-import { getResellerSession } from "../../../../lib/reseller/auth-helper";
-import { ResellerFinanceEngine } from "../../../../lib/reseller/finance-engine";
+import { prisma } from "../../../../../lib/db";
+import { getResellerSession } from "../../../../../lib/reseller/auth-helper";
+import { ResellerFinanceEngine } from "../../../../../lib/reseller/finance-engine";
 
 export const dynamic = "force-dynamic";
 
@@ -32,40 +32,26 @@ export async function POST(req: Request) {
 
         // 2. Escrow Deduction Transaction
         return await prisma.$transaction(async (tx) => {
-            // A. Check if vendor already exists globally across the entire BSP
-            let user = await tx.user.findUnique({
-                where: { email: vendor_email }
-            });
+            // A. Create the Workspace (Vendor Account) assigned to Reseller
+            // Users are nested-created inside the workspace to satisfy workspace_id FK
+            const bcrypt = require('bcryptjs');
+            const hashedPassword = await bcrypt.hash(password || "default123", 10);
+            const displayName = vendor_name || vendor_email.split('@')[0];
 
-            if (!user) {
-                // Hash simple password or generate one
-                const bcrypt = require('bcryptjs');
-                const hashedPassword = await bcrypt.hash(password || "default123", 10);
-
-                user = await tx.user.create({
-                    data: {
-                        name: vendor_name || vendor_email.split('@')[0],
-                        email: vendor_email,
-                        password_hash: hashedPassword,
-                        role: "USER"
-                    }
-                });
-            }
-
-            // B. Create the Workspace (Vendor Account) assigned to Reseller
             const workspace = await tx.workspace.create({
                 data: {
-                    name: business_name || `${user.name}'s Business`,
+                    name: business_name || `${displayName}'s Business`,
                     business_name: business_name,
-                    industry: "Other",
                     timezone: "Asia/Kolkata",
-                    phone_number: "",
                     reseller_id: resellerId,
-                    plan_id: plan.id,
-                    status: "ACTIVE", // Will only remain active if Escrow passes
+                    current_plan_id: plan.id,
+                    status: "ACTIVE",
                     users: {
                         create: {
-                            user_id: user.id,
+                            email: vendor_email,
+                            password_hash: hashedPassword,
+                            first_name: vendor_name?.split(" ")[0] || displayName,
+                            last_name: vendor_name?.split(" ").slice(1).join(" ") || undefined,
                             role: "OWNER"
                         }
                     }

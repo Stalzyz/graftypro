@@ -51,6 +51,7 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
                     </div>
                     <NavLink href="/super-admin/dashboard/crm" icon={<Target size={18} strokeWidth={1.5} />} label="Sales War Room" />
                     <NavLink href="/super-admin/dashboard/finance" icon={<BarChart3 size={18} strokeWidth={1.5} />} label="Financial Ledger" />
+                    <NavLink href="/super-admin/dashboard/finance/payment" icon={<CreditCard size={18} strokeWidth={1.5} />} label="Payment Gateway" />
                     <NavLink href="/super-admin/dashboard/finance/settings" icon={<Settings2 size={18} strokeWidth={1.5} />} label="HSN/GST Settings" />
                     <NavLink href="/super-admin/dashboard/proposals" icon={<PenTool size={18} strokeWidth={1.5} />} label="Client Proposals" />
 

@@ -26,6 +26,8 @@ async function main() {
             commerce_access: false,
             edu_engine_access: false,
             is_featured: false,
+            is_public: true,
+            min_reseller_price: 499.00,
             features_list: [
                 "Live Chat Inbox (1 Agent)",
                 "Templates & Campaigns",
@@ -48,6 +50,8 @@ async function main() {
             crm_access: true,
             flow_builder_access: true,
             is_featured: false,
+            is_public: true,
+            min_reseller_price: 999.00,
             features_list: [
                 "Universal CRM (Table View)",
                 "Standard Flow Builder (10 Flows)",
@@ -74,6 +78,8 @@ async function main() {
             drip_campaign_access: true,
             api_access: true,
             is_featured: true,
+            is_public: true,
+            min_reseller_price: 2499.00,
             features_list: [
                 "Advanced CRM (Kanban Board)",
                 "Drip Sequences (Automated Follow-ups)",
@@ -103,6 +109,8 @@ async function main() {
             commerce_access: true,
             edu_engine_access: true,
             is_featured: false,
+            is_public: true,
+            min_reseller_price: 6999.00,
             features_list: [
                 "Ultimate E-commerce Engine",
                 "AI Lead Profiling (Edu-Engine)",
