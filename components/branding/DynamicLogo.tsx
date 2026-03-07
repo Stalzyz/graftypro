@@ -24,7 +24,7 @@ export function DynamicLogo({
     showText = true,
     variant = "color"
 }: DynamicLogoProps) {
-    if (logoUrl && logoUrl !== "/grafty.svg" && logoUrl !== "/grafty_fav.png" && logoUrl !== "/grafty_new_logo.png") {
+    if (logoUrl && logoUrl !== "/grafty.svg" && logoUrl !== "/grafty_fav.png" && logoUrl !== "/grafty_brand.svg") {
         return (
             <div className={`flex items-center gap-3 ${className}`}>
                 <div
