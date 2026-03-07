@@ -24,30 +24,30 @@ const categories = [
         title: "Platform Onboarding",
         icon: <Settings className="text-blue-500" />,
         lessons: [
-            "Setting up Meta Business Account",
-            "Creating your first WhatsApp App",
-            "Generating Permanent Access Tokens",
-            "Number Verification Protocol"
+            { name: "Setting up Meta Business Account", href: "#" },
+            { name: "Creating your first WhatsApp App", href: "#" },
+            { name: "Generating Permanent Access Tokens", href: "#" },
+            { name: "Number Verification Protocol", href: "#" }
         ]
     },
     {
         title: "Automation Engine",
         icon: <Workflow className="text-purple-500" />,
         lessons: [
-            "Visual Flow Builder Basics",
-            "Advanced Conditional Branching",
-            "Webhook & API Integrations",
-            "Template Approval Workflow"
+            { name: "Visual Flow Builder Basics", href: "/how-to-use/flow-builder" },
+            { name: "Advanced Conditional Branching", href: "#" },
+            { name: "Webhook & API Integrations", href: "#" },
+            { name: "Template Approval Workflow", href: "#" }
         ]
     },
     {
         title: "Growth & Marketing",
         icon: <Zap className="text-amber-500" />,
         lessons: [
-            "Official Broadcast Campaigns",
-            "Drip Sequence Architecture",
-            "Abandoned Cart Recovery",
-            "Storefront Catalog Management"
+            { name: "Official Broadcast Campaigns", href: "#" },
+            { name: "Drip Sequence Architecture", href: "#" },
+            { name: "Abandoned Cart Recovery", href: "#" },
+            { name: "Storefront Catalog Management", href: "#" }
         ]
     }
 ];
@@ -127,12 +127,12 @@ export default function HowToUse() {
                                     <h3 className="text-xl font-black text-slate-900 mb-6">{cat.title}</h3>
                                     <div className="space-y-4">
                                         {cat.lessons.map((lesson, idx) => (
-                                            <div key={idx} className="flex items-center gap-3 text-slate-500 hover:text-slate-900 transition-colors cursor-pointer group/lesson">
+                                            <Link href={lesson.href} key={idx} className="flex items-center gap-3 text-slate-500 hover:text-slate-900 transition-colors group/lesson">
                                                 <div className="w-6 h-6 rounded-lg bg-slate-50 flex items-center justify-center text-slate-300 group-hover/lesson:bg-[#27954D] group-hover/lesson:text-white transition-all">
                                                     <ChevronRight size={12} strokeWidth={3} />
                                                 </div>
-                                                <span className="text-sm font-bold">{lesson}</span>
-                                            </div>
+                                                <span className="text-sm font-bold">{lesson.name}</span>
+                                            </Link>
                                         ))}
                                     </div>
                                 </div>
