@@ -48,7 +48,8 @@ import {
     GitBranch,
     ShoppingBag,
     Globe,
-    Bug
+    Bug,
+    CornerUpLeft
 } from "lucide-react";
 import { format } from "date-fns";
 import Link from "next/link";
@@ -148,15 +149,19 @@ function SharedInboxContent() {
 
     // -- Refs --
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const messagesContainerRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const searchInputRef = useRef<HTMLInputElement>(null);
 
     const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        if (messagesContainerRef.current) {
+            messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+        }
     };
 
     useEffect(() => {
-        scrollToBottom();
+        const timer = setTimeout(scrollToBottom, 100);
+        return () => clearTimeout(timer);
     }, [messages, selectedId]);
 
     useEffect(() => {
@@ -561,7 +566,14 @@ function SharedInboxContent() {
 
                                     <div className="flex items-center gap-2">
                                         <p className={`text-[12px] truncate flex-1 leading-relaxed ${chat.unreadCount > 0 ? 'text-gray-900 font-black' : 'text-gray-400 font-medium'}`}>
-                                            {(chat.messages?.[0]?.content as any)?.body || "No messages yet"}
+                                            {(() => {
+                                                const rawMsg = chat.messages?.[0]?.content;
+                                                if (!rawMsg) return "No messages yet";
+                                                try {
+                                                    const parsed = typeof rawMsg === 'string' ? JSON.parse(rawMsg) : rawMsg;
+                                                    return parsed.body?.text || parsed.text?.body || parsed.text || parsed.body || "Media Message";
+                                                } catch (e) { return String(rawMsg); }
+                                            })()}
                                         </p>
                                         {chat.unreadCount > 0 && (
                                             <div className="px-2 h-5 bg-green-600 text-white text-[10px] font-black rounded-full flex items-center justify-center animate-pulse shadow-sm">
@@ -701,7 +713,7 @@ function SharedInboxContent() {
                             </div>
 
                             {/* Messages Container */}
-                            <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-slate-50/50 backdrop-blur-sm no-scrollbar relative">
+                            <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-6 space-y-4 bg-slate-50/50 backdrop-blur-sm no-scrollbar relative scroll-smooth">
                                 {/* Deployment Verification Banner */}
                                 <div className="sticky top-0 z-50 flex justify-center py-1">
                                     <div className="bg-emerald-500 text-white text-[8px] font-black uppercase tracking-[0.2em] px-3 py-1 rounded-full shadow-lg animate-bounce">
@@ -714,7 +726,7 @@ function SharedInboxContent() {
                                     const isTemplate = msg.type === "TEMPLATE";
 
                                     return (
-                                        <div key={msg.id} id={`msg-${msg.id}`} className={`flex flex-col mb-4 ${isOutbound ? 'items-end' : 'items-start animate-in slide-in-from-left-4'}`}>
+                                        <div key={msg.id} id={`msg-${msg.id}`} className={`flex flex-col mb-4 relative group/msg ${isOutbound ? 'items-end pr-2' : 'items-start pl-2 animate-in slide-in-from-left-4'}`}>
                                             {(() => {
                                                 const type = msg.type?.toUpperCase();
                                                 const rawContent = msg.content;
@@ -760,7 +772,7 @@ function SharedInboxContent() {
                                                 };
 
                                                 const link = findMediaLink(content);
-                                                const proxyMediaLink = (url: string) => url && url.includes('lookaside.fbsbx.com') ? `/api/media/proxy?url=${encodeURIComponent(url)}` : url;
+                                                const proxyMediaLink = (url: string) => url && url.includes('lookaside.fbsbx.com') ? url : url; // Disabled proxy for lookaside urls to prevent 401s on public fbcdn images
                                                 if (process.env.NODE_ENV === 'development') {
                                                     console.log(`[MSG ${msg.id}] type=${type} link=${link}`, content);
                                                 }
@@ -777,30 +789,32 @@ function SharedInboxContent() {
                                                 if (!contentType && link) contentType = 'IMAGE';
 
                                                 return (
-                                                    <div className={`max-w-[75%] group relative flex flex-col ${isOutbound ? 'items-end' : 'items-start'}`}>
-                                                        {/* Nuclear Action Toolbar */}
-                                                        <div className={`flex items-center gap-1.5 mb-1.5 transition-all opacity-100 ${isOutbound ? 'justify-end' : 'justify-start'} z-50`}>
-                                                            <button
-                                                                onClick={() => { document.getElementById('chat-composer')?.focus(); }}
-                                                                className="p-1.5 bg-white border border-slate-200 rounded-lg text-slate-400 hover:text-indigo-600 hover:border-indigo-200 shadow-md transition-all cursor-pointer"
-                                                                title="Reply"
-                                                            >
-                                                                <MessageSquare size={12} />
-                                                            </button>
+                                                    <div className={`max-w-[75%] relative flex flex-col ${isOutbound ? 'items-end' : 'items-start'}`}>
+                                                        {/* Hover Action Toolbar */}
+                                                        <div className={`absolute top-0 flex items-center gap-1 opacity-0 group-hover/msg:opacity-100 transition-all z-50 ${isOutbound ? '-left-[80px]' : '-right-[40px]'}`}>
+                                                            {!isOutbound && (
+                                                                <button
+                                                                    onClick={() => { document.getElementById('chat-composer')?.focus(); }}
+                                                                    className="p-1.5 bg-white border border-slate-200 rounded-full text-slate-400 hover:text-indigo-600 hover:border-indigo-200 shadow-xl transition-all hover:scale-110"
+                                                                    title="Reply"
+                                                                >
+                                                                    <CornerUpLeft size={14} />
+                                                                </button>
+                                                            )}
                                                             <button
                                                                 onClick={() => { if (confirm("Permanently delete for you?")) handleMessageAction(msg.id, 'me'); }}
-                                                                className="p-1.5 bg-white border border-slate-200 rounded-lg text-slate-400 hover:text-red-500 hover:border-red-200 shadow-md transition-all cursor-pointer"
+                                                                className="p-1.5 bg-white border border-slate-200 rounded-full text-slate-400 hover:text-red-500 hover:border-red-200 shadow-xl transition-all hover:scale-110"
                                                                 title="Delete Me"
                                                             >
-                                                                <Trash2 size={12} />
+                                                                <Trash2 size={14} />
                                                             </button>
                                                             {isOutbound && (
                                                                 <button
                                                                     onClick={() => { if (confirm("Recall from everyone's phone?")) handleMessageAction(msg.id, 'all'); }}
-                                                                    className="p-1.5 bg-white border border-slate-200 rounded-lg text-slate-400 hover:text-red-600 hover:border-red-300 shadow-md transition-all cursor-pointer"
+                                                                    className="p-1.5 bg-white border border-slate-200 rounded-full text-slate-400 hover:text-red-600 hover:border-red-300 shadow-xl transition-all hover:scale-110"
                                                                     title="Delete for Everyone"
                                                                 >
-                                                                    <Globe size={12} />
+                                                                    <Globe size={14} />
                                                                 </button>
                                                             )}
                                                         </div>
@@ -879,14 +893,14 @@ function SharedInboxContent() {
                                                                 {content.body || content.text || content.caption ||
                                                                     content.raw?.interactive?.body?.text ||
                                                                     content.raw?.text?.body ||
-                                                                    (type === 'INTERACTIVE' ? <span className="text-[10px] italic opacity-50">Interactive Flow Message</span> : "")}
+                                                                    (type === 'INTERACTIVE' ? <span className="text-[10px] italic opacity-50">Interactive Meta Workflow Message</span> : "")}
                                                             </div>
 
                                                             {/* Interactive Buttons */}
                                                             {(content.buttons || content.raw?.interactive?.action?.buttons) && (
                                                                 <div className="mt-3 space-y-1.5">
                                                                     {(content.buttons || content.raw?.interactive?.action?.buttons || []).map((b: any, bi: number) => (
-                                                                        <div key={bi} className={`py-1.5 px-3 rounded-lg border text-[10px] font-black uppercase text-center ${isOutbound ? 'bg-white/10 border-white/20' : 'bg-slate-50 border-slate-200'}`}>
+                                                                        <div key={bi} className={`py-1.5 px-3 rounded-lg border text-[10px] font-black uppercase text-center cursor-pointer hover:opacity-80 transition-opacity ${isOutbound ? 'bg-white/10 border-white/20' : 'bg-slate-50 border-slate-200'}`}>
                                                                             {b.reply?.title || b.title || b}
                                                                         </div>
                                                                     ))}
