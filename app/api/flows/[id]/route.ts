@@ -57,13 +57,29 @@ export async function PUT(
             return NextResponse.json({ error: "Flow not found" }, { status: 404 });
         }
 
+        // FIX #1 (Root Cause): Auto-sync Start Node keyword → flow.trigger_keyword
+        // The trigger engine matches against flow.trigger_keyword in the DB.
+        // The Flow Builder UI stores the keyword inside the start node's data.text.
+        // These were NEVER synced, causing vendor-configured triggers to silently fail.
+        // Now: whenever a flow is saved, we extract the start node keyword and write it
+        // to trigger_keyword so the engine can find it. explicit trigger_keyword overrides.
+        let resolvedTriggerKeyword = trigger_keyword;
+        if (!resolvedTriggerKeyword && Array.isArray(nodes)) {
+            const startNode = nodes.find((n: any) => n.type === 'start');
+            const startKeyword = startNode?.data?.text?.trim();
+            if (startKeyword) {
+                resolvedTriggerKeyword = startKeyword;
+                console.log(`[FlowSave] 🎯 Auto-synced trigger_keyword from start node: "${startKeyword}"`);
+            }
+        }
+
         const updatedFlow = await prisma.flow.update({
             where: { id: params.id },
             data: {
                 nodes: nodes ?? undefined,
                 edges: edges ?? undefined,
                 name: name ?? undefined,
-                trigger_keyword: trigger_keyword ?? undefined,
+                trigger_keyword: resolvedTriggerKeyword ?? undefined,
                 status: status ?? undefined,
                 updated_at: new Date(),
             },

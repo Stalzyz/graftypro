@@ -111,21 +111,13 @@ export class FlowRunner {
             // STEP 5: No trigger match — continue existing session if any
             // ----------------------------------------------------------------
             if (session) {
-                // AGGRESSIVE FIX: Check if session is "STALE"
-                // If the user hasn't messaged in 15 minutes, and they sent a non-matching word,
-                // we assume they are starting a fresh conversation (human or otherwise).
-                const lastUpdated = (session as any).updated_at || new Date();
-                const now = new Date();
-                const minsIdle = (now.getTime() - new Date(lastUpdated).getTime()) / (1000 * 60);
-
-                if (minsIdle > 15) {
-                    console.log(`[FlowRunner] ⏰ Session ${session.id} is stale (${minsIdle.toFixed(1)} mins idle) — closing.`);
-                    await closeSession(session.id, 'STALE_SESSION_CLOSED_ON_NEW_MESSAGE');
-                } else {
-                    console.log(`[FlowRunner] 🔄 Continuing session ${session.id} at node "${session.current_node_id}"`);
-                    await handleUserInput(session, waba, contact, normalizedMsg.value);
-                    return;
-                }
+                // FIX #3: Removed the 15-minute aggressive stale-session close.
+                // Real WhatsApp users pause for hours mid-flow. Aggressively closing
+                // at 15 min was causing flows to silently restart on every short break.
+                // The correct TTL is 24 hours, managed via getActiveSession() → expireOldSessions().
+                console.log(`[FlowRunner] 🔄 Continuing session ${session.id} at node "${session.current_node_id}"`);
+                await handleUserInput(session, waba, contact, normalizedMsg.value);
+                return;
             }
 
             // ----------------------------------------------------------------

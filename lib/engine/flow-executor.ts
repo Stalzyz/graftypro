@@ -1122,6 +1122,25 @@ export async function handleUserInput(
                 return;
             }
         }
+
+        // FIX #5 (Bug #5): Also try list-item numbered routing.
+        // If current node is a 'list' type, the items could have been shown as numbered text.
+        // Match the number to the item's position and route as if the item was selected.
+        if (currentNode.type === 'list') {
+            const listItems = currentNode.data?.items || [];
+            if (num > 0 && num <= listItems.length) {
+                const targetItem = listItems[num - 1];
+                const listHandle = `item-${targetItem.id}`;
+                console.log(`[FlowExecutor] 🔢 List Numbered Routing: ${num} → Item "${targetItem.title}" (${listHandle})`);
+                const listEdgeMatch = edges.find((e: any) =>
+                    e.source === currentNodeId && e.sourceHandle === listHandle
+                );
+                if (listEdgeMatch) {
+                    await executeFrom(session, waba, contact, currentNodeId, listEdgeMatch.target, 0);
+                    return;
+                }
+            }
+        }
     }
 
     if (matchedEdge) {

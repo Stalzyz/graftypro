@@ -135,16 +135,30 @@ export async function getActiveSession(
         return null;
     }
 
+    // FIX #6 (Bug #6): Flow freshness check.
+    // If a vendor edited the flow AFTER this session was created,
+    // refresh the flow's nodes/edges so the session uses the latest node graph.
+    let liveFlow = session.flow;
+    const sessionCreated = session.created_at;
+    const flowUpdated = (session.flow as any).updated_at;
+    if (sessionCreated && flowUpdated && new Date(flowUpdated) > new Date(sessionCreated)) {
+        const refreshed = await prisma.flow.findUnique({ where: { id: session.flow_id } });
+        if (refreshed) {
+            liveFlow = refreshed;
+            console.log(`[SessionManager] 🔄 Flow ${session.flow_id} was updated after session creation — using fresh node graph.`);
+        }
+    }
+
     return {
         id: session.id,
         flow_id: session.flow_id,
         contact_id: session.contact_id,
-        workspace_id: session.flow.workspace_id,
+        workspace_id: liveFlow.workspace_id,
         current_node_id: session.current_node_id,
         state: (session.state as Record<string, any>) || {},
         is_completed: session.is_completed,
         is_waiting: (session as any).is_waiting || false,
-        flow: session.flow,
+        flow: liveFlow,
     };
 }
 
@@ -159,14 +173,24 @@ export async function createSession(
     initialInput: string,
     initialState: Record<string, any> = {}
 ): Promise<FlowSessionData> {
-    // Close any lingering sessions first
-    await prisma.flowSession.updateMany({
+    // Close any lingering sessions first — IMPORTANT: only mark them completed,
+    // do NOT overwrite their state (Fix #4: preserve final state JSON)
+    const openSessions = await prisma.flowSession.findMany({
         where: { contact_id: contactId, is_completed: false },
-        data: {
-            is_completed: true,
-            state: { closed_reason: 'NEW_FLOW_STARTED' } as any,
-        },
+        select: { id: true, state: true },
     });
+    for (const s of openSessions) {
+        await prisma.flowSession.update({
+            where: { id: s.id },
+            data: {
+                is_completed: true,
+                state: {
+                    ...((s.state as Record<string, any>) || {}),
+                    closed_reason: 'NEW_FLOW_STARTED',
+                } as any,
+            },
+        });
+    }
 
     const session = await prisma.flowSession.create({
         data: {
@@ -234,18 +258,34 @@ export async function updateSessionState(
 
 /**
  * Marks the session as complete.
+ * SAFE STATE MERGE: preserves all existing state fields, only appends closed_reason.
+ * Previously this overwrote the entire state JSON, killing all user variables.
  */
 export async function closeSession(
     sessionId: string,
     reason: string = 'FLOW_COMPLETED'
 ): Promise<void> {
-    await prisma.flowSession.update({
-        where: { id: sessionId },
-        data: {
-            is_completed: true,
-            state: { closed_reason: reason } as any,
-        },
-    }).catch(() => { }); // Silently ignore if already closed
+    try {
+        // Fetch current state before overwriting (merge-safe close)
+        const existing = await prisma.flowSession.findUnique({
+            where: { id: sessionId },
+            select: { state: true },
+        });
+        const mergedState = {
+            ...((existing?.state as Record<string, any>) || {}),
+            closed_reason: reason,
+            closed_at: new Date().toISOString(),
+        };
+        await prisma.flowSession.update({
+            where: { id: sessionId },
+            data: {
+                is_completed: true,
+                state: mergedState as any,
+            },
+        });
+    } catch {
+        // Already closed or not found — silently ignore
+    }
     console.log(`[SessionManager] 🔒 Session ${sessionId} closed: ${reason}`);
 }
 
