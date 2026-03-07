@@ -571,7 +571,15 @@ function SharedInboxContent() {
                                                 if (!rawMsg) return "No messages yet";
                                                 try {
                                                     const parsed = typeof rawMsg === 'string' ? JSON.parse(rawMsg) : rawMsg;
-                                                    return parsed.body?.text || parsed.text?.body || parsed.text || parsed.body || "Media Message";
+                                                    // Extract text based on interactive types or standards
+                                                    return parsed.body?.text ||
+                                                        parsed.text?.body ||
+                                                        parsed.text ||
+                                                        parsed.body ||
+                                                        parsed.button_reply?.title ||
+                                                        parsed.list_reply?.title ||
+                                                        parsed.nfm_reply?.body ||
+                                                        (parsed.media_id || parsed.link ? "Media Message" : "Message");
                                                 } catch (e) { return String(rawMsg); }
                                             })()}
                                         </p>
