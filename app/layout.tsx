@@ -13,7 +13,13 @@ export const metadata: Metadata = {
     title: "Grafty | WhatsApp Marketing Platform",
     description: "The next generation of WhatsApp automation and business growth.",
     icons: {
-        icon: "/grafty_brand.svg",
+        icon: [
+            { url: '/grafty_brand.svg?v=5', type: 'image/svg+xml' }
+        ],
+        shortcut: ['/grafty_brand.svg?v=5'],
+        apple: [
+            { url: '/grafty_brand.svg?v=5', type: 'image/svg+xml' }
+        ],
     }
 };
 
