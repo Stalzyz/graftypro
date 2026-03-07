@@ -68,15 +68,25 @@ export async function GET(req: Request) {
                 messages: {
                     orderBy: { created_at: "desc" },
                     take: 1
+                },
+                _count: {
+                    select: {
+                        messages: {
+                            where: {
+                                direction: "INBOUND",
+                                status: { not: "READ" }
+                            }
+                        }
+                    }
                 }
             },
             orderBy: { updated_at: "desc" }
         });
 
-        // Calculate unread count for each (mocking logic for now)
+        // Calculate actual unread count
         const enrichedConversations = conversations.map(conv => ({
             ...conv,
-            unreadCount: filter === 'unread' ? 1 : 0 // Simplified for MVP
+            unreadCount: conv._count.messages
         }));
 
         return NextResponse.json({ data: enrichedConversations });

@@ -156,6 +156,10 @@ function SharedInboxContent() {
     };
 
     useEffect(() => {
+        scrollToBottom();
+    }, [messages, selectedId]);
+
+    useEffect(() => {
         fetchConversations();
         fetchAgents();
         const interval = setInterval(fetchConversations, 10000);
@@ -522,7 +526,7 @@ function SharedInboxContent() {
                                     setSelectedId(chat.id);
                                     setIsMobileListOpen(false);
                                 }}
-                                className={`p-4 rounded-[1.75rem] cursor-pointer transition-all flex gap-4 items-center group relative border ${selectedId === chat.id ? 'bg-white border-green-100 shadow-lg shadow-green-100/50 transform scale-[1.02]' : 'bg-transparent border-transparent hover:bg-gray-50/80 hover:scale-[1.01]'}`}
+                                className={`p-4 rounded-[1.75rem] cursor-pointer transition-all flex gap-4 items-center group relative border ${selectedId === chat.id ? 'bg-white border-green-200 shadow-lg shadow-green-100/50 transform scale-[1.02] z-10' : chat.unreadCount > 0 ? 'bg-green-50/80 border-green-200/60 hover:bg-green-50 hover:scale-[1.01]' : 'bg-transparent border-transparent hover:bg-gray-50/80 hover:scale-[1.01]'}`}
                             >
                                 {/* Multiselect Checkbox */}
                                 <div
@@ -646,8 +650,6 @@ function SharedInboxContent() {
                                     <div className="h-8 w-[1px] bg-gray-100 hidden sm:block" />
 
                                     <div className="flex items-center gap-2 text-gray-400">
-                                        <button className="p-2.5 hover:bg-gray-50 hover:text-green-600 rounded-xl transition-all" title="Video Chamada"><Video size={18} /></button>
-                                        <button className="p-2.5 hover:bg-gray-50 hover:text-green-600 rounded-xl transition-all" title="Ligar"><Phone size={18} /></button>
                                         <button
                                             onClick={() => setShowCRM(!showCRM)}
                                             className={`p-2.5 rounded-xl transition-all ${showCRM ? 'bg-green-600 text-white shadow-lg shadow-green-100' : 'hover:bg-gray-50 hover:text-indigo-600'}`}
@@ -758,11 +760,12 @@ function SharedInboxContent() {
                                                 };
 
                                                 const link = findMediaLink(content);
+                                                const proxyMediaLink = (url: string) => url && url.includes('lookaside.fbsbx.com') ? `/api/media/proxy?url=${encodeURIComponent(url)}` : url;
                                                 if (process.env.NODE_ENV === 'development') {
                                                     console.log(`[MSG ${msg.id}] type=${type} link=${link}`, content);
                                                 }
 
-                                                const isImage = (url: string) => /\.(jpg|jpeg|png|gif|webp|heic|avif|bmp|tiff)(\?.*)?$/i.test(url) || url.includes('fbcdn.net') || url.includes('pps.whatsapp.net') || url.includes('cloudinary') || url.includes('img') || url.includes('uploads') || content.image;
+                                                const isImage = (url: string) => /\.(jpg|jpeg|png|gif|webp|heic|avif|bmp|tiff)(\?.*)?$/i.test(url) || url.includes('fbcdn.net') || url.includes('pps.whatsapp.net') || url.includes('cloudinary') || url.includes('img') || url.includes('uploads') || content.image || url.includes('lookaside.fbsbx.com');
                                                 const isVideo = (url: string) => /\.(mp4|webm|mov|3gp)(\?.*)?$/i.test(url) || content.video;
                                                 const isDoc = (url: string) => /\.(pdf|doc|docx|xls|xlsx|txt|ppt|pptx)(\?.*)?$/i.test(url) || content.document;
                                                 const isAudio = (url: string) => /\.(mp3|ogg|wav|m4a|weba|opus|aac)(\?.*)?$/i.test(url) || content.audio;
@@ -778,11 +781,11 @@ function SharedInboxContent() {
                                                         {/* Nuclear Action Toolbar */}
                                                         <div className={`flex items-center gap-1.5 mb-1.5 transition-all opacity-100 ${isOutbound ? 'justify-end' : 'justify-start'} z-50`}>
                                                             <button
-                                                                onClick={() => { console.log(`MSG CONTENT [${msg.id}]:`, content); alert(JSON.stringify(content, null, 2)); }}
+                                                                onClick={() => { document.getElementById('chat-composer')?.focus(); }}
                                                                 className="p-1.5 bg-white border border-slate-200 rounded-lg text-slate-400 hover:text-indigo-600 hover:border-indigo-200 shadow-md transition-all cursor-pointer"
-                                                                title="Inspect Data"
+                                                                title="Reply"
                                                             >
-                                                                <Bug size={12} />
+                                                                <MessageSquare size={12} />
                                                             </button>
                                                             <button
                                                                 onClick={() => { if (confirm("Permanently delete for you?")) handleMessageAction(msg.id, 'me'); }}
@@ -810,7 +813,7 @@ function SharedInboxContent() {
                                                             {/* Media Rendering */}
                                                             {contentType === 'IMAGE' && link && (
                                                                 <div className="mb-2 -mx-4 -mt-3 overflow-hidden bg-slate-100 relative group/media">
-                                                                    <img src={link} className="w-full h-auto max-h-80 object-cover cursor-zoom-in" alt="Media" onError={(e) => { (e.target as HTMLImageElement).src = `https://placehold.co/400x300/f8fafc/64748b?text=Media+Not+Found` }} />
+                                                                    <img src={proxyMediaLink(link)} className="w-full h-auto max-h-80 object-cover cursor-zoom-in" alt="Media" onError={(e) => { (e.target as HTMLImageElement).src = `https://placehold.co/400x300/f8fafc/64748b?text=Media+Not+Found` }} />
                                                                     <div className="absolute top-1 left-1 bg-black/50 text-white text-[7px] font-bold px-1 rounded uppercase tracking-tighter shadow-sm">{contentType}</div>
                                                                 </div>
                                                             )}
@@ -821,7 +824,7 @@ function SharedInboxContent() {
                                                                         const cardLink = findMediaLink(card);
                                                                         return (
                                                                             <div key={idx} className="min-w-[150px] bg-white rounded-lg border shadow-sm overflow-hidden text-slate-800">
-                                                                                {cardLink && <img src={cardLink} className="h-20 w-full object-cover" />}
+                                                                                {cardLink && <img src={proxyMediaLink(cardLink)} className="h-20 w-full object-cover" />}
                                                                                 <div className="p-2">
                                                                                     <div className="text-[10px] font-bold truncate">{card.title || card.header?.text}</div>
                                                                                     <div className="text-[8px] text-slate-400 line-clamp-1">{card.description || card.body?.text}</div>
@@ -836,7 +839,7 @@ function SharedInboxContent() {
                                                                 <div className="mb-2 -mx-4 -mt-3 bg-slate-50 border-b overflow-hidden">
                                                                     {link ? (
                                                                         <div className="relative aspect-square">
-                                                                            <img src={link} className="w-full h-full object-cover" alt="Product" />
+                                                                            <img src={proxyMediaLink(link)} className="w-full h-full object-cover" alt="Product" />
                                                                             <div className="absolute top-2 right-2 p-1.5 bg-white/90 backdrop-blur rounded-full shadow-sm">
                                                                                 <ShoppingBag size={14} className="text-purple-600" />
                                                                             </div>
@@ -970,6 +973,7 @@ function SharedInboxContent() {
 
                                     <div className="flex-1 bg-slate-100/80 border border-slate-200 focus-within:bg-white focus-within:border-emerald-500/30 rounded-[1.25rem] flex items-end transition-all shadow-sm relative group overflow-hidden">
                                         <textarea
+                                            id="chat-composer"
                                             rows={1}
                                             value={replyText}
                                             onChange={e => {
