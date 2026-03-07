@@ -366,6 +366,22 @@ export default function FlowPropertiesPanel({ selectedNode, onChange, onClose, o
                     />
                 </div>
 
+                {selectedNode.type === 'start' && (
+                    <div className="pt-2">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Trigger Keyword</label>
+                        <input
+                            type="text"
+                            value={content}
+                            onChange={(e) => handleUpdate("content", e.target.value)}
+                            className="w-full border border-gray-300 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="e.g. MENU, HELLO, START"
+                        />
+                        <p className="text-[10px] text-gray-500 mt-1 leading-tight">
+                            The exact text a user must send to start this flow.
+                        </p>
+                    </div>
+                )}
+
                 {selectedNode.type === 'message' && (
                     <div className="space-y-4">
                         <div>
