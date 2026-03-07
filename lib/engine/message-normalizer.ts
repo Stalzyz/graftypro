@@ -70,6 +70,9 @@ export function normalizeMessage(
         } else if (interactive.type === 'button_reply') {
             type = 'interactive';
             value = interactive.button_reply.id;
+        } else if (interactive.type === 'nfm_reply') {
+            type = 'interactive';
+            value = interactive.nfm_reply.response_json || 'FLOW_SUBMITTED_SUCCESSFULLY';
         } else {
             type = 'interactive';
             value = JSON.stringify(interactive);

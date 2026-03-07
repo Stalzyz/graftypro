@@ -890,7 +890,9 @@ function SharedInboxContent() {
 
                                                             {/* Text Body */}
                                                             <div className="text-[14px] leading-relaxed whitespace-pre-wrap break-words font-medium">
-                                                                {content.body || content.text || content.caption ||
+                                                                {content.nfm_reply?.body || content.nfm_reply?.name ||
+                                                                    content.button_reply?.title || content.list_reply?.title ||
+                                                                    content.body || content.text || content.caption ||
                                                                     content.raw?.interactive?.body?.text ||
                                                                     content.raw?.text?.body ||
                                                                     (type === 'INTERACTIVE' ? <span className="text-[10px] italic opacity-50">Interactive Meta Workflow Message</span> : "")}

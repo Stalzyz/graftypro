@@ -1138,6 +1138,15 @@ export async function handleUserInput(
         (currentNode.type === 'message' && (currentNode.data?.buttons || []).some((b: any) => b.type === 'reply'))
     );
 
+    // NUCLEAR FIX: Advance Meta Flow nodes automatically when NFM JSON payload is received 
+    if (currentNode.type === 'meta_flow' || currentNode.type === 'MetaFlow') {
+        if ((inputValue.startsWith('{') && inputValue.endsWith('}')) || inputValue === 'FLOW_SUBMITTED_SUCCESSFULLY') {
+            console.log(`[FlowExecutor] 🌊 NFM form submitted. JSON Payload parsed. Advancing from node ${currentNodeId}.`);
+            await executeFrom(session, waba, contact, currentNodeId, null, 0);
+            return;
+        }
+    }
+
     if (isInteractiveNode) {
         // MONSTER FIX: Strictly do NOT auto-advance or resend on random text.
         // If the user sends something that doesn't match a button, we stay silent.
