@@ -454,8 +454,8 @@ export default function FlowPropertiesPanel({ selectedNode, onChange, onClose, o
                                     }}
                                     disabled={buttons.filter((b: any) => b.type === 'reply').length >= 3}
                                     className={`text-[10px] font-black uppercase ${buttons.filter((b: any) => b.type === 'reply').length >= 3
-                                            ? 'text-gray-300 cursor-not-allowed'
-                                            : 'text-blue-600 hover:underline'
+                                        ? 'text-gray-300 cursor-not-allowed'
+                                        : 'text-blue-600 hover:underline'
                                         }`}
                                 >
                                     + Add Button
@@ -499,7 +499,6 @@ export default function FlowPropertiesPanel({ selectedNode, onChange, onClose, o
                                             >
                                                 <option value="reply">Reply</option>
                                                 <option value="url">URL</option>
-                                                <option value="call">Call</option>
                                             </select>
                                         </div>
                                         {btn.type !== 'reply' && (
@@ -512,7 +511,7 @@ export default function FlowPropertiesPanel({ selectedNode, onChange, onClose, o
                                                     setButtons(newButtons);
                                                     onChange(selectedNode.id, { ...selectedNode.data, buttons: newButtons });
                                                 }}
-                                                placeholder={btn.type === 'url' ? "https://..." : "+1234..."}
+                                                placeholder="https://..."
                                                 className="w-full bg-white border border-gray-200 rounded-lg p-2 text-[10px] font-medium outline-none"
                                             />
                                         )}
@@ -1076,8 +1075,8 @@ export default function FlowPropertiesPanel({ selectedNode, onChange, onClose, o
                                     }}
                                     disabled={listItems.length >= 10}
                                     className={`text-[10px] font-black uppercase ${listItems.length >= 10
-                                            ? 'text-gray-300 cursor-not-allowed'
-                                            : 'text-fuchsia-600 hover:underline'
+                                        ? 'text-gray-300 cursor-not-allowed'
+                                        : 'text-fuchsia-600 hover:underline'
                                         }`}
                                 >
                                     + Add Item
