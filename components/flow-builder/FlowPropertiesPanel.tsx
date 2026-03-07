@@ -376,14 +376,18 @@ export default function FlowPropertiesPanel({ selectedNode, onChange, onClose, o
                                 className="w-full border border-gray-300 rounded-lg p-2 text-sm bg-white"
                             >
                                 <option value="TEXT">Text Only</option>
-                                <option value="IMAGE">Image + Text</option>
-                                <option value="VIDEO">Video + Text</option>
-                                <option value="DOCUMENT">Document</option>
-                                <option value="VOICE">Voice Note</option>
+                                {selectedNode.type !== 'start' && (
+                                    <>
+                                        <option value="IMAGE">Image + Text</option>
+                                        <option value="VIDEO">Video + Text</option>
+                                        <option value="DOCUMENT">Document</option>
+                                        <option value="VOICE">Voice Note</option>
+                                    </>
+                                )}
                             </select>
                         </div>
 
-                        {contentType !== 'TEXT' && (
+                        {contentType !== 'TEXT' && selectedNode.type !== 'start' && (
                             <SmartUploader
                                 label="Media Content"
                                 module="flow"
@@ -1007,15 +1011,6 @@ export default function FlowPropertiesPanel({ selectedNode, onChange, onClose, o
                         </div>
 
                         <div className="space-y-4">
-                            <SmartUploader
-                                label="Header Image (Optional)"
-                                module="flow"
-                                defaultValue={headerUrl}
-                                onUploadSuccess={(url) => {
-                                    setHeaderUrl(url);
-                                    handleUpdate("headerUrl", url);
-                                }}
-                            />
                             <div className="grid grid-cols-2 gap-3">
                                 <div>
                                     <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Button Text</label>
