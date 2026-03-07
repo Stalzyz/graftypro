@@ -439,14 +439,24 @@ export default function FlowPropertiesPanel({ selectedNode, onChange, onClose, o
                         {/* Interactive Buttons Section */}
                         <div className="pt-2">
                             <div className="flex items-center justify-between mb-2">
-                                <label className="block text-xs font-semibold text-gray-500 uppercase">Interactive Buttons</label>
+                                <div>
+                                    <label className="block text-xs font-semibold text-gray-500 uppercase">Interactive Buttons</label>
+                                    {buttons.filter((b: any) => b.type === 'reply').length >= 3 && (
+                                        <p className="text-[9px] text-rose-500 font-bold mt-0.5">⚠️ Max 3 reply buttons (Meta limit)</p>
+                                    )}
+                                </div>
                                 <button
                                     onClick={() => {
+                                        if (buttons.filter((b: any) => b.type === 'reply').length >= 3) return;
                                         const newButtons = [...buttons, { id: Math.random().toString(36).substr(2, 9), title: 'New Button', type: 'reply' }];
                                         setButtons(newButtons);
                                         onChange(selectedNode.id, { ...selectedNode.data, buttons: newButtons });
                                     }}
-                                    className="text-[10px] font-black text-blue-600 uppercase hover:underline"
+                                    disabled={buttons.filter((b: any) => b.type === 'reply').length >= 3}
+                                    className={`text-[10px] font-black uppercase ${buttons.filter((b: any) => b.type === 'reply').length >= 3
+                                            ? 'text-gray-300 cursor-not-allowed'
+                                            : 'text-blue-600 hover:underline'
+                                        }`}
                                 >
                                     + Add Button
                                 </button>
@@ -1053,10 +1063,22 @@ export default function FlowPropertiesPanel({ selectedNode, onChange, onClose, o
 
                         <div>
                             <div className="flex items-center justify-between mb-2 px-1">
-                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">Menu Items</label>
+                                <div>
+                                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">Menu Items</label>
+                                    {listItems.length >= 10 && (
+                                        <p className="text-[9px] text-rose-500 font-bold mt-0.5">⚠️ Max 10 items (Meta limit)</p>
+                                    )}
+                                </div>
                                 <button
-                                    onClick={() => handleUpdateListItems([...listItems, { id: Math.random().toString(36).substr(2, 9), title: 'New Option', description: '' }])}
-                                    className="text-[10px] font-black text-fuchsia-600 uppercase hover:underline"
+                                    onClick={() => {
+                                        if (listItems.length >= 10) return;
+                                        handleUpdateListItems([...listItems, { id: Math.random().toString(36).substr(2, 9), title: 'New Option', description: '' }]);
+                                    }}
+                                    disabled={listItems.length >= 10}
+                                    className={`text-[10px] font-black uppercase ${listItems.length >= 10
+                                            ? 'text-gray-300 cursor-not-allowed'
+                                            : 'text-fuchsia-600 hover:underline'
+                                        }`}
                                 >
                                     + Add Item
                                 </button>
