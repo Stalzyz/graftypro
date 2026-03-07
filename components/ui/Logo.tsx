@@ -26,7 +26,7 @@ export const Logo: React.FC<LogoProps> = ({
     href = "/"
 }) => {
     // Versioned to force cache clear
-    const logoSrc = "/grafty_fav.png?v=2";
+    const logoSrc = "/grafty_new_logo.png?v=3";
 
     const InlineLogo = (
         <svg

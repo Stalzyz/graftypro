@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, Noto_Sans } from "next/font/google";
 import "./globals.css";
-import { FacebookSDK } from "../components/facebook-sdk";
 
 const inter = Inter({ subsets: ["latin"] });
 const noto = Noto_Sans({
@@ -14,7 +13,7 @@ export const metadata: Metadata = {
     title: "Grafty | WhatsApp Marketing Platform",
     description: "The next generation of WhatsApp automation and business growth.",
     icons: {
-        icon: "/grafty_fav.png",
+        icon: "/grafty_new_logo.png",
     }
 };
 
@@ -46,7 +45,6 @@ export default async function RootLayout({
                 <BrandProvider
                     colors={branding ? { primary: branding.primary_color || "#27954D", secondary: branding.secondary_color || "#042F94" } : undefined}
                 >
-                    <FacebookSDK />
                     {children}
                 </BrandProvider>
             </body>

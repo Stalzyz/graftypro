@@ -56,7 +56,7 @@ export default function CompleteProfilePage() {
                 {/* Header */}
                 <div className="text-center mb-10">
                     <div className="inline-flex items-center justify-center mb-8">
-                        <img src="/grafty.svg" alt="Grafty" className="h-10 w-auto" />
+                        <img src="/grafty_new_logo.png" alt="Grafty" className="h-10 w-auto" />
                     </div>
                     <h1 className="text-2xl sm:text-3xl font-bold text-[#0F172A] mb-2 tracking-tight">Complete your profile</h1>
                     <p className="text-slate-500 font-medium text-sm sm:text-base">Almost there! Just a few more details.</p>
