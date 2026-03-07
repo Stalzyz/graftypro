@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import {
     MessageSquare, GitBranch, Flag, Zap, ShoppingBag, CreditCard,
     Truck, Layout, Clock, Hourglass, List, Calendar, ShoppingCart,
     FolderOpen, Play, Image, Video, FileText, Mic, Phone, Globe,
     ChevronDown, ChevronRight, Grip, BarChart3, Settings, Webhook,
-    Database, Mail, Tag, UserPlus, BellRing, Timer, FileCode
+    Database, Mail, Tag, UserPlus, BellRing, Timer, FileCode, BookOpen
 } from "lucide-react";
 import { INDUSTRY_SCENARIOS } from "./scenarios";
 
@@ -230,6 +231,17 @@ export default function FlowSidebar({ onUseScenario, nodeCount = 0 }: FlowSideba
                     ))}
                 </div>
             )}
+
+            {/* Guide Button */}
+            <div className="p-3 border-t border-gray-100 bg-white shrink-0">
+                <Link
+                    href="https://grafty.pro/how-to-use/flow-builder"
+                    target="_blank"
+                    className="w-full flex items-center justify-center gap-2 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-[11px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 transition-all active:scale-95"
+                >
+                    <BookOpen size={14} /> Ultimate Guide
+                </Link>
+            </div>
 
             {/* Bottom Status Bar */}
             <div className="border-t border-gray-100 px-4 py-2 flex items-center justify-between shrink-0 bg-gray-50">
