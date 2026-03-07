@@ -888,7 +888,9 @@ function SharedInboxContent() {
                                                                     <div className="space-y-1">
                                                                         {(content.product_items || []).map((item: any, idx: number) => (
                                                                             <div key={idx} className="flex justify-between text-[11px] font-bold text-slate-800">
-                                                                                <span>{item.product_retailer_id} (x{item.quantity})</span>
+                                                                                <span className="truncate mr-2" title={item.product_retailer_id || item.item_retailer_id || item.id || item.retailer_id}>
+                                                                                    {item.product_retailer_id || item.item_retailer_id || item.id || item.retailer_id || 'Unknown Product'} (x{item.quantity})
+                                                                                </span>
                                                                                 <span className="text-orange-600">₹{item.item_price || '0'}</span>
                                                                             </div>
                                                                         ))}
