@@ -416,10 +416,15 @@ export function buildNodePayload(
                 .filter((i: any) => i.id && i.title)
                 .map((i: any) => ({ id: i.id, title: i.title, description: i.description || '' }));
             if (rows.length > 0) {
-                finalPayload = buildInteractiveListPayload(to, bodyText, data.buttonText || 'Open Menu', [{ title: data.sectionTitle || 'Options', rows }], data.footer);
-                if (finalPayload && unifiedHeader) {
-                    finalPayload.interactive.header = { type: unifiedHeader.type, [unifiedHeader.type]: { link: unifiedHeader.link } };
+                // If the user attached an image to a List node, Meta strictly FORBIDS it. 
+                // We must send the image as a separate message first, then send the list!
+                if (absMediaUrl) {
+                    const type = contentType === 'VIDEO' ? 'video' : contentType === 'DOCUMENT' ? 'document' : 'image';
+                    const mediaPrePayload = buildMediaPayload(to, type as any, absMediaUrl, '', data.filename);
+                    if (mediaPrePayload) payloads.push(mediaPrePayload);
                 }
+
+                finalPayload = buildInteractiveListPayload(to, bodyText, data.buttonText || 'Open Menu', [{ title: data.sectionTitle || 'Options', rows }], data.footer);
                 isInteractive = true;
             }
         } else if (primaryActionType === 'reply') {
