@@ -13,6 +13,7 @@ export default function RegisterPage() {
     const [error, setError] = useState("");
     const [success, setSuccess] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
+    const [agreedToTerms, setAgreedToTerms] = useState(false);
 
     const [formData, setFormData] = useState({
         firstName: "", lastName: "", email: "", password: "", mobile: "", team: "", referral: ""
@@ -26,6 +27,12 @@ export default function RegisterPage() {
         e.preventDefault();
         setError("");
         setLoading(true);
+
+        if (!agreedToTerms) {
+            setError("You must agree to the Terms and Conditions to register.");
+            setLoading(false);
+            return;
+        }
 
         if (formData.password.length < 8) {
             setError("Password must be at least 8 characters");
@@ -138,6 +145,10 @@ export default function RegisterPage() {
                             <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" className="w-5 h-5" />
                             <span className="text-slate-700 font-bold text-sm">Sign up with Google</span>
                         </Link>
+                        <Link href="/api/auth/facebook" className="flex items-center justify-center gap-2 bg-[#1877F2] border border-[#1877F2] rounded-xl py-3 hover:bg-[#166FE5] transition-all shadow-sm">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512" className="w-5 h-5 fill-white"><path d="M279.14 288l14.22-92.66h-88.91v-60.13c0-25.35 12.42-50.06 52.24-50.06h40.42V6.26S260.43 0 225.36 0c-73.22 0-121.08 44.38-121.08 124.72v70.62H22.89V288h81.39v224h100.17V288z" /></svg>
+                            <span className="text-white font-bold text-sm">Sign up with Facebook</span>
+                        </Link>
                     </div>
 
                     <div className="relative mb-8">
@@ -211,6 +222,19 @@ export default function RegisterPage() {
                                     </select>
                                 </div>
                             </div>
+                        </div>
+
+                        <div className="flex items-start gap-3 mt-4 pt-2">
+                            <input
+                                type="checkbox"
+                                id="terms"
+                                checked={agreedToTerms}
+                                onChange={(e) => setAgreedToTerms(e.target.checked)}
+                                className="mt-1 w-4 h-4 text-[#25D366] rounded border-slate-300 focus:ring-[#25D366] cursor-pointer"
+                            />
+                            <label htmlFor="terms" className="text-sm text-slate-500 font-medium leading-relaxed">
+                                I agree to the <Link href="/terms" target="_blank" className="text-[#25D366] font-bold hover:underline">Terms & Conditions</Link> and <Link href="/privacy" target="_blank" className="text-[#25D366] font-bold hover:underline">Privacy Policy</Link>.
+                            </label>
                         </div>
 
                         <button type="submit" disabled={loading}

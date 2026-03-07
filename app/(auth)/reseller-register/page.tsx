@@ -14,6 +14,7 @@ export default function ResellerRegisterPage() {
     const [success, setSuccess] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const [otp, setOtp] = useState("");
+    const [agreedToTerms, setAgreedToTerms] = useState(false);
 
     const [formData, setFormData] = useState({
         name: "",
@@ -31,6 +32,12 @@ export default function ResellerRegisterPage() {
         e.preventDefault();
         setError("");
         setLoading(true);
+
+        if (!agreedToTerms) {
+            setError("You must agree to the Partner Terms and Conditions.");
+            setLoading(false);
+            return;
+        }
 
         if (formData.password !== formData.confirmPassword) {
             setError("Passwords do not match");
@@ -230,6 +237,19 @@ export default function ResellerRegisterPage() {
                                             value={formData.confirmPassword} onChange={handleChange}
                                         />
                                     </div>
+                                </div>
+
+                                <div className="flex items-start gap-3 mt-4 pt-2">
+                                    <input
+                                        type="checkbox"
+                                        id="terms"
+                                        checked={agreedToTerms}
+                                        onChange={(e) => setAgreedToTerms(e.target.checked)}
+                                        className="mt-1 w-4 h-4 text-[#27954D] rounded border-slate-300 focus:ring-[#27954D] cursor-pointer"
+                                    />
+                                    <label htmlFor="terms" className="text-sm text-slate-500 font-medium leading-relaxed">
+                                        I agree to the <Link href="/terms" target="_blank" className="text-[#27954D] font-bold hover:underline">Terms & Conditions</Link> and <Link href="/privacy" target="_blank" className="text-[#27954D] font-bold hover:underline">Privacy Policy</Link>.
+                                    </label>
                                 </div>
 
                                 <button
