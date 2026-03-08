@@ -45,16 +45,16 @@ export default function RBACConfiguration() {
                 <div>
                     <div className="flex items-center gap-2 text-[#042f94] font-semibold text-[10px] uppercase tracking-[0.2em] mb-3">
                         <Shield size={14} />
-                        Governance Control
+                        Permissions
                     </div>
-                    <h1 className="text-4xl font-semibold text-slate-800 tracking-tight italic">RBAC Matrix</h1>
-                    <p className="text-slate-400 text-sm font-medium">Configure global permission layers and administrative boundaries.</p>
+                    <h1 className="text-4xl font-semibold text-slate-800 tracking-tight italic">Roles</h1>
+                    <p className="text-slate-400 text-sm font-medium">Manage administrator roles and permissions.</p>
                 </div>
                 <button
                     onClick={handleCreate}
                     className="px-8 py-4 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] flex items-center gap-2 hover:bg-black transition-all shadow-xl shadow-slate-200"
                 >
-                    <Plus size={14} /> Forge New Role
+                    <Plus size={14} /> Add Admin
                 </button>
             </header>
 
@@ -62,13 +62,13 @@ export default function RBACConfiguration() {
                 <div className="lg:col-span-2 space-y-10">
                     <div className="bg-white rounded-[40px] border border-slate-100 shadow-sm overflow-hidden">
                         <div className="p-10 border-b border-slate-50 flex items-center justify-between bg-slate-50/30">
-                            <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Administrative team</h3>
+                            <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Administrators</h3>
                         </div>
                         <div className="divide-y divide-slate-50 line-clamp-2">
                             {loading ? (
                                 <div className="p-20 text-center text-slate-400 font-bold uppercase tracking-widest text-xs flex items-center justify-center gap-3">
                                     <RefreshCw className="animate-spin" size={16} />
-                                    Analyzing Neural Links...
+                                    Loading...
                                 </div>
                             ) : (
                                 admins.map((admin) => (
@@ -78,14 +78,14 @@ export default function RBACConfiguration() {
                                                 <ShieldCheck size={20} />
                                             </div>
                                             <div>
-                                                <div className="text-sm font-black text-slate-900">{admin.name || "Unnamed Entity"}</div>
+                                                <div className="text-sm font-black text-slate-900">{admin.name || "Unnamed User"}</div>
                                                 <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">{admin.email} • {admin.role}</div>
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-4">
                                             {admin.role === 'SUPER_ADMIN' ? (
                                                 <span className="px-4 py-1.5 rounded-full bg-slate-900 text-white text-[9px] font-black uppercase tracking-widest border border-slate-800 shadow-lg">
-                                                    SYSTEM MASTER
+                                                    SUPER ADMIN
                                                 </span>
                                             ) : (
                                                 <span className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest ${admin.role === 'FINANCE' ? 'bg-blue-50 text-blue-500' : 'bg-green-50 text-green-500'}`}>
@@ -109,8 +109,8 @@ export default function RBACConfiguration() {
                     <div className="bg-white rounded-[40px] border border-slate-100 shadow-sm overflow-hidden">
                         <div className="p-10 border-b border-slate-50 bg-slate-900 text-white flex items-center justify-between">
                             <div>
-                                <h3 className="text-sm font-black uppercase tracking-widest">Standardized Permission Matrix</h3>
-                                <p className="text-[10px] text-white/40 font-bold uppercase mt-1">Cross-role functional boundary definitions</p>
+                                <h3 className="text-sm font-black uppercase tracking-widest">Permission Matrix</h3>
+                                <p className="text-[10px] text-white/40 font-bold uppercase mt-1">Role access levels</p>
                             </div>
                             <Key size={20} className="text-blue-400" />
                         </div>
@@ -126,19 +126,19 @@ export default function RBACConfiguration() {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-50 text-[11px] font-bold text-slate-600">
-                                    <MatrixRow label="Operational Hub & Stats" roles={[true, true, true, true]} />
-                                    <MatrixRow label="Sales War Room (CRM)" roles={[true, true, false, false]} />
-                                    <MatrixRow label="Financial Ledger & GST" roles={[true, false, true, false]} />
-                                    <MatrixRow label="RBAC & Governance" roles={[true, false, false, false]} />
-                                    <MatrixRow label="Infrastructure Control" roles={[true, false, false, false]} />
-                                    <MatrixRow label="Whitelabel & Branding" roles={[true, false, false, true]} />
+                                    <MatrixRow label="Dashboard & Stats" roles={[true, true, true, true]} />
+                                    <MatrixRow label="Sales" roles={[true, true, false, false]} />
+                                    <MatrixRow label="Finance" roles={[true, false, true, false]} />
+                                    <MatrixRow label="Permissions" roles={[true, false, false, false]} />
+                                    <MatrixRow label="Infrastructure" roles={[true, false, false, false]} />
+                                    <MatrixRow label="Branding" roles={[true, false, false, true]} />
                                     <MatrixRow label="SMTP & Automation" roles={[true, false, false, false]} />
                                 </tbody>
                             </table>
                         </div>
                         <div className="p-8 bg-slate-50 border-t border-slate-100 flex items-center gap-3">
                             <Info size={14} className="text-[#042f94]" />
-                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Super Admin has atomic, unrestricted access to all platform logic and database streams.</span>
+                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Super Admins have full access to all platform logic and data.</span>
                         </div>
                     </div>
                 </div>
@@ -223,7 +223,7 @@ function AdminModal({ admin, onClose, onSuccess }: any) {
     };
 
     const handleDelete = async () => {
-        if (!confirm("Confirm permanent termination of this administrative identity?")) return;
+        if (!confirm("Delete this admin?")) return;
         setLoading(true);
         try {
             const res = await fetch(`/api/super-admin/admins/${admin.id}`, { method: "DELETE" });
@@ -247,13 +247,13 @@ function AdminModal({ admin, onClose, onSuccess }: any) {
                 </button>
 
                 <div className="mb-10">
-                    <h2 className="text-3xl font-black text-slate-900 mb-2">{isEdit ? "Refine Role" : "Forge Identity"}</h2>
-                    <p className="text-slate-400 font-bold uppercase text-[10px] tracking-[0.2em]">Define administrative boundaries for the node.</p>
+                    <h2 className="text-3xl font-black text-slate-900 mb-2">{isEdit ? "Edit Admin" : "Add Admin"}</h2>
+                    <p className="text-slate-400 font-bold uppercase text-[10px] tracking-[0.2em]">Set administrative access levels.</p>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-6">
                     <div className="space-y-2">
-                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Identity Name</label>
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Name</label>
                         <input
                             type="text"
                             required
@@ -265,7 +265,7 @@ function AdminModal({ admin, onClose, onSuccess }: any) {
                     </div>
 
                     <div className="space-y-2">
-                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Universal Address (Email)</label>
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Email</label>
                         <input
                             type="email"
                             required
@@ -279,7 +279,7 @@ function AdminModal({ admin, onClose, onSuccess }: any) {
 
                     <div className="grid grid-cols-2 gap-6">
                         <div className="space-y-2">
-                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Permission Layer</label>
+                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Role</label>
                             <select
                                 value={formData.role}
                                 onChange={e => setFormData({ ...formData, role: e.target.value })}
@@ -293,7 +293,7 @@ function AdminModal({ admin, onClose, onSuccess }: any) {
                             </select>
                         </div>
                         <div className="space-y-2">
-                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Access Key</label>
+                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Password</label>
                             <input
                                 type="password"
                                 required={!isEdit}
@@ -312,7 +312,7 @@ function AdminModal({ admin, onClose, onSuccess }: any) {
                                 onClick={handleDelete}
                                 className="flex-1 bg-red-50 text-red-500 p-6 rounded-[24px] font-black text-[10px] uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all flex items-center justify-center gap-2"
                             >
-                                <Trash2 size={16} /> Terminate
+                                <Trash2 size={16} /> Delete
                             </button>
                         )}
                         <button
@@ -321,7 +321,7 @@ function AdminModal({ admin, onClose, onSuccess }: any) {
                             className="flex-[2] bg-slate-900 text-white p-6 rounded-[24px] font-black text-[10px] uppercase tracking-widest hover:bg-black transition-all disabled:bg-slate-200 flex items-center justify-center gap-2"
                         >
                             {loading ? <RefreshCw className="animate-spin" size={16} /> : <Save size={16} />}
-                            {isEdit ? "COMMIT CHANGES" : "FORGE IDENTITY"}
+                            {isEdit ? "SAVE CHANGES" : "ADD ADMIN"}
                         </button>
                     </div>
                 </form>

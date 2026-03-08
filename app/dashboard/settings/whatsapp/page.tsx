@@ -9,8 +9,7 @@ import ManualIntegrationWizard from "@/components/whatsapp/ManualIntegrationWiza
 
 declare global {
     interface Window {
-        FB: any;
-        fbAsyncInit: () => void;
+        // Facebook global removed for Hosted ES
     }
 }
 
@@ -19,6 +18,7 @@ export default function WhatsAppSettingsPage() {
     const [loading, setLoading] = useState(false);
     const [wabaDetails, setWabaDetails] = useState<any>(null);
     const [showManualWizard, setShowManualWizard] = useState(false);
+    const [workspaceId, setWorkspaceId] = useState("");
 
     // Edit Modal State
     const [isEditing, setIsEditing] = useState(false);
@@ -38,9 +38,48 @@ export default function WhatsAppSettingsPage() {
     const [publicConfig, setPublicConfig] = useState<any>(null);
 
     useEffect(() => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const wabaIdParam = urlParams.get('setup_target_id') || urlParams.get('waba_id');
+
+        if (wabaIdParam) {
+            // Clean URL so it doesn't re-trigger
+            window.history.replaceState({}, document.title, window.location.pathname);
+            claimAccount(wabaIdParam);
+        } else if (urlParams.get('state')) {
+            // If they returned from Meta without IDs but with state, we can attempt a blind claim
+            window.history.replaceState({}, document.title, window.location.pathname);
+            claimAccount();
+        }
+
         fetchStatus();
         fetchPublicConfig();
     }, []);
+
+    const claimAccount = async (wabaId?: string) => {
+        setLoading(true);
+        setStatus("LOADING");
+        try {
+            // Add a slight delay to allow the webhook to finish if it's racing
+            await new Promise(r => setTimeout(r, 2000));
+
+            const res = await fetch("/api/whatsapp/claim", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ waba_id: wabaId })
+            });
+
+            if (res.ok) {
+                alert("Account Connected Successfully!");
+            } else {
+                const data = await res.json().catch(() => ({}));
+                console.error("Claim failed:", data);
+            }
+        } catch (error) {
+            console.error(error);
+        } finally {
+            fetchStatus();
+        }
+    };
 
     const fetchPublicConfig = async () => {
         try {
@@ -58,6 +97,8 @@ export default function WhatsAppSettingsPage() {
         try {
             const res = await fetch("/api/whatsapp/status");
             const data = await res.json();
+            if (data.workspaceId) setWorkspaceId(data.workspaceId);
+
             if (data.status === 'CONNECTED') {
                 setStatus("CONNECTED");
                 setWabaDetails(data.account);
@@ -139,69 +180,25 @@ export default function WhatsAppSettingsPage() {
         }
     };
 
-    const initFacebook = () => {
-        const appId = publicConfig?.meta_app_id || process.env.NEXT_PUBLIC_META_APP_ID;
-        if (!appId) return;
-
-        window.fbAsyncInit = function () {
-            window.FB.init({
-                appId: appId,
-                autoLogAppEvents: true,
-                xfbml: true,
-                version: 'v18.0'
-            });
-        };
-    };
-
     const launchWhatsAppSignup = () => {
         const appId = publicConfig?.meta_app_id || process.env.NEXT_PUBLIC_META_APP_ID;
         const configId = publicConfig?.meta_config_id || process.env.NEXT_PUBLIC_META_CONFIG_ID;
 
-        if (!appId || !configId) {
+        if (!appId || !configId || !workspaceId) {
             alert("Meta Configuration Missing. Please contact support or set it in the Admin panel.");
             return;
         }
 
         setLoading(true);
 
-        window.FB.login(function (response: any) {
-            if (response.authResponse) {
-                const code = response.authResponse.code;
-                exchangeCode(code);
-            } else {
-                setLoading(false);
-            }
-        }, {
-            config_id: configId,
-            response_type: 'code',
-            override_default_response_type: true,
-            extras: {
-                setup: {}
-            }
-        });
-    };
+        const redirectUri = `${window.location.origin}/dashboard/settings/whatsapp`;
+        // Navigate users to the Hosted ES flow. We pass the workspaceId as the state
+        // so we can associate the `account_update` webhook with this specific workspace.
+        const metaUrl = `https://www.facebook.com/business/oauth/partner?client_id=${appId}&config_id=${configId}&state=${workspaceId}&redirect_uri=${encodeURIComponent(redirectUri)}`;
 
-    const exchangeCode = async (code: string) => {
-        try {
-            const res = await fetch("/api/whatsapp/onboard", {
-                method: "POST",
-                body: JSON.stringify({ code }),
-                headers: { "Content-Type": "application/json" }
-            });
-
-            if (res.ok) {
-                setStatus("CONNECTED");
-                fetchStatus();
-                alert("WhatsApp Connected Successfully!");
-            } else {
-                const data = await res.json();
-                alert("Connection Failed: " + data.error);
-            }
-        } catch (e) {
-            alert("Network Error during Onboarding.");
-        } finally {
-            setLoading(false);
-        }
+        // Open in new tab or same tab. Since it's an OAuth flow, same-tab or popup is standard.
+        // A popup ensures they return to this page naturally, but for maximum compatibility we'll use a new tab or let them redirect.
+        window.location.href = metaUrl;
     };
 
     if (status === 'LOADING') {
@@ -235,10 +232,6 @@ export default function WhatsAppSettingsPage() {
 
     return (
         <div className="max-w-4xl mx-auto space-y-8 animate-fade-in mb-20">
-            <Script
-                src="https://connect.facebook.net/en_US/sdk.js"
-                onLoad={initFacebook}
-            />
 
             <div className="flex justify-between items-start">
                 <div>

@@ -87,10 +87,10 @@ export default function PackageManagement() {
                         <div className="w-12 h-12 rounded-2xl bg-slate-900 flex items-center justify-center shadow-2xl">
                             <Settings2 className="text-white" size={24} />
                         </div>
-                        <h1 className="text-4xl font-black text-slate-900 tracking-tight">Subscription Modules</h1>
+                        <h1 className="text-4xl font-black text-slate-900 tracking-tight">Packages</h1>
                     </div>
                     <p className="text-slate-400 font-medium max-w-2xl text-lg leading-relaxed">
-                        Architect custom value propositions. define granular limits and module accessibility for your global vendor network.
+                        Manage subscription packages and feature limits.
                     </p>
                 </div>
                 <button
@@ -98,7 +98,7 @@ export default function PackageManagement() {
                     className="flex items-center gap-3 bg-slate-900 text-white px-8 py-4 rounded-3xl font-black hover:bg-slate-800 transition-all hover:scale-[1.02] active:scale-95 shadow-2xl shadow-slate-200"
                 >
                     <Plus size={20} strokeWidth={3} />
-                    Engine New Package
+                    Add Package
                 </button>
             </div>
 
@@ -210,9 +210,9 @@ export default function PackageManagement() {
 
                         <div className="mb-12">
                             <h2 className="text-3xl font-black text-slate-900 mb-2">
-                                {editingPackage ? 'Re-Engineering Model' : 'Package Architect'}
+                                {editingPackage ? 'Edit Package' : 'Add Package'}
                             </h2>
-                            <p className="text-slate-400 font-bold uppercase text-[11px] tracking-[0.2em]">Define granular capabilities for this subscription module.</p>
+                            <p className="text-slate-400 font-bold uppercase text-[11px] tracking-[0.2em]">Set package limits and features.</p>
                         </div>
 
                         <PackageForm
@@ -414,10 +414,10 @@ function PackageForm({ initialData, onSuccess }: { initialData?: any, onSuccess:
                 <div className="space-y-4 bg-slate-50 p-8 rounded-[32px] border border-slate-100">
                     <label className="text-xs font-black text-slate-500 uppercase tracking-widest mb-4 block">Module Permissions</label>
                     <div className="grid grid-cols-1 gap-4">
-                        <ToggleSwitch label="API Integration Hub" active={formData.api_access} onToggle={(v) => setFormData({ ...formData, api_access: v })} />
-                        <ToggleSwitch label="Educational CRM Suite" active={formData.edu_engine_access} onToggle={(v) => setFormData({ ...formData, edu_engine_access: v })} />
-                        <ToggleSwitch label="Commerce Web Engine" active={formData.commerce_access} onToggle={(v) => setFormData({ ...formData, commerce_access: v })} />
-                        <ToggleSwitch label="Drip Sequence Automation" active={formData.drip_campaign_access} onToggle={(v) => setFormData({ ...formData, drip_campaign_access: v })} />
+                        <ToggleSwitch label="API" active={formData.api_access} onToggle={(v) => setFormData({ ...formData, api_access: v })} />
+                        <ToggleSwitch label="EDU CRM" active={formData.edu_engine_access} onToggle={(v) => setFormData({ ...formData, edu_engine_access: v })} />
+                        <ToggleSwitch label="Commerce" active={formData.commerce_access} onToggle={(v) => setFormData({ ...formData, commerce_access: v })} />
+                        <ToggleSwitch label="Automation" active={formData.drip_campaign_access} onToggle={(v) => setFormData({ ...formData, drip_campaign_access: v })} />
                         <ToggleSwitch label="Public Catalog Status" active={formData.is_public} onToggle={(v) => setFormData({ ...formData, is_public: v })} />
                         <ToggleSwitch label="⭐ Featured / Most Popular" active={formData.is_featured} onToggle={(v) => setFormData({ ...formData, is_featured: v })} />
                     </div>
@@ -430,7 +430,7 @@ function PackageForm({ initialData, onSuccess }: { initialData?: any, onSuccess:
                     disabled={loading}
                     className="w-full bg-slate-900 text-white p-8 rounded-[32px] font-black text-2xl uppercase tracking-tighter hover:bg-[#27954D] transition-all disabled:bg-slate-200"
                 >
-                    {loading ? "COMMITTING CHANGES..." : "DEPLOY PACKAGE MODEL"}
+                    {loading ? "SAVING..." : "SAVE PACKAGE"}
                 </button>
             </div>
         </form>

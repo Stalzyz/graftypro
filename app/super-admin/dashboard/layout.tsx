@@ -44,48 +44,49 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
                 </div>
 
                 <nav className="flex-1 px-4 py-8 space-y-1.5 overflow-y-auto custom-scrollbar">
-                    <NavLink href="/super-admin/dashboard" icon={<LayoutDashboard size={18} strokeWidth={1.5} />} label="Operational Hub" />
+                    <NavLink href="/super-admin/dashboard" icon={<LayoutDashboard size={18} strokeWidth={1.5} />} label="Dashboard" />
 
                     <div className="pt-6 pb-2 px-5">
                         <span className="text-[10px] font-bold text-slate-300 uppercase tracking-[0.2em] block">Revenue Engine</span>
                     </div>
-                    <NavLink href="/super-admin/dashboard/crm" icon={<Target size={18} strokeWidth={1.5} />} label="Sales War Room" />
-                    <NavLink href="/super-admin/dashboard/finance" icon={<BarChart3 size={18} strokeWidth={1.5} />} label="Financial Ledger" />
+                    <NavLink href="/super-admin/dashboard/crm" icon={<Target size={18} strokeWidth={1.5} />} label="Sales" />
+                    <NavLink href="/super-admin/dashboard/growth" icon={<Zap size={18} strokeWidth={1.5} />} label="Growth" />
+                    <NavLink href="/super-admin/dashboard/finance" icon={<BarChart3 size={18} strokeWidth={1.5} />} label="Finance" />
                     <NavLink href="/super-admin/dashboard/finance/payment" icon={<CreditCard size={18} strokeWidth={1.5} />} label="Payment Gateway" />
                     <NavLink href="/super-admin/dashboard/finance/settings" icon={<Settings2 size={18} strokeWidth={1.5} />} label="HSN/GST Settings" />
-                    <NavLink href="/super-admin/dashboard/proposals" icon={<PenTool size={18} strokeWidth={1.5} />} label="Client Proposals" />
+                    <NavLink href="/super-admin/dashboard/proposals" icon={<PenTool size={18} strokeWidth={1.5} />} label="Proposals" />
 
                     <div className="pt-6 pb-2 px-5">
                         <span className="text-[10px] font-bold text-slate-300 uppercase tracking-[0.2em] block">Governance</span>
                     </div>
-                    <NavLink href="/super-admin/dashboard/settings/rbac" icon={<ShieldCheck size={18} strokeWidth={1.5} />} label="RBAC Configuration" />
-                    <NavLink href="/super-admin/dashboard/branding" icon={<Palette size={18} strokeWidth={1.5} />} label="Branding Control" />
-                    <NavLink href="/super-admin/dashboard/packages" icon={<Package size={18} strokeWidth={1.5} />} label="Packages & Pricing" />
-                    <NavLink href="/super-admin/dashboard/theme" icon={<Box size={18} strokeWidth={1.5} />} label="Theme Control" />
+                    <NavLink href="/super-admin/dashboard/settings/rbac" icon={<ShieldCheck size={18} strokeWidth={1.5} />} label="Permissions" />
+                    <NavLink href="/super-admin/dashboard/branding" icon={<Palette size={18} strokeWidth={1.5} />} label="Branding" />
+                    <NavLink href="/super-admin/dashboard/packages" icon={<Package size={18} strokeWidth={1.5} />} label="Packages" />
+                    <NavLink href="/super-admin/dashboard/theme" icon={<Box size={18} strokeWidth={1.5} />} label="Theme" />
 
                     <div className="pt-6 pb-2 px-5">
                         <span className="text-[10px] font-bold text-slate-300 uppercase tracking-[0.2em] block">Infrastructure</span>
                     </div>
                     <NavLink href="/super-admin/dashboard/landing-page" icon={<Globe size={18} strokeWidth={1.5} />} label="Landing Page" />
-                    <NavLink href="/super-admin/dashboard/settings/smtp" icon={<Mail size={18} strokeWidth={1.5} />} label="SMTP Relay Matrix" />
-                    <NavLink href="/super-admin/dashboard/settings/meta" icon={<Activity size={18} strokeWidth={1.5} />} label="Meta Architecture" />
-                    <NavLink href="/super-admin/dashboard/settings/automation" icon={<Zap size={18} strokeWidth={1.5} />} label="Automation Engine" />
-                    <NavLink href="/super-admin/dashboard/infra" icon={<Server size={18} strokeWidth={1.5} />} label="System Instance" />
+                    <NavLink href="/super-admin/dashboard/settings/smtp" icon={<Mail size={18} strokeWidth={1.5} />} label="SMTP Settings" />
+                    <NavLink href="/super-admin/dashboard/settings/meta" icon={<Activity size={18} strokeWidth={1.5} />} label="Meta Settings" />
+                    <NavLink href="/super-admin/dashboard/settings/automation" icon={<Zap size={18} strokeWidth={1.5} />} label="Automation" />
+                    <NavLink href="/super-admin/dashboard/infra" icon={<Server size={18} strokeWidth={1.5} />} label="Infrastructure" />
 
                     <div className="pt-6 pb-2 px-5">
                         <span className="text-[10px] font-bold text-slate-300 uppercase tracking-[0.2em] block">Entities</span>
                     </div>
-                    <NavLink href="/super-admin/dashboard/vendors" icon={<Users size={18} strokeWidth={1.5} />} label="Vendor Registry" />
-                    <NavLink href="/super-admin/dashboard/partners" icon={<Handshake size={18} strokeWidth={1.5} />} label="Affiliate Network" />
-                    <NavLink href="/super-admin/dashboard/white-label" icon={<ShieldCheck size={18} strokeWidth={1.5} />} label="Platform Partner" />
+                    <NavLink href="/super-admin/dashboard/vendors" icon={<Users size={18} strokeWidth={1.5} />} label="Vendors" />
+                    <NavLink href="/super-admin/dashboard/partners" icon={<Handshake size={18} strokeWidth={1.5} />} label="Partners" />
+                    <NavLink href="/super-admin/dashboard/white-label" icon={<ShieldCheck size={18} strokeWidth={1.5} />} label="White-label" />
 
                     <div className="pt-6 pb-2 px-5">
                         <span className="text-[10px] font-bold text-slate-300 uppercase tracking-[0.2em] block">Monitoring</span>
                     </div>
-                    <NavLink href="/super-admin/dashboard/settings/retention" icon={<Activity size={18} strokeWidth={1.5} />} label="Audit & Retention" />
-                    <NavLink href="/super-admin/dashboard/audit" icon={<Shield size={18} strokeWidth={1.5} />} label="Audit Trail" />
-                    <NavLink href="/super-admin/dashboard/risk" icon={<ShieldAlert size={18} strokeWidth={1.5} />} label="Security & Risk" />
-                    <NavLink href="/super-admin/dashboard/settings" icon={<Settings size={18} strokeWidth={1.5} />} label="Global Settings" />
+                    <NavLink href="/super-admin/dashboard/settings/retention" icon={<Activity size={18} strokeWidth={1.5} />} label="Logs" />
+                    <NavLink href="/super-admin/dashboard/audit" icon={<Shield size={18} strokeWidth={1.5} />} label="Audits" />
+                    <NavLink href="/super-admin/dashboard/risk" icon={<ShieldAlert size={18} strokeWidth={1.5} />} label="Security" />
+                    <NavLink href="/super-admin/dashboard/settings" icon={<Settings size={18} strokeWidth={1.5} />} label="Settings" />
                 </nav>
 
                 <div className="p-6 border-t border-slate-50 bg-slate-50/30">

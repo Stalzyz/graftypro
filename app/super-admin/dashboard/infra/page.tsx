@@ -51,10 +51,10 @@ export default function InfraMonitorPage() {
                 <div className="space-y-1">
                     <div className="flex items-center gap-2 text-[#042f94] font-semibold text-[10px] uppercase tracking-[0.2em] mb-3">
                         <div className="w-1.5 h-1.5 rounded-full bg-[#27954D] animate-pulse" />
-                        Infrastructure Live Matrix
+                        Infrastructure
                     </div>
-                    <h1 className="text-4xl font-semibold text-slate-800 tracking-tight italic">System Instance</h1>
-                    <p className="text-slate-400 text-sm font-medium">Real-time telemetry from the application runtime.</p>
+                    <h1 className="text-4xl font-semibold text-slate-800 tracking-tight">System</h1>
+                    <p className="text-slate-400 text-sm font-medium">Real-time system performance and status.</p>
                 </div>
                 <div className="flex items-center gap-4">
                     <button
@@ -62,11 +62,11 @@ export default function InfraMonitorPage() {
                         className="px-6 py-3 bg-white border border-slate-200 hover:border-[#27954D]/30 rounded-2xl shadow-sm text-xs font-bold text-slate-600 transition-all flex items-center gap-2 active:scale-95"
                     >
                         <RefreshCw size={14} className={isRefreshing ? "animate-spin" : ""} />
-                        Synchronize Matrix
+                        Refresh
                     </button>
                     {lastRefreshed && (
                         <div className="px-5 py-3 bg-slate-50 rounded-2xl text-[10px] font-black text-slate-400 uppercase tracking-widest italic border border-slate-100">
-                            Last sync: {lastRefreshed.toLocaleTimeString()}
+                            Last updated: {lastRefreshed.toLocaleTimeString()}
                         </div>
                     )}
                 </div>
@@ -109,8 +109,8 @@ export default function InfraMonitorPage() {
                 <div className="lg:col-span-2 bg-white rounded-[2.5rem] border border-slate-100 p-8 shadow-sm">
                     <div className="flex items-center justify-between mb-8">
                         <div>
-                            <h3 className="text-sm font-bold text-slate-800 italic uppercase tracking-widest">Database Activity</h3>
-                            <p className="text-[10px] text-slate-400 font-medium">Live metrics from PostgreSQL</p>
+                            <h3 className="text-sm font-bold text-slate-800 italic uppercase tracking-widest">Database</h3>
+                            <p className="text-[10px] text-slate-400 font-medium">Database status and activity.</p>
                         </div>
                     </div>
 
@@ -138,7 +138,7 @@ export default function InfraMonitorPage() {
 
                 {/* Instance Details */}
                 <div className="space-y-6">
-                    <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] px-2 italic">Active Protocols</h3>
+                    <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] px-2 italic">Services</h3>
 
                     <div className="space-y-4">
                         <InfraItem
@@ -178,9 +178,9 @@ export default function InfraMonitorPage() {
                                 <Activity size={20} />
                             </div>
                             <div>
-                                <h4 className="font-bold text-white italic">System Healthy</h4>
+                                <h4 className="font-bold text-white italic">Status</h4>
                                 <p className="text-slate-500 text-[10px] leading-relaxed uppercase tracking-widest mt-1">
-                                    All core services are running normally.
+                                    All system services are operational.
                                 </p>
                             </div>
                             <button
@@ -236,8 +236,8 @@ function InfraItem({ label, value, sub, icon, status }: any) {
                 </div>
             </div>
             <div className={`text-[8px] font-black px-2 py-1 rounded-lg border italic ${status === 'HEALTHY' || status === 'SECURE' || status === 'SYNCED'
-                    ? 'bg-[#27954D]/5 text-[#27954D] border-[#27954D]/10'
-                    : 'bg-blue-50 text-blue-500 border-blue-100'
+                ? 'bg-[#27954D]/5 text-[#27954D] border-[#27954D]/10'
+                : 'bg-blue-50 text-blue-500 border-blue-100'
                 }`}>
                 {status}
             </div>

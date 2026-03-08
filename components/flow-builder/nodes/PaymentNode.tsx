@@ -34,7 +34,7 @@ const PaymentNode = ({ data, selected }: NodeProps) => {
 
                 <div className="flex items-center gap-2 text-[10px] text-blue-600 font-bold bg-blue-50 px-2 py-1 rounded">
                     <div className="w-1 h-1 bg-blue-600 rounded-full animate-ping"></div>
-                    Razorpay Auto-Link
+                    {data.paymentProvider === 'PhonePe' ? 'PhonePe Secure-Pay' : 'Razorpay Auto-Link'}
                 </div>
             </div>
 

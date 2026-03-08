@@ -45,7 +45,7 @@ export default function ThemeControlPage() {
             headers: { "Content-Type": "application/json" }
         });
         if (res.ok) {
-            setMessage("Theme Protocols Synchronized!");
+            setMessage("Theme saved successfully.");
             setTimeout(() => setMessage(""), 3000);
         }
         setSaving(false);
@@ -63,10 +63,10 @@ export default function ThemeControlPage() {
                 <div className="space-y-1">
                     <div className="flex items-center gap-2 text-[#042f94] font-semibold text-[10px] uppercase tracking-[0.2em] mb-3">
                         <Palette size={14} />
-                        Visual Identity System
+                        Branding
                     </div>
-                    <h1 className="text-4xl font-semibold text-slate-800 tracking-tight italic">Theme Control</h1>
-                    <p className="text-slate-400 text-sm font-medium">Design and deploy the platform's global aesthetic.</p>
+                    <h1 className="text-4xl font-semibold text-slate-800 tracking-tight">Theme</h1>
+                    <p className="text-slate-400 text-sm font-medium">Customize platform colors and logos.</p>
                 </div>
                 <div className="flex items-center gap-4">
                     <button className="px-6 py-3 bg-white border border-slate-200 hover:border-slate-300 rounded-2xl shadow-sm text-xs font-bold text-slate-600 transition-all flex items-center gap-2 active:scale-95">
@@ -79,7 +79,7 @@ export default function ThemeControlPage() {
                         className="px-6 py-3 bg-[#042f94] rounded-2xl shadow-lg shadow-[#042f94]/10 text-xs font-bold text-white transition-all flex items-center gap-2 hover:scale-[1.02] active:scale-95 disabled:opacity-50"
                     >
                         {saving ? <RefreshCw className="animate-spin" size={14} /> : <Save size={14} />}
-                        {saving ? "SYNCING..." : "Deploy Changes"}
+                        {saving ? "SAVING..." : "Save Settings"}
                     </button>
                 </div>
             </header>
@@ -99,7 +99,7 @@ export default function ThemeControlPage() {
                             <div className="w-10 h-10 rounded-2xl bg-blue-500/10 flex items-center justify-center text-blue-500">
                                 <Layout size={20} />
                             </div>
-                            <h3 className="font-bold text-slate-800 italic uppercase tracking-widest text-sm">Asset Repository (Logos)</h3>
+                            <h3 className="font-bold text-slate-800 italic uppercase tracking-widest text-sm">Logos</h3>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -148,18 +148,18 @@ export default function ThemeControlPage() {
                             <div className="w-10 h-10 rounded-2xl bg-[#27954D]/10 flex items-center justify-center text-[#27954D]">
                                 <Sparkles size={20} />
                             </div>
-                            <h3 className="font-bold text-slate-800 italic uppercase tracking-widest text-sm">Color Orchestration</h3>
+                            <h3 className="font-bold text-slate-800 italic uppercase tracking-widest text-sm">Colors</h3>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                             <ColorInput
-                                label="Primary Brand Core"
+                                label="Primary Color"
                                 value={config.primary_color}
                                 onChange={(val: string) => setConfig({ ...config, primary_color: val })}
                                 description="Dominant color for CTA, primary icons and headers."
                             />
                             <ColorInput
-                                label="Secondary Accent"
+                                label="Secondary Color"
                                 value={config.secondary_color}
                                 onChange={(val: string) => setConfig({ ...config, secondary_color: val })}
                                 description="Used for secondary interactions and background shades."
@@ -171,7 +171,7 @@ export default function ThemeControlPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                         <section className="bg-white rounded-[2.5rem] border border-slate-100 p-8 shadow-sm">
                             <h3 className="font-bold text-slate-800 italic uppercase tracking-widest text-[10px] mb-6 flex items-center gap-2">
-                                <Type size={14} /> Typography Matrix
+                                <Type size={14} /> Typography
                             </h3>
                             <div className="space-y-4">
                                 <FontOption label="Primary Display" value="Outfit" />
@@ -198,7 +198,7 @@ export default function ThemeControlPage() {
                     <div className="bg-slate-900 rounded-[2.5rem] p-8 shadow-2xl relative overflow-hidden group">
                         <div className="absolute top-0 right-0 w-32 h-32 blur-[80px] opacity-20" style={{ backgroundColor: config.primary_color }} />
                         <h3 className="text-white font-bold italic uppercase tracking-widest text-xs mb-8 flex items-center gap-2">
-                            <Eye size={14} /> Real-time Render
+                            <Eye size={14} /> Preview
                         </h3>
 
                         <div className="space-y-6">

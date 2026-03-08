@@ -1,0 +1,107 @@
+#!/usr/bin/expect -f
+# ============================================================
+# 🔧 FLOW ENGINE PERMANENT FIX — Targeted Deploy
+# ============================================================
+# Syncs ONLY the 6 modified flow engine files, then rebuilds.
+# Run from your Mac: expect ENGINE_DEPLOY.exp
+# ============================================================
+
+set VPS_PASS "Photoshop09@"
+set VPS_HOST "root@72.61.231.187"
+set REMOTE_PATH "/root/wabot_bsp"
+set LOCAL_PATH "/Users/stalinkumar/Downloads/Wabot_BSP"
+set timeout 600
+
+puts "\n╔══════════════════════════════════════════════════════╗"
+puts "║  🔧 Flow Engine Fix — Targeted Deployment            ║"
+puts "╚══════════════════════════════════════════════════════╝\n"
+
+# ─── STEP 1: Upload only the 6 changed files ──────────────────
+puts "📡 \[1/3\] Uploading fixed engine files to VPS..."
+
+spawn rsync -az -v \
+    -e "ssh -o StrictHostKeyChecking=no" \
+    "$LOCAL_PATH/app/api/flows/\[id\]/route.ts" \
+    $VPS_HOST:$REMOTE_PATH/app/api/flows/\[id\]/
+
+expect {
+    "assword:" { send "$VPS_PASS\r"; exp_continue }
+    eof
+}
+
+spawn rsync -az -v \
+    -e "ssh -o StrictHostKeyChecking=no" \
+    "$LOCAL_PATH/lib/engine/session-manager.ts" \
+    "$LOCAL_PATH/lib/engine/flow-runner.ts" \
+    "$LOCAL_PATH/lib/engine/flow-executor.ts" \
+    $VPS_HOST:$REMOTE_PATH/lib/engine/
+
+expect {
+    "assword:" { send "$VPS_PASS\r"; exp_continue }
+    eof
+}
+
+spawn rsync -az -v \
+    -e "ssh -o StrictHostKeyChecking=no" \
+    "$LOCAL_PATH/components/flow-builder/FlowPropertiesPanel.tsx" \
+    $VPS_HOST:$REMOTE_PATH/components/flow-builder/
+
+expect {
+    "assword:" { send "$VPS_PASS\r"; exp_continue }
+    eof
+}
+
+spawn rsync -az -v \
+    -e "ssh -o StrictHostKeyChecking=no" \
+    "$LOCAL_PATH/app/dashboard/chat/page.tsx" \
+    $VPS_HOST:$REMOTE_PATH/app/dashboard/chat/
+
+expect {
+    "assword:" { send "$VPS_PASS\r"; exp_continue }
+    eof { puts "✅ All files uploaded." }
+}
+
+sleep 1
+
+# ─── STEP 2: Remote Docker rebuild ────────────────────────────
+puts "\n🔧 \[2/3\] Rebuilding Docker containers on VPS..."
+
+spawn ssh -o StrictHostKeyChecking=no $VPS_HOST \
+"cd $REMOTE_PATH && \
+echo '🔨 Building...' && \
+docker compose -f docker-compose.prod.yml build web && \
+echo '♻️ Restarting web container...' && \
+docker compose -f docker-compose.prod.yml restart web && \
+sleep 8 && \
+echo '✅ Health check...' && \
+HTTP=\$(curl -s -o /dev/null -w '%{http_code}' http://localhost:3001 || echo 000) && \
+echo \"App HTTP: \$HTTP\" && \
+echo 'DEPLOY COMPLETE'"
+
+expect {
+    "assword:" {
+        send "$VPS_PASS\r"
+        exp_continue
+    }
+    "Permission denied" {
+        puts "\n❌ SSH Authentication failed."
+        exit 1
+    }
+    "DEPLOY COMPLETE" {
+        puts "\n╔══════════════════════════════════════════════════════╗"
+        puts "║  🎉 FLOW ENGINE FIXES ARE NOW LIVE!                  ║"
+        puts "║  🌐 http://72.61.231.187:3001                        ║"
+        puts "║                                                      ║"
+        puts "║  ⚠️  ACTION REQUIRED: Open your Flow Builder and     ║"
+        puts "║     re-SAVE each flow to sync trigger keywords.      ║"
+        puts "╚══════════════════════════════════════════════════════╝"
+        exp_continue
+    }
+    timeout {
+        puts "\n❌ Deploy timed out."
+        exit 1
+    }
+    eof {
+        puts "\n✅ Done."
+    }
+}

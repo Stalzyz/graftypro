@@ -45,7 +45,7 @@ export default function BrandingPanel() {
             headers: { "Content-Type": "application/json" }
         });
         if (res.ok) {
-            setMessage("Configuration Synchronized Successfully!");
+            setMessage("Branding saved successfully.");
             setTimeout(() => setMessage(""), 3000);
         }
         setSaving(false);
@@ -65,9 +65,9 @@ export default function BrandingPanel() {
                         <div className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center shadow-lg">
                             <PaletteIcon className="text-white" size={20} />
                         </div>
-                        <h1 className="text-3xl font-black text-slate-900 tracking-tight">Platform Branding</h1>
+                        <h1 className="text-3xl font-black text-slate-900 tracking-tight">Branding</h1>
                     </div>
-                    <p className="text-slate-400 font-medium text-sm">Control the global visual identity and system-wide module toggles.</p>
+                    <p className="text-slate-400 font-medium text-sm">Manage platform branding and modules.</p>
                 </div>
 
                 <button
@@ -76,7 +76,7 @@ export default function BrandingPanel() {
                     className="px-8 py-4 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest flex items-center gap-3 hover:bg-black transition-all shadow-xl shadow-slate-200 active:scale-95 disabled:opacity-50"
                 >
                     {saving ? <RefreshCw className="animate-spin" size={16} /> : <Save size={16} />}
-                    {saving ? "SYNCING..." : "SAVE CHANGES"}
+                    {saving ? "SAVING..." : "SAVE SETTINGS"}
                 </button>
             </header>
 
@@ -93,7 +93,7 @@ export default function BrandingPanel() {
                     <section className="bg-white rounded-[32px] border border-slate-100 p-10 shadow-sm space-y-8">
                         <div className="flex items-center gap-3 border-b border-slate-50 pb-6">
                             <Globe className="text-slate-400" size={18} />
-                            <h2 className="text-lg font-black text-slate-900 uppercase tracking-tight">Core Identity</h2>
+                            <h2 className="text-lg font-black text-slate-900 uppercase tracking-tight">Platform</h2>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -129,7 +129,7 @@ export default function BrandingPanel() {
                     <section className="bg-white rounded-[32px] border border-slate-100 p-10 shadow-sm space-y-8">
                         <div className="flex items-center gap-3 border-b border-slate-50 pb-6">
                             <PaletteIcon className="text-slate-400" size={18} />
-                            <h2 className="text-lg font-black text-slate-900 uppercase tracking-tight">Visual Theme</h2>
+                            <h2 className="text-lg font-black text-slate-900 uppercase tracking-tight">Theme</h2>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -157,14 +157,14 @@ export default function BrandingPanel() {
                     <section className="bg-slate-900 rounded-[32px] p-10 text-white space-y-8 shadow-2xl">
                         <div className="flex items-center gap-3 border-b border-white/5 pb-6">
                             <Shield className="text-blue-400" size={18} />
-                            <h2 className="text-sm font-black uppercase tracking-widest">Module Engine</h2>
+                            <h2 className="text-sm font-black uppercase tracking-widest">Modules</h2>
                         </div>
 
                         <div className="space-y-4">
-                            <ModuleToggle label="Commerce Hub" active={config.features?.commerce} onChange={(v: boolean) => setConfig({ ...config, features: { ...config.features, commerce: v } })} />
-                            <ModuleToggle label="Drip Automation" active={config.features?.drips} onChange={(v: boolean) => setConfig({ ...config, features: { ...config.features, drips: v } })} />
+                            <ModuleToggle label="Commerce" active={config.features?.commerce} onChange={(v: boolean) => setConfig({ ...config, features: { ...config.features, commerce: v } })} />
+                            <ModuleToggle label="Automation" active={config.features?.drips} onChange={(v: boolean) => setConfig({ ...config, features: { ...config.features, drips: v } })} />
                             <ModuleToggle label="Flow Builder" active={config.features?.flows} onChange={(v: boolean) => setConfig({ ...config, features: { ...config.features, flows: v } })} />
-                            <ModuleToggle label="Platform APIs" active={config.features?.api} onChange={(v: boolean) => setConfig({ ...config, features: { ...config.features, api: v } })} />
+                            <ModuleToggle label="API" active={config.features?.api} onChange={(v: boolean) => setConfig({ ...config, features: { ...config.features, api: v } })} />
                         </div>
                     </section>
 

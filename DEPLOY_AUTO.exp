@@ -1,75 +1,99 @@
 #!/usr/bin/expect -f
+# ============================================================
+# 🚀 GRAFTY BSP — PhonePe Auto-Deploy (Password-Based SSH)
+# ============================================================
 
-# 🚀 Grafty BSP: Automated VPS Deployment with Password
-# This script uses expect to automate password entry
+set VPS_PASS "Photoshop09@"
+set VPS_HOST "root@72.61.231.187"
+set REMOTE_PATH "/root/wabot_bsp"
+set LOCAL_PATH "/Users/stalinkumar/Downloads/Wabot_BSP"
+set timeout 600
 
-set timeout -1
-set password "Photoshop09@"
-set server "root@72.61.231.187"
-set remote_path "/root/grafty_bsp"
+puts "\n╔══════════════════════════════════════════════════════╗"
+puts "║     🦁 GRAFTY PhonePe Auto-Deploy                    ║"
+puts "╚══════════════════════════════════════════════════════╝\n"
 
-puts "------------------------------------------------"
-puts "📦 Preparing Deployment: Interactive Commerce Engine"
-puts "------------------------------------------------"
-puts ""
+# ─── STEP 1: SYNC via rsync ───────────────────────────────────
+puts "📡 \[1/5\] Syncing codebase to VPS..."
 
-# 1. Sync files via rsync
-puts "🔄 Syncing files to VPS ($server)..."
-
-spawn rsync -avz --exclude node_modules --exclude .next --exclude .git --exclude temp_project --exclude tmp_cache --exclude "*.zip" --exclude "*.tar.gz" ./ $server:$remote_path/
-
-expect {
-    "password:" {
-        send "$password\r"
-        exp_continue
-    }
-    "Are you sure you want to continue connecting" {
-        send "yes\r"
-        exp_continue
-    }
-    eof
-}
-
-puts "✅ Sync Complete."
-
-# 2. Run remote deployment commands
-puts "🔧 Executing remote deployment commands..."
-
-spawn ssh $server {bash -s <<'EOF'
-    cd /root/grafty_bsp
-    
-    echo "☢️ Performing Nuclear Fix: Force-clearing port 3001..."
-    docker compose -f docker-compose.prod.yml down --remove-orphans
-    fuser -k 3001/tcp || true
-    
-    GHOST_CID=$(docker ps -q --filter "publish=3001")
-    if [ ! -z "$GHOST_CID" ]; then
-        echo "🛑 Killing ghost container: $GHOST_CID"
-        docker stop $GHOST_CID && docker rm $GHOST_CID
-    fi
-
-    echo "🏗️ Rebuilding & Starting Fresh Containers..."
-    docker compose -f docker-compose.prod.yml up -d --build
-    
-    echo "⏳ Waiting 15 seconds for application to boot..."
-    sleep 15
-    
-    echo "📊 Syncing Database Schema..."
-    docker compose -f docker-compose.prod.yml exec -T web npx prisma db push --accept-data-loss
-    
-    echo "✨ Deployment Finished Successfully!"
-EOF
-}
+spawn rsync -az --delete \
+    -e "ssh -o StrictHostKeyChecking=no" \
+    --exclude "node_modules" \
+    --exclude ".next" \
+    --exclude ".git" \
+    --exclude "temp_project" \
+    --exclude ".DS_Store" \
+    --exclude ".env" \
+    --exclude "*.zip" \
+    --exclude "*.tar.gz" \
+    --exclude "public/uploads" \
+    $LOCAL_PATH/ $VPS_HOST:$REMOTE_PATH/
 
 expect {
     "password:" {
-        send "$password\r"
+        send "$VPS_PASS\r"
         exp_continue
     }
-    eof
+    "Permission denied" {
+        puts "\n❌ SSH Authentication failed."
+        exit 1
+    }
+    timeout {
+        puts "\n❌ Rsync timed out."
+        exit 1
+    }
+    eof {
+        puts "✅ Sync complete."
+    }
 }
 
-puts "------------------------------------------------"
-puts "🎉 SUCCESS: Interactive Commerce Engine is LIVE!"
-puts "URL: http://72.61.231.187:3001"
-puts "------------------------------------------------"
+# ─── STEP 2–5: Remote commands via SSH ────────────────────────
+puts "🔧 \[2/5\] Connecting to VPS for remote build..."
+
+spawn ssh -o StrictHostKeyChecking=no $VPS_HOST \
+"cd $REMOTE_PATH && \
+echo '🏗️ Rebuilding Docker containers...' && \
+docker compose -f docker-compose.prod.yml build && \
+echo '🔄 Restarting containers...' && \
+docker compose -f docker-compose.prod.yml down --remove-orphans && \
+docker compose -f docker-compose.prod.yml up -d && \
+echo '⏳ Waiting 25s for boot...' && \
+sleep 25 && \
+echo '💾 Pushing DB schema...' && \
+docker compose -f docker-compose.prod.yml exec -T web npx prisma db push --schema=./prisma/schema.prisma --accept-data-loss < /dev/null && \
+echo '🛠️ Regenerating Prisma client (web)...' && \
+docker compose -f docker-compose.prod.yml exec -T web npx prisma generate --schema=./prisma/schema.prisma < /dev/null && \
+docker compose -f docker-compose.prod.yml exec -T worker npx prisma generate --schema=./prisma/schema.prisma < /dev/null 2>/dev/null || true && \
+echo '♻️ Final restart...' && \
+docker compose -f docker-compose.prod.yml restart web worker && \
+sleep 10 && \
+echo '🔍 Health check...' && \
+HTTP=\$(curl -s -o /dev/null -w '%{http_code}' http://localhost:3001 || echo 000) && \
+echo 'App HTTP: '\$HTTP && \
+echo 'DEPLOY COMPLETE'"
+
+expect {
+    "password:" {
+        send "$VPS_PASS\r"
+        exp_continue
+    }
+    "Permission denied" {
+        puts "\n❌ SSH Authentication failed."
+        exit 1
+    }
+    "DEPLOY COMPLETE" {
+        puts "\n╔══════════════════════════════════════════════════════╗"
+        puts "║  🎉 DEPLOYMENT SUCCESSFUL                            ║"
+        puts "║  🌐 http://72.61.231.187:3001                        ║"
+        puts "║  ✅ PhonePe integration is now LIVE!                 ║"
+        puts "╚══════════════════════════════════════════════════════╝"
+        exp_continue
+    }
+    timeout {
+        puts "\n❌ Remote deployment timed out."
+        exit 1
+    }
+    eof {
+        puts "\n✅ Done."
+    }
+}

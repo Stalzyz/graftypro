@@ -1,0 +1,12 @@
+#!/usr/bin/expect -f
+set timeout 30
+spawn ssh -o StrictHostKeyChecking=no root@72.61.231.187
+expect "password:"
+send "Photoshop09@\r"
+expect "# "
+send "grep 'Payment Gateway' /var/www/wabot/app/super-admin/dashboard/layout.tsx\r"
+expect "# "
+send "cat /var/www/wabot/.env | grep SUPER_ADMIN\r"
+expect "# "
+send "exit\r"
+expect eof

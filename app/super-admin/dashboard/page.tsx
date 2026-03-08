@@ -41,7 +41,7 @@ export default function SuperAdminDashboard() {
             <div className="flex items-center justify-center min-h-[60vh]">
                 <div className="text-center">
                     <div className="w-8 h-8 border-2 border-[#27954D] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-                    <p className="text-slate-400 text-xs font-medium tracking-wide">Syncing Core Infrastructure...</p>
+                    <p className="text-slate-400 text-xs font-medium tracking-wide">Loading...</p>
                 </div>
             </div>
         );
@@ -54,10 +54,10 @@ export default function SuperAdminDashboard() {
                 <div className="space-y-1">
                     <div className="flex items-center gap-2 text-[#042f94] font-semibold text-[10px] uppercase tracking-[0.2em] mb-3">
                         <div className="w-1.5 h-1.5 rounded-full bg-[#27954D]" />
-                        Operations Overview
+                        Overview
                     </div>
-                    <h1 className="text-4xl font-semibold text-slate-800 tracking-tight">Platform Console</h1>
-                    <p className="text-slate-400 text-sm font-medium">Real-time performance and ecosystem health metrics.</p>
+                    <h1 className="text-4xl font-semibold text-slate-800 tracking-tight">Dashboard</h1>
+                    <p className="text-slate-400 text-sm font-medium">Platform performance and health metrics.</p>
                 </div>
                 <div className="flex items-center gap-4">
                     <div className="hidden lg:flex flex-col items-end mr-4">
@@ -68,7 +68,7 @@ export default function SuperAdminDashboard() {
                         <Filter size={14} strokeWidth={2} /> 24 Hours
                     </button>
                     <button className="px-5 py-2.5 bg-[#27954D] hover:bg-[#042f94] rounded-2xl shadow-lg shadow-[#27954D]/10 text-xs font-bold text-white transition-all">
-                        Deep Audit
+                        Audit
                     </button>
                 </div>
             </header>
@@ -77,8 +77,8 @@ export default function SuperAdminDashboard() {
             {stats?.riskAlerts?.length > 0 && (
                 <section className="animate-slide-in">
                     <div className="flex items-center gap-2 mb-6 px-1">
-                        <ShieldAlert className="text-amber-500" size={16} strokeWidth={2.5} />
-                        <h2 className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Administrative Priorities</h2>
+                        < ShieldAlert className="text-amber-500" size={16} strokeWidth={2.5} />
+                        <h2 className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Alerts</h2>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                         {stats.riskAlerts.map((alert: any) => (
@@ -111,7 +111,7 @@ export default function SuperAdminDashboard() {
             {/* Core Analytics Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-7">
                 <KPICard
-                    label="Active Partners"
+                    label="Active Vendors"
                     value={stats?.vendorsCount || 0}
                     trend="+12.5%"
                     icon={<Users size={22} strokeWidth={1.5} />}
@@ -125,7 +125,7 @@ export default function SuperAdminDashboard() {
                     color="teal"
                 />
                 <KPICard
-                    label="Ecosystem Revenue"
+                    label="Total Revenue"
                     value={`₹${stats?.totalRevenue?.toLocaleString() || 0}`}
                     trend="+18%"
                     icon={<IndianRupee size={22} strokeWidth={1.5} />}
@@ -133,9 +133,9 @@ export default function SuperAdminDashboard() {
                     highlight={true}
                 />
                 <KPICard
-                    label="Uptime Efficiency"
+                    label="System Uptime"
                     value="99.8%"
-                    trend="Optimal"
+                    trend="Healthy"
                     icon={<Activity size={22} strokeWidth={1.5} />}
                     color="blue"
                 />
@@ -146,10 +146,10 @@ export default function SuperAdminDashboard() {
                 <div className="lg:col-span-2 space-y-6">
                     <div className="flex items-center justify-between px-1">
                         <div className="flex items-center gap-2">
-                            <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Recent Enrollments</h3>
+                            <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Recent Vendors</h3>
                         </div>
                         <Link href="/super-admin/dashboard/vendors" className="text-[#042f94] hover:text-[#27954D] transition-colors text-[10px] font-bold uppercase tracking-wider flex items-center gap-2">
-                            Global Directory <ExternalLink size={12} strokeWidth={2.5} />
+                            View All <ExternalLink size={12} strokeWidth={2.5} />
                         </Link>
                     </div>
 
@@ -157,9 +157,9 @@ export default function SuperAdminDashboard() {
                         <table className="w-full text-left">
                             <thead>
                                 <tr className="bg-slate-50/50 text-slate-400 text-[9px] font-bold uppercase tracking-[0.15em]">
-                                    <th className="px-8 py-5">Organization Entity</th>
-                                    <th className="px-8 py-5">Tier</th>
-                                    <th className="px-8 py-5">Provisioning Date</th>
+                                    <th className="px-8 py-5">Company</th>
+                                    <th className="px-8 py-5">Plan</th>
+                                    <th className="px-8 py-5">Joined</th>
                                     <th className="px-8 py-5 text-right pr-10">Actions</th>
                                 </tr>
                             </thead>
@@ -195,55 +195,55 @@ export default function SuperAdminDashboard() {
 
                 {/* Operations Sidebar */}
                 <div className="space-y-8">
-                    <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] px-1">Growth Infrastructure</h3>
+                    <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] px-1">Growth</h3>
                     <QuickActionCard
-                        title="Landing Page CMS"
-                        description="Direct node content control"
+                        title="Landing Page"
+                        description="Manage landing page content"
                         href="/super-admin/dashboard/landing-page"
                         icon={<Globe size={18} strokeWidth={1.5} />}
                         color="blue"
                     />
 
-                    <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] px-1">Network Management</h3>
+                    <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] px-1">System</h3>
 
                     <QuickActionCard
-                        title="RBAC Matrix"
-                        description="Role & permission control"
+                        title="Permissions"
+                        description="Manage admin roles"
                         href="/super-admin/dashboard/settings/rbac"
                         icon={<ShieldCheck size={18} strokeWidth={1.5} />}
                         color="indigo"
                     />
                     <QuickActionCard
-                        title="Automation Engine"
-                        description="Job scheduling & triggers"
+                        title="Automation"
+                        description="Manage automated tasks"
                         href="/super-admin/dashboard/settings/automation"
                         icon={<Zap size={18} strokeWidth={2} />}
                         color="green"
                     />
                     <QuickActionCard
-                        title="SMTP Matrix"
-                        description="Email relay infrastructure"
+                        title="Email Settings"
+                        description="Configure SMTP servers"
                         href="/super-admin/dashboard/settings/smtp"
                         icon={<Mail size={18} strokeWidth={1.5} />}
                         color="blue"
                     />
                     <QuickActionCard
-                        title="Audit & Retention"
-                        description="Data lifecycle policies"
+                        title="Logs"
+                        description="Manage data logs"
                         href="/super-admin/dashboard/settings/retention"
                         icon={<Activity size={18} strokeWidth={1.5} />}
                         color="indigo"
                     />
                     <QuickActionCard
-                        title="System API Keys"
-                        description="Provision master access"
+                        title="API Keys"
+                        description="Manage platform API keys"
                         href="/super-admin/dashboard/settings/api-keys"
                         icon={<Radio size={18} strokeWidth={1.5} />}
                         color="green"
                     />
                     <QuickActionCard
-                        title="Revenue Core"
-                        description="Financial settlement audit"
+                        title="Revenue"
+                        description="Audit platform revenue"
                         href="/super-admin/dashboard/finance/revenue"
                         icon={<IndianRupee size={18} strokeWidth={1.5} />}
                         color="emerald"
@@ -257,11 +257,11 @@ export default function SuperAdminDashboard() {
                                 <Activity size={20} />
                             </div>
                             <div className="space-y-1">
-                                <h4 className="font-semibold text-slate-800">Ecosystem Health</h4>
-                                <p className="text-slate-400 text-xs leading-relaxed">Infrastructure load is at 14.2%. Global nodes are synchronized and ready for scale.</p>
+                                <h4 className="font-semibold text-slate-800">System Health</h4>
+                                <p className="text-slate-400 text-xs leading-relaxed">System is running at 14.2% load. All nodes are healthy.</p>
                             </div>
                             <button className="w-full py-3 bg-slate-50 hover:bg-[#27954D]/5 rounded-xl text-[10px] font-bold text-slate-600 tracking-widest uppercase transition-all">
-                                Protocol Status
+                                Check Status
                             </button>
                         </div>
                     </div>

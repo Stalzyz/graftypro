@@ -18,6 +18,7 @@ export async function GET(req: Request) {
         if (account && account.status === 'CONNECTED') {
             return NextResponse.json({
                 status: 'CONNECTED',
+                workspaceId: user.workspaceId,
                 account: {
                     phone_number: account.phone_number,
                     display_name: account.display_name,
@@ -38,7 +39,7 @@ export async function GET(req: Request) {
             });
         }
 
-        return NextResponse.json({ status: 'DISCONNECTED' });
+        return NextResponse.json({ status: 'DISCONNECTED', workspaceId: user.workspaceId });
 
     } catch (e) {
         return NextResponse.json({ error: "Internal Error" }, { status: 500 });

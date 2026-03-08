@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "../../../../lib/db";
-import { decrypt } from "../../../../lib/security/encryption";
+import { decrypt, encrypt } from "../../../../lib/security/encryption";
 import { WhatsAppMediaDownloader } from "../../../../lib/whatsapp/media-downloader";
 
 export const dynamic = "force-dynamic";
@@ -208,6 +208,102 @@ export async function POST(req: Request) {
                     .catch(e => console.error("[Webhook] FlowEngine error:", e));
             } catch (flowError) {
                 console.error("Flow Trigger Error:", flowError);
+            }
+        }
+
+        // ── Handle Account Update (Hosted Embedded Signup) ─────────────
+        if (changes?.field === "account_update" && value?.event === "PARTNER_ADDED") {
+            const partnerWabaId = value.waba_id;
+            const businessPortfolioId = value.business_portfolio_id;
+            const phoneId = value.phone_number_id;
+
+            console.log(`[Webhook] 🚀 PARTNER_ADDED Event for WABA: ${partnerWabaId}`);
+
+            // 1. Fetch System Config to get System Token & App Secret
+            const { SystemConfigService } = await import("../../../../lib/services/system-config-service");
+            const secrets = await SystemConfigService.getDecryptedSecrets();
+
+            if (!secrets.meta_app_secret || !secrets.meta_system_token) {
+                console.error("Missing Super Admin Meta Secrets for Token Exchange.");
+                return NextResponse.json({ status: "error_missing_secrets" });
+            }
+
+            // 2. Generate HMAC-SHA256 App Secret Proof
+            const crypto = await import("crypto");
+            const appSecretProof = crypto
+                .createHmac("sha256", secrets.meta_app_secret)
+                .update(secrets.meta_system_token)
+                .digest("hex");
+
+            try {
+                const axios = (await import("axios")).default;
+
+                // 3. Exchange for Business Token
+                const tokenResponse = await axios.post(`https://graph.facebook.com/v20.0/${businessPortfolioId}/system_user_access_tokens`, null, {
+                    params: {
+                        appsecret_proof: appSecretProof,
+                        fetch_only: true
+                    },
+                    headers: {
+                        Authorization: `Bearer ${secrets.meta_system_token}`
+                    }
+                });
+
+                const businessToken = tokenResponse.data.access_token;
+
+                if (!businessToken) throw new Error("No token returned from Meta.");
+
+                // 4. Fetch Phone Number Details to get Display Name & actual Phone
+                const phoneRes = await axios.get(`https://graph.facebook.com/v20.0/${partnerWabaId}/phone_numbers`, {
+                    params: { access_token: businessToken }
+                });
+
+                const phoneData = phoneRes.data.data?.find((p: any) => p.id === phoneId) || phoneRes.data.data?.[0];
+                const displayPhone = phoneData?.display_phone_number || "Unknown";
+                const displayName = phoneData?.verified_name || "WhatsApp Business";
+
+                console.log(`Successfully acquired token for ${displayPhone} (${phoneId})`);
+
+                // 5. Store in Database
+                // Note: Since the webhook doesn't inherently contain the Workspace ID,
+                // we place it in a PENDING state or auto-match if we passed state via a custom mechanism.
+                // For now, we will create it under the 'Pending Connections' workspace.
+                // The frontend will "claim" this account in the UI.
+
+                let pendingWorkspace = await prisma.workspace.findFirst({ where: { name: "Pending Connections" } });
+                if (!pendingWorkspace) {
+                    pendingWorkspace = await prisma.workspace.create({
+                        data: { name: "Pending Connections", status: "SUSPENDED" }
+                    });
+                }
+
+                await prisma.whatsAppAccount.upsert({
+                    where: { phone_number_id: phoneId },
+                    update: {
+                        access_token: encrypt(businessToken),
+                        waba_id: partnerWabaId,
+                        phone_number: displayPhone,
+                        display_name: displayName,
+                        business_id: businessPortfolioId,
+                        integration_status: "ACTIVE",
+                        status: "CONNECTED"
+                    },
+                    create: {
+                        workspace_id: pendingWorkspace.id,
+                        phone_number_id: phoneId,
+                        access_token: encrypt(businessToken),
+                        waba_id: partnerWabaId,
+                        phone_number: displayPhone,
+                        display_name: displayName,
+                        business_id: businessPortfolioId,
+                        integration_status: "ACTIVE",
+                        status: "CONNECTED"
+                    }
+                });
+
+                console.log(`[Webhook] ✅ Successfully Provisioned WABA ${partnerWabaId}`);
+            } catch (exchangeError: any) {
+                console.error("[Webhook] Token Exchange Failed:", exchangeError.response?.data || exchangeError.message);
             }
         }
 

@@ -30,6 +30,7 @@ export default function MetaArchitecture() {
         meta_credit_line_id: "",
         meta_onboarding_mode: "TECH_PROVIDER",
         meta_config_id: "",
+        meta_phone_id: "",
     });
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -75,7 +76,7 @@ export default function MetaArchitecture() {
                 body: JSON.stringify(payload),
             });
             if (res.ok) {
-                setMessage("Meta Infrastructure Synchronized Successfully!");
+                setMessage("Settings saved successfully.");
                 setTimeout(() => setMessage(""), 5000);
                 fetchConfig();
             } else {
@@ -102,10 +103,10 @@ export default function MetaArchitecture() {
                 <div>
                     <div className="flex items-center gap-2 text-[#27954D] font-semibold text-[10px] uppercase tracking-[0.2em] mb-3">
                         <Activity size={14} />
-                        Global API Bridge
+                        Meta
                     </div>
-                    <h1 className="text-4xl font-semibold text-slate-800 tracking-tight italic">Meta Architecture</h1>
-                    <p className="text-slate-400 text-sm font-medium">Control unified Meta App credentials and system-wide WABA routing.</p>
+                    <h1 className="text-4xl font-semibold text-slate-800 tracking-tight">Meta Settings</h1>
+                    <p className="text-slate-400 text-sm font-medium">Manage Meta App and Business settings.</p>
                 </div>
                 <div className="flex gap-4">
                     <button
@@ -113,7 +114,7 @@ export default function MetaArchitecture() {
                         className="px-6 py-4 bg-white border border-slate-100 text-slate-900 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] flex items-center gap-2 hover:bg-slate-50 transition-all active:scale-95 shadow-sm"
                     >
                         {showSecrets ? <EyeOff size={14} /> : <Eye size={14} />}
-                        {showSecrets ? "Conceal Secrets" : "Audit Secrets"}
+                        {showSecrets ? "Hide" : "Show"}
                     </button>
                     <button
                         onClick={handleSave}
@@ -121,7 +122,7 @@ export default function MetaArchitecture() {
                         className="px-8 py-4 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] flex items-center gap-2 hover:bg-black transition-all shadow-xl shadow-slate-200 active:scale-95 disabled:opacity-50"
                     >
                         {saving ? <RefreshCw className="animate-spin" size={14} /> : <Save size={14} />}
-                        {saving ? "SYNCING..." : "SYNC INFRASTRUCTURE"}
+                        {saving ? "SAVING..." : "SAVE SETTINGS"}
                     </button>
                 </div>
             </header>
@@ -142,8 +143,8 @@ export default function MetaArchitecture() {
                                 <Key size={20} />
                             </div>
                             <div>
-                                <h2 className="text-xl font-black text-slate-900 tracking-tight">App Context</h2>
-                                <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">Master Facebook Developer Credentials</p>
+                                <h2 className="text-xl font-black text-slate-900 tracking-tight">App Credentials</h2>
+                                <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">Meta App basic details</p>
                             </div>
                         </div>
 
@@ -174,13 +175,13 @@ export default function MetaArchitecture() {
                         </div>
 
                         <div className="space-y-2 pt-4">
-                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Meta Embedded Signup Config ID</label>
+                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Configuration ID</label>
                             <input
                                 type="text"
                                 value={config.meta_config_id || ""}
                                 onChange={(e) => setConfig({ ...config, meta_config_id: e.target.value })}
                                 className="w-full bg-slate-50 border border-transparent rounded-2xl px-6 py-4 text-sm font-bold text-slate-900 focus:bg-white focus:border-blue-100 focus:outline-none transition-all"
-                                placeholder="The 'Config ID' from your Meta App's WhatsApp Setup page"
+                                placeholder="The 'Config ID' from your Meta App"
                             />
                         </div>
                     </section>
@@ -191,8 +192,8 @@ export default function MetaArchitecture() {
                                 <Zap size={20} />
                             </div>
                             <div>
-                                <h2 className="text-xl font-black text-slate-900 tracking-tight">System Access</h2>
-                                <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">Permanent Tokens & Auth Bridge</p>
+                                <h2 className="text-xl font-black text-slate-900 tracking-tight">Tokens</h2>
+                                <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">Meta system user tokens</p>
                             </div>
                         </div>
 
@@ -242,13 +243,13 @@ export default function MetaArchitecture() {
                         <div className="absolute top-0 right-0 w-32 h-32 bg-blue-600/20 blur-[60px]" />
 
                         <div className="space-y-2 relative z-10">
-                            <h3 className="text-xl font-black italic tracking-tight">Meta Hierarchy</h3>
-                            <p className="text-slate-400 text-xs font-medium">Global identifiers for shared billing.</p>
+                            <h3 className="text-xl font-black italic tracking-tight">Identifiers</h3>
+                            <p className="text-slate-400 text-xs font-medium">Business and WABA IDs</p>
                         </div>
 
                         <div className="space-y-6 relative z-10">
                             <div className="space-y-2">
-                                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Master Business ID</label>
+                                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Business ID</label>
                                 <input
                                     type="text"
                                     value={config.meta_business_id || ""}
@@ -257,11 +258,20 @@ export default function MetaArchitecture() {
                                 />
                             </div>
                             <div className="space-y-2">
-                                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Master WABA ID</label>
+                                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">WABA ID</label>
                                 <input
                                     type="text"
                                     value={config.meta_waba_id || ""}
                                     onChange={(e) => setConfig({ ...config, meta_waba_id: e.target.value })}
+                                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-xs font-bold text-slate-700 outline-none focus:bg-white/10 focus:border-blue-500 transition-all"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Phone ID</label>
+                                <input
+                                    type="text"
+                                    value={config.meta_phone_id || ""}
+                                    onChange={(e) => setConfig({ ...config, meta_phone_id: e.target.value })}
                                     className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-xs font-bold text-slate-700 outline-none focus:bg-white/10 focus:border-blue-500 transition-all"
                                 />
                             </div>

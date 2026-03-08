@@ -82,8 +82,8 @@ export default function FinanceDashboard() {
                             <Landmark className="text-white" size={24} />
                         </div>
                         <div>
-                            <h1 className="text-3xl font-black text-slate-900 tracking-tight italic">Financial Ledger v2.0</h1>
-                            <p className="text-slate-400 font-medium text-sm italic">Immutable record of global settlement and GST compliance.</p>
+                            <h1 className="text-3xl font-black text-slate-900 tracking-tight">Finance</h1>
+                            <p className="text-slate-400 font-medium text-sm italic">Manage platform revenue and taxes.</p>
                         </div>
                     </div>
                 </div>
@@ -120,7 +120,7 @@ export default function FinanceDashboard() {
                     </button>
 
                     <Link href="/super-admin/dashboard/finance/settings" className="px-6 py-4 bg-white border border-slate-100 text-slate-900 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] flex items-center gap-2 hover:bg-slate-50 transition-all shadow-sm">
-                        <Settings size={14} /> Tax & Compliance
+                        <Settings size={14} /> Tax Settings
                     </Link>
 
                     <button
@@ -153,23 +153,23 @@ export default function FinanceDashboard() {
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
                 <div className="lg:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-8">
                     <FinanceKPICard
-                        label="Gross Revenue"
+                        label="Total Revenue"
                         value={`₹${(stats?.total_revenue || 0).toLocaleString()}`}
-                        sub="Total Collected Amount"
+                        sub="Total amount collected"
                         icon={<Scale className="text-blue-500" />}
                         color="bg-blue-50"
                     />
                     <FinanceKPICard
-                        label="GST Payable"
+                        label="GST"
                         value={`₹${(stats?.gst?.total || 0).toLocaleString()}`}
-                        sub="Real-time Liability"
+                        sub="Calculated GST liability"
                         icon={<Calculator className="text-indigo-500" />}
                         color="bg-indigo-50"
                     />
                     <FinanceKPICard
-                        label="Net Platform Earnings"
+                        label="Net Revenue"
                         value={`₹${(stats?.net_revenue || 0).toLocaleString()}`}
-                        sub="After Tax Settlement"
+                        sub="Revenue after tax"
                         icon={<IndianRupee className="text-green-500" />}
                         color="bg-green-50"
                     />
@@ -180,20 +180,20 @@ export default function FinanceDashboard() {
                         <Ban size={120} />
                     </div>
                     <div className="relative z-10 flex items-center justify-between">
-                        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-white/50">Accounting Status</h3>
+                        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-white/50">Status</h3>
                         {stats?.is_locked ? <Lock size={16} className="text-red-400" /> : <Unlock size={16} className="text-green-400" />}
                     </div>
                     <div className="relative z-10">
-                        <div className="text-3xl font-black italic">{stats?.is_locked ? 'Month Locked' : 'Open for Audit'}</div>
+                        <div className="text-3xl font-black">{stats?.is_locked ? 'Locked' : 'Open'}</div>
                         <p className="text-white/40 text-[11px] font-medium leading-relaxed mt-2 uppercase tracking-wide">
                             {stats?.is_locked
-                                ? 'This month is immutable. No modifications allowed for CA reconciliation.'
-                                : 'Active month. Audit trail capturing all incoming settlements.'}
+                                ? 'This month is locked for accounting.'
+                                : 'This month is open for changes.'}
                         </p>
                     </div>
                     {!stats?.is_locked && (
                         <button className="relative z-10 w-full py-4 bg-white/10 hover:bg-red-500 text-slate-700 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all border border-white/20">
-                            Lock Accounting Period
+                            Lock Month
                         </button>
                     )}
                 </div>
@@ -204,7 +204,7 @@ export default function FinanceDashboard() {
                 <div className="bg-white p-8 rounded-[40px] border border-slate-100 shadow-sm space-y-8">
                     <h3 className="text-xs font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
                         <CreditCard size={16} className="text-indigo-500" />
-                        GST Distribution
+                        GST Breakdown
                     </h3>
                     <div className="space-y-6">
                         <GSTMeter label="CGST (Central)" value={stats?.gst?.cgst || 0} total={stats?.gst?.total} color="bg-blue-500" />
@@ -212,13 +212,13 @@ export default function FinanceDashboard() {
                         <GSTMeter label="IGST (Integrated)" value={stats?.gst?.igst || 0} total={stats?.gst?.total} color="bg-purple-500" />
                     </div>
                     <div className="pt-6 border-t border-slate-50 italic">
-                        <p className="text-[11px] text-slate-400 font-medium">Compliance Note: Rates are calculated based on Place of Supply logic automatically.</p>
+                        <p className="text-[11px] text-slate-400 font-medium">Rates are calculated automatically.</p>
                     </div>
                 </div>
 
                 <div className="lg:col-span-2 bg-white p-8 rounded-[40px] border border-slate-100 shadow-sm space-y-6">
                     <div className="flex items-center justify-between">
-                        <h3 className="text-xs font-black text-slate-900 uppercase tracking-widest">Revenue Momentum</h3>
+                        <h3 className="text-xs font-black text-slate-900 uppercase tracking-widest">Revenue Trend</h3>
                         <div className="flex items-center gap-4">
                             <div className="flex items-center gap-1.5">
                                 <div className="w-3 h-3 rounded-full bg-blue-500" />
@@ -254,8 +254,8 @@ export default function FinanceDashboard() {
             <div className="bg-white rounded-[40px] border border-slate-100 shadow-sm overflow-hidden">
                 <div className="p-8 border-b border-slate-50 flex flex-col md:flex-row md:items-center justify-between gap-6">
                     <div>
-                        <h3 className="text-lg font-black text-slate-900 tracking-tight italic">Global Invoice Registry</h3>
-                        <p className="text-slate-400 text-xs font-medium">Atomic financial logs with immutable hash verification.</p>
+                        <h3 className="text-lg font-black text-slate-900 tracking-tight">Invoices</h3>
+                        <p className="text-slate-400 text-xs font-medium">List of all platform invoices.</p>
                     </div>
                     <div className="flex items-center gap-4 bg-slate-50 px-6 py-3 rounded-2xl border border-slate-100">
                         <Search size={16} className="text-slate-400" />
@@ -270,12 +270,12 @@ export default function FinanceDashboard() {
                     <table className="w-full text-left">
                         <thead>
                             <tr className="bg-slate-50/50 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">
-                                <th className="px-8 py-6">Invoice / Hash</th>
-                                <th className="px-8 py-6">Customer Section</th>
-                                <th className="px-8 py-6">Tax Intelligence</th>
-                                <th className="px-8 py-6">Total Value</th>
-                                <th className="px-8 py-6 text-right">Settlement</th>
-                                <th className="px-8 py-6 text-right">Audit</th>
+                                <th className="px-8 py-6">Invoice</th>
+                                <th className="px-8 py-6">Customer</th>
+                                <th className="px-8 py-6">Tax Details</th>
+                                <th className="px-8 py-6">Amount</th>
+                                <th className="px-8 py-6 text-right">Status</th>
+                                <th className="px-8 py-6 text-right">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-50">

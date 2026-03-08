@@ -94,7 +94,7 @@ export class SystemConfigService {
             features: config.features,
             support_email: config.support_email,
             support_whatsapp: config.support_whatsapp,
-
+            meta_phone_id: config.meta_phone_id,
             meta_app_id: config.meta_app_id,
             meta_config_id: config.meta_config_id,
             google_client_id: config.google_client_id,

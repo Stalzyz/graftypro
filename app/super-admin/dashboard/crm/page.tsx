@@ -80,8 +80,8 @@ export default function CRMSalesWarRoom() {
                             <Target className="text-white" size={24} />
                         </div>
                         <div>
-                            <h1 className="text-3xl font-black text-slate-900 tracking-tight">Sales Command Center</h1>
-                            <p className="text-slate-400 font-medium text-sm">Aggressive revenue tracking and pipeline mobilization.</p>
+                            <h1 className="text-3xl font-black text-slate-900 tracking-tight">Sales</h1>
+                            <p className="text-slate-400 font-medium text-sm">Track and manage your sales pipeline.</p>
                         </div>
                     </div>
                 </div>

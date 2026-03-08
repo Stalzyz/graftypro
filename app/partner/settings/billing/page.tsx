@@ -12,6 +12,9 @@ export default function PartnerBillingSettings() {
     const [providerType, setProviderType] = useState('Razorpay');
     const [keyId, setKeyId] = useState('');
     const [keySecret, setKeySecret] = useState('');
+    const [merchantId, setMerchantId] = useState('');
+    const [saltKey, setSaltKey] = useState('');
+    const [saltIndex, setSaltIndex] = useState('');
 
     // State for Test Net Wallet Top Up
     const [topUpAmount, setTopUpAmount] = useState<number | ''>('');
@@ -33,12 +36,21 @@ export default function PartnerBillingSettings() {
 
                 setProviders(gateways);
 
-                // Load first Razorpay config if present
+                // Load config based on current selection or first available
                 const rz = gateways.find((g: any) => g.provider === 'Razorpay');
                 if (rz) {
-                    setProviderType('Razorpay');
                     setKeyId(rz.key_id || '');
                     setKeySecret(rz.key_secret || '');
+                }
+                const pp = gateways.find((g: any) => g.provider === 'PhonePe');
+                if (pp) {
+                    setMerchantId(pp.merchant_id || '');
+                    setSaltKey(pp.salt_key || '');
+                    setSaltIndex(pp.salt_index || '');
+                }
+
+                if (gateways.length > 0) {
+                    setProviderType(gateways[0].provider || 'Razorpay');
                 }
             }
             if (data.data?.wallet_balance !== undefined) {
@@ -55,13 +67,24 @@ export default function PartnerBillingSettings() {
         setSaving(true);
         try {
             // Build the updated gateways array
-            const newGateways = [{
+            const newGateways = providers.filter(g => g.provider !== providerType);
+
+            const currentConfig: any = {
                 provider: providerType,
-                key_id: keyId,
-                key_secret: keySecret,
                 is_live: true,
                 is_active: true
-            }];
+            };
+
+            if (providerType === 'Razorpay') {
+                currentConfig.key_id = keyId;
+                currentConfig.key_secret = keySecret;
+            } else if (providerType === 'PhonePe') {
+                currentConfig.merchant_id = merchantId;
+                currentConfig.salt_key = saltKey;
+                currentConfig.salt_index = saltIndex;
+            }
+
+            newGateways.push(currentConfig);
 
             const res = await fetch("/api/reseller/settings/billing", {
                 method: "POST",
@@ -157,7 +180,8 @@ export default function PartnerBillingSettings() {
         </div>
     );
 
-    const hasActiveGateway = providers.length > 0 && keyId.length > 5;
+    const activeGateway = providers.find(g => g.is_active);
+    const hasActiveGateway = !!activeGateway;
 
     return (
         <div className="max-w-4xl mx-auto space-y-10 animate-in fade-in duration-500">
@@ -179,7 +203,7 @@ export default function PartnerBillingSettings() {
                         <div>
                             <h3 className="text-xl font-black text-slate-900 uppercase italic tracking-tight">Checkout Engine Live</h3>
                             <p className="text-[10px] text-[#27954D] font-bold uppercase tracking-widest mt-1">
-                                {providerType} Keys Authenticated & Routing Retail Profit
+                                {activeGateway?.provider} Keys Authenticated & Routing Retail Profit
                             </p>
                         </div>
                     </div>
@@ -217,52 +241,104 @@ export default function PartnerBillingSettings() {
                         <div className="col-span-2">
                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2 block mb-3">Merchant Provider</label>
                             <div className="flex gap-4">
-                                <button className="flex-1 p-5 rounded-2xl border-2 border-[#27954D] bg-emerald-50 text-[#27954D] font-black uppercase tracking-widest flex items-center justify-center gap-3">
-                                    <div className="w-2 h-2 rounded-full bg-[#27954D] animate-pulse" />
-                                    Razorpay (India)
+                                <button
+                                    onClick={() => setProviderType('Razorpay')}
+                                    className={`flex-1 p-5 rounded-2xl border-2 transition-all font-black uppercase tracking-widest flex items-center justify-center gap-3 ${providerType === 'Razorpay' ? 'border-[#27954D] bg-emerald-50 text-[#27954D]' : 'border-slate-100 bg-slate-50 text-slate-400'}`}
+                                >
+                                    {providerType === 'Razorpay' && <div className="w-2 h-2 rounded-full bg-[#27954D] animate-pulse" />}
+                                    Razorpay (Ind)
                                 </button>
-                                <button className="flex-1 p-5 rounded-2xl border-2 border-slate-100 bg-slate-50 text-slate-400 font-black uppercase tracking-widest opacity-50 cursor-not-allowed">
-                                    Stripe (Coming Soon)
+                                <button
+                                    onClick={() => setProviderType('PhonePe')}
+                                    className={`flex-1 p-5 rounded-2xl border-2 transition-all font-black uppercase tracking-widest flex items-center justify-center gap-3 ${providerType === 'PhonePe' ? 'border-[#27954D] bg-emerald-50 text-[#27954D]' : 'border-slate-100 bg-slate-50 text-slate-400'}`}
+                                >
+                                    {providerType === 'PhonePe' && <div className="w-2 h-2 rounded-full bg-[#27954D] animate-pulse" />}
+                                    PhonePe (Ind)
                                 </button>
                             </div>
                         </div>
 
-                        <div className="col-span-2 space-y-3">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2 block">Razorpay Key ID (Live)</label>
-                            <div className="relative">
-                                <Key className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                                <input
-                                    type="text"
-                                    value={keyId}
-                                    onChange={e => setKeyId(e.target.value)}
-                                    placeholder="rzp_live_abc123..."
-                                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-16 pr-6 py-5 text-slate-900 focus:border-[#27954D] focus:bg-white outline-none transition-all font-black tracking-widest placeholder:text-slate-300 placeholder:font-normal"
-                                />
-                            </div>
-                        </div>
+                        {providerType === 'Razorpay' ? (
+                            <>
+                                <div className="col-span-2 space-y-3">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2 block">Razorpay Key ID (Live)</label>
+                                    <div className="relative">
+                                        <Key className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                                        <input
+                                            type="text"
+                                            value={keyId}
+                                            onChange={e => setKeyId(e.target.value)}
+                                            placeholder="rzp_live_abc123..."
+                                            className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-16 pr-6 py-5 text-slate-900 focus:border-[#27954D] focus:bg-white outline-none transition-all font-black tracking-widest placeholder:text-slate-300 placeholder:font-normal"
+                                        />
+                                    </div>
+                                </div>
 
-                        <div className="col-span-2 space-y-3">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2 block">Razorpay Key Secret (Live)</label>
-                            <div className="relative">
-                                <ShieldCheck className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                                <input
-                                    type="password"
-                                    value={keySecret}
-                                    onChange={e => setKeySecret(e.target.value)}
-                                    placeholder="••••••••••••••••"
-                                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-16 pr-6 py-5 text-slate-900 focus:border-[#27954D] focus:bg-white outline-none transition-all font-black tracking-widest placeholder:text-slate-300 placeholder:font-normal"
-                                />
-                            </div>
-                            <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest ml-2 italic">
-                                Used to sign webhooks and verify payment signatures post-checkout. Stored securely.
-                            </p>
-                        </div>
+                                <div className="col-span-2 space-y-3">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2 block">Razorpay Key Secret (Live)</label>
+                                    <div className="relative">
+                                        <ShieldCheck className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                                        <input
+                                            type="password"
+                                            value={keySecret}
+                                            onChange={e => setKeySecret(e.target.value)}
+                                            placeholder="••••••••••••••••"
+                                            className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-16 pr-6 py-5 text-slate-900 focus:border-[#27954D] focus:bg-white outline-none transition-all font-black tracking-widest placeholder:text-slate-300 placeholder:font-normal"
+                                        />
+                                    </div>
+                                </div>
+                            </>
+                        ) : (
+                            <>
+                                <div className="col-span-2 space-y-3">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2 block">PhonePe Merchant ID</label>
+                                    <div className="relative">
+                                        <Key className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                                        <input
+                                            type="text"
+                                            value={merchantId}
+                                            onChange={e => setMerchantId(e.target.value)}
+                                            placeholder="M1234567..."
+                                            className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-16 pr-6 py-5 text-slate-900 focus:border-[#27954D] focus:bg-white outline-none transition-all font-black tracking-widest placeholder:text-slate-300 placeholder:font-normal"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="space-y-3">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2 block">Salt Key</label>
+                                    <div className="relative">
+                                        <ShieldCheck className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                                        <input
+                                            type="password"
+                                            value={saltKey}
+                                            onChange={e => setSaltKey(e.target.value)}
+                                            placeholder="••••••••••••••••"
+                                            className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-16 pr-6 py-5 text-slate-900 focus:border-[#27954D] focus:bg-white outline-none transition-all font-black tracking-widest placeholder:text-slate-300 placeholder:font-normal"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="space-y-3">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2 block">Salt Index</label>
+                                    <div className="relative">
+                                        <Key className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                                        <input
+                                            type="text"
+                                            value={saltIndex}
+                                            onChange={e => setSaltIndex(e.target.value)}
+                                            placeholder="1"
+                                            className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-16 pr-6 py-5 text-slate-900 focus:border-[#27954D] focus:bg-white outline-none transition-all font-black tracking-widest placeholder:text-slate-300 placeholder:font-normal"
+                                        />
+                                    </div>
+                                </div>
+                            </>
+                        )}
                     </div>
 
                     <div className="pt-6 border-t border-slate-100 flex justify-end">
                         <button
                             onClick={handleSave}
-                            disabled={saving || !keyId || !keySecret}
+                            disabled={saving}
                             className="w-full sm:w-auto px-10 py-5 bg-slate-900 text-white font-black text-[10px] uppercase tracking-[0.3em] rounded-[2rem] flex items-center justify-center gap-3 hover:bg-black transition-all shadow-xl shadow-slate-900/10 active:scale-[0.98] disabled:opacity-50 disabled:active:scale-100"
                         >
                             {saving ? <Loader2 className="animate-spin" size={18} /> : <>Commit Vault Credentials <RefreshCcw size={16} /></>}

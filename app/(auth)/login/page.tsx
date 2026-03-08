@@ -100,6 +100,10 @@ export default function LoginPage() {
                             <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" className="w-5 h-5" />
                             <span className="text-slate-700 font-bold text-sm">Continue with Google</span>
                         </Link>
+                        <Link href="/api/auth/facebook" className="flex items-center justify-center gap-2 bg-[#1877F2] border border-[#1877F2] rounded-xl py-3 hover:bg-[#166FE5] transition-all shadow-sm">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512" className="w-5 h-5 fill-white"><path d="M279.14 288l14.22-92.66h-88.91v-60.13c0-25.35 12.42-50.06 52.24-50.06h40.42V6.26S260.43 0 225.36 0c-73.22 0-121.08 44.38-121.08 124.72v70.62H22.89V288h81.39v224h100.17V288z" /></svg>
+                            <span className="text-white font-bold text-sm">Continue with Facebook</span>
+                        </Link>
                     </div>
 
                     <div className="relative mb-8">

@@ -123,6 +123,12 @@ export default function MetaOnboardingPage() {
                             onChange={(v: string) => setConfig({ ...config, meta_waba_id: v })}
                             description="The default WhatsApp Business Account for the platform."
                         />
+                        <SettingInput
+                            label="Meta Phone ID"
+                            value={config.meta_phone_id}
+                            onChange={(v: string) => setConfig({ ...config, meta_phone_id: v })}
+                            description="The specific Phone Number ID for sending platform-level messages."
+                        />
                     </div>
                 </section>
 

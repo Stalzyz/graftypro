@@ -1947,6 +1947,7 @@ model SystemConfig {
   rev_enable_wallet_margin Boolean  @default(true)
   rev_lock_pricing_floor   Boolean  @default(true)
   meta_permanent_token_enc String?
+  meta_phone_id     String?
   meta_credit_line_id String?
   meta_onboarding_mode String @default("TECH_PROVIDER") // TECH_PROVIDER, SOLUTION_PARTNER
   

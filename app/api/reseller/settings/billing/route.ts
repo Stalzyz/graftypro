@@ -18,8 +18,14 @@ export async function POST(req: Request) {
 
         // Validate structure
         for (const gw of payment_gateways) {
-            if (!gw.provider || !gw.key_id || !gw.key_secret) {
-                return NextResponse.json({ error: "Incomplete gateway configuration. Missing provider, key ID, or secret." }, { status: 400 });
+            if (gw.provider === 'Razorpay') {
+                if (!gw.key_id || !gw.key_secret) {
+                    return NextResponse.json({ error: "Incomplete Razorpay configuration. Missing key ID or secret." }, { status: 400 });
+                }
+            } else if (gw.provider === 'PhonePe') {
+                if (!gw.merchant_id || !gw.salt_key || !gw.salt_index) {
+                    return NextResponse.json({ error: "Incomplete PhonePe configuration. Missing merchant ID, salt key, or index." }, { status: 400 });
+                }
             }
         }
 
@@ -28,7 +34,7 @@ export async function POST(req: Request) {
             where: { id: session.userId },
             data: {
                 payment_gateways: payment_gateways
-            }
+            } as any
         });
 
         return NextResponse.json({ success: true, message: "Payment configurations synchronized." });
