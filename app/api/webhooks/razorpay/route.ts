@@ -81,6 +81,65 @@ export async function POST(req: Request) {
 
                     console.log(`📄 Subscription Invoice Generated: ${invoice.invoice_number}`);
 
+                    // --- 100-Credit Trial "Block & Release" Logic ---
+                    if (workspace.current_plan_id) {
+                        const plan = await prisma.subscriptionPlan.findUnique({
+                            where: { id: workspace.current_plan_id }
+                        });
+
+                        if (plan && plan.max_messages > 0) {
+                            const wallet = await prisma.vendorWallet.findUnique({
+                                where: { workspace_id: workspaceId }
+                            });
+
+                            if (wallet) {
+                                // Is this their first ever paid subscription purchase?
+                                // We check if total_purchased is strictly 0. 
+                                // (Using < 1 just in case of float anomalies)
+                                const isFirstPurchase = Number(wallet.total_purchased) < 1;
+
+                                // Prorate: Subtract 100 trial credits if it's the first purchase
+                                let creditsToAdd = plan.max_messages;
+                                if (isFirstPurchase) {
+                                    creditsToAdd = Math.max(0, plan.max_messages - 100);
+                                    console.log(`[Credit System] First subscription! Prorating 100 trial credits. Adding ${creditsToAdd} credits.`);
+                                } else {
+                                    console.log(`[Credit System] Renewal. Adding full plan credits: ${creditsToAdd}.`);
+                                }
+
+                                if (creditsToAdd > 0) {
+                                    await prisma.$transaction(async (tx) => {
+                                        await tx.vendorWallet.update({
+                                            where: { id: wallet.id },
+                                            data: {
+                                                current_balance: { increment: creditsToAdd },
+                                                total_purchased: { increment: creditsToAdd }
+                                            }
+                                        });
+
+                                        await tx.creditTransaction.create({
+                                            data: {
+                                                workspace_id: workspaceId,
+                                                wallet_id: wallet.id,
+                                                type: 'PURCHASE',
+                                                amount: creditsToAdd,
+                                                balance_before: Number(wallet.current_balance),
+                                                balance_after: Number(wallet.current_balance) + creditsToAdd,
+                                                net_amount: taxableValue,
+                                                gst_amount: totalAmount - taxableValue, // approximate
+                                                total_amount: totalAmount,
+                                                related_payment_id: paymentEntity.id + "_sub",
+                                                description: `Subscription Credits: ${plan.name} Plan`,
+                                                status: 'COMPLETED',
+                                                initiated_by: 'SYSTEM'
+                                            }
+                                        });
+                                    });
+                                }
+                            }
+                        }
+                    }
+
                     // 2. Email Invoice
                     await InvoiceService.sendInvoiceEmail(invoice.id);
                 }

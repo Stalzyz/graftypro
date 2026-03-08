@@ -137,11 +137,46 @@ export async function sendMessageDirect(msg: QueuedMessage): Promise<string | nu
         const token = decrypt(msg.accessToken);
 
         console.log(
-            `[FlowQueue] 📬 Sending ${msg.payload.type} → ${msg.payload.to} ` +
+            `[FlowQueue] 📬 Processing ${msg.payload.type} → ${msg.payload.to} ` +
             `(node: ${msg.nodeId})`
         );
 
-        // ✅ STEP 1: Send the message FIRST — delivery is never blocked
+        // --- 1. PRE-FLIGHT CREDIT CHECK (The "Block" Logic) ---
+        const { CreditService } = await import('../credits/service');
+        const { prisma } = await import('../db');
+
+        const category = msg.payload.template?.name
+            ? 'MARKETING'
+            : (msg.payload.type === 'text' ? 'SERVICE' : 'UTILITY');
+        const countryCode = (msg.payload.to || '91').substring(0, 2);
+
+        let cost = 0;
+        try {
+            cost = await CreditService.getMessageCost(category, countryCode, msg.workspaceId);
+        } catch {
+            // Ignored - if pricing fails we assume 0 for now (fallback)
+        }
+
+        if (cost > 0 && msg.workspaceId) {
+            const wallet = await prisma.vendorWallet.findUnique({
+                where: { workspace_id: msg.workspaceId },
+                select: { current_balance: true, is_frozen: true, is_automated_blocked: true }
+            });
+
+            if (wallet) {
+                if (wallet.is_frozen || wallet.is_automated_blocked) {
+                    console.warn(`[FlowQueue] 🚫 Blocked: Vendor wallet is frozen or blocked.`);
+                    return null;
+                }
+
+                if (Number(wallet.current_balance) < cost) {
+                    console.warn(`[FlowQueue] 🚫 Paywall Blocked: Insufficient credits. Has ${wallet.current_balance}, needs ${cost}.`);
+                    return null; // Silently abort to protect Meta wholesale billing
+                }
+            }
+        }
+
+        // --- 2. SEND MESSAGE TO META ---
         const resp = await WhatsAppService.sendMessage(
             msg.phoneNumberId,
             token,

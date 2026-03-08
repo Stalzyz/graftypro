@@ -94,7 +94,31 @@ export async function POST(request: Request) {
                 }
             });
 
-            return { user, workspace, verificationToken };
+            // --- 100-Credit Trial Injection ---
+            const wallet = await tx.vendorWallet.create({
+                data: {
+                    workspace_id: workspace.id,
+                    current_balance: 100.00,
+                    total_purchased: 0.00, // Important: 0 indicates they haven't bought a paid plan yet
+                    total_used: 0.00,
+                }
+            });
+
+            await tx.creditTransaction.create({
+                data: {
+                    workspace_id: workspace.id,
+                    wallet_id: wallet.id,
+                    type: "ADJUSTMENT",
+                    amount: 100.00,
+                    balance_before: 0.00,
+                    balance_after: 100.00,
+                    description: "Free Trial Welcome Bonus (100 Credits)",
+                    status: "COMPLETED",
+                    initiated_by: "SYSTEM"
+                }
+            });
+
+            return { user, workspace, verificationToken, wallet };
         });
 
 
