@@ -30,7 +30,7 @@ export async function POST(req: Request) {
             },
             items: [
                 {
-                    description: "Wabot Enterprise Cloud - Annual License",
+                    description: "Grafty Enterprise Cloud - Annual License",
                     hsn_code: "998311",
                     quantity: 1,
                     rate: 85000,

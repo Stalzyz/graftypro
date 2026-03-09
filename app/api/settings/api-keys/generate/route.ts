@@ -10,7 +10,7 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        const newKey = "wabot_" + crypto.randomBytes(32).toString('hex');
+        const newKey = "grafty_" + crypto.randomBytes(32).toString('hex');
 
         await prisma.workspace.update({
             where: { id: user.workspaceId },

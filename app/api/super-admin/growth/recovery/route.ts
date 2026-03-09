@@ -78,7 +78,7 @@ export async function POST(request: Request) {
         // Note: For production, a pre-approved Meta Template is required for outbound reachout.
         // We'll use a professional text message for now (assuming 24h window or sandbox).
 
-        const message = `Hello ${name}! 👋\n\nI noticed you started setting up your Wabot dashboard but didn't finish. \n\nNeed help getting your first WhatsApp campaign live? Reply to this message and I'll personally help you get started! 🚀`;
+        const message = `Hello ${name}! 👋\n\nI noticed you started setting up your Grafty dashboard but didn't finish. \n\nNeed help getting your first WhatsApp campaign live? Reply to this message and I'll personally help you get started! 🚀`;
 
         await WhatsAppService.sendText(
             config.meta_phone_id,

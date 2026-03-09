@@ -103,6 +103,7 @@ function SharedInboxContent() {
     const [newChatPhone, setNewChatPhone] = useState("");
     const [startingChat, setStartingChat] = useState(false);
     const [isNewChatModalOpen, setIsNewChatModalOpen] = useState(false);
+    const [zoomedImage, setZoomedImage] = useState<string | null>(null);
 
     // -- Modal States --
     const [showDripModal, setShowDripModal] = useState(false);
@@ -725,7 +726,7 @@ function SharedInboxContent() {
                                 {/* Deployment Verification Banner */}
                                 <div className="sticky top-0 z-50 flex justify-center py-1">
                                     <div className="bg-emerald-500 text-white text-[8px] font-black uppercase tracking-[0.2em] px-3 py-1 rounded-full shadow-lg animate-bounce">
-                                        WABOT CORE V4.2 LIVE
+                                        Grafty CORE V4.2 LIVE
                                     </div>
                                 </div>
                                 <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-[0.02] pointer-events-none" />
@@ -835,7 +836,7 @@ function SharedInboxContent() {
                                                             {/* Media Rendering */}
                                                             {contentType === 'IMAGE' && link && (
                                                                 <div className="mb-2 -mx-4 -mt-3 overflow-hidden bg-slate-100 relative group/media">
-                                                                    <img src={proxyMediaLink(link)} className="w-full h-auto max-h-80 object-cover cursor-zoom-in" alt="Media" onError={(e) => { (e.target as HTMLImageElement).src = `https://placehold.co/400x300/f8fafc/64748b?text=Media+Not+Found` }} />
+                                                                    <img src={proxyMediaLink(link)} onClick={() => setZoomedImage(proxyMediaLink(link))} className="w-full h-auto max-h-80 object-cover cursor-zoom-in hover:opacity-90 transition-opacity" alt="Media" onError={(e) => { (e.target as HTMLImageElement).src = `https://placehold.co/400x300/f8fafc/64748b?text=Media+Not+Found` }} />
                                                                     <div className="absolute top-1 left-1 bg-black/50 text-white text-[7px] font-bold px-1 rounded uppercase tracking-tighter shadow-sm">{contentType}</div>
                                                                 </div>
                                                             )}
@@ -846,7 +847,7 @@ function SharedInboxContent() {
                                                                         const cardLink = findMediaLink(card);
                                                                         return (
                                                                             <div key={idx} className="min-w-[150px] bg-white rounded-lg border shadow-sm overflow-hidden text-slate-800">
-                                                                                {cardLink && <img src={proxyMediaLink(cardLink)} className="h-20 w-full object-cover" />}
+                                                                                {cardLink && <img src={proxyMediaLink(cardLink)} onClick={() => setZoomedImage(proxyMediaLink(cardLink))} className="h-20 w-full object-cover cursor-zoom-in hover:opacity-90 transition-opacity" />}
                                                                                 <div className="p-2">
                                                                                     <div className="text-[10px] font-bold truncate">{card.title || card.header?.text}</div>
                                                                                     <div className="text-[8px] text-slate-400 line-clamp-1">{card.description || card.body?.text}</div>
@@ -861,7 +862,7 @@ function SharedInboxContent() {
                                                                 <div className="mb-2 -mx-4 -mt-3 bg-slate-50 border-b overflow-hidden">
                                                                     {link ? (
                                                                         <div className="relative aspect-square">
-                                                                            <img src={proxyMediaLink(link)} className="w-full h-full object-cover" alt="Product" />
+                                                                            <img src={proxyMediaLink(link)} onClick={() => setZoomedImage(proxyMediaLink(link))} className="w-full h-full object-cover cursor-zoom-in hover:opacity-90 transition-opacity" alt="Product" />
                                                                             <div className="absolute top-2 right-2 p-1.5 bg-white/90 backdrop-blur rounded-full shadow-sm">
                                                                                 <ShoppingBag size={14} className="text-purple-600" />
                                                                             </div>
@@ -1266,6 +1267,16 @@ function SharedInboxContent() {
                     </div>
                 )
             }
+
+            {/* Image Zoom Lightbox */}
+            {zoomedImage && (
+                <div className="fixed inset-0 z-[3000] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 animate-in fade-in duration-200" onClick={() => setZoomedImage(null)}>
+                    <button className="absolute top-6 right-6 p-2 bg-white/10 hover:bg-white/20 text-white rounded-full transition-colors" onClick={() => setZoomedImage(null)}>
+                        <X size={24} />
+                    </button>
+                    <img src={zoomedImage} alt="Zoomed Media" className="max-w-full max-h-[90vh] object-contain cursor-zoom-out shadow-2xl rounded-lg" onClick={(e) => e.stopPropagation()} />
+                </div>
+            )}
         </div>
     );
 }

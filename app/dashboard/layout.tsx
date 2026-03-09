@@ -54,6 +54,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                         </div>
                         {branding?.features?.flows !== false && <NavItem href="/dashboard/flows" icon={<GitBranch size={20} strokeWidth={1.5} />} label="Flow Builder" pathname={pathname} />}
                         {branding?.features?.drips !== false && <NavItem href="/dashboard/drips" icon={<Clock size={20} strokeWidth={1.5} />} label="Drip Sequences" pathname={pathname} />}
+                        <NavItem href="/dashboard/responders" icon={<Zap size={20} strokeWidth={1.5} />} label="Quick Replies" pathname={pathname} />
 
                         <div className="pt-8 pb-3 px-6">
                             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] block">Monetization</span>

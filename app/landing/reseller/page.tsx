@@ -19,7 +19,7 @@ export default function ResellerLanding() {
             {/* Header */}
             <header className="max-w-7xl mx-auto px-6 py-8 flex items-center justify-between relative z-10">
                 <Link href="/" className="text-2xl font-black tracking-tighter text-white">
-                    WABOT<span className="text-blue-500">.</span>
+                    Grafty<span className="text-blue-500">.</span>
                 </Link>
                 <div className="hidden md:flex gap-8 items-center">
                     <Link href="#earnings" className="nav-link">Earnings</Link>

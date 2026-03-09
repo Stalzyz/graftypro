@@ -16,7 +16,7 @@ export default function DataDeletionPage() {
                     <div className="space-y-16">
                         <DeletionSection
                             title="1. Introduction"
-                            content="At Grafty (Wabot BSP), we respect your privacy and provide transparent ways to manage and remove your data. If you have used our application via Facebook Login or connected your WhatsApp Business Account, you can request the deletion of your data following the instructions below."
+                            content="At Grafty, we respect your privacy and provide transparent ways to manage and remove your data. If you have used our application via Facebook Login or connected your WhatsApp Business Account, you can request the deletion of your data following the instructions below."
                         />
                         <DeletionSection
                             title="2. How to Request Data Deletion"

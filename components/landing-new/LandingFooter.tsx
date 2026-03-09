@@ -17,7 +17,7 @@ export default function LandingFooter() {
 
                     <FooterCol title="Product" links={[
                         { label: "Pricing / Plans", href: "/#pricing" },
-                        { label: "Flow Orchestration", href: "/#features" },
+                        { label: "Flow Orchestration", href: "https://grafty.pro/how-to-use/flow-builder" },
                         { label: "Broadcast Engine", href: "/#features" },
                         { label: "Vertical Solutions", href: "/solutions" }
                     ]} />

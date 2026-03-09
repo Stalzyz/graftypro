@@ -40,8 +40,13 @@ export default function WhatsAppSettingsPage() {
     useEffect(() => {
         const urlParams = new URLSearchParams(window.location.search);
         const wabaIdParam = urlParams.get('setup_target_id') || urlParams.get('waba_id');
+        const codeParam = urlParams.get('code');
 
-        if (wabaIdParam) {
+        if (codeParam) {
+            // New v20.0 OAuth Flow returns code
+            window.history.replaceState({}, document.title, window.location.pathname);
+            onboardAccount(codeParam);
+        } else if (wabaIdParam) {
             // Clean URL so it doesn't re-trigger
             window.history.replaceState({}, document.title, window.location.pathname);
             claimAccount(wabaIdParam);
@@ -78,6 +83,32 @@ export default function WhatsAppSettingsPage() {
             console.error(error);
         } finally {
             fetchStatus();
+        }
+    };
+
+    const onboardAccount = async (code: string) => {
+        setLoading(true);
+        setStatus("LOADING");
+        try {
+            const res = await fetch("/api/whatsapp/onboard", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ code })
+            });
+
+            if (res.ok) {
+                alert("Account Connected Successfully!");
+            } else {
+                const data = await res.json().catch(() => ({}));
+                console.error("Onboarding failed:", data);
+                alert("Meta Error: " + (data.error || "Unknown error"));
+            }
+        } catch (error) {
+            console.error(error);
+            alert("Connection error occurred.");
+        } finally {
+            fetchStatus();
+            setLoading(false);
         }
     };
 
@@ -194,7 +225,7 @@ export default function WhatsAppSettingsPage() {
         const redirectUri = `${window.location.origin}/dashboard/settings/whatsapp`;
         // Navigate users to the Hosted ES flow. We pass the workspaceId as the state
         // so we can associate the `account_update` webhook with this specific workspace.
-        const metaUrl = `https://www.facebook.com/business/oauth/partner?client_id=${appId}&config_id=${configId}&state=${workspaceId}&redirect_uri=${encodeURIComponent(redirectUri)}`;
+        const metaUrl = `https://www.facebook.com/v20.0/dialog/oauth?client_id=${appId}&config_id=${configId}&state=${workspaceId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&override_default_response_type=true`;
 
         // Open in new tab or same tab. Since it's an OAuth flow, same-tab or popup is standard.
         // A popup ensures they return to this page naturally, but for maximum compatibility we'll use a new tab or let them redirect.

@@ -425,7 +425,7 @@ function onFormSubmit(e) {
                                     <div className="grid grid-cols-2 gap-3">
                                         <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
                                             <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Verification Token</p>
-                                            <p className="text-[10px] font-bold text-slate-700 truncate">SST_WABOT_SECURE_VERIFY</p>
+                                            <p className="text-[10px] font-bold text-slate-700 truncate">SST_GRAFTY_SECURE_VERIFY</p>
                                         </div>
                                         <button
                                             onClick={() => setActiveTab("GUIDES")}

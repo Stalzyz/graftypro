@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { MessageCircle, CreditCard, Settings, Wallet, Shield, Users, Bell, LifeBuoy, Zap } from "lucide-react";
+import { MessageCircle, CreditCard, Settings, Wallet, Shield, Users, Bell, LifeBuoy, Zap, Mail, MapPin } from "lucide-react";
 import { useBranding } from "../../../hooks/use-branding";
 
 export default function SettingsPage() {
@@ -59,19 +59,25 @@ export default function SettingsPage() {
                     borderColor="hover:border-amber-300"
                 />
 
-                {/* Support Desk (White-Labeled) */}
-                <SettingCard
-                    href={branding?.support?.url || `mailto:${branding?.support?.email || 'support@grafty.com'}`}
-                    external={!!branding?.support?.url}
-                    title="Help & Support"
-                    desc={branding?.is_white_labeled
-                        ? `Get assistance from the ${branding.brand_name} support team.`
-                        : "Browse documentation or contact our global support team."}
-                    icon={<LifeBuoy size={24} />}
-                    color="text-purple-600"
-                    bg="bg-purple-50"
-                    borderColor="hover:border-purple-300"
-                />
+                {/* Support Desk (Custom Detailed Card) */}
+                <div className="soft-card p-6 h-full flex flex-col justify-between border-purple-200 bg-purple-50/30">
+                    <div>
+                        <div className="w-14 h-14 bg-purple-100 text-purple-600 rounded-2xl flex items-center justify-center mb-6 shadow-sm">
+                            <LifeBuoy size={24} />
+                        </div>
+                        <h3 className="text-lg font-bold text-gray-800">Help & Support</h3>
+                        <p className="text-sm text-gray-500 mt-2 leading-relaxed">
+                            Need help? Reach out to our team via WhatsApp or Email.
+                        </p>
+                        <div className="mt-4 space-y-2 text-sm font-medium text-gray-700">
+                            <div className="flex items-center gap-2"><Mail size={16} className="text-gray-400" /> support@grafty.pro</div>
+                            <div className="flex items-center gap-2"><MapPin size={16} className="text-gray-400" /> India</div>
+                        </div>
+                    </div>
+                    <a href="https://wa.me/919789359407" target="_blank" rel="noopener noreferrer" className="mt-6 flex items-center justify-center gap-2 w-full py-2.5 bg-[#25D366] text-white rounded-xl font-bold hover:bg-[#1DA851] transition-colors shadow-md shadow-green-500/20">
+                        <MessageCircle size={18} /> WhatsApp Support
+                    </a>
+                </div>
 
                 {/* Security */}
                 <SettingCard

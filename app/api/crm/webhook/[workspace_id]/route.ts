@@ -11,7 +11,7 @@ export async function GET(req: Request) {
     const challenge = searchParams.get("hub.challenge");
 
     if (mode && token) {
-        if (mode === "subscribe" && token === "SST_WABOT_SECURE_VERIFY") {
+        if (mode === "subscribe" && token === "SST_GRAFTY_SECURE_VERIFY") {
             console.log("CRM Meta Webhook Verified");
             return new Response(challenge, { status: 200 });
         }

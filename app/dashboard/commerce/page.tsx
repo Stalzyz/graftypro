@@ -88,7 +88,7 @@ export default function CommercePage() {
 
     useEffect(() => {
         init();
-        console.log("🚀 [WABOT] COMMERCE COMMAND CENTER V3.1.2 LOADED");
+        console.log("🚀 [Grafty] COMMERCE COMMAND CENTER V3.1.2 LOADED");
     }, []);
 
     const init = async () => {

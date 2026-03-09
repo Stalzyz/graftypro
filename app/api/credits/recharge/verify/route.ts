@@ -65,7 +65,7 @@ export async function POST(req: Request) {
                     paymentMethod: "Razorpay",
                     status: "PAID",
                     items: [{
-                        description: `Wabot Credit Pack (${credits} Credits)`,
+                        description: `Grafty Credit Pack (${credits} Credits)`,
                         hsn_code: "998311",
                         quantity: 1,
                         rate: amount / 1.18,

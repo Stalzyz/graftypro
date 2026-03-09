@@ -87,7 +87,7 @@ export default function IntegrationsPage() {
                     </div>
                     <h3 className="text-lg font-bold text-gray-800">Zapier</h3>
                     <p className="text-xs text-gray-500 mt-2 leading-relaxed">
-                        Connect WABOT to 5000+ apps like Sheets, HubSpot, and Slack via Zaps.
+                        Connect Grafty to 5000+ apps like Sheets, HubSpot, and Slack via Zaps.
                     </p>
                     <button disabled className="w-full mt-6 py-2.5 rounded-xl text-sm font-black bg-gray-50 text-gray-400 cursor-not-allowed">
                         Connect Zapier
