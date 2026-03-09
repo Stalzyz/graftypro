@@ -35,12 +35,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 {/* Sidebar */}
                 <aside className="w-[280px] bg-white border-r border-slate-100 hidden lg:flex flex-col fixed h-screen z-50 overflow-hidden">
                     {/* Brand Identity */}
-                    <div className="h-20 flex items-center px-8 border-b border-slate-50">
+                    <div className="h-20 flex items-center px-8 border-b border-slate-50 justify-between">
                         <DynamicLogo
                             logoUrl={branding?.logo_url}
                             brandName={branding?.brand_name}
                             className="h-9 w-auto"
                         />
+                        <span className="text-[10px] bg-emerald-50 text-emerald-600 font-black px-2 py-1 rounded-lg border border-emerald-100">v1.0.1</span>
                     </div>
 
                     <nav className="flex-1 px-4 py-8 space-y-1.5 overflow-y-auto custom-scrollbar">
@@ -101,7 +102,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     {!pathname.startsWith('/dashboard/chat') && (
                         <footer className="py-10 px-12 border-t border-slate-100 bg-white shadow-[0_-1px_0_0_rgba(0,0,0,0.02)]">
                             <div className="flex flex-col md:flex-row justify-between items-center gap-6">
-                                <h3 className="text-sm font-black text-slate-900 mb-0.5 tracking-tighter">Grafty Console <span className="text-[9px] text-emerald-500 font-bold ml-1">v1.0.1</span></h3>
+                                <h3 className="text-sm font-black text-slate-900 mb-0.5 tracking-tighter">Grafty Console</h3>
                                 <p className="text-[11px] text-slate-400 font-medium tracking-wide">
                                     &copy; {new Date().getFullYear()} {branding?.brand_name || "Grafty"}. ENTERPRISE GRADE MESSAGING.
                                 </p>
