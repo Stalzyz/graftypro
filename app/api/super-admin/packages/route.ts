@@ -12,7 +12,12 @@ export async function GET(req: Request) {
         // Add check for admin role here if necessary, for now we rely on auth context
 
         const packages = await prisma.subscriptionPlan.findMany({
-            where: { reseller_id: null },
+            where: {
+                OR: [
+                    { reseller_id: null },
+                    { reseller_id: "" }
+                ]
+            },
             orderBy: { created_at: "desc" }
         });
 
