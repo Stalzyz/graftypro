@@ -48,7 +48,7 @@ export async function POST(
         const user = await getCurrentUser(req);
         if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-        const { text, mediaUrl, mediaType, filename } = await req.json();
+        const { text, mediaUrl, mediaType, filename, templateName, langCode } = await req.json();
 
         const conversation = await prisma.conversation.findUnique({
             where: { id: params.id },
@@ -76,7 +76,12 @@ export async function POST(
         }
 
         // Send the message first (delivery is never blocked by billing)
-        if (mediaUrl) {
+        if (templateName) {
+            // Template message
+            response = await WhatsAppService.sendTemplate(waba.phone_number_id, token, conversation.contact.phone, templateName, langCode || "en");
+            type = "TEMPLATE";
+            content = { template_name: templateName, lang: langCode || "en" };
+        } else if (mediaUrl) {
             if (mediaType === "IMAGE") {
                 response = await WhatsAppService.sendImage(waba.phone_number_id, token, conversation.contact.phone, absoluteMediaUrl, text);
                 type = "IMAGE";

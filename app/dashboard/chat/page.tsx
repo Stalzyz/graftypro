@@ -113,6 +113,45 @@ function SharedInboxContent() {
     const [newNote, setNewNote] = useState("");
     const [savingNote, setSavingNote] = useState(false);
     const [isChatActionOpen, setIsChatActionOpen] = useState(false);
+    const [showTemplateModal, setShowTemplateModal] = useState(false);
+    const [templates, setTemplates] = useState<any[]>([]);
+    const [templateSearch, setTemplateSearch] = useState("");
+    const [sendingTemplate, setSendingTemplate] = useState(false);
+
+    const fetchTemplates = async () => {
+        try {
+            const res = await fetch("/api/templates");
+            const data = await res.json();
+            const approved = (data.data || []).filter((t: any) => t.status === "APPROVED");
+            setTemplates(approved);
+        } catch (e) {
+            console.error("Failed to fetch templates");
+        }
+    };
+
+    const handleSendTemplate = async (template: any) => {
+        if (!selectedId) return;
+        setSendingTemplate(true);
+        try {
+            const res = await fetch(`/api/conversations/${selectedId}/messages`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ templateName: template.name, langCode: template.language })
+            });
+            if (res.ok) {
+                setShowTemplateModal(false);
+                fetchMessages(selectedId);
+                fetchConversations();
+            } else {
+                const err = await res.json();
+                alert(err.error || "Failed to send template");
+            }
+        } catch (e) {
+            alert("Network error sending template");
+        } finally {
+            setSendingTemplate(false);
+        }
+    };
 
     const handleClearConversation = async () => {
         if (!selectedId || !confirm("Clear all messages in this conversation?")) return;
@@ -1032,7 +1071,7 @@ function SharedInboxContent() {
                                     <button onClick={() => setShowFollowUpModal(true)} className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-emerald-600 bg-emerald-50 hover:bg-emerald-100 px-3 py-2 rounded-lg transition-all border border-emerald-100">
                                         <Calendar size={10} /> Schedule Follow Up
                                     </button>
-                                    <button className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-slate-400 bg-slate-50 hover:bg-slate-100 px-3 py-2 rounded-lg transition-all border border-slate-200">
+                                    <button onClick={() => { setShowTemplateModal(true); fetchTemplates(); }} className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-violet-600 bg-violet-50 hover:bg-violet-100 px-3 py-2 rounded-lg transition-all border border-violet-100">
                                         <FilePlus size={10} /> Template
                                     </button>
                                 </div>
@@ -1275,6 +1314,71 @@ function SharedInboxContent() {
                         <X size={24} />
                     </button>
                     <img src={zoomedImage} alt="Zoomed Media" className="max-w-full max-h-[90vh] object-contain cursor-zoom-out shadow-2xl rounded-lg" onClick={(e) => e.stopPropagation()} />
+                </div>
+            )}
+
+            {/* Template Picker Modal */}
+            {showTemplateModal && (
+                <div className="fixed inset-0 z-[3000] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200" onClick={() => setShowTemplateModal(false)}>
+                    <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden animate-in slide-in-from-bottom-4 duration-300" onClick={(e) => e.stopPropagation()}>
+                        <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+                            <div>
+                                <h3 className="font-black text-slate-900 text-lg">Send Template</h3>
+                                <p className="text-xs text-slate-400 font-medium mt-0.5">Select an approved template to send</p>
+                            </div>
+                            <button onClick={() => setShowTemplateModal(false)} className="p-2 rounded-xl hover:bg-slate-100 transition-colors text-slate-400 hover:text-slate-900">
+                                <X size={20} />
+                            </button>
+                        </div>
+                        <div className="px-6 pt-4">
+                            <div className="relative">
+                                <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                                <input
+                                    type="text"
+                                    placeholder="Search templates..."
+                                    value={templateSearch}
+                                    onChange={(e) => setTemplateSearch(e.target.value)}
+                                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-100 focus:border-violet-300 transition-all"
+                                />
+                            </div>
+                        </div>
+                        <div className="p-6 space-y-3 max-h-[50vh] overflow-y-auto custom-scrollbar">
+                            {templates.filter(t => t.name.toLowerCase().includes(templateSearch.toLowerCase())).length === 0 ? (
+                                <div className="text-center py-10 text-slate-400">
+                                    <FilePlus size={32} className="mx-auto mb-3 opacity-30" />
+                                    <p className="font-bold text-sm">No approved templates found.</p>
+                                    <p className="text-xs mt-1">Go to Templates to create and submit one for approval.</p>
+                                </div>
+                            ) : (
+                                templates
+                                    .filter(t => t.name.toLowerCase().includes(templateSearch.toLowerCase()))
+                                    .map((t) => {
+                                        const bodyComp = t.components?.find((c: any) => c.type === "BODY");
+                                        return (
+                                            <div key={t.id} className="group border border-slate-100 rounded-2xl p-4 hover:border-violet-200 hover:bg-violet-50/50 transition-all cursor-pointer" onClick={() => handleSendTemplate(t)}>
+                                                <div className="flex items-start justify-between gap-3">
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex items-center gap-2 mb-1">
+                                                            <span className="text-[10px] font-black uppercase tracking-widest text-violet-600 bg-violet-100 px-2 py-0.5 rounded-md">{t.category || "MARKETING"}</span>
+                                                            <span className="text-[10px] font-bold text-slate-400">{t.language}</span>
+                                                        </div>
+                                                        <p className="font-black text-slate-900 text-sm truncate">{t.name}</p>
+                                                        {bodyComp && <p className="text-xs text-slate-500 font-medium mt-1 line-clamp-2">{bodyComp.text}</p>}
+                                                    </div>
+                                                    <button
+                                                        disabled={sendingTemplate}
+                                                        className="shrink-0 flex items-center gap-1.5 bg-violet-600 text-white text-[10px] font-black uppercase tracking-wider px-3 py-2 rounded-xl hover:bg-violet-700 transition-all disabled:opacity-50 group-hover:scale-105"
+                                                    >
+                                                        {sendingTemplate ? <Loader2 size={12} className="animate-spin" /> : <Send size={12} />}
+                                                        Send
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        );
+                                    })
+                            )}
+                        </div>
+                    </div>
                 </div>
             )}
         </div>
