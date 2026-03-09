@@ -101,6 +101,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     {!pathname.startsWith('/dashboard/chat') && (
                         <footer className="py-10 px-12 border-t border-slate-100 bg-white shadow-[0_-1px_0_0_rgba(0,0,0,0.02)]">
                             <div className="flex flex-col md:flex-row justify-between items-center gap-6">
+                                <h3 className="text-sm font-black text-slate-900 mb-0.5 tracking-tighter">Grafty Console <span className="text-[9px] text-emerald-500 font-bold ml-1">v1.0.1</span></h3>
                                 <p className="text-[11px] text-slate-400 font-medium tracking-wide">
                                     &copy; {new Date().getFullYear()} {branding?.brand_name || "Grafty"}. ENTERPRISE GRADE MESSAGING.
                                 </p>
