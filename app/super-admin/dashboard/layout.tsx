@@ -1,41 +1,27 @@
 "use client";
-import React from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-    LayoutDashboard,
-    Users,
-    CreditCard,
-    ShieldAlert,
-    LogOut,
-    Activity,
-    Server,
-    Search,
-    Handshake,
-    MessageSquare,
-    Package,
-    Palette,
-    Settings2,
-    FileText,
-    Globe,
-    Mail,
-    Box,
-    BarChart3,
-    Settings,
-    ShieldCheck,
-    PenTool,
-    Coins,
-    GraduationCap,
-    Target,
-    Zap,
-    Shield,
-    SlidersHorizontal,
-    PhoneCall
-} from "lucide-react";
 import { Logo } from "../../../components/ui/Logo";
+
+/**
+ * ABSOLUTE DESTROYER: Side-bar Navigation Logic
+ * Using emojis for absolute library stability (forensic indicators).
+ */
 
 export default function SuperAdminLayout({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
+    const [isMounted, setIsMounted] = useState(false);
+
+    useEffect(() => {
+        setIsMounted(true);
+    }, []);
+
+    // HYDRATION GUARD: Prevent layout-level crashes before mounting
+    if (!isMounted) return <div className="flex min-h-screen bg-[#FAFAFA]"></div>;
+
+    const safePath = pathname || "";
+
     return (
         <div className="flex min-h-screen bg-[#FAFAFA]">
             {/* Sidebar */}
@@ -46,52 +32,52 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
                 </div>
 
                 <nav className="flex-1 px-4 py-8 space-y-1.5 overflow-y-auto custom-scrollbar">
-                    <NavLink href="/super-admin/dashboard" icon={<LayoutDashboard size={18} strokeWidth={1.5} />} label="Dashboard" />
+                    <NavLink href="/super-admin/dashboard" icon="📊" label="Dashboard" />
 
                     <div className="pt-6 pb-2 px-5">
                         <span className="text-[10px] font-bold text-slate-300 uppercase tracking-[0.2em] block">Revenue Engine</span>
                     </div>
-                    <NavLink href="/super-admin/dashboard/crm" icon={<Target size={18} strokeWidth={1.5} />} label="Sales" />
-                    <NavLink href="/super-admin/dashboard/growth" icon={<Zap size={18} strokeWidth={1.5} />} label="Growth" />
-                    <NavLink href="/super-admin/dashboard/growth/leads" icon={<PhoneCall size={18} strokeWidth={1.5} />} label="Tool Leads" />
-                    <NavLink href="/super-admin/dashboard/finance" icon={<BarChart3 size={18} strokeWidth={1.5} />} label="Finance" />
-                    <NavLink href="/super-admin/dashboard/finance/payment" icon={<CreditCard size={18} strokeWidth={1.5} />} label="Payment Gateway" />
-                    <NavLink href="/super-admin/dashboard/finance/settings" icon={<Settings2 size={18} strokeWidth={1.5} />} label="HSN/GST Settings" />
-                    <NavLink href="/super-admin/dashboard/proposals" icon={<PenTool size={18} strokeWidth={1.5} />} label="Proposals" />
+                    <NavLink href="/super-admin/dashboard/crm" icon="🎯" label="Sales" />
+                    <NavLink href="/super-admin/dashboard/growth" icon="⚡" label="Growth" />
+                    <NavLink href="/super-admin/dashboard/growth/leads" icon="📞" label="Tool Leads" />
+                    <NavLink href="/super-admin/dashboard/finance" icon="📈" label="Finance" />
+                    <NavLink href="/super-admin/dashboard/finance/payment" icon="💳" label="Payment Gateway" />
+                    <NavLink href="/super-admin/dashboard/finance/settings" icon="⚙️" label="HSN/GST Settings" />
+                    <NavLink href="/super-admin/dashboard/proposals" icon="🖋️" label="Proposals" />
 
                     <div className="pt-6 pb-2 px-5">
                         <span className="text-[10px] font-bold text-slate-300 uppercase tracking-[0.2em] block">Governance</span>
                     </div>
-                    <NavLink href="/super-admin/dashboard/settings/rbac" icon={<ShieldCheck size={18} strokeWidth={1.5} />} label="Permissions" />
-                    <NavLink href="/super-admin/dashboard/platform" icon={<SlidersHorizontal size={18} strokeWidth={1.5} />} label="Platform Controls" />
-                    <NavLink href="/super-admin/dashboard/branding" icon={<Palette size={18} strokeWidth={1.5} />} label="Branding" />
-                    <NavLink href="/super-admin/dashboard/packages" icon={<Package size={18} strokeWidth={1.5} />} label="Packages" />
-                    <NavLink href="/super-admin/dashboard/theme" icon={<Box size={18} strokeWidth={1.5} />} label="Theme" />
+                    <NavLink href="/super-admin/dashboard/settings/rbac" icon="🛡️" label="Permissions" />
+                    <NavLink href="/super-admin/dashboard/platform" icon="🎛️" label="Platform Controls" />
+                    <NavLink href="/super-admin/dashboard/branding" icon="🎨" label="Branding" />
+                    <NavLink href="/super-admin/dashboard/packages" icon="📦" label="Packages" />
+                    <NavLink href="/super-admin/dashboard/theme" icon="🍱" label="Theme" />
 
                     <div className="pt-6 pb-2 px-5">
                         <span className="text-[10px] font-bold text-slate-300 uppercase tracking-[0.2em] block">Infrastructure</span>
                     </div>
-                    <NavLink href="/super-admin/dashboard/content" icon={<Globe size={18} strokeWidth={1.5} />} label="Content Manager" />
-                    <NavLink href="/super-admin/dashboard/landing-page" icon={<Globe size={18} strokeWidth={1.5} />} label="Landing Page CMS" />
-                    <NavLink href="/super-admin/dashboard/settings/smtp" icon={<Mail size={18} strokeWidth={1.5} />} label="SMTP Settings" />
-                    <NavLink href="/super-admin/dashboard/settings/meta" icon={<Activity size={18} strokeWidth={1.5} />} label="Meta Settings" />
-                    <NavLink href="/super-admin/dashboard/settings/automation" icon={<Zap size={18} strokeWidth={1.5} />} label="Automation" />
-                    <NavLink href="/super-admin/dashboard/infra" icon={<Server size={18} strokeWidth={1.5} />} label="Infrastructure" />
+                    <NavLink href="/super-admin/dashboard/content" icon="🌐" label="Content Manager" />
+                    <NavLink href="/super-admin/dashboard/landing-page" icon="🌍" label="Landing Page CMS" />
+                    <NavLink href="/super-admin/dashboard/settings/smtp" icon="📧" label="SMTP Settings" />
+                    <NavLink href="/super-admin/dashboard/settings/meta" icon="📋" label="Meta Settings" />
+                    <NavLink href="/super-admin/dashboard/settings/automation" icon="🤖" label="Automation" />
+                    <NavLink href="/super-admin/dashboard/infra" icon="🖥️" label="Infrastructure" />
 
                     <div className="pt-6 pb-2 px-5">
                         <span className="text-[10px] font-bold text-slate-300 uppercase tracking-[0.2em] block">Entities</span>
                     </div>
-                    <NavLink href="/super-admin/dashboard/vendors" icon={<Users size={18} strokeWidth={1.5} />} label="Vendors" />
-                    <NavLink href="/super-admin/dashboard/partners" icon={<Handshake size={18} strokeWidth={1.5} />} label="Partners" />
-                    <NavLink href="/super-admin/dashboard/white-label" icon={<ShieldCheck size={18} strokeWidth={1.5} />} label="White-label" />
+                    <NavLink href="/super-admin/dashboard/vendors" icon="👥" label="Vendors" />
+                    <NavLink href="/super-admin/dashboard/partners" icon="🤝" label="Partners" />
+                    <NavLink href="/super-admin/dashboard/white-label" icon="🏢" label="White-label" />
 
                     <div className="pt-6 pb-2 px-5">
                         <span className="text-[10px] font-bold text-slate-300 uppercase tracking-[0.2em] block">Monitoring</span>
                     </div>
-                    <NavLink href="/super-admin/dashboard/settings/retention" icon={<Activity size={18} strokeWidth={1.5} />} label="Logs" />
-                    <NavLink href="/super-admin/dashboard/audit" icon={<Shield size={18} strokeWidth={1.5} />} label="Audits" />
-                    <NavLink href="/super-admin/dashboard/risk" icon={<ShieldAlert size={18} strokeWidth={1.5} />} label="Security" />
-                    <NavLink href="/super-admin/dashboard/settings" icon={<Settings size={18} strokeWidth={1.5} />} label="Settings" />
+                    <NavLink href="/super-admin/dashboard/settings/retention" icon="⏱️" label="Logs" />
+                    <NavLink href="/super-admin/dashboard/audit" icon="🛡️" label="Audits" />
+                    <NavLink href="/super-admin/dashboard/risk" icon="⚠️" label="Security" />
+                    <NavLink href="/super-admin/dashboard/settings" icon="⚙️" label="Settings" />
                 </nav>
 
                 <div className="p-6 border-t border-slate-50 bg-slate-50/30">
@@ -106,12 +92,13 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
                         <button
                             onClick={async (e) => {
                                 e.preventDefault();
+                                e.stopPropagation();
                                 await fetch("/api/super-admin/auth/logout", { method: "POST" });
                                 window.location.href = "/super-admin/login";
                             }}
                             className="text-slate-300 hover:text-rose-500 transition-colors p-2 z-10"
                         >
-                            <LogOut size={16} />
+                            🚪
                         </button>
                     </Link>
                 </div>
@@ -123,7 +110,7 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
                 <header className="h-20 border-b border-slate-100 flex items-center justify-between px-12 bg-white/80 backdrop-blur-xl sticky top-0 z-40">
                     <div className="flex items-center gap-6 w-[400px]">
                         <div className="relative w-full group">
-                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-slate-900 transition-colors" size={16} />
+                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-slate-900 transition-colors">🔍</span>
                             <input
                                 type="text"
                                 placeholder="Universal Command Search..."
@@ -142,7 +129,7 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
                     </div>
                 </header>
 
-                {pathname.startsWith('/super-admin/dashboard/landing-page/') && pathname.split('/').length > 5 ? (
+                {safePath.startsWith('/super-admin/dashboard/landing-page/') && safePath.split('/').length > 5 ? (
                     <div id="sa-viewport-landing">{children}</div>
                 ) : (
                     <div className="p-12 animate-fade-in max-w-[1600px]" id="sa-viewport-main">
@@ -156,7 +143,8 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
 
 function NavLink({ href, icon, label }: { href: string; icon: React.ReactNode; label: string }) {
     const pathname = usePathname();
-    const isActive = pathname === href || (href !== "/super-admin/dashboard" && pathname.startsWith(href));
+    const safePath = pathname || "";
+    const isActive = safePath === href || (href !== "/super-admin/dashboard" && safePath.startsWith(href));
 
     return (
         <Link
