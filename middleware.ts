@@ -87,11 +87,31 @@ export async function middleware(request: NextRequest) {
                 console.log(`[MW TENANT] 🏴‍☠️ White-Label Detected: ${host} -> Partner ${tenantId}`);
             }
 
-            // REDIRECT ROOT TO LOGIN/DASHBOARD FOR PARTNER DOMAINS
+            // CUSTOM HOME PAGE LOGIC (Tier 1-3)
             if (path === "/" || path === "/index") {
-                const protocol = request.headers.get("x-forwarded-proto") || "https";
-                const redirectPath = userId ? "/dashboard" : "/login";
-                return NextResponse.redirect(new URL(`${protocol}://${host}${redirectPath}`));
+                const type = (tenantBranding as any)?.home_page_type || "DEFAULT";
+                
+                // Tier 2: External Redirect
+                if (type === "EXTERNAL" && (tenantBranding as any)?.external_home_url) {
+                    return NextResponse.redirect((tenantBranding as any).external_home_url);
+                }
+
+                // Tier 1 & 3: DEFAULT or CUSTOM
+                // We let the request proceed to the root route (app/page.tsx), 
+                // but ONLY if the user is NOT logged in. 
+                // If logged in, we still might want to show the homepage OR go to dashboard.
+                // Re-seller partners usually want root to be their landing page.
+                if (userId && !request.nextUrl.searchParams.has("force_home")) {
+                    const protocol = request.headers.get("x-forwarded-proto") || "https";
+                    return NextResponse.redirect(new URL(`${protocol}://${host}/dashboard`));
+                }
+                
+                // Allow proceed to app/page.tsx
+                return NextResponse.next({
+                    request: {
+                        headers: requestHeaders,
+                    },
+                });
             }
         }
     }
@@ -119,8 +139,8 @@ export async function middleware(request: NextRequest) {
         if (role === "RESELLER") dashboardPath = "/partner/dashboard";
 
         const protocol = request.headers.get("x-forwarded-proto") || "https";
-        const baseHost = (process.env.NODE_ENV === "production" && host.includes("localhost")) ? "grafty.pro" : host;
-        return NextResponse.redirect(new URL(`${protocol}://${baseHost}${dashboardPath}`));
+        // Trust the current host to maintain whitelabel integrity
+        return NextResponse.redirect(new URL(`${protocol}://${host}${dashboardPath}`));
     }
 
     // --------------------------------------------------------
@@ -271,8 +291,8 @@ export async function middleware(request: NextRequest) {
         }
     } else {
         const protocol = request.headers.get("x-forwarded-proto") || "https";
-        const baseHost = (process.env.NODE_ENV === "production" && host.includes("localhost")) ? "grafty.pro" : host;
-        return NextResponse.redirect(new URL(`${protocol}://${baseHost}/login`));
+        // Never force a specific domain for login unless absolutely necessary
+        return NextResponse.redirect(new URL(`${protocol}://${host}/login`));
     }
 
     // DEFENSIVE SECURITY: Inject standard hardening headers

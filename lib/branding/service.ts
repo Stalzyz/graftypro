@@ -23,7 +23,7 @@ export class BrandingService {
                     return {
                         is_white_labeled: true,
                         brand_name: r.brand_name || r.name,
-                        logo_url: r.logo_url || "/logo-placeholder.png",
+                        logo_url: r.logo_url || null, // Allow Logo component handle default
                         favicon_url: r.favicon_url || "/favicon.ico",
                         theme_mode: (r as any).theme_mode || "LIGHT",
                         colors: {
@@ -147,6 +147,46 @@ export class BrandingService {
             console.error("Domain Branding Fetch Error:", e);
         }
 
+        return null;
+    }
+
+    /**
+     * PHASE 4: RESELLER RESOLVER
+     * Fetches branding directly for a reseller by their ID.
+     */
+    static async getBrandingForReseller(resellerId: string) {
+        if (!resellerId) return null;
+        try {
+            const reseller = await prisma.reseller.findUnique({
+                where: { id: resellerId }
+            });
+
+            if (reseller) {
+                return {
+                    reseller_id: reseller.id,
+                    is_white_labeled: true,
+                    brand_name: reseller.brand_name || reseller.name,
+                    logo_url: reseller.logo_url,
+                    favicon_url: reseller.favicon_url,
+                    primary_color: reseller.primary_color || "#0F172A",
+                    secondary_color: reseller.secondary_color || "#3B82F6",
+                    colors: {
+                        primary: reseller.primary_color || "#0F172A",
+                        secondary: reseller.secondary_color || "#3B82F6"
+                    },
+                    broadcast: {
+                        banner: reseller.broadcast_banner || null,
+                        link: reseller.broadcast_link || null
+                    },
+                    support: {
+                        email: reseller.support_email || "support@" + (reseller.custom_domain || "grafty.pro"),
+                        url: reseller.support_url || null
+                    }
+                };
+            }
+        } catch (e) {
+            console.error("Reseller Branding Fetch Error:", e);
+        }
         return null;
     }
 }

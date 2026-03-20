@@ -28,6 +28,12 @@ export async function GET(req: Request) {
 
         // 1. Priority: If logged in, get workspace branding
         if (user?.workspaceId) {
+            // WHITESPACE FIX: If it's a partner_root workspace, resolve by reseller userId
+            if (user.workspaceId === "partner_root" && user.role === "RESELLER") {
+                const partnerBranding = await BrandingService.getBrandingForReseller(user.userId);
+                if (partnerBranding) return NextResponse.json({ success: true, data: partnerBranding });
+            }
+
             const wsBranding = await BrandingService.getBrandingForWorkspace(user.workspaceId);
             if (wsBranding?.is_white_labeled) {
                 return NextResponse.json({ success: true, data: wsBranding });
