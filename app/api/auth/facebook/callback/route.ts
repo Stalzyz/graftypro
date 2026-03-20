@@ -39,7 +39,7 @@ export async function GET(request: Request) {
 
         // ── 1. Exchange code for access token ────────────────────────────
         console.log("[Facebook OAuth] Exchanging code...");
-        const tokenUrl = `https://graph.facebook.com/v18.0/oauth/access_token?client_id=${FB_CLIENT_ID}&redirect_uri=${REDIRECT_URI}&client_secret=${FB_CLIENT_SECRET}&code=${code}`;
+        const tokenUrl = `https://graph.facebook.com/v20.0/oauth/access_token?client_id=${FB_CLIENT_ID}&redirect_uri=${REDIRECT_URI}&client_secret=${FB_CLIENT_SECRET}&code=${code}`;
 
         const tokenRes = await fetch(tokenUrl);
         const tokens = await tokenRes.json();

@@ -15,9 +15,11 @@ export async function generateMetadata() {
     const page = await getLandingPage("home");
     const seo = (page as any)?.seo_config || {};
     return {
-        title: seo.title || "Grafty | WhatsApp Marketing & Automation Platform",
-        description: seo.description || "Turn WhatsApp into a revenue engine. Automate conversations, generate leads, collect payments, and scale sales on WhatsApp with enterprise-grade infrastructure.",
+        title: seo.title || "Grafty | WhatsApp Business Marketing & Automation Platform",
+        description: seo.description || "The ultimate official WhatsApp Business API platform. Build flows, automate customer support, and scale retail sales on WhatsApp with Grafty.",
         openGraph: {
+            title: seo.title || "Grafty | WhatsApp Business Marketing & Automation Platform",
+            description: seo.description || "The ultimate official WhatsApp Business API platform.",
             images: [seo.og_image].filter(Boolean)
         }
     };

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { ResellerAnalyticsService } from "../../../../lib/reseller/analytics";
+import { ResellerAnalyticsService } from "@/lib/reseller/analytics";
 
 export const dynamic = 'force-dynamic';
 

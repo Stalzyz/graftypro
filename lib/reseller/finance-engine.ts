@@ -62,12 +62,15 @@ export class ResellerFinanceEngine {
 
         if (!ledgerEntry) return null;
 
+        const earningTypes: LedgerEntryType[] = ['COMMISSION', 'PROFIT_SHARE', 'WALLET_MARGIN', 'TIER_BONUS', 'REVENUE_SHARE', 'BONUS_PAYOUT'];
+        const isEarning = earningTypes.includes(type) && amount > 0;
+
         // 3. Update the liquid wallet balance
         await tx.reseller.update({
             where: { id: resellerId },
             data: {
                 wallet_balance: { increment: amount },
-                total_earned: (type === 'COMMISSION' && amount > 0) ? { increment: amount } : undefined
+                total_earned: isEarning ? { increment: amount } : undefined
             }
         });
 
@@ -84,15 +87,17 @@ export class ResellerFinanceEngine {
         workspaceId,
         wholesaleCost,
         retailPrice,
-        planName
+        planName,
+        referenceId
     }: {
         resellerId: string;
         workspaceId: string;
         wholesaleCost: number;
         retailPrice: number;
         planName: string;
+        referenceId?: string;
     }) {
-        if (wholesaleCost <= 0) return true; // Free system plan
+        if (wholesaleCost <= 0) return null; // Free system plan
 
         // 1. Lock Reseller Row (Atomic check)
         const resellers: any[] = await tx.$queryRaw`SELECT wallet_balance FROM resellers WHERE id = ${resellerId} FOR UPDATE`;
@@ -117,7 +122,7 @@ export class ResellerFinanceEngine {
                 balance_after: currentBalance - wholesaleCost,
                 type: "SUBSCRIPTION_FEE",
                 description: `Wholesale Cost Deduction: Vendor Subscription [${planName}]`,
-                reference_id: `SUB-${workspaceId}-${Date.now()}`
+                reference_id: referenceId || `SUB-${workspaceId}-${Date.now()}`
             }
         });
 
@@ -129,7 +134,7 @@ export class ResellerFinanceEngine {
             }
         });
 
-        // 5. Track Partner Profit in Monthly Stats (Information Only - Retail price collected externally)
+        // 5. Track Partner Profit in Monthly Stats
         const partnerProfit = retailPrice - wholesaleCost;
         if (partnerProfit > 0) {
             const now = new Date();
@@ -162,6 +167,25 @@ export class ResellerFinanceEngine {
      * Reconciles the wallet balance against the ledger sum.
      * Used by nightly audit jobs.
      */
+    /**
+     * Reconciles all wallets and logs discrepancies.
+     */
+    static async auditAllWallets() {
+        const resellers = await prisma.reseller.findMany({ select: { id: true, brand_name: true } });
+        const results = [];
+
+        for (const r of resellers) {
+            const audit = await this.reconcileWallet(r.id);
+            if (!audit.isConsistent) {
+                console.error(`[AUDIT ALERT] Balance mismatch for ${r.brand_name} (${r.id}): Diff: ${audit.difference}`);
+                // In production, we would create a System Alert or Ticket here
+            }
+            results.push(audit);
+        }
+
+        return results;
+    }
+
     static async reconcileWallet(resellerId: string) {
         const ledgerSum = await prisma.resellerLedger.aggregate({
             where: { reseller_id: resellerId },

@@ -73,6 +73,9 @@ export default function CommercePage() {
     const [uploadingIndex, setUploadingIndex] = useState<number | null>(null);
     const [editStoreId, setEditStoreId] = useState<string | null>(null);
     const [editProductId, setEditProductId] = useState<string | null>(null);
+    const [isLogisticsModalOpen, setIsLogisticsModalOpen] = useState(false);
+    const [logisticsSaving, setLogisticsSaving] = useState(false);
+    const [logisticsForm, setLogisticsForm] = useState({ email: "", password: "" });
 
     // Form States
     const [newStore, setNewStore] = useState({ platform: "NATIVE", credentials: {} as any });
@@ -86,6 +89,22 @@ export default function CommercePage() {
         variants: [] as Variant[]
     });
 
+    // State for Analytics
+    const [commerceStats, setCommerceStats] = useState({
+        totalRevenue: "₹0",
+        activeOrders: "0",
+        totalProducts: "0",
+        syncStatus: "None",
+        abandonedCheckouts: "0" // Added
+    });
+    const [recentActivity, setRecentActivity] = useState<any[]>([]);
+
+    // Recovery State
+    const [isRecoveryModalOpen, setIsRecoveryModalOpen] = useState(false);
+    const [recoveries, setRecoveries] = useState<any[]>([]);
+    const [isFetchingRecoveries, setIsFetchingRecoveries] = useState(false);
+    const [recoveringId, setRecoveringId] = useState<string | null>(null);
+
     useEffect(() => {
         init();
         console.log("🚀 [Grafty] COMMERCE COMMAND CENTER V3.1.2 LOADED");
@@ -93,8 +112,58 @@ export default function CommercePage() {
 
     const init = async () => {
         setIsLoading(true);
-        await Promise.all([fetchStores(), fetchProducts()]);
+        await Promise.all([fetchStores(), fetchProducts(), fetchStats()]);
         setIsLoading(false);
+    };
+
+    const fetchStats = async () => {
+        try {
+            const res = await fetch("/api/commerce/stats");
+            const data = await res.json();
+            if (data.success) {
+                setCommerceStats(data.stats);
+                setRecentActivity(data.recentActivity);
+            }
+        } catch (err) {
+            console.error("Stats fetch failed", err); // Updated error message
+        }
+    };
+
+    const fetchRecoveries = async () => {
+        setIsFetchingRecoveries(true);
+        try {
+            const res = await fetch("/api/commerce/recovery/list");
+            const data = await res.json();
+            if (data.success) {
+                setRecoveries(data.recoveries);
+            }
+        } catch (err) {
+            console.error("Recovery fetch failed", err);
+        } finally {
+            setIsFetchingRecoveries(false);
+        }
+    };
+
+    const handleRecover = async (orderId: string) => {
+        setRecoveringId(orderId);
+        try {
+            const res = await fetch("/api/commerce/recovery/send", {
+                method: "POST",
+                body: JSON.stringify({ orderId }),
+                headers: { "Content-Type": "application/json" }
+            });
+            if (res.ok) {
+                alert("Recovery message sent successfully!");
+                fetchRecoveries();
+            } else {
+                const err = await res.json();
+                alert(err.error || "Failed to send recovery");
+            }
+        } catch (err) {
+            alert("Error sending recovery");
+        } finally {
+            setRecoveringId(null);
+        }
     };
 
     const fetchStores = async () => {
@@ -253,6 +322,37 @@ export default function CommercePage() {
         }
     };
 
+    const handleSaveLogistics = async (e: React.FormEvent) => {
+        e.preventDefault();
+        const nativeStore = stores.find(s => s.platform === 'NATIVE');
+        if (!nativeStore) return alert("Native store not found");
+
+        setLogisticsSaving(true);
+        try {
+            const res = await fetch("/api/commerce/logistics/config", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    storeId: nativeStore.id,
+                    ...logisticsForm
+                })
+            });
+            if (res.ok) {
+                setIsLogisticsModalOpen(false);
+                setLogisticsForm({ email: "", password: "" });
+                alert("Logistics configured successfully!");
+                fetchStores();
+            } else {
+                const err = await res.json();
+                alert(err.error || "Failed to save configuration");
+            }
+        } catch (err) {
+            alert("Error saving logistics config");
+        } finally {
+            setLogisticsSaving(false);
+        }
+    };
+
     const addVariantField = () => {
         setNewProduct(prev => ({
             ...prev,
@@ -315,9 +415,17 @@ export default function CommercePage() {
             </div>
 
             {/* Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {stats.map((stat, i) => (
-                    <div key={i} className="bg-white border border-slate-200 p-6 rounded-[2.5rem] relative overflow-hidden group hover:border-emerald-500/50 transition-all shadow-sm">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+                {[
+                    { label: "Total Revenue", value: commerceStats.totalRevenue, icon: Wallet, trend: "Live", color: "emerald" },
+                    { label: "Active Orders", value: commerceStats.activeOrders, icon: ShoppingCart, trend: "Pending", color: "blue" },
+                    { label: "Sync Status", value: commerceStats.syncStatus, icon: RefreshCw, trend: "API", color: "purple" },
+                    { label: "Abandoned", value: commerceStats.abandonedCheckouts, icon: Zap, trend: "Recover", color: "rose" },
+                    { label: "Total Products", value: commerceStats.totalProducts, icon: Package, trend: "Stock", color: "amber" }
+                ].map((stat, i) => (
+                    <div key={i}
+                         onClick={stat.label === "Abandoned" ? () => { setIsRecoveryModalOpen(true); fetchRecoveries(); } : undefined}
+                         className={`bg-white border border-slate-200 p-6 rounded-[2.5rem] relative overflow-hidden group hover:border-${stat.color}-500/50 transition-all shadow-sm ${stat.label === "Abandoned" ? "cursor-pointer" : ""}`}>
                         <div className={`absolute -right-4 -top-4 w-24 h-24 bg-${stat.color}-500/5 blur-3xl group-hover:bg-${stat.color}-500/10 transition-all duration-700`} />
                         <div className="flex items-center justify-between mb-4">
                             <div className={`p-3 rounded-2xl bg-${stat.color}-500/10 border border-${stat.color}-500/20`}>
@@ -331,18 +439,6 @@ export default function CommercePage() {
                         </div>
                         <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.2em]">{stat.label}</p>
                         <h2 className="text-4xl font-black text-slate-900 mt-1 group-hover:scale-105 origin-left transition-transform">{stat.value}</h2>
-
-                        {/* Sparkline Mockup */}
-                        <div className="mt-4 h-8 w-full overflow-hidden opacity-30 group-hover:opacity-60 transition-opacity">
-                            <svg viewBox="0 0 100 20" className="w-full h-full">
-                                <path
-                                    d="M0,15 Q10,5 20,12 T40,8 T60,14 T80,6 T100,10"
-                                    fill="none"
-                                    stroke={stat.color === 'emerald' ? '#10b981' : stat.color === 'blue' ? '#3b82f6' : '#8b5cf6'}
-                                    strokeWidth="2"
-                                />
-                            </svg>
-                        </div>
                     </div>
                 ))}
             </div>
@@ -560,16 +656,25 @@ export default function CommercePage() {
 
                 {/* Right Column: Actions & Tools */}
                 <div className="lg:col-span-4 space-y-8">
-                    <div className="bg-gradient-to-br from-emerald-600 to-blue-700 p-8 rounded-[2.5rem] text-white relative overflow-hidden group shadow-xl shadow-emerald-600/10">
-                        <div className="absolute top-0 right-0 p-8 opacity-20 group-hover:scale-110 transition-transform duration-700">
-                            <Zap size={100} />
+                    {/* Recovery Card */}
+                    <div className="bg-gradient-to-br from-rose-600 to-amber-600 p-8 rounded-[2.5rem] text-white relative overflow-hidden group shadow-xl shadow-rose-600/10">
+                        <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform duration-700">
+                            <Zap size={120} fill="currentColor" /> {/* Changed to fill="currentColor" */}
                         </div>
                         <h3 className="text-2xl font-black mb-2 relative z-10 flex items-center gap-2">
-                            Sales Recovery <Zap size={20} fill="currentColor" />
+                            A.I. Recovery
+                            <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-full font-black uppercase tracking-tighter">Pro</span>
                         </h3>
                         <p className="text-white/80 mb-6 relative z-10 text-sm font-medium leading-relaxed">
-                            A.I. driven abandoned cart detection is active. We detected 12 potential sales in the last 24h.
+                            {commerceStats.abandonedCheckouts} high-value carts detected. Reach out now to boost your conversion rate.
                         </p>
+                        <button
+                            onClick={() => { setIsRecoveryModalOpen(true); fetchRecoveries(); }}
+                            className="bg-white text-rose-600 px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest hover:shadow-lg hover:scale-105 active:scale-95 transition-all w-full flex items-center justify-center gap-2 relative z-10 shadow-sm"
+                        >
+                            View Lost Carts
+                            <ArrowUpRight size={16} />
+                        </button>
                     </div>
 
                     <div className="bg-white border border-slate-200 rounded-[2.5rem] p-8 space-y-6 shadow-sm">
@@ -582,39 +687,73 @@ export default function CommercePage() {
                         </div>
 
                         <div className="space-y-4">
-                            {[
-                                { user: "Vijay K.", action: "Placed order for Premium Headphones", time: "2 min ago", price: "₹4,999" },
-                                { user: "Sarah M.", action: "Added smart watch to cart", time: "15 min ago", price: "₹2,499" },
-                                { user: "Rahul S.", action: "Recovered cart via WhatsApp", time: "1h ago", price: "₹8,500" }
-                            ].map((item, i) => (
-                                <div key={i} className="flex gap-4 p-4 rounded-3xl bg-slate-50 border border-slate-100 group hover:border-emerald-200 transition-all">
-                                    <div className="w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-600 font-bold text-xs uppercase tracking-widest shrink-0 border border-emerald-100">
-                                        {item.user[0]}
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex justify-between items-start gap-2">
-                                            <h4 className="font-bold text-xs text-slate-800 truncate">{item.user}</h4>
-                                            <span className="text-[10px] font-black text-emerald-600 shrink-0">{item.price}</span>
-                                        </div>
-                                        <p className="text-[10px] text-slate-400 truncate">{item.action}</p>
-                                        <p className="text-[8px] font-black text-slate-300 uppercase tracking-widest mt-1">{item.time}</p>
-                                    </div>
+                            {recentActivity.length === 0 ? (
+                                <div className="p-8 text-center bg-slate-50 rounded-3xl border border-slate-100">
+                                    <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">No recent activity detected</p>
                                 </div>
-                            ))}
+                            ) : (
+                                recentActivity.map((activity, i) => (
+                                    <div key={i} className="flex items-start gap-4 p-4 hover:bg-slate-50 rounded-2xl transition-colors border border-transparent hover:border-slate-100">
+                                        <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 font-black text-xs shrink-0">
+                                            {activity.customer?.[0]?.toUpperCase()}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center justify-between mb-0.5">
+                                                <p className="font-black text-slate-900 text-sm truncate">{activity.customer}</p>
+                                                <span className="text-[10px] font-black text-emerald-600">{activity.amount}</span>
+                                            </div>
+                                            <div className="flex items-center justify-between text-[10px] font-bold">
+                                                <span className="text-slate-400 uppercase tracking-tighter">{activity.status}</span>
+                                                <span className="text-slate-300">
+                                                    {new Date(activity.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
                         </div>
                     </div>
 
-                    <div className="bg-slate-900/40 backdrop-blur-xl border border-slate-800 rounded-[2.5rem] p-8 space-y-6 opacity-60 grayscale hover:grayscale-0 transition-all cursor-not-allowed group">
-                        <h3 className="text-lg font-black text-white flex items-center gap-2 mb-2">
-                            <Truck className="text-slate-500" size={18} />
-                            Logistics Hub
-                        </h3>
-                        <div className="p-10 text-center">
-                            <div className="bg-slate-950 w-16 h-16 rounded-3xl flex items-center justify-center mx-auto mb-4 border border-white/5">
-                                <Search className="text-slate-700" size={24} />
-                            </div>
-                            <p className="text-xs font-bold text-slate-500 uppercase tracking-widest leading-loose">Automated shipping <br /> sync coming soon</p>
+
+                    <div className={`soft-card p-8 space-y-6 transition-all border-2 ${stores.some(s => s.platform === 'NATIVE' && (s as any).shipping_provider) ? 'border-emerald-500 bg-emerald-50/5' : 'border-slate-200'}`}>
+                        <div className="flex items-center justify-between mb-2">
+                            <h3 className="text-lg font-black text-slate-900 flex items-center gap-2">
+                                <Truck className="text-emerald-500" size={18} />
+                                Logistics Hub
+                            </h3>
+                            {stores.some(s => s.platform === 'NATIVE' && (s as any).shipping_provider) ? (
+                                <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-ping"></span>
+                            ) : (
+                                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest bg-slate-100 px-2 py-0.5 rounded">Setup Needed</span>
+                            )}
                         </div>
+
+                        <div className="p-4 text-center bg-slate-50 rounded-[2rem] border border-slate-100 italic">
+                            <div className={`w-16 h-16 rounded-3xl flex items-center justify-center mx-auto mb-4 border transition-all ${stores.some(s => s.platform === 'NATIVE' && (s as any).shipping_provider) ? 'bg-emerald-500 text-white border-emerald-400' : 'bg-white text-slate-300 border-slate-100'}`}>
+                                <Truck size={24} />
+                            </div>
+                            <h4 className="text-sm font-black text-slate-800 mb-1">
+                                {(stores.find(s => s.platform === 'NATIVE' && (s as any).shipping_provider) as any)?.shipping_provider === 'SHIPROCKET'
+                                    ? 'Shiprocket Active'
+                                    : 'No Provider Linked'}
+                            </h4>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-loose">Automated shipping <br /> synchronization active</p>
+                        </div>
+
+                        <button
+                            onClick={() => {
+                                const nativeStore = stores.find(s => s.platform === 'NATIVE');
+                                if (nativeStore) {
+                                    setIsLogisticsModalOpen(true);
+                                } else {
+                                    alert("Please create a Native store first to link logistics.");
+                                }
+                            }}
+                            className="w-full btn-primary text-xs uppercase tracking-widest font-black py-4 shadow-lg shadow-emerald-500/10"
+                        >
+                            Configure Logistics
+                        </button>
                     </div>
                 </div>
             </div>
@@ -883,6 +1022,122 @@ export default function CommercePage() {
                                 {connecting ? "Connecting..." : "Establish Connection"}
                             </button>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Logistics Modal */}
+            {isLogisticsModalOpen && (
+                <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-white/80 backdrop-blur-xl animate-in fade-in duration-300">
+                    <div className="bg-white w-full max-w-lg rounded-[3rem] border border-slate-200 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+                        <div className="p-10 border-b border-slate-100 relative">
+                            <button onClick={() => setIsLogisticsModalOpen(false)} className="absolute top-10 right-10 text-slate-300 hover:text-slate-900 transition-colors">
+                                <Plus className="rotate-45" size={28} />
+                            </button>
+                            <div className="flex items-center gap-3 mb-2">
+                                <div className="bg-blue-500/10 p-2 rounded-xl border border-blue-500/20">
+                                    <Truck className="text-blue-500" size={24} />
+                                </div>
+                                <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Enterprise Logistics</span>
+                            </div>
+                            <h3 className="text-3xl font-black text-slate-900 tracking-tight">Shiprocket <span className="text-blue-500">Gateway</span></h3>
+                            <p className="text-slate-400 text-sm mt-1">Connect your Shiprocket account to track DTDC and Professional Courier orders.</p>
+                        </div>
+
+                        <form onSubmit={handleSaveLogistics} className="p-10 space-y-6">
+                            <div className="space-y-4">
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Shiprocket Email</label>
+                                    <input
+                                        type="email" placeholder="account@shiprocket.in" required
+                                        className="w-full bg-white border border-slate-200 rounded-2xl px-6 py-4 text-sm font-bold text-slate-700 outline-none focus:border-blue-500 transition-all shadow-sm"
+                                        value={logisticsForm.email}
+                                        onChange={(e) => setLogisticsForm({ ...logisticsForm, email: e.target.value })}
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Shiprocket Password</label>
+                                    <input
+                                        type="password" placeholder="••••••••" required
+                                        className="w-full bg-white border border-slate-200 rounded-2xl px-6 py-4 text-sm font-bold text-slate-700 outline-none focus:border-blue-500 transition-all shadow-sm"
+                                        value={logisticsForm.password}
+                                        onChange={(e) => setLogisticsForm({ ...logisticsForm, password: e.target.value })}
+                                    />
+                                </div>
+                            </div>
+
+                            <button
+                                type="submit" disabled={logisticsSaving}
+                                className="w-full bg-gradient-to-r from-blue-600 to-indigo-700 text-white py-5 rounded-[2rem] font-black uppercase tracking-[0.2em] text-xs hover:shadow-2xl hover:shadow-blue-500/20 active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-3"
+                            >
+                                {logisticsSaving ? <RefreshCw className="animate-spin" size={18} /> : <CheckCircle2 size={18} />}
+                                {logisticsSaving ? "Saving Config..." : "Activate Logistics"}
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+             {/* Recovery Modal */}
+             {isRecoveryModalOpen && (
+                <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-white/80 backdrop-blur-xl animate-in fade-in duration-300">
+                    <div className="bg-white w-full max-w-2xl rounded-[3rem] border border-slate-200 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+                        <div className="p-10 border-b border-slate-100 relative">
+                            <button onClick={() => setIsRecoveryModalOpen(false)} className="absolute top-10 right-10 text-slate-300 hover:text-slate-900 transition-colors">
+                                <Plus className="rotate-45" size={28} />
+                            </button>
+                            <div className="flex items-center gap-3 mb-2">
+                                <div className="bg-rose-500/10 p-2 rounded-xl border border-rose-500/20">
+                                    <Zap className="text-rose-500" size={24} />
+                                </div>
+                                <span className="text-[10px] font-black text-rose-600 uppercase tracking-widest">Abandonment Recovery</span>
+                            </div>
+                            <h3 className="text-3xl font-black text-slate-900 tracking-tight">Recover <span className="text-rose-500">Sales</span></h3>
+                            <p className="text-slate-400 text-sm mt-1">High-value carts detected. Send a personalized WhatsApp reminder to complete the order.</p>
+                        </div>
+
+                        <div className="p-10 h-[400px] overflow-y-auto space-y-4">
+                            {isFetchingRecoveries ? (
+                                <div className="flex items-center justify-center h-full">
+                                    <RefreshCw className="animate-spin text-slate-300" size={32} />
+                                </div>
+                            ) : recoveries.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center h-full text-center space-y-4">
+                                    <div className="bg-slate-50 p-6 rounded-full border border-slate-100">
+                                        <CheckCircle2 className="text-emerald-500" size={48} />
+                                    </div>
+                                    <div>
+                                        <h4 className="text-lg font-black text-slate-900">All caught up!</h4>
+                                        <p className="text-slate-400 text-sm">No abandoned checkouts detected in the last window.</p>
+                                    </div>
+                                </div>
+                            ) : (
+                                recoveries.map((recovery) => (
+                                    <div key={recovery.id} className="group p-6 bg-slate-50 hover:bg-white rounded-3xl border border-slate-100 hover:border-emerald-500/30 transition-all flex items-center justify-between shadow-sm hover:shadow-xl hover:shadow-emerald-500/5">
+                                        <div className="min-w-0">
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <span className="text-xs font-black text-slate-400 uppercase tracking-tighter">{recovery.orderNumber}</span>
+                                                <span className="text-[10px] bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded font-black">{new Date(recovery.time).toLocaleDateString()}</span>
+                                            </div>
+                                            <p className="font-black text-slate-900 truncate">{recovery.customer}</p>
+                                            <p className="text-xs font-bold text-slate-400">{recovery.amount}</p>
+                                        </div>
+                                        <button
+                                            disabled={recoveringId === recovery.id}
+                                            onClick={() => handleRecover(recovery.id)}
+                                            className="bg-white border border-slate-200 p-3 rounded-2xl text-emerald-600 hover:bg-emerald-600 hover:text-white hover:border-emerald-600 transition-all shadow-sm active:scale-95 disabled:opacity-50"
+                                        >
+                                            {recoveringId === recovery.id ? <RefreshCw className="animate-spin" size={20} /> : <Share2 size={20} />}
+                                        </button>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                        <div className="p-8 bg-slate-50 border-t border-slate-100">
+                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest text-center">
+                                WhatsApp API fees may apply per recovery message
+                            </p>
+                        </div>
                     </div>
                 </div>
             )}

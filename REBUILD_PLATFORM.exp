@@ -1,0 +1,25 @@
+#!/usr/bin/expect -f
+
+set timeout -1
+set password "Photoshop09@"
+set vps_ip "72.61.231.187"
+
+puts "🔍 Looking for active deployment path..."
+
+spawn ssh root@$vps_ip "pm2 show wabot | grep 'interpreter args'"
+expect {
+    "password:" { send "$password\r" }
+    "(yes/no)?" { send "yes\r"; exp_continue }
+}
+expect eof
+
+puts "🏗️ Starting Remote Rebuild..."
+spawn ssh root@$vps_ip "cd /var/www/wabot && npm run build && pm2 restart wabot"
+expect {
+    "password:" { send "$password\r" }
+    "(yes/no)?" { send "yes\r"; exp_continue }
+}
+expect {
+    "Compiled successfully" { puts "✅ Build success!" }
+    eof { puts "✅ Execution finished." }
+}

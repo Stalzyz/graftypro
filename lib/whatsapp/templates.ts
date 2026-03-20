@@ -1,7 +1,7 @@
 
 import axios from "axios";
 
-const META_API_VERSION = "v18.0";
+const META_API_VERSION = "v20.0";
 const BASE_URL = `https://graph.facebook.com/${META_API_VERSION}`;
 
 export class MetaTemplateService {
@@ -88,8 +88,16 @@ export class MetaTemplateService {
 
         } catch (error: any) {
             console.error("Meta Template Submission Error:", error.response?.data || error.message);
-            const metaError = error.response?.data?.error?.message || "Meta API Rejected Submission";
-            throw new Error(metaError);
+            
+            const metaError = error.response?.data?.error;
+            let errorMessage = metaError?.message || "Meta API Rejected Submission";
+
+            // Specific check for misconfigured WABA ID (Business ID used instead of WABA ID)
+            if (errorMessage.includes("Unsupported post request") || errorMessage.includes("does not exist")) {
+                errorMessage = `Meta Error: ${errorMessage}. (TIP: Ensure you are using the 'WhatsApp Business Account ID' and not your 'Business Manager ID')`;
+            }
+
+            throw new Error(errorMessage);
         }
     }
 
@@ -124,7 +132,7 @@ export class MetaTemplateService {
         accessToken: string
     ) {
         // --- MOCK BYPASS FOR TESTING ---
-        if (accessToken === "test_token" || process.env.NODE_ENV === "development") {
+        if (accessToken === "test_token") {
             return [
                 {
                     id: "temp_1",

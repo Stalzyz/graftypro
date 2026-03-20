@@ -1,16 +1,16 @@
 import { NextResponse } from "next/server";
 import { prisma } from "../../../../lib/db";
 import { v4 as uuidv4 } from "uuid";
-import { getCurrentUser } from "../../../../lib/auth";
+import { requireSuperAdmin } from "../../../../lib/admin-auth";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
     try {
-        const userPayload = await getCurrentUser(req);
-        // We allow this in debug mode or for admins
+        // Enforce Super Admin Authorization
+        await requireSuperAdmin();
 
-        console.log("☢️ NUCLEAR API TRIGGERED");
+        console.log("☢️ NUCLEAR API TRIGGERED BY ADMIN");
 
         // 1. Find or Create Demo Workspace
         let workspace = await prisma.workspace.findFirst({
@@ -23,7 +23,8 @@ export async function POST(req: Request) {
                     name: "Demo Command Center",
                     business_name: "Demo Corp International",
                     plan: "ENTERPRISE",
-                    status: "ACTIVE"
+                    status: "ACTIVE",
+                    trial_ends_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
                 }
             });
         }

@@ -7,6 +7,8 @@ import {
     ArrowUpRight, Target, Activity, AlertCircle, ChevronRight, Check,
     TrendingUp, ShieldCheck, ArrowRight
 } from "lucide-react";
+import { safeToLocaleString, formatCurrency, ensureNumber } from '@/lib/utils/number-format';
+
 
 export default function SubscriptionsPage() {
     const [plans, setPlans] = useState<any[]>([]);
@@ -287,7 +289,8 @@ data-theme="light">
                                             </div>
                                             <div>
                                                 <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-0.5">Escrow Balance</span>
-                                                <span className="text-sm font-black text-slate-900">₹{walletBalance.toLocaleString()}</span>
+                                                <span className="text-sm font-black text-slate-900">{formatCurrency(walletBalance)}</span>
+
                                             </div>
                                         </div>
                                         <Link href="/partner/settings/billing" className="text-[10px] font-bold uppercase tracking-widest text-indigo-600 hover:text-indigo-700 bg-indigo-50 px-4 py-2 rounded-xl transition-colors">

@@ -1,6 +1,8 @@
 "use client";
 import React, { useEffect, useState } from 'react';
 import { History, TrendingUp, Download, Filter, ArrowUpRight, ArrowDownRight, Clock } from 'lucide-react';
+import { safeToLocaleString, formatCurrency, ensureNumber } from '@/lib/utils/number-format';
+
 
 export default function ResellerLedgerPage() {
     const [entries, setEntries] = useState<any[]>([]);
@@ -81,10 +83,12 @@ export default function ResellerLedgerPage() {
                                         </span>
                                     </td>
                                     <td className={`px-8 py-6 font-black text-sm ${Number(item.amount) >= 0 ? 'text-[#27954D]' : 'text-red-500'}`}>
-                                        {Number(item.amount) >= 0 ? '+' : ''}₹{Math.abs(Number(item.amount)).toLocaleString()}
+                                        {Number(item.amount) >= 0 ? '+' : '-'} {formatCurrency(Math.abs(Number(item.amount)))}
+
                                     </td>
                                     <td className="px-8 py-6 font-bold text-xs text-slate-600">
-                                        ₹{Number(item.balance_after).toLocaleString()}
+                                        {formatCurrency(item.balance_after)}
+
                                     </td>
                                     <td className="px-8 py-6 text-[10px] text-slate-400 font-bold tabular-nums">
                                         #{item.reference_id?.slice(-8) || 'SYSTEM'}

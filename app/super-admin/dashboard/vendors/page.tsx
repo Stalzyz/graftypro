@@ -39,6 +39,11 @@ export default function VendorListPage() {
     const [formLoading, setFormLoading] = useState(false);
     const [formError, setFormError] = useState("");
 
+    // Credit adjustment modal
+    const [creditModal, setCreditModal] = useState<{ isOpen: boolean; vendorId: string; vendorName: string } | null>(null);
+    const [creditData, setCreditData] = useState({ amount: "", type: "add_credits", reason: "" });
+    const [creditLoading, setCreditLoading] = useState(false);
+
     const showToast = (msg: string, type: "success" | "error" = "success") => {
         setToast({ msg, type });
         setTimeout(() => setToast(null), 3500);
@@ -167,6 +172,37 @@ export default function VendorListPage() {
             setFormError(err.message);
         } finally {
             setFormLoading(false);
+        }
+    };
+
+    const handleAdjustCredits = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!creditModal?.vendorId || !creditData.amount) return;
+        setCreditLoading(true);
+        try {
+            const res = await fetch("/api/super-admin/vendors/bulk", {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    ids: [creditModal.vendorId],
+                    action: creditData.type,
+                    credits: creditData.amount,
+                    reason: creditData.reason
+                })
+            });
+            const data = await res.json();
+            if (data.succeeded > 0) {
+                showToast("Credits adjusted successfully");
+                setCreditModal(null);
+                setCreditData({ amount: "", type: "add_credits", reason: "" });
+                fetchVendors();
+            } else {
+                showToast("Failed to adjust credits", "error");
+            }
+        } catch {
+            showToast("Adjustment failed", "error");
+        } finally {
+            setCreditLoading(false);
         }
     };
 
@@ -377,6 +413,10 @@ export default function VendorListPage() {
                                         </td>
                                         <td className="px-6 py-5 text-right pr-8">
                                             <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all">
+                                                <button onClick={() => setCreditModal({ isOpen: true, vendorId: vendor.id, vendorName: vendor.name })} title="Adjust Credits"
+                                                    className="p-2 bg-white border border-slate-100 hover:border-emerald-200 text-slate-400 hover:text-emerald-500 rounded-xl transition-all shadow-sm">
+                                                    <CreditCard size={14} />
+                                                </button>
                                                 <button onClick={() => handleImpersonate(vendor.id)} title="Impersonate"
                                                     className="p-2 bg-white border border-slate-100 hover:border-[#042f94]/30 text-slate-400 hover:text-[#042f94] rounded-xl transition-all shadow-sm">
                                                     <LogIn size={14} />
@@ -467,6 +507,67 @@ export default function VendorListPage() {
                                     className="w-full py-4 bg-[#042f94] hover:bg-[#031f6b] text-white font-bold rounded-2xl transition-all disabled:opacity-50 text-sm flex items-center justify-center gap-2">
                                     {formLoading ? <RefreshCw size={16} className="animate-spin" /> : <Plus size={16} />}
                                     Create Vendor
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Credit Adjustment Modal */}
+            {creditModal?.isOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-6 text-slate-700">
+                    <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setCreditModal(null)} />
+                    <div className="relative bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden border border-slate-100">
+                        <div className="p-8 space-y-6">
+                            <div className="flex justify-between items-center">
+                                <div>
+                                    <h2 className="text-xl font-bold text-slate-800">Adjust Credits</h2>
+                                    <p className="text-xs text-slate-400 mt-1">Modifying wallet for <b>{creditModal.vendorName}</b></p>
+                                </div>
+                                <button onClick={() => setCreditModal(null)}
+                                    className="p-2 hover:bg-slate-50 rounded-xl transition-all text-slate-400">
+                                    <X size={18} />
+                                </button>
+                            </div>
+
+                            <form onSubmit={handleAdjustCredits} className="space-y-4">
+                                <div className="grid grid-cols-2 gap-3">
+                                    <button type="button" 
+                                        onClick={() => setCreditData(d => ({ ...d, type: 'add_credits' }))}
+                                        className={`py-3 rounded-2xl text-xs font-bold transition-all border ${creditData.type === 'add_credits' ? 'bg-emerald-50 border-emerald-200 text-emerald-600 shadow-sm' : 'bg-slate-50 border-slate-100 text-slate-400'}`}>
+                                        Add Credits
+                                    </button>
+                                    <button type="button" 
+                                        onClick={() => setCreditData(d => ({ ...d, type: 'remove_credits' }))}
+                                        className={`py-3 rounded-2xl text-xs font-bold transition-all border ${creditData.type === 'remove_credits' ? 'bg-rose-50 border-rose-200 text-rose-600 shadow-sm' : 'bg-slate-50 border-slate-100 text-slate-400'}`}>
+                                        Remove Credits
+                                    </button>
+                                </div>
+
+                                <div>
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Amount</label>
+                                    <div className="relative">
+                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 font-bold">₹</span>
+                                        <input required type="number" placeholder="Enter amount"
+                                            value={creditData.amount}
+                                            onChange={e => setCreditData(d => ({ ...d, amount: e.target.value }))}
+                                            className="w-full bg-slate-50 border border-slate-100 rounded-2xl pl-9 pr-4 py-3 text-sm font-semibold outline-none focus:border-[#042f94]/30 transition-all" />
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Reason (Optional)</label>
+                                    <textarea placeholder="Reason for adjustment..."
+                                        value={creditData.reason}
+                                        onChange={e => setCreditData(d => ({ ...d, reason: e.target.value }))}
+                                        className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-4 py-3 text-sm font-semibold outline-none focus:border-[#042f94]/30 transition-all min-h-[80px]" />
+                                </div>
+
+                                <button type="submit" disabled={creditLoading || !creditData.amount}
+                                    className={`w-full py-4 text-white font-bold rounded-2xl transition-all disabled:opacity-50 text-sm flex items-center justify-center gap-2 shadow-lg ${creditData.type === 'add_credits' ? 'bg-emerald-500 hover:bg-emerald-600 shadow-emerald-500/20' : 'bg-rose-500 hover:bg-rose-600 shadow-rose-500/20'}`}>
+                                    {creditLoading ? <RefreshCw size={16} className="animate-spin" /> : <Shield size={16} />}
+                                    Confirm Adjustment
                                 </button>
                             </form>
                         </div>

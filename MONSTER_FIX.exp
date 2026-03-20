@@ -1,0 +1,54 @@
+#!/usr/bin/expect -f
+
+set timeout 600
+set host "72.61.231.187"
+set password "Photoshop09@" 
+
+# Use the password provided in the environment or fallback
+if {[info exists env(VPS_PASSWORD)]} {
+    set password $env(VPS_PASSWORD)
+}
+
+puts "\n🚀 STARTING MONSTER FIX DEPLOYMENT..."
+
+# 1. Sync Code
+puts "\n📡 Syncing unified infrastructure and latest code..."
+spawn rsync -avz --no-perms --no-owner --no-group \
+    --exclude "node_modules" \
+    --exclude ".next" \
+    --exclude ".git" \
+    --exclude ".DS_Store" \
+    --exclude "public/uploads" \
+    -e "ssh -o StrictHostKeyChecking=no" ./ root@$host:/root/wabot_bsp/
+expect {
+    "password:" { send "$password\r"; exp_continue }
+    eof
+}
+
+# 2. Hard Reset Containers
+puts "\n🧹 Performing Hard Reset of Docker containers..."
+spawn ssh -o StrictHostKeyChecking=no root@$host "cd /root/wabot_bsp && docker compose -f docker-compose.prod.yml down --remove-orphans && docker compose -f docker-compose.prod.yml up -d --build"
+expect {
+    "password:" { send "$password\r"; exp_continue }
+    eof
+}
+
+# 3. Prisma Sync
+puts "\n🗄️ Syncing Database Schema (Prisma)..."
+spawn ssh -o StrictHostKeyChecking=no root@$host "docker exec wabot_bsp-web-1 npx prisma db push"
+expect {
+    "password:" { send "$password\r"; exp_continue }
+    eof
+}
+
+# 4. Final Health Check
+puts "\n✅ DEPLOYMENT COMPLETE. Waiting for startup..."
+exec sleep 10
+puts "\n🔍 Checking Web Container Logs..."
+spawn ssh -o StrictHostKeyChecking=no root@$host "docker logs wabot_bsp-web-1 --tail=20"
+expect {
+    "password:" { send "$password\r"; exp_continue }
+    eof
+}
+
+puts "\n✨ MONSTER FIX APPLIED. Check https://grafty.pro/api/auth/debug-login in 30 seconds."

@@ -9,6 +9,8 @@ import {
     CheckCircle2
 } from 'lucide-react';
 import Link from 'next/link';
+import { safeToLocaleString, formatCurrency, ensureNumber } from '@/lib/utils/number-format';
+
 
 export default function PartnerDashboard() {
     const [data, setData] = useState<any>(null);
@@ -151,17 +153,20 @@ export default function PartnerDashboard() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 <MetricCard
                     label="Active Liquidity"
-                    value={`₹${data.wallet.balance.toLocaleString()}`}
+                    value={formatCurrency(data.wallet.balance)}
+
                     sub={`${data.wallet.pending_payouts} pending settle`}
                     icon={<Wallet size={24} />}
                     color="emerald"
                 />
                 <MetricCard
                     label="Monthly Velocity"
-                    value={`₹${data.wallet.this_month.toLocaleString()}`}
+                    value={formatCurrency(data.wallet.this_month)}
+
                     icon={<TrendingUp size={24} />}
                     color="blue"
-                    trend="+14.2%"
+                    trend={data.monthly.growth_pct > 0 ? `+${data.monthly.growth_pct}%` : `${data.monthly.growth_pct}%`}
+                    trendUp={data.monthly.growth_pct >= 0}
                 />
                 <MetricCard
                     label="Network Growth"
@@ -169,11 +174,13 @@ export default function PartnerDashboard() {
                     sub="Active Workspaces"
                     icon={<Users size={24} />}
                     color="purple"
-                    trend="+4"
+                    trend={data.monthly.network_growth > 0 ? `+${data.monthly.network_growth}%` : `${data.monthly.network_growth}%`}
+                    trendUp={data.monthly.network_growth >= 0}
                 />
                 <MetricCard
                     label="Daily Yield"
-                    value={`₹${data.wallet.today.toLocaleString()}`}
+                    value={formatCurrency(data.wallet.today)}
+
                     icon={<Zap size={24} />}
                     color="amber"
                 />
@@ -259,9 +266,12 @@ export default function PartnerDashboard() {
                     <div className="text-[10px] font-black text-slate-300 uppercase tracking-[0.25em] mb-6">Yield Summary</div>
                     <div className="space-y-3 relative z-10">
                         {[
-                            { label: "Pipeline Value", value: `₹${(data.alerts.leads_count * 2500).toLocaleString()}`, icon: <Target size={14} />, color: "text-blue-600", bg: "bg-blue-50", border: "border-blue-100" },
-                            { label: "Lifetime Revenue", value: `₹${data.wallet.total_earned.toLocaleString()}`, icon: <DollarSign size={14} />, color: "text-[#27954D]", bg: "bg-emerald-50", border: "border-emerald-100" },
-                            { label: "Settlement Pool", value: `₹${data.wallet.balance.toLocaleString()}`, icon: <History size={14} />, color: "text-slate-600", bg: "bg-slate-50", border: "border-slate-100" },
+                            { label: "Pipeline Value", value: formatCurrency(data.alerts.leads_count * 2500), icon: <Target size={14} />, color: "text-blue-600", bg: "bg-blue-50", border: "border-blue-100" },
+
+                            { label: "Lifetime Revenue", value: formatCurrency(data.wallet.total_earned), icon: <DollarSign size={14} />, color: "text-[#27954D]", bg: "bg-emerald-50", border: "border-emerald-100" },
+
+                            { label: "Settlement Pool", value: formatCurrency(data.wallet.balance), icon: <History size={14} />, color: "text-slate-600", bg: "bg-slate-50", border: "border-slate-100" },
+
                         ].map((row, i) => (
                             <div key={i} className={`flex items-center justify-between p-5 rounded-2xl border ${row.bg} ${row.border} hover:scale-[1.02] transition-transform duration-300`}>
                                 <div className="flex items-center gap-3">
@@ -325,7 +335,8 @@ export default function PartnerDashboard() {
                                         {item.type}
                                     </span>
                                     <span className={`text-xl font-black italic tracking-tighter tabular-nums ${Number(item.amount) >= 0 ? 'text-[#27954D]' : 'text-rose-500'}`}>
-                                        {Number(item.amount) >= 0 ? '+' : '-'}₹{Math.abs(Number(item.amount)).toLocaleString()}
+                                        {Number(item.amount) >= 0 ? '+' : '-'} {formatCurrency(Math.abs(Number(item.amount)))}
+
                                     </span>
                                 </div>
                             </div>
@@ -345,7 +356,7 @@ export default function PartnerDashboard() {
     );
 }
 
-function MetricCard({ label, value, sub, icon, color, trend }: any) {
+function MetricCard({ label, value, sub, icon, color, trend, trendUp }: any) {
     const colorMap: any = {
         emerald: 'text-[#27954D] bg-emerald-50 border-emerald-100 shadow-emerald-500/5',
         blue: 'text-blue-600 bg-blue-50 border-blue-100 shadow-blue-500/5',
@@ -361,8 +372,8 @@ function MetricCard({ label, value, sub, icon, color, trend }: any) {
                     {React.cloneElement(icon, { size: 28 })}
                 </div>
                 {trend && (
-                    <div className="flex items-center gap-1.5 text-[10px] font-black text-[#27954D] bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-100 shadow-sm shadow-emerald-500/5">
-                        <ArrowUpRight size={12} strokeWidth={3} /> {trend}
+                    <div className={`flex items-center gap-1.5 text-[10px] font-black px-3 py-1.5 rounded-full border shadow-sm shadow-emerald-500/5 ${trendUp ? 'text-[#27954D] bg-emerald-50 border-emerald-100' : 'text-rose-500 bg-rose-50 border-rose-100'}`}>
+                        {trendUp ? <ArrowUpRight size={12} strokeWidth={3} /> : <ArrowDown size={12} strokeWidth={3} />} {trend}
                     </div>
                 )}
             </div>
@@ -380,6 +391,34 @@ function KycSubmissionModal({ onClose, onSubmit }: any) {
     const [kycType, setKycType] = useState('PERSONAL');
     const [formData, setFormData] = useState({ id_type: 'PASSPORT', id_number: '', business_reg_number: '', documents: [] as string[] });
     const [uploading, setUploading] = useState(false);
+    const [isVerifying, setIsVerifying] = useState(false);
+    const [verifyStatusText, setVerifyStatusText] = useState("");
+
+    const runAiVerification = async () => {
+        if (!formData.documents.length) return;
+        setIsVerifying(true);
+        setVerifyStatusText("Initializing AI Vision Scan...");
+        try {
+            const res = await fetch("/api/reseller/kyc/ai-verify", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ fileUrl: formData.documents[0], type: kycType === 'PERSONAL' ? 'PAN' : 'GST' })
+            });
+            const data = await res.json();
+            if (data.success) {
+                setVerifyStatusText("Document Authenticated. Integrity Score: " + (data.score * 100).toFixed(0) + "%");
+                await new Promise(r => setTimeout(r, 2000));
+                onSubmit({ kyc_type: kycType, id_type: formData.id_type, id_number: formData.id_number, business_reg_number: formData.business_reg_number, documents: formData.documents });
+            } else {
+                alert(data.message || "AI Analysis Refused: Please upload a valid document image.");
+            }
+        } catch (err: any) {
+            alert("Network Error during AI Scan");
+        } finally {
+            setIsVerifying(false);
+            setVerifyStatusText("");
+        }
+    };
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300">
@@ -439,7 +478,7 @@ function KycSubmissionModal({ onClose, onSubmit }: any) {
                             <div className="relative group">
                                 <input
                                     type="file" accept="image/*,.pdf"
-                                    disabled={uploading}
+                                    disabled={uploading || isVerifying}
                                     onChange={async (e) => {
                                         if (!e.target.files?.length) return;
                                         setUploading(true);
@@ -456,14 +495,14 @@ function KycSubmissionModal({ onClose, onSubmit }: any) {
                                     }}
                                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10 disabled:cursor-not-allowed"
                                 />
-                                <div className={`p-16 border-4 border-dashed rounded-[2.5rem] text-center transition-all duration-500 ${uploading ? 'border-[#27954D] bg-emerald-50 scale-[0.98]' :
+                                <div className={`p-16 border-4 border-dashed rounded-[2.5rem] text-center transition-all duration-500 ${uploading || isVerifying ? 'border-[#27954D] bg-emerald-50 scale-[0.98]' :
                                     formData.documents.length > 0 ? 'border-[#27954D] bg-emerald-50' :
                                         'border-slate-100 bg-slate-50/50 hover:border-[#27954D] hover:bg-emerald-50/30'
                                     }`}>
-                                    {uploading ? (
+                                    {uploading || isVerifying ? (
                                         <div className="space-y-4">
                                             <Loader2 className="mx-auto text-[#27954D] animate-spin" size={48} />
-                                            <p className="text-[10px] font-black uppercase text-[#27954D] tracking-[0.3em] italic">Transmitting Data...</p>
+                                            <p className="text-[10px] font-black uppercase text-[#27954D] tracking-[0.3em] italic">{verifyStatusText || "Transmitting Data..."}</p>
                                         </div>
                                     ) : formData.documents.length > 0 ? (
                                         <div className="space-y-4">
@@ -471,8 +510,8 @@ function KycSubmissionModal({ onClose, onSubmit }: any) {
                                                 <Check size={32} />
                                             </div>
                                             <div>
-                                                <p className="text-sm font-black text-slate-900 uppercase italic">Document Authenticated</p>
-                                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Tap to re-upload</p>
+                                                <p className="text-sm font-black text-slate-900 uppercase italic">Document Captured</p>
+                                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Tap to re-upload before audit</p>
                                             </div>
                                         </div>
                                     ) : (
@@ -493,7 +532,7 @@ function KycSubmissionModal({ onClose, onSubmit }: any) {
                                 <div className="absolute top-0 right-0 w-24 h-24 bg-white/5 blur-3xl rounded-full" />
                                 <ShieldCheck size={24} className="text-[#27954D] relative z-10" />
                                 <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.1em] leading-relaxed relative z-10">
-                                    Encrypted end-to-end. By pushing these files, you authorize Grafty to perform a secure compliance audit.
+                                    Encrypted end-to-end. AI will analyze this document for authenticity before final protocol commit.
                                 </p>
                             </div>
                         </div>
@@ -505,7 +544,8 @@ function KycSubmissionModal({ onClose, onSubmit }: any) {
                     {step === 2 && (
                         <button
                             onClick={() => setStep(1)}
-                            className="flex-1 py-4 bg-white border border-slate-200 text-slate-500 hover:text-slate-900 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all active:scale-95 shadow-sm"
+                            disabled={isVerifying}
+                            className="flex-1 py-4 bg-white border border-slate-200 text-slate-500 hover:text-slate-900 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all active:scale-95 shadow-sm disabled:opacity-50"
                         >
                             Back To Start
                         </button>
@@ -513,11 +553,12 @@ function KycSubmissionModal({ onClose, onSubmit }: any) {
                     <button
                         onClick={() => {
                             if (step === 1) setStep(2);
-                            else onSubmit({ kyc_type: kycType, id_type: formData.id_type, id_number: formData.id_number, business_reg_number: formData.business_reg_number, documents: formData.documents });
+                            else runAiVerification();
                         }}
-                        className="flex-[2] py-4 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] hover:bg-black transition-all transform active:scale-95 shadow-xl shadow-slate-900/10"
+                        disabled={uploading || isVerifying || (step === 2 && !formData.documents.length)}
+                        className="flex-[2] py-4 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] hover:bg-black transition-all transform active:scale-95 shadow-xl shadow-slate-900/10 disabled:opacity-50"
                     >
-                        {step === 1 ? 'Commit Entity Choice' : 'Initiate Protocol Audit'}
+                        {isVerifying ? 'Scanning Document...' : (step === 1 ? 'Commit Entity Choice' : 'Initiate AI Audit')}
                     </button>
                 </div>
             </div>

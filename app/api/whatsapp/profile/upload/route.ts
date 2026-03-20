@@ -51,7 +51,7 @@ export async function POST(req: Request) {
         let mediaId;
         try {
             const uploadRes = await axios.post(
-                `https://graph.facebook.com/v18.0/${phoneNumberId}/media`,
+                `https://graph.facebook.com/v20.0/${phoneNumberId}/media`,
                 metaFormData,
                 {
                     headers: {
@@ -74,7 +74,7 @@ export async function POST(req: Request) {
         // 2. Set as Profile Picture
         try {
             await axios.post(
-                `https://graph.facebook.com/v18.0/${phoneNumberId}/whatsapp_business_profile`,
+                `https://graph.facebook.com/v20.0/${phoneNumberId}/whatsapp_business_profile`,
                 {
                     messaging_product: "whatsapp",
                     profile_picture_handle: mediaId
@@ -95,7 +95,7 @@ export async function POST(req: Request) {
         let profilePicUrl = "";
         try {
             const profileRes = await axios.get(
-                `https://graph.facebook.com/v18.0/${phoneNumberId}/whatsapp_business_profile?fields=profile_picture_url`,
+                `https://graph.facebook.com/v20.0/${phoneNumberId}/whatsapp_business_profile?fields=profile_picture_url`,
                 {
                     headers: { "Authorization": `Bearer ${token}` }
                 }

@@ -6,7 +6,7 @@ import {
     MessageSquare, GitBranch, Flag, Zap, ShoppingBag, CreditCard,
     Truck, Layout, Clock, Hourglass, List, Calendar, ShoppingCart,
     FolderOpen, Play, Image, Video, FileText, Mic, Phone, Globe,
-    ChevronDown, ChevronRight, Grip, BarChart3, Settings, Webhook,
+    ChevronDown, ChevronRight, Grip, BarChart3, Settings, Webhook, MapPin,
     Database, Mail, Tag, UserPlus, BellRing, Timer, FileCode, BookOpen
 } from "lucide-react";
 import { INDUSTRY_SCENARIOS } from "./scenarios";
@@ -70,6 +70,7 @@ const NODE_GROUPS: NodeGroup[] = [
         borderColor: 'border-violet-200',
         nodes: [
             { type: 'start', label: 'Start Trigger', description: 'Entry keyword that starts this flow', icon: <Zap size={15} /> },
+            { type: 'location', label: 'LocationPin', description: 'Request or send GPS location', icon: <MapPin size={15} /> },
             { type: 'condition', label: 'Condition (Yes/No)', description: 'Branch based on user input', icon: <GitBranch size={15} /> },
             { type: 'meta_flow', label: 'Meta Form / Flow', description: 'Native WhatsApp form', icon: <Layout size={15} /> },
             { type: 'end', label: 'End Flow', description: 'Terminate the conversation flow', icon: <Flag size={15} /> },

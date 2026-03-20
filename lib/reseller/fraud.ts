@@ -136,10 +136,28 @@ export class FraudDetectionEngine {
         }
 
         if (Number(reseller.risk_score) >= FINANCIAL_RULES.RISK_THRESHOLD_HIGH) {
-            throw new Error("Payout blocked: High risk. Manual audit required.");
+            throw new Error("Payout blocked: High risk score. Manual audit required.");
         }
 
-        // NEW: Check if there are unverified fraud proofs
+        // 1. Velocity Check (Phase 7 Hardening)
+        const dailyLimit = FINANCIAL_RULES.DAILY_PAYOUT_VELOCITY_LIMIT;
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const totalToday = await prisma.resellerPayoutRequest.aggregate({
+            where: {
+                reseller_id: resellerId,
+                status: { in: ["PAID", "PENDING"] },
+                created_at: { gte: today }
+            },
+            _sum: { amount: true }
+        });
+
+        if (Number(totalToday._sum.amount || 0) >= dailyLimit) {
+            throw new Error(`Daily payout velocity exceeded. Limit: ₹${dailyLimit}/day.`);
+        }
+
+        // 2. Fraud Proof Check
         const pendingProofs = await prisma.resellerFraudProof.count({
             where: { reseller_id: resellerId, status: "PENDING" }
         });
@@ -147,15 +165,94 @@ export class FraudDetectionEngine {
         if (pendingProofs > 0) {
             throw new Error("Payout blocked: You have pending payment proofs that require verification.");
         }
+
+        // 3. Shared Bank Details Check (Cross-Reseller Risk)
+        if (reseller.bank_account_number) {
+            // NOTE: This check currently relies on deterministic values. 
+            // In a future update, we should implement a hashed index of these fields for robust detection.
+            const sharedBank = await prisma.reseller.count({
+                where: {
+                    id: { not: resellerId },
+                    bank_account_number: reseller.bank_account_number,
+                    status: "ACTIVE"
+                }
+            });
+
+            if (sharedBank > 0) {
+                // Log risk signal but don't block unless we want strict one-account-per-bank policy
+                await prisma.resellerRiskLog.create({
+                    data: {
+                        reseller_id: resellerId,
+                        signal_type: "SHARED_BANK_DETAILS",
+                        risk_impact: 40,
+                        details: { account: reseller.bank_account_number }
+                    }
+                });
+                console.warn(`[Fraud Guard] Shared bank details detected for reseller ${resellerId}`);
+            }
+        }
     }
 
-    static async validateMappingLock(workspaceId: string, targetReferralCode: string) {
-        const existingMap = await prisma.resellerVendorMap.findUnique({
-            where: { workspace_id: workspaceId },
-            include: { reseller: true }
+    static async calculatePayoutRisk(resellerId: string, amount: number) {
+        let score = 0;
+        const flags: { flag: string; severity: string; details?: any }[] = [];
+
+        // 1. Frequency Check (High risk if multiple requests in 24 hours)
+        const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        const recentRequests = await prisma.resellerPayoutRequest.count({
+            where: {
+                reseller_id: resellerId,
+                created_at: { gte: dayAgo }
+            }
         });
 
-        if (existingMap && existingMap.reseller.referral_code !== targetReferralCode) {
+        if (recentRequests >= 2) {
+            const impact = recentRequests * 20;
+            score += impact;
+            flags.push({ flag: "FREQUENT_PAYOUT_REQUESTS", severity: impact > 50 ? "HIGH" : "MEDIUM", details: { count: recentRequests } });
+        }
+
+        // 2. Large Amount Check
+        if (amount > 50000) {
+            score += 40;
+            flags.push({ flag: "LARGE_PAYOUT_AMOUNT", severity: "HIGH", details: { amount } });
+        } else if (amount > 10000) {
+            score += 15;
+            flags.push({ flag: "MODERATE_PAYOUT_AMOUNT", severity: "MEDIUM", details: { amount } });
+        }
+
+        // 3. New Reseller Check (First payout is always medium risk)
+        const previousPaidPayouts = await prisma.resellerPayoutRequest.count({
+            where: {
+                reseller_id: resellerId,
+                status: "PAID"
+            }
+        });
+
+        if (previousPaidPayouts === 0) {
+            score += 30;
+            flags.push({ flag: "FIRST_PAYOUT_REQUEST", severity: "MEDIUM" });
+        }
+
+        // 4. Global Reseller Risk Score
+        const reseller = await prisma.reseller.findUnique({ where: { id: resellerId }, select: { risk_score: true } });
+        if (reseller && Number(reseller.risk_score) > 30) {
+            score += Number(reseller.risk_score);
+            flags.push({ flag: "RESELLER_HISTORICAL_RISK", severity: "HIGH", details: { reseller_score: reseller.risk_score } });
+        }
+
+        return {
+            score: Math.min(score, 100),
+            flags
+        };
+    }
+
+    static async validateMappingLock(workspaceId: string, targetResellerId: string) {
+        const existingMap = await prisma.resellerVendorMap.findUnique({
+            where: { workspace_id: workspaceId }
+        });
+
+        if (existingMap && existingMap.reseller_id !== targetResellerId) {
             throw new Error("This workspace is already linked to another partner.");
         }
 

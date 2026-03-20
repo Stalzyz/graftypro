@@ -28,7 +28,9 @@ import {
     GraduationCap,
     Target,
     Zap,
-    Shield
+    Shield,
+    SlidersHorizontal,
+    PhoneCall
 } from "lucide-react";
 import { Logo } from "../../../components/ui/Logo";
 
@@ -51,6 +53,7 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
                     </div>
                     <NavLink href="/super-admin/dashboard/crm" icon={<Target size={18} strokeWidth={1.5} />} label="Sales" />
                     <NavLink href="/super-admin/dashboard/growth" icon={<Zap size={18} strokeWidth={1.5} />} label="Growth" />
+                    <NavLink href="/super-admin/dashboard/growth/leads" icon={<PhoneCall size={18} strokeWidth={1.5} />} label="Tool Leads" />
                     <NavLink href="/super-admin/dashboard/finance" icon={<BarChart3 size={18} strokeWidth={1.5} />} label="Finance" />
                     <NavLink href="/super-admin/dashboard/finance/payment" icon={<CreditCard size={18} strokeWidth={1.5} />} label="Payment Gateway" />
                     <NavLink href="/super-admin/dashboard/finance/settings" icon={<Settings2 size={18} strokeWidth={1.5} />} label="HSN/GST Settings" />
@@ -60,6 +63,7 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
                         <span className="text-[10px] font-bold text-slate-300 uppercase tracking-[0.2em] block">Governance</span>
                     </div>
                     <NavLink href="/super-admin/dashboard/settings/rbac" icon={<ShieldCheck size={18} strokeWidth={1.5} />} label="Permissions" />
+                    <NavLink href="/super-admin/dashboard/platform" icon={<SlidersHorizontal size={18} strokeWidth={1.5} />} label="Platform Controls" />
                     <NavLink href="/super-admin/dashboard/branding" icon={<Palette size={18} strokeWidth={1.5} />} label="Branding" />
                     <NavLink href="/super-admin/dashboard/packages" icon={<Package size={18} strokeWidth={1.5} />} label="Packages" />
                     <NavLink href="/super-admin/dashboard/theme" icon={<Box size={18} strokeWidth={1.5} />} label="Theme" />
@@ -67,7 +71,8 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
                     <div className="pt-6 pb-2 px-5">
                         <span className="text-[10px] font-bold text-slate-300 uppercase tracking-[0.2em] block">Infrastructure</span>
                     </div>
-                    <NavLink href="/super-admin/dashboard/landing-page" icon={<Globe size={18} strokeWidth={1.5} />} label="Landing Page" />
+                    <NavLink href="/super-admin/dashboard/content" icon={<Globe size={18} strokeWidth={1.5} />} label="Content Manager" />
+                    <NavLink href="/super-admin/dashboard/landing-page" icon={<Globe size={18} strokeWidth={1.5} />} label="Landing Page CMS" />
                     <NavLink href="/super-admin/dashboard/settings/smtp" icon={<Mail size={18} strokeWidth={1.5} />} label="SMTP Settings" />
                     <NavLink href="/super-admin/dashboard/settings/meta" icon={<Activity size={18} strokeWidth={1.5} />} label="Meta Settings" />
                     <NavLink href="/super-admin/dashboard/settings/automation" icon={<Zap size={18} strokeWidth={1.5} />} label="Automation" />
@@ -138,9 +143,9 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
                 </header>
 
                 {pathname.startsWith('/super-admin/dashboard/landing-page/') && pathname.split('/').length > 5 ? (
-                    children
+                    <div id="sa-viewport-landing">{children}</div>
                 ) : (
-                    <div className="p-12 animate-fade-in max-w-[1600px]">
+                    <div className="p-12 animate-fade-in max-w-[1600px]" id="sa-viewport-main">
                         {children}
                     </div>
                 )}

@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 import axios from "axios";
 
 // Meta API Version
-const API_VER = "v18.0";
+const API_VER = "v20.0";
 
 export async function POST(req: Request) {
     try {
@@ -164,6 +164,22 @@ export async function POST(req: Request) {
                 validated_at: new Date()
             }
         });
+
+        // 7. Referral Bonus Trigger
+        const workspace = await prisma.workspace.findUnique({
+            where: { id: user.workspaceId },
+            include: { referred_by: true }
+        });
+
+        if (workspace?.referred_by_id && !workspace.referral_bonus_awarded) {
+            try {
+                const { CreditService } = await import("../../../../lib/credits/service");
+                await CreditService.awardReferralBonus(workspace.referred_by_id, workspace.id);
+                console.log(`[Referral Engine] Awarded 500+500 credits to Referrer and Invitee.`);
+            } catch (refError) {
+                console.error("[Referral Engine] Failed to award bonus:", refError);
+            }
+        }
 
         return NextResponse.json({
             success: true,

@@ -1,20 +1,58 @@
+
 services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: grafty_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: grafty_bsp
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d grafty_bsp"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      grafty_net:
+        aliases:
+          - postgres
+
+  redis:
+    image: redis:7-alpine
+    container_name: grafty_redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - grafty_net
+
   web:
     image: grafty-app:latest
     build:
       context: .
     restart: always
-    ports:
-      - "3001:3000"
     env_file:
       - .env
+    ports:
+      - "3001:3000"
     environment:
-      - DATABASE_URL=postgresql://user:password@grafty_bsp-postgres-1:5432/grafty_bsp?schema=public
-      - REDIS_URL=redis://grafty_bsp-redis-1:6379
+      - DATABASE_URL=postgresql://user:password@postgres:5432/grafty_bsp?schema=public
+      - REDIS_URL=redis://redis:6379
+      - NODE_ENV=production
+    depends_on:
+      postgres:
+        condition: service_healthy
     volumes:
       - ./public/uploads:/app/public/uploads
     networks:
-      - grafty
+      - grafty_net
 
   worker:
     image: grafty-app:latest
@@ -22,14 +60,21 @@ services:
     env_file:
       - .env
     environment:
-      - DATABASE_URL=postgresql://user:password@grafty_bsp-postgres-1:5432/grafty_bsp?schema=public
-      - REDIS_HOST=grafty_bsp-redis-1
+      - DATABASE_URL=postgresql://user:password@postgres:5432/grafty_bsp?schema=public
+      - REDIS_HOST=redis
       - REDIS_PORT=6379
+      - NODE_ENV=production
     command: npx tsx worker.ts
+    depends_on:
+      postgres:
+        condition: service_healthy
     networks:
-      - grafty
+      - grafty_net
 
 networks:
-  grafty:
-    external: true
-    name: grafty_bsp_default
+  grafty_net:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:

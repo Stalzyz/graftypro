@@ -34,6 +34,9 @@ export default function FlowPropertiesPanel({ selectedNode, onChange, onClose, o
     const [metaFlowCTA, setMetaFlowCTA] = useState("Open Form");
     const [metaFlowHeader, setMetaFlowHeader] = useState("");
     const [metaFlowFooter, setMetaFlowFooter] = useState("");
+    const [initialScreen, setInitialScreen] = useState("QUESTION_1");
+    const [flowToken, setFlowToken] = useState("");
+    const [metaFlowHeaderType, setMetaFlowHeaderType] = useState<'text' | 'image'>('text');
 
     // Goal Data
     const [goalId, setGoalId] = useState("");
@@ -71,6 +74,11 @@ export default function FlowPropertiesPanel({ selectedNode, onChange, onClose, o
     const [webhookUrl, setWebhookUrl] = useState("");
 
     const [headerUrl, setHeaderUrl] = useState("");
+
+    // Location Data
+    const [locationType, setLocationType] = useState<'REQUEST' | 'SEND'>('REQUEST');
+    const [locationName, setLocationName] = useState("");
+    const [locationAddress, setLocationAddress] = useState("");
 
     useEffect(() => {
         if (selectedNode) {
@@ -114,6 +122,10 @@ export default function FlowPropertiesPanel({ selectedNode, onChange, onClose, o
                 setMetaFlowCTA(selectedNode.data.flowCTA || "Open Form");
                 setMetaFlowHeader(selectedNode.data.flowHeader || "");
                 setMetaFlowFooter(selectedNode.data.flowFooter || "");
+                setInitialScreen(selectedNode.data.initialScreen || "QUESTION_1");
+                setFlowToken(selectedNode.data.flowToken || "");
+                setMetaFlowHeaderType(selectedNode.data.headerType || "text");
+                setHeaderUrl(selectedNode.data.headerUrl || "");
             }
 
             if (selectedNode.type === 'goal') {
@@ -154,6 +166,12 @@ export default function FlowPropertiesPanel({ selectedNode, onChange, onClose, o
                 setTemplateLanguage(selectedNode.data.language || "en_US");
                 setTemplateBodyText(selectedNode.data.bodyText || "");
                 fetch('/api/templates').then(r => r.json()).then(res => setTemplates(res.data?.filter((t: any) => t.status === 'APPROVED') || []));
+            }
+
+            if (selectedNode.type === 'location') {
+                setLocationType(selectedNode.data.locationType || 'REQUEST');
+                setLocationName(selectedNode.data.name || "");
+                setLocationAddress(selectedNode.data.address || "");
             }
         }
     }, [selectedNode]);
@@ -212,6 +230,18 @@ export default function FlowPropertiesPanel({ selectedNode, onChange, onClose, o
         } else if (field === "metaFlowFooter") {
             setMetaFlowFooter(val);
             newData.flowFooter = val;
+        } else if (field === "initialScreen") {
+            setInitialScreen(val);
+            newData.initialScreen = val;
+        } else if (field === "flowToken") {
+            setFlowToken(val);
+            newData.flowToken = val;
+        } else if (field === "metaFlowHeaderType") {
+            setMetaFlowHeaderType(val as 'text' | 'image');
+            newData.headerType = val;
+        } else if (field === "metaFlowHeaderUrl") {
+            setHeaderUrl(val);
+            newData.headerUrl = val;
         } else if (field === "goalId") {
             setGoalId(val);
             newData.goalId = val;
@@ -278,6 +308,15 @@ export default function FlowPropertiesPanel({ selectedNode, onChange, onClose, o
         } else if (field === "bodyText") {
             setTemplateBodyText(val);
             newData.bodyText = val;
+        } else if (field === "locationType") {
+            setLocationType(val as any);
+            newData.locationType = val;
+        } else if (field === "locationName") {
+            setLocationName(val);
+            newData.name = val;
+        } else if (field === "locationAddress") {
+            setLocationAddress(val);
+            newData.address = val;
         }
 
         onChange(selectedNode.id, newData);
@@ -302,6 +341,7 @@ export default function FlowPropertiesPanel({ selectedNode, onChange, onClose, o
         end: 'End Flow',
         order_summary: 'Order Summary',
         meta_template: 'Cloud Template',
+        location: 'Location Pin',
     };
 
     const nodeTypeBg: Record<string, string> = {
@@ -321,6 +361,7 @@ export default function FlowPropertiesPanel({ selectedNode, onChange, onClose, o
         end: 'bg-red-100 text-red-800',
         order_summary: 'bg-orange-100 text-orange-800',
         meta_template: 'bg-emerald-100 text-emerald-800',
+        location: 'bg-purple-100 text-purple-800',
     };
 
     return (
@@ -904,15 +945,41 @@ export default function FlowPropertiesPanel({ selectedNode, onChange, onClose, o
                                 className="w-full border border-gray-200 bg-gray-50 rounded-lg p-2.5 text-sm font-bold outline-none focus:ring-4 focus:ring-indigo-100 transition-all"
                             />
                         </div>
-                        <div>
-                            <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Header (Optional)</label>
-                            <input
-                                type="text"
-                                value={metaFlowHeader}
-                                onChange={(e) => handleUpdate("metaFlowHeader", e.target.value)}
-                                className="w-full border border-gray-200 bg-gray-50 rounded-lg p-2.5 text-sm font-bold outline-none focus:ring-4 focus:ring-indigo-100 transition-all"
-                            />
+                        <div className="flex gap-2 p-1 bg-gray-100 rounded-xl mb-4">
+                            <button
+                                onClick={() => handleUpdate("metaFlowHeaderType", "text")}
+                                className={`flex-1 py-1.5 text-[10px] font-black rounded-lg transition-all ${metaFlowHeaderType === 'text' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+                            >
+                                TEXT HEADER
+                            </button>
+                            <button
+                                onClick={() => handleUpdate("metaFlowHeaderType", "image")}
+                                className={`flex-1 py-1.5 text-[10px] font-black rounded-lg transition-all ${metaFlowHeaderType === 'image' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+                            >
+                                IMAGE HEADER
+                            </button>
                         </div>
+
+                        {metaFlowHeaderType === 'text' ? (
+                            <div>
+                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Header (Optional)</label>
+                                <input
+                                    type="text"
+                                    value={metaFlowHeader}
+                                    onChange={(e) => handleUpdate("metaFlowHeader", e.target.value)}
+                                    className="w-full border border-gray-200 bg-gray-50 rounded-lg p-2.5 text-sm font-bold outline-none focus:ring-4 focus:ring-indigo-100 transition-all"
+                                />
+                            </div>
+                        ) : (
+                            <div>
+                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Header Image</label>
+                                <SmartUploader
+                                    defaultValue={headerUrl}
+                                    onUploadSuccess={(url: string) => handleUpdate("metaFlowHeaderUrl", url)}
+                                    module="flows"
+                                />
+                            </div>
+                        )}
                         <div>
                             <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Body Message</label>
                             <textarea
@@ -930,6 +997,28 @@ export default function FlowPropertiesPanel({ selectedNode, onChange, onClose, o
                                 onChange={(e) => handleUpdate("metaFlowFooter", e.target.value)}
                                 className="w-full border border-gray-200 bg-gray-50 rounded-lg p-2.5 text-sm font-bold outline-none focus:ring-4 focus:ring-indigo-100 transition-all"
                             />
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Initial Screen ID</label>
+                                <input
+                                    type="text"
+                                    value={initialScreen}
+                                    onChange={(e) => handleUpdate("initialScreen", e.target.value)}
+                                    placeholder="QUESTION_1"
+                                    className="w-full border border-gray-200 bg-gray-50 rounded-lg p-2.5 text-xs font-bold outline-none focus:ring-4 focus:ring-indigo-100 transition-all"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Flow Token</label>
+                                <input
+                                    type="text"
+                                    value={flowToken}
+                                    onChange={(e) => handleUpdate("flowToken", e.target.value)}
+                                    placeholder="Optional"
+                                    className="w-full border border-gray-200 bg-gray-50 rounded-lg p-2.5 text-xs font-bold outline-none focus:ring-4 focus:ring-indigo-100 transition-all"
+                                />
+                            </div>
                         </div>
                     </div>
                 )}
@@ -1267,6 +1356,66 @@ export default function FlowPropertiesPanel({ selectedNode, onChange, onClose, o
                                 />
                             </div>
                         </div>
+                    </div>
+                )}
+
+                {selectedNode.type === 'location' && (
+                    <div className="space-y-4">
+                        <div className="bg-purple-50 p-4 rounded-2xl border border-purple-100">
+                            <h4 className="text-sm font-black text-purple-900 mb-2 tracking-tight">Location Intelligence</h4>
+                            <p className="text-xs text-purple-700 font-medium leading-relaxed">
+                                Request the user's current GPS location or send a specific pin (e.g., for a store locator).
+                            </p>
+                        </div>
+
+                        <div>
+                            <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Pin Type</label>
+                            <div className="flex bg-gray-50 p-1 rounded-xl border border-gray-200">
+                                <button
+                                    onClick={() => handleUpdate("locationType", "REQUEST")}
+                                    className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${locationType === 'REQUEST' ? 'bg-purple-600 text-white shadow-md' : 'text-gray-400 hover:text-gray-600'}`}
+                                >
+                                    Request GPS
+                                </button>
+                                <button
+                                    onClick={() => handleUpdate("locationType", "SEND")}
+                                    className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${locationType === 'SEND' ? 'bg-purple-600 text-white shadow-md' : 'text-gray-400 hover:text-gray-600'}`}
+                                >
+                                    Send Pin
+                                </button>
+                            </div>
+                        </div>
+
+                        {locationType === 'SEND' ? (
+                            <div className="space-y-3 pt-2">
+                                <div>
+                                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Store / Place Name</label>
+                                    <input
+                                        type="text"
+                                        value={locationName}
+                                        onChange={(e) => handleUpdate("locationName", e.target.value)}
+                                        placeholder="e.g. Grafty HQ"
+                                        className="w-full border border-gray-200 bg-gray-50 rounded-lg p-2.5 text-sm font-bold outline-none focus:ring-4 focus:ring-purple-100 transition-all font-sans"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Full Address</label>
+                                    <textarea
+                                        value={locationAddress}
+                                        onChange={(e) => handleUpdate("locationAddress", e.target.value)}
+                                        placeholder="Enter the full address or Google Maps link..."
+                                        rows={3}
+                                        className="w-full border border-gray-200 bg-gray-50 rounded-lg p-2.5 text-sm font-bold outline-none focus:ring-4 focus:ring-purple-100 transition-all font-sans resize-none"
+                                    />
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="p-3 bg-purple-100/50 rounded-xl border border-purple-100">
+                                <p className="text-[10px] text-purple-700 font-bold leading-tight">
+                                    The bot will present a &quot;Send Location&quot; button to the customer. When they click it, their coordinates will be sent to the bot.
+                                </p>
+                            </div>
+                        )}
                     </div>
                 )}
             </div>

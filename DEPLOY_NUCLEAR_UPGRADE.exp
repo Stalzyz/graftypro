@@ -1,0 +1,49 @@
+#!/usr/bin/expect -f
+
+set timeout -1
+set password "stalin"
+set vps_ip "103.111.97.227"
+set remote_path "/app"
+
+# Modified files for the Nuclear Fix
+set files {
+    "components/landing-new/LandingNavbar.tsx"
+    "components/landing-new/DynamicPricingSection.tsx"
+    "components/landing-new/DynamicPricing.tsx"
+    "app/pricing/page.tsx"
+    "components/trial/TrialGate.tsx"
+    "middleware.ts"
+}
+
+puts "🚀 Starting NUCLEAR DEPLOYMENT of Subscription Upgrade Fix..."
+
+foreach file $files {
+    puts "📤 Uploading: $file"
+    spawn scp $file root@$vps_ip:$remote_path/$file
+    expect {
+        "password:" { send "$password\r" }
+        "(yes/no)?" { send "yes\r"; exp_continue }
+    }
+    expect eof
+}
+
+puts "🏗️ Building Production Containers (Nuclear Build)..."
+spawn ssh root@$vps_ip "cd $remote_path && docker compose up -d --build web"
+expect {
+    "password:" { send "$password\r" }
+    "(yes/no)?" { send "yes\r"; exp_continue }
+}
+expect {
+    "Successfully built" { puts "✅ Build successful!" }
+    "done" { puts "✅ Container up!" }
+}
+expect eof
+
+puts "\n=============================================="
+puts "✅ NUCLEAR DEPLOYMENT COMPLETE"
+puts "Verification steps:"
+puts "1. Log in to grafty.pro"
+puts "2. Visit /pricing -> Should see 'Upgrade Plan'"
+puts "3. Click 'Upgrade' -> Should reach /dashboard/settings/billing"
+puts "4. If trial expired -> Should reach /dashboard/settings/billing via modal"
+puts "=============================================="

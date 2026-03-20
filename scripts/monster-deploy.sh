@@ -30,15 +30,24 @@ ssh $SERVER "bash -s" << 'EOF'
     mkdir -p public/uploads
     chmod 777 public/uploads
     
+    echo "🛑 Nuclear Cleanup of existing containers and ports..."
+    # Kill any process on port 3001 (Host level ghost processes)
+    fuser -k 3001/tcp 2>/dev/null || true
+    
+    # Force remove known conflicting containers (including auto-generated names)
+    docker rm -f grafty_redis grafty_postgres grafty_web grafty_worker 2>/dev/null || true
+    docker rm -f $(docker ps -aq --filter name=grafty) 2>/dev/null || true
+    docker rm -f $(docker ps -aq --filter name=wabot) 2>/dev/null || true
+    
+    # Standard compose cleanup
+    docker compose -f docker-compose.prod.yml down --remove-orphans 2>/dev/null || true
+    
     echo "🧹 Cleaning up old docker artifacts..."
     docker system prune -f
     
     echo "🏗️ FORCED Rebuild of Containers..."
     # --no-cache ensures we don't use old layers
     docker compose -f docker-compose.prod.yml build --no-cache
-    
-    echo "💀 Stopping old containers..."
-    docker compose -f docker-compose.prod.yml down --remove-orphans
     
     echo "🚀 Starting new containers..."
     docker compose -f docker-compose.prod.yml up -d
@@ -53,8 +62,11 @@ ssh $SERVER "bash -s" << 'EOF'
     echo "🔄 Generating Prisma Client..."
     docker compose -f docker-compose.prod.yml exec -T web npx prisma generate
     
-    echo "☢️ RUNNING NUCLEAR SEEDER..."
-    docker compose -f docker-compose.prod.yml exec -T web node scripts/nuke-seeder.js
+    echo "☢️ RUNNING NUCLEAR SYSTEM FIX..."
+    docker compose -f docker-compose.prod.yml exec -T web npx tsx scripts/nuclear-fix.ts
+    
+    echo "🔐 FORCING ADMIN RECOVERY..."
+    docker compose -f docker-compose.prod.yml exec -T web npx tsx scripts/fix-admin-access.ts
     
     echo "♻️ Final Restart to load new client..."
     docker compose -f docker-compose.prod.yml restart web worker

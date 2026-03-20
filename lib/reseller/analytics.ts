@@ -21,16 +21,18 @@ export class ResellerAnalyticsService {
             }
         });
 
-        // 2. Earnings Aggregation (from Ledger)
+        const earningTypes = ['COMMISSION', 'PROFIT_SHARE', 'WALLET_MARGIN', 'TIER_BONUS', 'REVENUE_SHARE', 'BONUS_PAYOUT'];
+
         const ledgerSummary = await prisma.resellerLedger.aggregate({
-            where: { reseller_id: resellerId, type: 'COMMISSION' },
+            where: { reseller_id: resellerId, type: { in: earningTypes as any }, amount: { gt: 0 } },
             _sum: { amount: true }
         });
 
         const lastMonthSummary = await prisma.resellerLedger.aggregate({
             where: {
                 reseller_id: resellerId,
-                type: 'COMMISSION',
+                type: { in: earningTypes as any },
+                amount: { gt: 0 },
                 created_at: { gte: thirtyDaysAgo }
             },
             _sum: { amount: true }
@@ -73,7 +75,7 @@ export class ResellerAnalyticsService {
                 },
                 // @ts-ignore
                 ledger_entries: {
-                    where: { type: 'COMMISSION' },
+                    where: { type: { in: ['COMMISSION', 'PROFIT_SHARE', 'WALLET_MARGIN', 'TIER_BONUS'] as any }, amount: { gt: 0 } },
                     select: { amount: true }
                 }
             },
@@ -98,7 +100,8 @@ export class ResellerAnalyticsService {
         const entries = await prisma.resellerLedger.findMany({
             where: {
                 reseller_id: resellerId,
-                type: 'COMMISSION',
+                type: { in: ['COMMISSION', 'PROFIT_SHARE', 'WALLET_MARGIN', 'TIER_BONUS'] as any },
+                amount: { gt: 0 },
                 created_at: { gte: startDate }
             },
             select: {

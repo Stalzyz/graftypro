@@ -20,7 +20,9 @@ export type MetaPayloadType =
     | 'interactive_buttons'
     | 'interactive_list'
     | 'interactive_cta_url'
-    | 'interactive_flow';
+    | 'interactive_flow'
+    | 'location'
+    | 'location_request_message';
 
 interface ValidationError {
     field: string;
@@ -74,32 +76,34 @@ export function buildMediaPayload(
     type: 'image' | 'video' | 'document' | 'audio',
     url: string,
     caption?: string,
-    filename?: string
+    filename?: string,
+    mediaId?: string  // Nuclear Fix: prefer Meta media_id over link
 ): any | null {
     const errors: ValidationError[] = [];
     if (!to) errors.push({ field: 'to', message: 'Phone number required' });
-    if (!url) errors.push({ field: 'url', message: `${type} URL is required` });
+    if (!url && !mediaId) errors.push({ field: 'url', message: `${type} URL or mediaId is required` });
     if (!validate(errors)) return null;
 
     const absUrl = getAbsoluteMediaUrl(url);
+    const mediaRef = mediaId ? { id: mediaId } : { link: absUrl };
 
     if (type === 'document') {
         return {
             to,
             type: 'document',
             document: {
-                link: absUrl,
+                ...mediaRef,
                 filename: filename || caption || 'Document',
             },
         };
     }
     if (type === 'audio') {
-        return { to, type: 'audio', audio: { link: absUrl } };
+        return { to, type: 'audio', audio: mediaRef };
     }
     return {
         to,
         type,
-        [type]: { link: absUrl, caption: caption || undefined },
+        [type]: { ...mediaRef, ...(caption ? { caption } : {}) },
     };
 }
 
@@ -300,31 +304,102 @@ export function buildMetaFlowPayload(
     ctaText: string,
     header: string,
     body: string,
-    footer: string
+    footer: string,
+    initialScreen: string = 'QUESTION_1',
+    flowToken: string = `token_${Date.now()}`,
+    headerType: 'text' | 'image' = 'text',
+    headerUrl?: string,
+    mediaId?: string
 ): any | null {
     const errors: ValidationError[] = [];
     if (!to) errors.push({ field: 'to', message: 'Phone required' });
     if (!flowId) errors.push({ field: 'flowId', message: 'Meta Flow ID required' });
     if (!validate(errors)) return null;
 
+    let interactiveHeader: any;
+    if (headerType === 'image') {
+        if (mediaId) {
+            interactiveHeader = { type: 'image', image: { id: mediaId } };
+        } else if (headerUrl) {
+            interactiveHeader = { type: 'image', image: { link: headerUrl } };
+        } else {
+            interactiveHeader = { type: 'text', text: sanitizeText(header, 'Form') };
+        }
+    } else {
+        interactiveHeader = { type: 'text', text: sanitizeText(header, 'Form') };
+    }
+
     return {
         to,
         type: 'interactive',
         interactive: {
             type: 'flow',
-            header: { type: 'text', text: sanitizeText(header, 'Form') },
+            header: interactiveHeader,
             body: { text: sanitizeText(body, 'Please fill in the details below.') },
             footer: { text: sanitizeText(footer, '') },
             action: {
                 name: 'flow',
                 parameters: {
                     flow_message_version: '3',
-                    flow_token: 'token_123',
+                    flow_token: flowToken,
                     flow_id: flowId,
                     flow_cta: sanitizeText(ctaText, 'Open'),
                     flow_action: 'navigate',
-                    flow_action_payload: { screen: 'QUESTION_1' },
+                    flow_action_payload: { screen: initialScreen },
                 },
+            },
+        },
+    };
+}
+
+// -----------------------------------------------------------------------
+// LOCATION (Static Pin)
+// -----------------------------------------------------------------------
+export function buildLocationPayload(
+    to: string,
+    latitude: number,
+    longitude: number,
+    name?: string,
+    address?: string
+): any | null {
+    const errors: ValidationError[] = [];
+    if (!to) errors.push({ field: 'to', message: 'Phone required' });
+    if (!latitude || !longitude) errors.push({ field: 'coordinates', message: 'Latitude and Longitude required' });
+    if (!validate(errors)) return null;
+
+    return {
+        to,
+        type: 'location',
+        location: {
+            latitude,
+            longitude,
+            name: name?.substring(0, 1000),
+            address: address?.substring(0, 1000),
+        },
+    };
+}
+
+// -----------------------------------------------------------------------
+// LOCATION REQUEST (Interactive)
+// -----------------------------------------------------------------------
+export function buildLocationRequestPayload(
+    to: string,
+    body: string
+): any | null {
+    const errors: ValidationError[] = [];
+    if (!to) errors.push({ field: 'to', message: 'Phone required' });
+    if (!validate(errors)) return null;
+
+    return {
+        to,
+        type: 'interactive',
+        interactive: {
+            type: 'location_request_message',
+            body: {
+                text: sanitizeText(body, 'Please share your location to continue.').substring(0, 1024),
+            },
+            action: {
+                name: 'send_location',
             },
         },
     };
@@ -418,9 +493,9 @@ export function buildNodePayload(
             if (rows.length > 0) {
                 // If the user attached an image to a List node, Meta strictly FORBIDS it. 
                 // We must send the image as a separate message first, then send the list!
-                if (absMediaUrl) {
+                if (absMediaUrl || data._mediaId) {
                     const type = contentType === 'VIDEO' ? 'video' : contentType === 'DOCUMENT' ? 'document' : 'image';
-                    const mediaPrePayload = buildMediaPayload(to, type as any, absMediaUrl, '', data.filename);
+                    const mediaPrePayload = buildMediaPayload(to, type as any, absMediaUrl || '', '', data.filename, data._mediaId);
                     if (mediaPrePayload) payloads.push(mediaPrePayload);
                 }
 
@@ -434,11 +509,22 @@ export function buildNodePayload(
             const targetBtn = urlButtons[0];
             finalPayload = buildCTAUrlPayload(to, bodyText, { title: targetBtn.title, value: targetBtn.value }, unifiedHeader, data.footer);
             isInteractive = true;
+        } else if (nodeType === 'location') {
+            if (data.locationType === 'REQUEST') {
+                finalPayload = buildLocationRequestPayload(to, bodyText);
+                isInteractive = true;
+            } else {
+                if (data.latitude && data.longitude) {
+                    finalPayload = buildLocationPayload(to, parseFloat(data.latitude), parseFloat(data.longitude), data.name, data.address);
+                } else {
+                    finalPayload = buildTextPayload(to, `📍 *${data.name || 'Location'}*\n${data.address || ''}`);
+                }
+            }
         } else {
             // No interactives -> Media or Text
-            if (absMediaUrl) {
-                const type = contentType === 'VIDEO' ? 'video' : contentType === 'DOCUMENT' ? 'document' : 'image';
-                finalPayload = buildMediaPayload(to, type as any, absMediaUrl, bodyText, data.filename);
+            if (absMediaUrl || data._mediaId) {
+                const type = contentType === 'VIDEO' ? 'video' : contentType === 'DOCUMENT' ? 'document' : contentType === 'VOICE' ? 'audio' : 'image';
+                finalPayload = buildMediaPayload(to, type as any, absMediaUrl || '', bodyText, data.filename, data._mediaId);
             } else {
                 finalPayload = buildTextPayload(to, bodyText);
             }

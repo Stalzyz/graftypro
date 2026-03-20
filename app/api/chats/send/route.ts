@@ -25,6 +25,14 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: "Conversation not found" }, { status: 404 });
         }
 
+        // Check if contact has opted out
+        if (conversation.contact.opt_in === false) {
+            return NextResponse.json({ 
+                error: "CONTACT_OPT_OUT", 
+                message: "This contact has opted out of WhatsApp messages. You cannot message them manually." 
+            }, { status: 403 });
+        }
+
         // 2. Fetch WhatsApp Credentials
         // Fix: Query by workspace_id, not status (schema doesn't have status on WABA yet, or check later)
         const waba = await prisma.whatsAppAccount.findUnique({
@@ -68,7 +76,34 @@ export async function POST(req: Request) {
                     template.language?.code || "en"
                 );
                 metaId = res?.messages?.[0]?.id;
-                finalContent = { body: `Template: ${template.name}` };
+                finalContent = { template_name: template.name, lang: template.language?.code || "en" };
+            } else if (body.mediaUrl) {
+                const { mediaUrl, mediaType, filename } = body;
+                const { getAbsoluteMediaUrl } = await import("../../../../lib/utils/url");
+                const absoluteMediaUrl = getAbsoluteMediaUrl(mediaUrl, req);
+                console.log(`[CHATS_SEND] Media detected: ${absoluteMediaUrl}`);
+
+                // Nuclear Fix: Pre-upload to Meta
+                let mediaId = await WhatsAppService.uploadMediaFromUrl(absoluteMediaUrl, waba.phone_number_id, token).catch(() => null);
+                
+                const payload: any = { to: conversation.contact.phone };
+                if (mediaType === "IMAGE") {
+                    payload.type = "image";
+                    payload.image = mediaId ? { id: mediaId, caption: text } : { link: absoluteMediaUrl, caption: text };
+                } else if (mediaType === "VIDEO") {
+                    payload.type = "video";
+                    payload.video = mediaId ? { id: mediaId, caption: text } : { link: absoluteMediaUrl, caption: text };
+                } else if (mediaType === "AUDIO") {
+                    payload.type = "audio";
+                    payload.audio = mediaId ? { id: mediaId } : { link: absoluteMediaUrl };
+                } else {
+                    payload.type = "document";
+                    payload.document = mediaId ? { id: mediaId, filename: filename || "document" } : { link: absoluteMediaUrl, filename: filename || "document" };
+                }
+
+                const res = await WhatsAppService.sendMessage(waba.phone_number_id, token, payload);
+                metaId = res?.messages?.[0]?.id;
+                finalContent = { link: mediaUrl, caption: text, type: mediaType, filename };
             } else if (text) {
                 const res = await WhatsAppService.sendText(
                     waba.phone_number_id,
@@ -80,8 +115,7 @@ export async function POST(req: Request) {
                 finalContent = { body: text };
             }
         } catch (apiError) {
-            console.error("Meta API Failed, but credits were deducted (System Policy)");
-            // In a more advanced version, we would queue a refund here.
+            console.error("Meta API Failed:", apiError);
         }
 
         // 5. Save Outbound Message to DB
@@ -91,10 +125,10 @@ export async function POST(req: Request) {
                 conversation_id: conversationId,
                 contact_id: conversation.contact_id,
                 direction: "OUTBOUND",
-                type: type === 'template' ? "TEMPLATE" : "TEXT",
+                type: (body.mediaUrl ? body.mediaType : (type === 'template' ? "TEMPLATE" : "TEXT")) as any,
                 content: finalContent,
                 status: metaId ? "SENT" : "FAILED",
-                meta_id: metaId
+                meta_id: metaId || `failed_${Date.now()}`
             }
         });
 

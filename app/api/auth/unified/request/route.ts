@@ -53,14 +53,30 @@ export async function POST(req: Request) {
         if (!user) {
             // Frictionless Signup: Create temporary placeholder account
             user = await prisma.$transaction(async (tx) => {
-                const trialEndsAt = new Date();
-                trialEndsAt.setDate(trialEndsAt.getDate() + 14);
+                const existingLock = await tx.trialLock.findUnique({
+                    where: { email }
+                });
+
+                let finalTrialEndsAt: Date;
+
+                if (existingLock) {
+                    finalTrialEndsAt = existingLock.trial_ends_at;
+                } else {
+                    finalTrialEndsAt = new Date();
+                    finalTrialEndsAt.setDate(finalTrialEndsAt.getDate() + 7); // Standardize to 7 days
+                    await tx.trialLock.create({
+                        data: {
+                            email,
+                            trial_ends_at: finalTrialEndsAt
+                        }
+                    });
+                }
 
                 const workspace = await tx.workspace.create({
                     data: {
                         name: "My Workspace",
                         status: "ACTIVE",
-                        trial_ends_at: trialEndsAt
+                        trial_ends_at: finalTrialEndsAt
                     }
                 });
 

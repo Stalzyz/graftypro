@@ -29,11 +29,13 @@ export class WhatsAppMediaDownloader {
             await mkdir(absoluteDir, { recursive: true });
 
             const absolutePath = join(absoluteDir, filename);
-            const webUrl = `/${relativeDir}/${filename}`.replace(/\\/g, '/');
+            // 5. Generate Response URL (Absolute Web Path)
+            const webUrl = `/uploads/whatsapp/${relativeDir.split('/').pop()}/${filename}`; // Adjusted to use existing variables
+            console.log(`[MediaDownloader] ✅ Saved: ${absolutePath} -> ${webUrl}`); // Adjusted to use existing variables
 
             // 4. Save file
             await writeFile(absolutePath, buffer);
-            console.log(`[MediaDownloader] Saved ${mediaId} to ${webUrl}`);
+            // console.log(`[MediaDownloader] Saved ${mediaId} to ${webUrl}`); // Original line removed
 
             return webUrl;
         } catch (error) {
@@ -45,15 +47,36 @@ export class WhatsAppMediaDownloader {
     private static getExtensionForMime(mime: string): string {
         const map: Record<string, string> = {
             "image/jpeg": ".jpg",
+            "image/jpg": ".jpg",
             "image/png": ".png",
             "image/webp": ".webp",
             "image/gif": ".gif",
+            "image/heic": ".heic",
+            "image/heif": ".heic",
+            "image/avif": ".avif",
+            "image/bmp": ".bmp",
+            "image/tiff": ".tiff",
             "video/mp4": ".mp4",
+            "video/3gpp": ".3gp",
+            "video/quicktime": ".mov",
+            "video/mpeg": ".mpeg",
             "audio/mpeg": ".mp3",
+            "audio/mp3": ".mp3",
             "audio/ogg": ".ogg",
             "audio/amr": ".amr",
+            "audio/mp4": ".m4a",
+            "audio/aac": ".aac",
+            "audio/opus": ".opus",
+            "audio/wav": ".wav",
+            "audio/webm": ".weba",
             "application/pdf": ".pdf",
-            "text/plain": ".txt"
+            "text/plain": ".txt",
+            "text/csv": ".csv",
+            "application/msword": ".doc",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document": ".docx",
+            "application/vnd.ms-excel": ".xls",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": ".xlsx",
+            "application/zip": ".zip"
         };
         return map[mime] || ".bin";
     }

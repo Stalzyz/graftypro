@@ -325,10 +325,13 @@ function SharedInboxContent() {
 
         setSending(true);
         try {
+            const fileType = attachedFile?.type || "";
             const payload: any = {
                 text: replyText,
                 mediaUrl: attachedFile?.url,
-                mediaType: attachedFile?.type?.includes("image") ? "IMAGE" : "DOCUMENT",
+                mediaType: fileType.includes("image") ? "IMAGE" : 
+                           fileType.includes("video") ? "VIDEO" : 
+                           fileType.includes("audio") ? "AUDIO" : "DOCUMENT",
                 filename: attachedFile?.filename
             };
 
@@ -785,14 +788,29 @@ function SharedInboxContent() {
                                                     content = { body: String(rawContent) };
                                                 }
 
-                                                // Nuclear Media Discovery (Regex Fallback)
+                                                // Monster Media Discovery (Resilient & Aggressive)
                                                 const findMediaLink = (obj: any, depth = 0): string => {
                                                     if (!obj || depth > 15) return "";
-                                                    const str = JSON.stringify(obj);
-
-                                                    // 1. Direct Keys
-                                                    const keys = ['link', 'url', 'media_url', 'image_url', 'thumbnail_url', 'thumbnail', 'image', 'video', 'document', 'header', 'body', 'footer', 'raw', 'interactive'];
+                                                    
+                                                    // 1. Prioritize numeric media_id (Always proxy-first)
                                                     if (typeof obj === 'object') {
+                                                        if (obj.media_id) return `/api/whatsapp/media/${obj.media_id}`;
+                                                        if (obj.image?.id) return `/api/whatsapp/media/${obj.image.id}`;
+                                                        if (obj.video?.id) return `/api/whatsapp/media/${obj.video.id}`;
+                                                        if (obj.document?.id) return `/api/whatsapp/media/${obj.document.id}`;
+                                                        if (obj.audio?.id) return `/api/whatsapp/media/${obj.audio.id}`;
+                                                    }
+
+                                                    // 2. Filename extraction (wa_media_ fallback)
+                                                    const str = JSON.stringify(obj);
+                                                    if (str.includes("wa_media_")) {
+                                                        const match = str.match(/wa_media_[a-z0-0_.]+/i);
+                                                        if (match) return `/api/whatsapp/media/${match[0]}`;
+                                                    }
+
+                                                    if (typeof obj === 'object') {
+                                                        // 3. Direct Keys
+                                                        const keys = ['link', 'url', 'media_url', 'image_url', 'thumbnail_url', 'image', 'video', 'document'];
                                                         for (const k of keys) {
                                                             if (obj[k] && typeof obj[k] === 'string') {
                                                                 let url = obj[k].trim();
@@ -803,16 +821,22 @@ function SharedInboxContent() {
                                                                 if (res) return res;
                                                             }
                                                         }
+
+                                                        // Deep dive into raw/interactive
+                                                        if (obj.raw || obj.interactive) {
+                                                            const res = findMediaLink(obj.raw || obj.interactive, depth + 1);
+                                                            if (res) return res;
+                                                        }
                                                     }
 
-                                                    // 2. Nuclear Regex Fallback
+                                                    // 4. Nuclear Regex Fallback
                                                     const urlMatch = str.match(/https?:\/\/[^\s"']+(\.jpg|\.jpeg|\.png|\.gif|\.webp|\.mp4|\.pdf)/i);
                                                     if (urlMatch) return urlMatch[0];
 
-                                                    // 3. String Search
+                                                    // 5. String Search
                                                     if (typeof obj === 'string') {
                                                         let url = obj.trim();
-                                                        if (url.includes('/uploads/')) return '/uploads/' + url.split('/uploads/')[1];
+                                                        if (url.includes('wa_media_')) return `/api/whatsapp/media/${url.split('/').pop()}`;
                                                         if (url.startsWith('http') || url.startsWith('/') || url.startsWith('data:image')) return url;
                                                     }
 
@@ -820,15 +844,33 @@ function SharedInboxContent() {
                                                 };
 
                                                 const link = findMediaLink(content);
-                                                const proxyMediaLink = (url: string) => url && url.includes('lookaside.fbsbx.com') ? url : url; // Disabled proxy for lookaside urls to prevent 401s on public fbcdn images
+                                                const proxyMediaLink = (url: string) => {
+                                                    if (!url) return "";
+                                                    
+                                                    // Handle wa_media_ filenames directly via proxy
+                                                    if (url.includes('wa_media_')) {
+                                                        const filename = url.split('/').pop();
+                                                        return `/api/whatsapp/media/${filename}`;
+                                                    }
+
+                                                    // If it's already a local/proxy URL, leave it
+                                                    if (url.startsWith('/') || url.startsWith('data:')) return url;
+                                                    
+                                                    // Handle Meta/Facebook CDN URLs
+                                                    if (url.includes('lookaside.fbsbx.com') || url.includes('fbcdn.net')) {
+                                                        const mId = content.media_id || content.image?.id || content.video?.id;
+                                                        if (mId) return `/api/whatsapp/media/${mId}`;
+                                                        return `/api/media/proxy?url=${encodeURIComponent(url)}`; 
+                                                    }
+                                                    return url;
+                                                };
                                                 if (process.env.NODE_ENV === 'development') {
                                                     console.log(`[MSG ${msg.id}] type=${type} link=${link}`, content);
                                                 }
-
-                                                const isImage = (url: string) => /\.(jpg|jpeg|png|gif|webp|heic|avif|bmp|tiff)(\?.*)?$/i.test(url) || url.includes('fbcdn.net') || url.includes('pps.whatsapp.net') || url.includes('cloudinary') || url.includes('img') || url.includes('uploads') || content.image || url.includes('lookaside.fbsbx.com');
-                                                const isVideo = (url: string) => /\.(mp4|webm|mov|3gp)(\?.*)?$/i.test(url) || content.video;
-                                                const isDoc = (url: string) => /\.(pdf|doc|docx|xls|xlsx|txt|ppt|pptx)(\?.*)?$/i.test(url) || content.document;
-                                                const isAudio = (url: string) => /\.(mp3|ogg|wav|m4a|weba|opus|aac)(\?.*)?$/i.test(url) || content.audio;
+                                                const isImage = (url: string) => /\.(jpg|jpeg|png|gif|webp|heic|avif|bmp|tiff)(\?.*)?$/i.test(url) || url.includes('fbcdn.net') || url.includes('pps.whatsapp.net') || url.includes('cloudinary') || url.includes('img') || url.includes('uploads') || url.includes('/api/whatsapp/media/') || url.includes('/api/media/local/') || content.image || type === 'IMAGE';
+                                                const isVideo = (url: string) => /\.(mp4|webm|mov|3gp)(\?.*)?$/i.test(url) || url.includes('/api/whatsapp/media/') && type === 'VIDEO' || url.includes('/api/media/local/') && type === 'VIDEO' || content.video || type === 'VIDEO';
+                                                const isDoc = (url: string) => /\.(pdf|doc|docx|xls|xlsx|txt|ppt|pptx)(\?.*)?$/i.test(url) || url.includes('/api/whatsapp/media/') && type === 'DOCUMENT' || url.includes('/api/media/local/') && type === 'DOCUMENT' || content.document || type === 'DOCUMENT';
+                                                const isAudio = (url: string) => /\.(mp3|ogg|wav|m4a|weba|opus|aac)(\?.*)?$/i.test(url) || url.includes('/api/whatsapp/media/') && type === 'AUDIO' || url.includes('/api/media/local/') && type === 'AUDIO' || content.audio || type === 'AUDIO';
 
                                                 const isCarousel = content.interactiveType === 'carousel' || content.type === 'carousel' || content.action?.cards || content.raw?.interactive?.action?.cards;
                                                 const isProduct = type === 'PRODUCT' || type === 'INTERACTIVE' && (content.interactiveType?.includes('product') || content.raw?.interactive?.type?.includes('product')) || content.catalog_id;

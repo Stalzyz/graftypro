@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Loader2, Eye, EyeOff, ArrowRight, Star } from "lucide-react";
 import { Logo } from "../../../components/ui/Logo";
+import { useBranding } from "../../../hooks/use-branding";
 
 export default function LoginPage() {
+    const { branding, loading: brandingLoading } = useBranding();
     const router = useRouter();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
@@ -30,13 +32,21 @@ export default function LoginPage() {
                 body: JSON.stringify(formData)
             });
             const data = await res.json();
+            
             if (res.ok) {
                 router.push(data.redirect || "/dashboard");
             } else {
-                setError(data.error || "Login failed");
+                // Surface detailed error message from API if available
+                if (data.code === "EMAIL_NOT_VERIFIED") {
+                    setError("Email not verified. Please check your inbox or spam folder.");
+                } else if (data.error) {
+                    setError(data.error);
+                } else {
+                    setError("Login failed. Please check your credentials.");
+                }
             }
         } catch (err) {
-            setError("Network error. Please try again.");
+            setError("Network error. Please check your internet connection.");
         } finally {
             setLoading(false);
         }
@@ -52,7 +62,14 @@ export default function LoginPage() {
 
                 <div className="relative z-10">
                     <div className="flex items-center gap-3 mb-10">
-                        <Logo variant="light" size={40} showText={true} href="/" />
+                        <Logo 
+                            variant="light" 
+                            size={40} 
+                            showText={true} 
+                            brandName={branding?.brand_name || branding?.name || "Grafty"} 
+                            logoUrl={branding?.logo_url}
+                            href="/" 
+                        />
                     </div>
                     <h1 className="text-4xl xl:text-5xl font-extrabold leading-[1.15] tracking-tight mb-8">
                         Welcome back to <br />
@@ -85,13 +102,19 @@ export default function LoginPage() {
 
                 {/* Mobile Logo */}
                 <div className="lg:hidden p-6 pb-0">
-                    <Logo size={40} showText={true} href="/" />
+                    <Logo 
+                        size={40} 
+                        showText={true} 
+                        brandName={branding?.brand_name || branding?.name || "Grafty"} 
+                        logoUrl={branding?.logo_url}
+                        href="/" 
+                    />
                 </div>
 
                 <div className="w-full max-w-[480px] mx-auto p-6 sm:p-10 lg:p-12 my-auto">
                     <div className="mb-10 text-center lg:text-left">
                         <h2 className="text-3xl font-bold text-slate-900 mb-2">Welcome back</h2>
-                        <p className="text-slate-500 text-base">Sign in to your Grafty workspace</p>
+                        <p className="text-slate-500 text-base">Sign in to your {branding?.brand_name || branding?.name || "Grafty"} workspace</p>
                     </div>
 
                     {/* Social Login */}
@@ -99,10 +122,6 @@ export default function LoginPage() {
                         <Link href="/api/auth/google" className="flex items-center justify-center gap-2 bg-white border border-slate-200 rounded-xl py-3 hover:bg-slate-50 transition-all shadow-sm">
                             <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" className="w-5 h-5" />
                             <span className="text-slate-700 font-bold text-sm">Continue with Google</span>
-                        </Link>
-                        <Link href="/api/auth/facebook" className="flex items-center justify-center gap-2 bg-[#1877F2] border border-[#1877F2] rounded-xl py-3 hover:bg-[#166FE5] transition-all shadow-sm">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512" className="w-5 h-5 fill-white"><path d="M279.14 288l14.22-92.66h-88.91v-60.13c0-25.35 12.42-50.06 52.24-50.06h40.42V6.26S260.43 0 225.36 0c-73.22 0-121.08 44.38-121.08 124.72v70.62H22.89V288h81.39v224h100.17V288z" /></svg>
-                            <span className="text-white font-bold text-sm">Continue with Facebook</span>
                         </Link>
                     </div>
 

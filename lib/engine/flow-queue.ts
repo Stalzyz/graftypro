@@ -165,12 +165,12 @@ export async function sendMessageDirect(msg: QueuedMessage): Promise<string | nu
 
             if (wallet) {
                 if (wallet.is_frozen || wallet.is_automated_blocked) {
-                    console.warn(`[FlowQueue] 🚫 Blocked: Vendor wallet is frozen or blocked.`);
+                    console.warn(`[FlowQueue] 🚫 Blocked: Vendor wallet for workspace ${msg.workspaceId} is frozen or blocked.`);
                     return null;
                 }
 
                 if (Number(wallet.current_balance) < cost) {
-                    console.warn(`[FlowQueue] 🚫 Paywall Blocked: Insufficient credits. Has ${wallet.current_balance}, needs ${cost}.`);
+                    console.warn(`[FlowQueue] 🚫 Paywall Blocked: Insufficient credits for workspace ${msg.workspaceId}. Has ${wallet.current_balance}, needs ${cost}.`);
                     return null; // Silently abort to protect Meta wholesale billing
                 }
             }

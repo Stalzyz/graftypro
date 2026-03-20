@@ -10,23 +10,21 @@ interface LogoProps {
     variant?: "light" | "dark" | "color";
     showText?: boolean;
     brandName?: string;
+    logoUrl?: string | null;
     href?: string;
 }
 
-/**
- * Consistent Logo Component
- * Forced visual clarity for Light Theme
- */
 export const Logo: React.FC<LogoProps> = ({
     className = "",
     size = 40,
     variant = "color",
     showText = true,
     brandName = "Grafty",
+    logoUrl = null,
     href = "/"
 }) => {
     // Versioned to force cache clear
-    const logoSrc = "/grafty_brand.svg?v=4";
+    const logoSrc = logoUrl || "/grafty_brand.svg?v=4";
 
     const InlineLogo = (
         <svg

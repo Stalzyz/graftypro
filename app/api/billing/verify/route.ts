@@ -35,15 +35,27 @@ export async function POST(req: Request) {
         const subscription = await saasRazorpay.subscriptions.fetch(razorpay_subscription_id);
         const planId = subscription.plan_id;
 
-        let newPlan: "PRO" | "ENTERPRISE" | "FREE" = "PRO"; // Default fallback
+        // Detect Plan Name from local config OR Database
+        let planKey = Object.keys(PLANS).find(key => PLANS[key as keyof typeof PLANS].id === planId) as keyof typeof PLANS;
+        let newPlan = planKey ? PLANS[planKey].name : null;
 
-        if (planId === PLANS.ENTERPRISE.id) {
-            newPlan = "ENTERPRISE";
-        } else if (planId === PLANS.PRO.id) {
-            newPlan = "PRO";
-        } else {
-            // Log warning, simplified handling
-            console.warn(`Unknown Plan ID: ${planId}, defaulting to PRO`);
+        // NEW: Database Lookup Fallback (The Nuclear Fix)
+        const dbPlanRecord = await prisma.subscriptionPlan.findFirst({
+            where: {
+                OR: [
+                    { razorpay_monthly_plan_id: planId } as any,
+                    { razorpay_yearly_plan_id: planId } as any,
+                    { name: { equals: newPlan || undefined, mode: 'insensitive' } }
+                ]
+            }
+        });
+
+        if (dbPlanRecord) {
+            newPlan = dbPlanRecord.name;
+        }
+
+        if (!newPlan) {
+            throw new Error(`Critical Error: Could not resolve plan name for Razorpay Plan ID ${planId}`);
         }
 
         // 3. Activate Plan in DB
@@ -52,9 +64,37 @@ export async function POST(req: Request) {
             data: {
                 plan: newPlan as any,
                 subscription_status: "active",
-                subscription_id: razorpay_subscription_id
+                subscription_id: razorpay_subscription_id,
+                current_plan_id: dbPlanRecord?.id || (await prisma.subscriptionPlan.findUnique({ where: { name: newPlan } }))?.id
             }
         });
+
+        // 3.5 Add Bonus Credits from Plan
+        const dbPlan = await prisma.subscriptionPlan.findUnique({
+            where: { name: newPlan }
+        });
+
+        if (dbPlan && dbPlan.credits > 0) {
+            const wallet = await prisma.vendorWallet.update({
+                where: { workspace_id: user.workspaceId },
+                data: {
+                    current_balance: { increment: dbPlan.credits }
+                }
+            });
+
+            // Log the "Welcome Credits"
+            await prisma.creditTransaction.create({
+                data: {
+                    workspace_id: user.workspaceId,
+                    wallet_id: wallet.id,
+                    type: "PURCHASE",
+                    amount: dbPlan.credits,
+                    balance_before: Number(wallet.current_balance) - dbPlan.credits,
+                    balance_after: Number(wallet.current_balance),
+                    description: `Plan Welcome Credits (${newPlan} Package)`
+                }
+            });
+        }
 
         // 4. AUTOMATED MONSTER INVOICE TRIGGER
         try {

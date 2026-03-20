@@ -17,6 +17,21 @@ import { InvoiceService } from "../finance/invoice-service";
 export class CreditService {
     private static pricingCache: Map<string, { price: number, expiry: number }> = new Map();
     private static CACHE_TTL = 10 * 60 * 1000; // 10 Minutes
+    private static PLATFORM_FEE = 0.05; // ₹0.05 Orchestration Fee for DIRECT billing
+
+    /**
+     * Calculate credits based on amount including tiered bonuses
+     * ₹500: ₹500
+     * ₹2,000: ₹2,200 (10%)
+     * ₹5,000: ₹5,750 (15%)
+     * ₹10,000: ₹12,000 (20%)
+     */
+    static calculateRechargeCredits(amount: number): number {
+        if (amount >= 10000) return Math.floor(amount * 1.20);
+        if (amount >= 5000) return Math.floor(amount * 1.15);
+        if (amount >= 2000) return Math.floor(amount * 1.10);
+        return amount;
+    }
 
     /**
      * Add credits to vendor wallet with GST and invoice generation
@@ -272,9 +287,35 @@ export class CreditService {
                 throw new Error('Automated messaging blocked for security. Please contact support.');
             }
 
-            const currentBalance = Number(wallet.current_balance);
+            // 3.6 Trial Limit Enforcement (100 credits max for unsubscribed users without GST)
+            const hasSubscription = !!workspace.current_plan_id;
+            const hasGST = wallet.gst_registered;
+            if (!hasSubscription && !hasGST) {
+                const totalUsed = Number(wallet.total_used);
+                const TRIAL_LIMIT = 100;
+                if (totalUsed + amount > TRIAL_LIMIT) {
+                    throw new Error(`Trial limit exceeded (${TRIAL_LIMIT} credits max). Please subscribe to a plan or add GST details to continue.`);
+                }
+            }
 
-            if (currentBalance < amount) {
+            const currentBalance = Number(wallet.current_balance);
+            const serviceBonusBalance = Number((wallet as any).service_bonus_balance || 0);
+
+            let bonusDeducted = 0;
+            let walletDeducted = amount;
+
+            // 3.7 Handle Service-Only Bonus Credits
+            if (category === 'SERVICE' && serviceBonusBalance > 0) {
+                if (serviceBonusBalance >= amount) {
+                    bonusDeducted = amount;
+                    walletDeducted = 0;
+                } else {
+                    bonusDeducted = serviceBonusBalance;
+                    walletDeducted = amount - serviceBonusBalance;
+                }
+            }
+
+            if (currentBalance < walletDeducted) {
                 throw new Error('Insufficient balance');
             }
 
@@ -284,12 +325,13 @@ export class CreditService {
             const margin = ourCharge - metaCost;
 
             // 5. Update wallet
-            const balanceAfter = currentBalance - amount;
+            const balanceAfter = currentBalance - walletDeducted;
 
             await tx.vendorWallet.update({
                 where: { id: wallet.id },
                 data: {
-                    current_balance: { decrement: amount },
+                    current_balance: walletDeducted > 0 ? { decrement: walletDeducted } : undefined,
+                    service_bonus_balance: bonusDeducted > 0 ? { decrement: bonusDeducted } : undefined,
                     total_used: { increment: amount }
                 }
             });
@@ -301,7 +343,7 @@ export class CreditService {
                     wallet_id: wallet.id,
                     type: 'DEDUCTION',
                     amount: -amount,
-                    balance_before: currentBalance,
+                    balance_before: currentBalance, // Note: This snapshot is slightly simplified but useful for audit
                     balance_after: balanceAfter,
 
                     // References
@@ -417,7 +459,7 @@ export class CreditService {
             // For now, we'll log it and send an email notification that auto-recharge is attempted
             const { EmailService } = await import("@/lib/email/service");
             await EmailService.sendBrandedEmail(workspaceId, {
-                to: "admin@grafty.pro", // Notify platform admin
+                to: process.env.ADMIN_ALERT_EMAIL || "admin@grafty.pro", // Configurable via ADMIN_ALERT_EMAIL env var
                 subject: "⚡ Auto-Recharge Attempted",
                 templateName: "AUTO_RECHARGE_NOTIFICATION",
                 context: {
@@ -522,6 +564,18 @@ export class CreditService {
      * Get message cost for a specific category and country
      */
     static async getMessageCost(category: string, countryCode: string, workspaceId?: string) {
+        // 1. Check for DIRECT billing model (Zero-Markup Hybrid)
+        if (workspaceId) {
+            const waba = await prisma.whatsAppAccount.findUnique({
+                where: { workspace_id: workspaceId },
+                select: { billing_model: true }
+            });
+
+            if ((waba as any)?.billing_model === 'DIRECT') {
+                return this.PLATFORM_FEE;
+            }
+        }
+
         const cacheKey = `${category}-${countryCode}-${workspaceId || 'GLOBAL'}`;
         const cached = this.pricingCache.get(cacheKey);
 
@@ -597,6 +651,71 @@ export class CreditService {
         }
 
         return Number(pricing.meta_cost);
+    }
+
+    /**
+     * Award Dual Referral Bonus: 
+     * 500 Credits to Referrer
+     * 500 Credits to Referred User
+     */
+    static async awardReferralBonus(referrerWorkspaceId: string, referredWorkspaceId: string) {
+        return await prisma.$transaction(async (tx) => {
+            // 1. Credit Referrer
+            const referrerWallet = await tx.vendorWallet.findUnique({
+                where: { workspace_id: referrerWorkspaceId }
+            });
+            if (referrerWallet) {
+                const bonus = 500.00;
+                await tx.vendorWallet.update({
+                    where: { id: referrerWallet.id },
+                    data: { service_bonus_balance: { increment: bonus } }
+                });
+                await tx.creditTransaction.create({
+                    data: {
+                        workspace_id: referrerWorkspaceId,
+                        wallet_id: referrerWallet.id,
+                        type: 'REFERRAL_BONUS' as any,
+                        amount: bonus,
+                        balance_before: referrerWallet.current_balance,
+                        balance_after: referrerWallet.current_balance,
+                        description: `Referral Bonus (Invite: Workspace ${referredWorkspaceId})`,
+                        status: 'COMPLETED',
+                        initiated_by: 'SYSTEM'
+                    }
+                });
+            }
+
+            // 2. Credit Referred User (The Invitee)
+            const referredWallet = await tx.vendorWallet.findUnique({
+                where: { workspace_id: referredWorkspaceId }
+            });
+            if (referredWallet) {
+                const bonus = 500.00;
+                await tx.vendorWallet.update({
+                    where: { id: referredWallet.id },
+                    data: { service_bonus_balance: { increment: bonus } }
+                });
+                await tx.creditTransaction.create({
+                    data: {
+                        workspace_id: referredWorkspaceId,
+                        wallet_id: referredWallet.id,
+                        type: 'REFERRAL_BONUS' as any,
+                        amount: bonus,
+                        balance_before: referredWallet.current_balance,
+                        balance_after: referredWallet.current_balance,
+                        description: `Signup Bonus (Referrer: ${referrerWorkspaceId})`,
+                        status: 'COMPLETED',
+                        initiated_by: 'SYSTEM'
+                    }
+                });
+            }
+
+            // 3. Mark as awarded
+            await tx.workspace.update({
+                where: { id: referredWorkspaceId },
+                data: { referral_bonus_awarded: true } as any
+            });
+        });
     }
 
     /**

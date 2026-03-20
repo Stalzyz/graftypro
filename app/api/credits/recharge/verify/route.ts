@@ -2,6 +2,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "../../../../../lib/db";
 import { getCurrentUser } from "../../../../../lib/auth";
+import { CreditService } from "../../../../../lib/credits/service";
 import crypto from "crypto";
 
 export const dynamic = "force-dynamic";
@@ -28,12 +29,20 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: "Invalid Signature" }, { status: 400 });
         }
 
+        // 1.5 Recalculate Credits on Backend for Security (Do not trust client 'credits' field)
+        const recalculateCredits = CreditService.calculateRechargeCredits(amount / 1.18); // amount is total including GST, but bonus is on base amount
+        // Wait, amount in verify API is the order amount (paise)? 
+        // Let's check initiate API: orderAmount = Math.round(gstBreakdown.total_amount * 100);
+        // So amount in verify is total_amount * 100.
+        const baseAmount = Math.round(amount / 118); // Approx base amount from total (amount is paise, 118 is 1.18 * 100)
+        const finalCredits = CreditService.calculateRechargeCredits(baseAmount);
+
         // 2. Atomic Wallet Update
         const wallet = await prisma.vendorWallet.update({
             where: { workspace_id: user.workspaceId },
             data: {
-                current_balance: { increment: credits },
-                total_purchased: { increment: credits }
+                current_balance: { increment: finalCredits },
+                total_purchased: { increment: finalCredits }
             }
         });
 
@@ -43,8 +52,8 @@ export async function POST(req: Request) {
                 workspace_id: user.workspaceId,
                 wallet_id: wallet.id,
                 type: "PURCHASE",
-                amount: credits,
-                balance_before: Number(wallet.current_balance) - credits,
+                amount: finalCredits,
+                balance_before: Number(wallet.current_balance) - finalCredits,
                 balance_after: Number(wallet.current_balance),
                 description: `Credit Purchase via Razorpay (${razorpay_payment_id})`
             }
@@ -65,7 +74,7 @@ export async function POST(req: Request) {
                     paymentMethod: "Razorpay",
                     status: "PAID",
                     items: [{
-                        description: `Grafty Credit Pack (${credits} Credits)`,
+                        description: `Grafty Credit Pack (${finalCredits} Credits)`,
                         hsn_code: "998311",
                         quantity: 1,
                         rate: amount / 1.18,

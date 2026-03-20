@@ -74,7 +74,11 @@ async function runNuclearFix() {
         let workspace = await prisma.workspace.findFirst();
         if (!workspace) {
             workspace = await prisma.workspace.create({
-                data: { name: "Grafty Default", plan: "PRO" }
+                data: { 
+                    name: "Grafty Default", 
+                    plan: "PRO",
+                    trial_ends_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+                }
             });
         }
 

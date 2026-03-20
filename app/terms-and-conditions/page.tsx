@@ -42,12 +42,23 @@ export default function TermsAndConditions() {
                 Contributions may be viewable by other users of the Site and the Marketplace and through third-party websites. As such, any Contributions you transmit may be treated as non-confidential and non-proprietary.
             </p>
 
-            <h2>6. Liability</h2>
+            <h2>6. Referral Program</h2>
+            <p>
+                Grafty offers a "Refer & Earn" program where users can invite other businesses to join the platform. By participating in this program, you agree to the following:
+            </p>
+            <ul>
+                <li><strong>Bonus:</strong> Referrers will receive 1,000 Bonus Credits upon the referred business successfully connecting an official WhatsApp Business API (WABA) number.</li>
+                <li><strong>Usage Restriction:</strong> Referral Bonus Credits are strictly limited to "Service Conversations" (user-initiated) as defined by Meta. These credits cannot be used for Marketing, Utility, or Authentication messages.</li>
+                <li><strong>Fair Use:</strong> Any attempt to manipulate the referral system via fake accounts or self-referrals will result in immediate suspension of all associated accounts and forfeiture of credits.</li>
+                <li><strong>Modification:</strong> Grafty reserves the right to modify or terminate the referral program at any time without prior notice.</li>
+            </ul>
+
+            <h2>7. Liability</h2>
             <p>
                 In no event will we or our directors, employees, or agents be liable to you or any third party for any direct, indirect, consequential, exemplary, incidental, special, or punitive damages, including lost profit, lost revenue, loss of data, or other damages arising from your use of the site, even if we have been advised of the possibility of such damages.
             </p>
 
-            <h2>7. Contact Us</h2>
+            <h2>8. Contact Us</h2>
             <p>
                 In order to resolve a complaint regarding the Site or to receive further information regarding use of the Site, please contact us at: <a href="mailto:support@grafty.pro">support@grafty.pro</a>.
             </p>

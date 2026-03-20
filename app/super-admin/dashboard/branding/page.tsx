@@ -12,7 +12,9 @@ import {
     Smartphone,
     Layout,
     CheckCircle2,
-    RefreshCw
+    RefreshCw,
+    TrendingUp,
+    AlertCircle
 } from "lucide-react";
 
 export default function BrandingPanel() {
@@ -150,6 +152,60 @@ export default function BrandingPanel() {
                             <ThemeToggle label="Dark Mode" active={config.theme_mode === 'DARK'} onClick={() => setConfig({ ...config, theme_mode: 'DARK' })} />
                         </div>
                     </section>
+
+                    <section className="bg-white rounded-[32px] border border-slate-100 p-10 shadow-sm space-y-8">
+                        <div className="flex items-center gap-3 border-b border-slate-50 pb-6">
+                            <TrendingUp className="text-slate-400" size={18} />
+                            <h2 className="text-lg font-black text-slate-900 uppercase tracking-tight">SEO & Social</h2>
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-8">
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Meta Title</label>
+                                <input
+                                    type="text"
+                                    value={config.meta_title}
+                                    onChange={e => setConfig({ ...config, meta_title: e.target.value })}
+                                    className="w-full bg-slate-50 border border-transparent rounded-2xl px-6 py-4 text-sm font-bold text-slate-900 focus:bg-white focus:border-slate-200 focus:outline-none transition-all"
+                                    placeholder="e.g. Grafty | Best WhatsApp Manager"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Meta Description</label>
+                                <textarea
+                                    value={config.meta_description}
+                                    onChange={e => setConfig({ ...config, meta_description: e.target.value })}
+                                    rows={3}
+                                    className="w-full bg-slate-50 border border-transparent rounded-2xl px-6 py-4 text-sm font-bold text-slate-900 focus:bg-white focus:border-slate-200 focus:outline-none transition-all resize-none"
+                                    placeholder="Briefly describe your platform for search engines..."
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Sitemap URL</label>
+                                <input
+                                    type="text"
+                                    value={config.sitemap_url}
+                                    onChange={e => setConfig({ ...config, sitemap_url: e.target.value })}
+                                    className="w-full bg-slate-50 border border-transparent rounded-2xl px-6 py-4 text-sm font-bold text-slate-900 focus:bg-white focus:border-slate-200 focus:outline-none transition-all"
+                                    placeholder="e.g. https://grafty.pro/sitemap.xml"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <LogoUpload label="OG / Social Share Image" value={config.meta_og_image} onChange={(val: string) => setConfig({ ...config, meta_og_image: val })} />
+                            <div className="bg-slate-50 rounded-3xl p-6 flex flex-col justify-center gap-2">
+                                <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                    <AlertCircle size={14} /> Tips for SEO
+                                </div>
+                                <p className="text-[10px] text-slate-500 leading-relaxed font-medium">
+                                    • Titles should be under 60 characters.<br/>
+                                    • Descriptions should be under 160 characters.<br/>
+                                    • Use 1200x630px for OG images to ensure perfect social sharing.
+                                </p>
+                            </div>
+                        </div>
+                    </section>
                 </div>
 
                 {/* Sidebar Controls */}
@@ -175,6 +231,15 @@ export default function BrandingPanel() {
                         </div>
                         <InputSmall label="Support Email" value={config.support_email} onChange={(v: string) => setConfig({ ...config, support_email: v })} />
                         <InputSmall label="Support WhatsApp" value={config.support_whatsapp} onChange={(v: string) => setConfig({ ...config, support_whatsapp: v })} />
+                    </section>
+
+                    <section className="bg-white rounded-[32px] border border-slate-100 p-8 space-y-6">
+                        <div className="flex items-center gap-3 border-b border-slate-50 pb-4">
+                            <Smartphone className="text-emerald-500" size={18} />
+                            <h2 className="text-xs font-black text-slate-900 uppercase tracking-widest">Floating Widget</h2>
+                        </div>
+                        <InputSmall label="FAB WhatsApp Number" value={config.fab_whatsapp_number} onChange={(v: string) => setConfig({ ...config, fab_whatsapp_number: v })} />
+                        <p className="text-[9px] text-slate-400 font-medium italic italic">This number will be used for the floating WhatsApp button on the landing pages.</p>
                     </section>
                 </div>
             </div>

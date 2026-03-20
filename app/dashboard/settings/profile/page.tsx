@@ -45,7 +45,8 @@ export default function UserProfilePage() {
                         billing_address: data.user.workspace?.billing_address || "",
                         bank_name: data.user.workspace?.bank_name || "",
                         account_number: data.user.workspace?.account_number || "",
-                        ifsc_code: data.user.workspace?.ifsc_code || ""
+                        ifsc_code: data.user.workspace?.ifsc_code || "",
+                        timezone: data.user.workspace?.timezone || "UTC"
                     });
                 }
                 setLoading(false);
@@ -175,6 +176,22 @@ export default function UserProfilePage() {
                                     className="w-full bg-slate-50 border-transparent focus:bg-white focus:border-slate-200 rounded-2xl px-5 py-3.5 text-sm font-bold text-slate-800 outline-none transition-all shadow-inner"
                                     placeholder="+91 98765 43210"
                                 />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Workspace Timezone</label>
+                                <select
+                                    value={profile.timezone || "UTC"}
+                                    onChange={e => setProfile({ ...profile, timezone: e.target.value })}
+                                    className="w-full bg-slate-50 border-transparent focus:bg-white focus:border-slate-200 rounded-2xl px-5 py-3.5 text-sm font-bold text-slate-800 outline-none transition-all shadow-inner appearance-none cursor-pointer"
+                                >
+                                    <option value="UTC">UTC (Universal Coordinated Time)</option>
+                                    <option value="Asia/Kolkata">Asia/Kolkata (IST - India)</option>
+                                    <option value="America/New_York">America/New_York (EST - New York)</option>
+                                    <option value="Europe/London">Europe/London (GMT - London)</option>
+                                    <option value="Asia/Dubai">Asia/Dubai (GST - Dubai)</option>
+                                    <option value="Australia/Sydney">Australia/Sydney (AEST - Sydney)</option>
+                                    <option value="Singapore">Singapore (SGT)</option>
+                                </select>
                             </div>
                         </div>
 

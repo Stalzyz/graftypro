@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { prisma } from "../../../../lib/db";
-import { getResellerSession } from "../../../../lib/reseller/auth-helper";
+import { prisma } from "@/lib/db";
+import { getResellerSession } from "@/lib/reseller/auth-helper";
 import bcrypt from "bcryptjs";
 
 export const dynamic = "force-dynamic";
@@ -88,7 +88,8 @@ export async function POST(req: Request) {
                     business_name: business_name,
                     plan: (plan || "FREE") as any,
                     status: "ACTIVE",
-                    reseller_id: reseller.id
+                    reseller_id: reseller.id,
+                    trial_ends_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
                 }
             });
 

@@ -1,9 +1,9 @@
 
 import { NextResponse } from "next/server";
-import { prisma } from "../../../../../lib/db";
-import { AuthSecurityService } from "../../../../../lib/security/auth-utils";
-import { EmailService } from "../../../../../lib/email/service";
-import { OTPService } from "../../../../../lib/services/otp-service";
+import { prisma } from "@/lib/db";
+import { AuthSecurityService } from "@/lib/security/auth-utils";
+import { EmailService } from "@/lib/email/service";
+import { OTPService } from "@/lib/services/otp-service";
 import { v4 as uuidv4 } from "uuid";
 
 export async function POST(request: Request) {

@@ -14,8 +14,7 @@ export async function GET(req: Request) {
         // API Secret Verification (Assuming CRON_SECRET is in env)
         const authHeader = req.headers.get("authorization");
         if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-            // return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-            // Skipping strict check for now if testing, but documented for Phase 11 hardening.
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
         console.log("🕒 Starting Reseller Maintenance Job...");

@@ -3,6 +3,7 @@ import { prisma } from "../../../../lib/db";
 import { NextResponse } from "next/server";
 import { WhatsAppService } from "../../../../lib/whatsapp/service";
 import { decrypt } from "../../../../lib/security/encryption";
+import axios from "axios";
 
 export const dynamic = 'force-dynamic';
 
@@ -26,17 +27,42 @@ export async function GET() {
 
         const result = await WhatsAppService.validateCredentials(waba.phone_number_id, decryptedToken);
 
+        // Fetch list of available WABAs to help debugging
+        let availableWabas: any[] = [];
+        try {
+            const res = await axios.get(`https://graph.facebook.com/v20.0/me`, {
+                params: {
+                    access_token: decryptedToken,
+                    fields: "id,name,businesses{id,name,owned_whatsapp_business_accounts{id,name,currency}}"
+                }
+            });
+            const businesses = res.data.businesses?.data || [];
+            businesses.forEach((biz: any) => {
+                if (biz.owned_whatsapp_business_accounts?.data) {
+                    biz.owned_whatsapp_business_accounts.data.forEach((acc: any) => {
+                        availableWabas.push({
+                            id: acc.id,
+                            name: acc.name,
+                            businessName: biz.name
+                        });
+                    });
+                }
+            });
+        } catch (e: any) {
+            console.warn("Failed to fetch WABA list during diagnostic:", e.message);
+        }
+
         return NextResponse.json({
             waba: {
                 id: waba.id,
+                waba_id: waba.waba_id,
                 phone_number_id: waba.phone_number_id,
                 phone_number: waba.phone_number,
                 tokenLength: token?.length,
                 wasEncrypted,
                 decryptedLength: decryptedToken?.length,
-                tokenStart: decryptedToken?.substring(0, 7),
-                tokenEnd: decryptedToken?.substring(decryptedToken?.length - 7)
             },
+            availableWabas,
             validation: result,
             timestamp: new Date().toISOString()
         });

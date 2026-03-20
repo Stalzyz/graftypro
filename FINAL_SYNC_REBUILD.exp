@@ -1,0 +1,36 @@
+#!/usr/bin/expect -f
+
+set timeout -1
+set password "Photoshop09@"
+set vps_ip "72.61.231.187"
+set remote_path "/var/www/wabot"
+
+set files {
+    "app/super-admin/dashboard/packages/page.tsx"
+    "app/dashboard/settings/billing/page.tsx"
+    "components/landing-new/DynamicPricingSection.tsx"
+}
+
+puts "🚀 Pushing UI Code to production..."
+
+foreach file $files {
+    puts "📤 Uploading: $file"
+    spawn scp -o StrictHostKeyChecking=no $file root@$vps_ip:$remote_path/$file
+    expect {
+        "password:" { send "$password\r" }
+        "(yes/no)?" { send "yes\r"; exp_continue }
+    }
+    expect eof
+}
+
+puts "🏗️ Starting Remote Rebuild (Atomic Rebuild)..."
+spawn ssh -o StrictHostKeyChecking=no root@$vps_ip "cd $remote_path && npm run build && pm2 restart all"
+expect {
+    "password:" { send "$password\r" }
+    "(yes/no)?" { send "yes\r"; exp_continue }
+}
+expect eof
+
+puts "\n=============================================="
+puts "✅ UI UNIFICATION COMPLETE"
+puts "=============================================="

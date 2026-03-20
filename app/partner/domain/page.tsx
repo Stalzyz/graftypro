@@ -1,84 +1,127 @@
+
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
     Globe, Shield, AlertTriangle, CheckCircle,
     Loader2, Copy, ArrowRight, ExternalLink,
     Zap, Activity, ShieldCheck, Database,
-    Server, ChevronRight, X, ArrowUpRight
+    Server, ChevronRight, X, ArrowUpRight,
+    Search, Plus, Trash2, Info
 } from "lucide-react";
 
+interface PartnerDomain {
+    id: string;
+    domain: string;
+    is_verified: boolean;
+    verification_token?: string;
+    target_host: string;
+    created_at: string;
+}
+
 export default function DomainPage() {
-    const [domain, setDomain] = useState("");
-    const [savedDomain, setSavedDomain] = useState("");
-    const [saving, setSaving] = useState(false);
-    const [verifying, setVerifying] = useState(false);
-    const [status, setStatus] = useState<"idle" | "saved" | "verified" | "error">("idle");
-    const [message, setMessage] = useState("");
+    const [domains, setDomains] = useState<PartnerDomain[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [newDomain, setNewDomain] = useState("");
+    const [adding, setAdding] = useState(false);
+    const [verifyingId, setVerifyingId] = useState<string | null>(null);
+    const [sslCheckingId, setSslCheckingId] = useState<string | null>(null);
+    const [deletingId, setDeletingId] = useState<string | null>(null);
+    const [message, setMessage] = useState<{ text: string; type: "success" | "error" | "info" } | null>(null);
     const [copied, setCopied] = useState("");
 
-    useEffect(() => {
-        fetch("/api/reseller/branding")
-            .then(res => res.json())
-            .then(data => {
-                if (data.data?.custom_domain) {
-                    setDomain(data.data.custom_domain);
-                    setSavedDomain(data.data.custom_domain);
-                    setStatus(data.data.domain_verified ? "verified" : "saved");
-                }
-            });
+    const fetchDomains = useCallback(async () => {
+        try {
+            const res = await fetch("/api/reseller/domains");
+            const data = await res.json();
+            if (data.success) {
+                setDomains(data.data);
+            }
+        } catch (error) {
+            console.error("Failed to fetch domains");
+        } finally {
+            setLoading(false);
+        }
     }, []);
 
-    const handleSave = async () => {
-        if (!domain.trim()) return;
-        setSaving(true);
-        setMessage("");
+    useEffect(() => {
+        fetchDomains();
+    }, [fetchDomains]);
+
+    const handleAddDomain = async () => {
+        if (!newDomain.trim()) return;
+        setAdding(true);
+        setMessage(null);
         try {
-            const res = await fetch("/api/reseller/branding", {
-                method: "PUT",
+            const res = await fetch("/api/reseller/domains", {
+                method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    custom_domain: domain.trim().toLowerCase(),
-                    domain_verified: false // Reset verification on domain change
-                })
+                body: JSON.stringify({ domain: newDomain.trim() })
             });
             const data = await res.json();
             if (res.ok) {
-                setSavedDomain(domain.trim().toLowerCase());
-                setStatus("saved");
-                setMessage("Infrastructure anchor established. Proceed to DNS mapping.");
+                setDomains([data.data, ...domains]);
+                setNewDomain("");
+                setMessage({ text: "Primary namespace declared. DNS anchor established.", type: "success" });
             } else {
-                setStatus("error");
-                setMessage(data.error || "Establishment Refused");
+                setMessage({ text: data.error || "Establishment protocol failed", type: "error" });
             }
         } catch {
-            setStatus("error");
-            setMessage("Network Protocol Failure");
+            setMessage({ text: "Network signal lost during establishment", type: "error" });
         } finally {
-            setSaving(false);
+            setAdding(false);
         }
     };
 
-    const handleVerify = async () => {
-        if (!savedDomain) return;
-        setVerifying(true);
-        setMessage("");
+    const handleVerifyPulse = async (id: string) => {
+        setVerifyingId(id);
+        setMessage(null);
         try {
-            // Simulate DNS check or call a real DNS check endpoint if available
-            // For now, we update the domain_verified flag in the DB
-            const res = await fetch("/api/reseller/branding", {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ domain_verified: true })
-            });
-            if (res.ok) {
-                setStatus("verified");
-                setMessage("DNS Verified. SSL Handshake Initiated.");
+            const res = await fetch(`/api/reseller/domains/${id}/verify`, { method: "POST" });
+            const data = await res.json();
+            if (data.success) {
+                setDomains(domains.map(d => d.id === id ? { ...d, is_verified: true } : d));
+                setMessage({ text: "DNS Checksum Valid. Shield protocol active.", type: "success" });
             } else {
-                setStatus("error");
-                setMessage("Checksum Mismatch. Propagation Incomplete.");
+                setMessage({ text: data.error || "Verification pulse failed. DNS records not detected.", type: "error" });
             }
+        } catch {
+            setMessage({ text: "Resolver handshake rejected", type: "error" });
         } finally {
-            setVerifying(false);
+            setVerifyingId(null);
+        }
+    };
+
+    const handleSslCheck = async (id: string) => {
+        setSslCheckingId(id);
+        setMessage(null);
+        try {
+            const res = await fetch(`/api/reseller/domains/${id}/ssl-check`, { method: "POST" });
+            const data = await res.json();
+            if (data.success) {
+                setMessage({ text: "SSL Handshake Decrypted & Secure. Encryption active.", type: "success" });
+            } else {
+                setMessage({ text: data.error || "SSL Handshake failure. Cert may still be provisioning.", type: "error" });
+            }
+        } catch {
+            setMessage({ text: "SSL scanning failed", type: "error" });
+        } finally {
+            setSslCheckingId(null);
+        }
+    };
+
+    const handleDelete = async (id: string) => {
+        if (!window.confirm("Permanent deletion of this namespace will break resolving. Proceed?")) return;
+        setDeletingId(id);
+        try {
+            const res = await fetch(`/api/reseller/domains/${id}`, { method: "DELETE" });
+            if (res.ok) {
+                setDomains(domains.filter(d => d.id !== id));
+                setMessage({ text: "Namespace purged from edge network.", type: "info" });
+            }
+        } catch {
+            setMessage({ text: "Decommisison protocol failed", type: "error" });
+        } finally {
+            setDeletingId(null);
         }
     };
 
@@ -88,218 +131,330 @@ export default function DomainPage() {
         setTimeout(() => setCopied(""), 2000);
     };
 
-    const cnameHost = savedDomain ? savedDomain.split(".")[0] : "portal";
-    const cnameTarget = "cname.grafty.pro";
-
     return (
-        <div className="max-w-5xl space-y-12 animate-in fade-in duration-700 pb-24">
-
-            {/* Simple Header */}
+        <div className="max-w-6xl space-y-12 animate-in fade-in duration-700 pb-24">
+            {/* Header */}
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
                 <div className="space-y-1">
                     <div className="flex items-center gap-2 text-blue-600 font-black text-[9px] uppercase tracking-[0.3em] mb-4">
                         <div className="w-1.5 h-1.5 rounded-full bg-blue-600 shadow-[0_0_8px_rgba(37,99,235,0.4)]" />
-                        Custom Namespace
+                        Infrastructure Matrix
                     </div>
                     <h1 className="text-4xl font-black text-slate-900 tracking-tighter leading-none italic uppercase">
-                        Domain & DNS<span className="text-blue-600">.</span>
+                        White-Label Domains<span className="text-blue-600">.</span>
                     </h1>
-                    <p className="text-slate-400 font-bold text-sm tracking-tight italic">Connect your custom domain and configure DNS records for your platform.</p>
+                    <p className="text-slate-400 font-bold text-sm tracking-tight italic">Provision and manage custom namespaces for your white-labeled platform.</p>
+                </div>
+                <div className="flex items-center gap-4">
+                    <a href="#setup-guide" className="px-6 py-3 bg-white border border-slate-200 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-blue-600 hover:border-blue-600 transition-all flex items-center gap-2">
+                        <Info size={14} />
+                        Setup Guide
+                    </a>
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+            {message && (
+                <div className={`p-6 rounded-[2rem] border animate-in slide-in-from-top-4 flex items-center justify-between gap-4 text-[10px] font-black uppercase tracking-widest ${
+                    message.type === "error" ? "bg-rose-50 border-rose-100 text-rose-600" :
+                    message.type === "success" ? "bg-emerald-50 border-emerald-100 text-[#27954D]" :
+                    "bg-blue-50 border-blue-100 text-blue-600"
+                }`}>
+                    <div className="flex items-center gap-4">
+                        <div className={`w-10 h-10 rounded-2xl flex items-center justify-center text-white shadow-lg ${
+                            message.type === "error" ? "bg-rose-600" :
+                            message.type === "success" ? "bg-[#27954D]" : "bg-blue-600"
+                        }`}>
+                            {message.type === "success" ? <CheckCircle size={18} /> : message.type === "error" ? <AlertTriangle size={18} /> : <Info size={18} />}
+                        </div>
+                        {message.text}
+                    </div>
+                    <button onClick={() => setMessage(null)} className="p-2 hover:bg-white/50 rounded-xl transition-colors">
+                        <X size={16} />
+                    </button>
+                </div>
+            )}
 
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
                 {/* Protocol Config */}
                 <div className="lg:col-span-12 space-y-10">
-
-                    {/* Step 01: Host Establishment */}
+                    {/* Add Domain Section */}
                     <section className="bg-white border border-slate-100 rounded-[3rem] p-10 shadow-sm relative overflow-hidden group">
                         <div className="absolute top-0 right-0 w-32 h-32 bg-slate-50/50 blur-3xl rounded-full -mr-16 -mt-16" />
-                        <div className="flex items-center justify-between mb-10 relative z-10">
+                        <div className="flex items-center justify-between mb-8 relative z-10">
                             <div className="flex items-center gap-4">
                                 <div className="w-12 h-12 rounded-2xl bg-slate-900 flex items-center justify-center text-white shadow-lg">
-                                    <Globe size={22} />
+                                    <Plus size={22} />
                                 </div>
                                 <div className="hidden sm:block">
-                                    <h2 className="text-xs font-black text-slate-900 uppercase tracking-[0.2em]">Step 01. Genesis</h2>
-                                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest italic mt-1 leading-none">Declare Primary Namespace</p>
+                                    <h2 className="text-xs font-black text-slate-900 uppercase tracking-[0.2em]">Add New Namespace</h2>
+                                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest italic mt-1 leading-none">Initialize White-Label Cluster</p>
                                 </div>
-                            </div>
-                            <div className="px-5 py-2 rounded-full bg-slate-50 border border-slate-100 text-[9px] font-black uppercase text-slate-400 tracking-widest italic">
-                                Ready for sync
                             </div>
                         </div>
 
                         <div className="flex flex-col md:flex-row gap-6 relative z-10">
                             <div className="flex-1 space-y-3">
-                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em] ml-1">Target Subdomain</label>
+                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em] ml-1">Target Hostname</label>
                                 <div className="relative group/field">
                                     <div className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within/field:text-blue-600 transition-colors italic font-black text-xs uppercase tracking-tighter">https://</div>
                                     <input
                                         className="w-full bg-slate-50 border border-slate-200 rounded-[2rem] pl-20 pr-8 py-5 text-lg font-black italic uppercase tracking-tighter text-slate-900 focus:border-blue-600 focus:bg-white outline-none transition-all placeholder:text-slate-200 shadow-inner"
                                         placeholder="PORTAL.YOURBRAND.COM"
-                                        value={domain}
-                                        onChange={e => setDomain(e.target.value.toLowerCase())}
+                                        value={newDomain}
+                                        onChange={e => setNewDomain(e.target.value.toLowerCase())}
                                     />
                                 </div>
-                                <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-2 px-1">Ensure the subdomain exists within your DNS matrix before establishment.</p>
                             </div>
-                            <div className="md:pt-10">
+                            <div className="md:pt-9 flex items-center">
                                 <button
-                                    onClick={handleSave}
-                                    disabled={saving || !domain.trim()}
-                                    className="w-full md:w-auto px-10 py-5 bg-slate-900 text-white rounded-[2rem] font-black text-[10px] uppercase tracking-[0.3em] hover:bg-black transition-all shadow-xl shadow-slate-900/10 active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-3"
+                                    onClick={handleAddDomain}
+                                    disabled={adding || !newDomain.trim()}
+                                    className="w-full md:w-auto px-12 py-5 bg-slate-900 text-white rounded-[2rem] font-black text-[10px] uppercase tracking-[0.3em] hover:bg-black transition-all shadow-xl shadow-slate-900/10 active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-3"
                                 >
-                                    {saving ? <Loader2 size={16} className="animate-spin" /> : <ArrowUpRight size={16} />}
-                                    Sync Anchor
+                                    {adding ? <Loader2 size={16} className="animate-spin" /> : <ArrowUpRight size={16} />}
+                                    Provision Domain
                                 </button>
                             </div>
                         </div>
-
-                        {message && (
-                            <div className={`mt-8 p-6 rounded-[2rem] border animate-in slide-in-from-top-2 flex items-center gap-4 text-[10px] font-black uppercase tracking-widest ${status === "error" ? "bg-rose-50 border-rose-100 text-rose-600" :
-                                status === "verified" ? "bg-emerald-50 border-emerald-100 text-[#27954D]" :
-                                    "bg-blue-50 border-blue-100 text-blue-600"
-                                }`}>
-                                <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-white shadow-lg ${status === "error" ? "bg-rose-600" :
-                                    status === "verified" ? "bg-[#27954D]" : "bg-blue-600"
-                                    }`}>
-                                    {status === "verified" ? <CheckCircle size={16} /> : status === "error" ? <AlertTriangle size={16} /> : <Activity size={16} />}
-                                </div>
-                                {message}
-                            </div>
-                        )}
                     </section>
 
-                    {/* Step 02: DNS Mapping */}
-                    {savedDomain && (
-                        <section className="bg-white border border-slate-100 rounded-[3rem] p-10 shadow-sm relative overflow-hidden group/dns animate-in fade-in zoom-in-95 duration-500">
-                            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50/30 blur-3xl rounded-full -mr-16 -mt-16 group-hover/dns:scale-125 transition-transform duration-1000" />
+                    {/* Domains List */}
+                    <div className="space-y-6">
+                        <div className="flex items-center justify-between px-6">
+                            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em]">Active Clusters</h3>
+                            <button onClick={fetchDomains} className="p-2 hover:bg-slate-50 rounded-xl text-slate-400 transition-all">
+                                <Activity size={14} />
+                            </button>
+                        </div>
 
-                            <div className="flex items-center justify-between mb-10 relative z-10">
-                                <div className="flex items-center gap-4">
-                                    <div className="w-12 h-12 rounded-2xl bg-blue-600 flex items-center justify-center text-white shadow-lg">
-                                        <Database size={22} />
-                                    </div>
-                                    <div className="hidden sm:block">
-                                        <h2 className="text-xs font-black text-slate-900 uppercase tracking-[0.2em]">Step 02. Mapping</h2>
-                                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest italic mt-1 leading-none">Inject Artifact into DNS Provider</p>
-                                    </div>
-                                </div>
+                        {loading ? (
+                            <div className="py-20 flex flex-col items-center justify-center space-y-4">
+                                <Loader2 size={32} className="text-slate-200 animate-spin" />
+                                <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest">Scanning Grid...</span>
                             </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 relative z-10 mb-10">
-                                {[
-                                    { label: "Matrix Type", value: "CNAME" },
-                                    { label: "Host Pointer", value: cnameHost },
-                                    { label: "Protocol Target", value: cnameTarget },
-                                    { label: "Persistence", value: "Auto" }
-                                ].map(({ label, value }) => (
-                                    <div key={label} className="space-y-3">
-                                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em] ml-1">{label}</label>
-                                        <button
-                                            onClick={() => copyToClipboard(value, label)}
-                                            className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-5 flex items-center justify-between group/copy hover:border-blue-600 hover:bg-white transition-all shadow-inner"
-                                        >
-                                            <span className="text-xs font-black italic uppercase tracking-tighter text-blue-900 truncate">{value}</span>
-                                            {copied === label
-                                                ? <CheckCircle size={14} className="text-[#27954D] animate-in zoom-in duration-300" />
-                                                : <Copy size={14} className="text-slate-200 group-hover/copy:text-blue-600 transition-colors" />
-                                            }
-                                        </button>
-                                    </div>
+                        ) : domains.length === 0 ? (
+                            <div className="bg-slate-50 border border-dashed border-slate-200 rounded-[3rem] py-24 flex flex-col items-center justify-center text-center space-y-4">
+                                <Globe size={48} className="text-slate-200 mb-2" />
+                                <h4 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">No Active Namespaces</h4>
+                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest italic leading-none max-w-xs">Declare your first custom domain to activate the white-label matrix.</p>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 gap-6">
+                                {domains.map((domain) => (
+                                    <DomainCard 
+                                        key={domain.id} 
+                                        domain={domain} 
+                                        verifying={verifyingId === domain.id} 
+                                        sslChecking={sslCheckingId === domain.id}
+                                        deleting={deletingId === domain.id}
+                                        onVerify={() => handleVerifyPulse(domain.id)}
+                                        onSslCheck={() => handleSslCheck(domain.id)}
+                                        onDelete={() => handleDelete(domain.id)}
+                                        onCopy={(val, key) => copyToClipboard(val, key)}
+                                        copyStatus={copied}
+                                    />
                                 ))}
                             </div>
-
-                            <div className="pt-10 border-t border-slate-50 flex flex-col sm:flex-row items-center justify-between gap-6">
-                                <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                                    <Activity size={18} className="text-blue-500 animate-pulse" />
-                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">Monitoring DNS Broadcast...</p>
-                                </div>
-                                <button
-                                    onClick={handleVerify}
-                                    disabled={verifying || status === "verified"}
-                                    className={`w-full sm:w-auto px-12 py-5 rounded-[2rem] font-black text-[10px] uppercase tracking-[0.3em] flex items-center justify-center gap-3 transition-all transform active:scale-[0.98] disabled:opacity-50 ${status === "verified"
-                                        ? "bg-emerald-50 text-[#27954D] border-2 border-emerald-100 shadow-lg shadow-emerald-500/5 cursor-default"
-                                        : "bg-blue-600 text-white hover:bg-blue-900 shadow-2xl shadow-blue-600/20"
-                                        }`}
-                                >
-                                    {verifying ? <Loader2 size={16} className="animate-spin" /> : status === "verified" ? <ShieldCheck size={16} /> : <Zap size={16} />}
-                                    {verifying ? "Auditing DNS..." : status === "verified" ? "Protocol Secured" : "Execute Verify Pulse"}
-                                </button>
-                            </div>
-                        </section>
-                    )}
-
-                    {/* Step 03: Live Deployment */}
-                    {status === "verified" && (
-                        <section className="bg-slate-900 rounded-[3.5rem] p-12 shadow-2xl relative overflow-hidden group animate-in slide-in-from-bottom-6 duration-700">
-                            <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-blue-600/20 to-transparent pointer-events-none" />
-                            <div className="absolute bottom-0 right-0 w-64 h-64 bg-emerald-500/10 blur-[100px] rounded-full" />
-
-                            <div className="relative z-10 flex flex-col items-center text-center space-y-8">
-                                <div className="w-20 h-20 bg-white/10 backdrop-blur-xl border border-white/20 rounded-[2.5rem] flex items-center justify-center text-emerald-400 shadow-2xl">
-                                    <ShieldCheck size={40} className="animate-bounce-soft" />
-                                </div>
-
-                                <div className="space-y-2">
-                                    <h2 className="text-white font-black text-3xl italic uppercase tracking-tighter leading-none">Deployment Successful</h2>
-                                    <p className="text-white/40 text-[10px] font-black uppercase tracking-[0.4em]">Subdomain Resolving to Platform Grid</p>
-                                </div>
-
-                                <div className="p-8 bg-white/5 border border-white/10 rounded-[2.5rem] w-full max-w-lg group/link hover:bg-white/10 transition-colors cursor-pointer" onClick={() => window.open(`https://${savedDomain}`, '_blank')}>
-                                    <div className="text-[9px] font-black text-white/30 uppercase tracking-[0.3em] mb-3 italic">Active Endpoint</div>
-                                    <div className="flex items-center justify-center gap-3">
-                                        <span className="text-xl font-black text-white italic tracking-tighter uppercase tabular-nums">{savedDomain}</span>
-                                        <ExternalLink size={20} className="text-white/20 group-hover/link:text-white transition-colors" />
-                                    </div>
-                                </div>
-
-                                <div className="flex gap-4">
-                                    <div className="px-5 py-2 rounded-full border border-white/10 text-[8px] font-black text-white/50 uppercase tracking-[0.3em] flex items-center gap-2">
-                                        <Server size={10} /> Edge Synchronized
-                                    </div>
-                                    <div className="px-5 py-2 rounded-full border border-white/10 text-[8px] font-black text-white/50 uppercase tracking-[0.3em] flex items-center gap-2">
-                                        <Shield size={10} /> SSL Handshake Active
-                                    </div>
-                                </div>
-                            </div>
-                        </section>
-                    )}
+                        )}
+                    </div>
                 </div>
 
-                {/* Technical Protocol Notes */}
-                <div className="lg:col-span-12">
-                    <section className="bg-slate-50 border border-slate-200 rounded-[3rem] p-10 flex flex-col md:flex-row gap-10">
-                        <div className="w-16 h-16 bg-white rounded-[2rem] border border-slate-200 shadow-sm flex items-center justify-center shrink-0">
-                            <AlertTriangle className="text-amber-500" size={24} />
-                        </div>
-                        <div className="space-y-6">
-                            <div>
-                                <h4 className="text-sm font-black text-slate-900 uppercase tracking-[0.2em] mb-1">Technical Protocol</h4>
-                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest italic leading-none">Standard DNS Operating Procedures</p>
+                {/* How-To Guide Section */}
+                <div className="lg:col-span-12" id="setup-guide">
+                    <section className="bg-slate-900 rounded-[3rem] p-12 relative overflow-hidden">
+                        {/* Background Accents */}
+                        <div className="absolute top-0 right-0 w-96 h-96 bg-blue-600 blur-[120px] rounded-full opacity-10 -mr-32 -mt-32" />
+                        <div className="absolute bottom-0 left-0 w-64 h-64 bg-emerald-600 blur-[100px] rounded-full opacity-10 -ml-32 -mb-32" />
+                        
+                        <div className="relative z-10 space-y-12">
+                            <div className="text-center space-y-2">
+                                <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-[9px] font-black text-blue-400 uppercase tracking-widest mb-4">
+                                    <Zap size={10} /> Configuration Protocol
+                                </div>
+                                <h3 className="text-3xl font-black text-white italic tracking-tighter uppercase leading-none">
+                                    How to Setup Your <span className="text-blue-400">Custom Domain</span>.
+                                </h3>
+                                <p className="text-slate-400 font-medium text-sm max-w-2xl mx-auto">Follow these four simple steps to activate your white-label platform under your own brand's hostname.</p>
                             </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
                                 {[
-                                    { title: "Namespace Constraint", desc: "Map to a subdomain entity only. Root resolution requires manual SSL bypass." },
-                                    { title: "Propagation Latency", desc: "Edge synchronization requires between 300s and 86400s to achieve global resolution." },
-                                    { title: "Persistence Rule", desc: "Maintain the CNAME artifact within your registrar matrix to prevent protocol dropout." },
-                                    { title: "Identity Synchronization", desc: "All user agents and logos will automatically propagate to the established endpoint." }
-                                ].map((note, i) => (
-                                    <div key={i} className="flex gap-4 group">
-                                        <div className="w-1 h-1 rounded-full bg-blue-600 mt-1.5 shrink-0 group-hover:scale-150 transition-transform" />
-                                        <div className="space-y-1">
-                                            <p className="text-[10px] font-black text-slate-800 uppercase tracking-widest leading-none italic">{note.title}</p>
-                                            <p className="text-[10px] text-slate-400 font-medium leading-relaxed">{note.desc}</p>
+                                    {
+                                        step: "01",
+                                        title: "DNS Anchor",
+                                        desc: "Point your CNAME record to cname.grafty.pro in your DNS panel (Cloudflare, GoDaddy, etc).",
+                                        icon: <Server size={20} className="text-blue-400" />
+                                    },
+                                    {
+                                        step: "02",
+                                        title: "Namespace Entry",
+                                        desc: "Enter your domain above (e.g., app.yourbrand.com) and click 'Provision Domain' to initialize.",
+                                        icon: <Plus size={20} className="text-emerald-400" />
+                                    },
+                                    {
+                                        step: "03",
+                                        title: "Pulse Check",
+                                        desc: "Once DNS propagates, click 'Pulse Check' to verify connectivity with our global edge nodes.",
+                                        icon: <Activity size={20} className="text-amber-400" />
+                                    },
+                                    {
+                                        step: "04",
+                                        title: "SSL Shield",
+                                        desc: "Our system will automatically provision an SSL certificate. Encryption active within seconds.",
+                                        icon: <ShieldCheck size={20} className="text-violet-400" />
+                                    }
+                                ].map((item, i) => (
+                                    <div key={i} className="group p-8 rounded-[2.5rem] bg-white/5 border border-white/10 hover:bg-white/[0.08] transition-all relative">
+                                        <div className="text-[40px] font-black text-white/5 absolute top-4 right-6 italic select-none group-hover:text-white/10 transition-colors">{item.step}</div>
+                                        <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-inner">
+                                            {item.icon}
                                         </div>
+                                        <h4 className="text-xs font-black text-white uppercase tracking-[0.2em] mb-4">{item.title}</h4>
+                                        <p className="text-[10px] text-slate-400 font-medium leading-relaxed uppercase tracking-widest italic">{item.desc}</p>
                                     </div>
                                 ))}
+                            </div>
+
+                            <div className="bg-white/5 border border-white/10 rounded-[2rem] p-6 flex flex-col md:flex-row items-center justify-between gap-6">
+                                <div className="flex items-center gap-4 text-left">
+                                    <div className="w-10 h-10 rounded-xl bg-blue-600/20 flex items-center justify-center text-blue-400">
+                                        <Info size={20} />
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-black text-white uppercase tracking-widest">Crucial: Cloudflare Users</p>
+                                        <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider italic">Ensure the orange cloud (Proxy) is DISABLED in Cloudflare during the initial verification pulse.</p>
+                                    </div>
+                                </div>
+                                <button onClick={() => window.open('https://docs.grafty.pro/white-label-setup', '_blank')} className="px-8 py-4 bg-white text-slate-900 rounded-2xl font-black text-[9px] uppercase tracking-[0.3em] hover:bg-blue-400 hover:text-white transition-all whitespace-nowrap">
+                                    Full Documentation
+                                </button>
                             </div>
                         </div>
                     </section>
                 </div>
             </div>
+        </div>
+    );
+}
+
+function DomainCard({ domain, verifying, sslChecking, deleting, onVerify, onSslCheck, onDelete, onCopy, copyStatus }: { 
+    domain: PartnerDomain; 
+    verifying: boolean; 
+    sslChecking: boolean;
+    deleting: boolean;
+    onVerify: () => void; 
+    onSslCheck: () => void;
+    onDelete: () => void;
+    onCopy: (val: string, key: string) => void;
+    copyStatus: string;
+}) {
+    const [expanded, setExpanded] = useState(!domain.is_verified);
+    const cnameHost = domain.domain.split(".")[0];
+    const cnameTarget = domain.target_host || "cname.grafty.pro";
+
+    return (
+        <div className={`bg-white border rounded-[2.5rem] overflow-hidden transition-all duration-500 shadow-sm ${
+            domain.is_verified ? "border-emerald-100" : "border-slate-100"
+        }`}>
+            {/* Header */}
+            <div className={`p-8 flex items-center justify-between ${domain.is_verified ? "bg-emerald-50/30" : "bg-white"}`}>
+                <div className="flex items-center gap-6">
+                    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-white shadow-xl transition-transform duration-500 ${
+                        domain.is_verified ? "bg-[#27954D] rotate-12 scale-110" : "bg-slate-900"
+                    }`}>
+                        {domain.is_verified ? <ShieldCheck size={28} /> : <Globe size={28} />}
+                    </div>
+                    <div>
+                        <div className="flex items-center gap-3">
+                            <h3 className="text-xl font-black italic tracking-tighter uppercase text-slate-900 leading-none">{domain.domain}</h3>
+                            <span className={`px-3 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest ${
+                                domain.is_verified ? "bg-emerald-100 text-[#27954D]" : "bg-slate-100 text-slate-400"
+                            }`}>
+                                {domain.is_verified ? "Verified" : "Pending DNS"}
+                            </span>
+                        </div>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest italic mt-2">
+                            Infrastructure: {domain.is_verified ? "Edge Routing Active" : "Waiting for Broadcast"}
+                        </p>
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-4">
+                    <button 
+                        onClick={() => setExpanded(!expanded)} 
+                        className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-slate-400 hover:text-slate-900 transition-all"
+                    >
+                        <Info size={18} />
+                    </button>
+                    {domain.is_verified && (
+                        <button
+                            onClick={onSslCheck}
+                            disabled={sslChecking}
+                            className="flex items-center gap-2 px-6 py-3 bg-emerald-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-700 transition-all shadow-lg active:scale-95 disabled:opacity-50"
+                        >
+                            {sslChecking ? <Loader2 size={14} className="animate-spin" /> : <Shield size={14} />}
+                            {sslChecking ? "Scanning" : "SSL Check"}
+                        </button>
+                    )}
+                    {!domain.is_verified && (
+                        <button
+                            onClick={onVerify}
+                            disabled={verifying}
+                            className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 transition-all shadow-lg active:scale-95 disabled:opacity-50"
+                        >
+                            {verifying ? <Loader2 size={14} className="animate-spin" /> : <Zap size={14} />}
+                            {verifying ? "Auditing" : "Pulse Check"}
+                        </button>
+                    )}
+                    <button 
+                        onClick={onDelete}
+                        disabled={deleting}
+                        className="p-3 bg-rose-50 border border-rose-100 rounded-xl text-rose-500 hover:bg-rose-500 hover:text-white transition-all active:scale-90"
+                    >
+                        {deleting ? <Loader2 size={18} className="animate-spin" /> : <Trash2 size={18} />}
+                    </button>
+                </div>
+            </div>
+
+            {/* Config Details */}
+            {expanded && (
+                <div className="p-8 border-t border-slate-50 bg-slate-50/50 animate-in slide-in-from-top-4 duration-300">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                        {[
+                            { label: "Matrix Type", value: "CNAME" },
+                            { label: "Host Name", value: cnameHost },
+                            { label: "Matrix Value", value: cnameTarget },
+                            { label: "TTL Pulse", value: "3600s" }
+                        ].map(({ label, value }) => (
+                            <div key={label} className="space-y-3">
+                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em] ml-1">{label}</label>
+                                <button
+                                    onClick={() => onCopy(value, `${domain.id}-${label}`)}
+                                    className="w-full bg-white border border-slate-200 rounded-xl p-4 flex items-center justify-between group/copy hover:border-blue-600 transition-all shadow-sm"
+                                >
+                                    <span className="text-[11px] font-black italic uppercase tracking-tighter text-blue-900 truncate">{value}</span>
+                                    {copyStatus === `${domain.id}-${label}`
+                                        ? <CheckCircle size={12} className="text-[#27954D] animate-in zoom-in duration-300" />
+                                        : <Copy size={12} className="text-slate-200 group-hover/copy:text-blue-600 transition-colors" />
+                                    }
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                    
+                    {!domain.is_verified && (
+                        <div className="mt-8 p-5 bg-amber-50 border border-amber-100 rounded-2xl flex items-start gap-4">
+                            <AlertTriangle size={16} className="text-amber-500 mt-1 shrink-0" />
+                            <div className="space-y-1">
+                                <p className="text-[10px] font-black text-amber-700 uppercase tracking-widest">Awaiting DNS Broadcast</p>
+                                <p className="text-[10px] text-amber-600 font-medium leading-relaxed">
+                                    Configure the above CNAME record in your registrar's DNS panel. If using Cloudflare, ensure "Proxying" (Orange Cloud) is DISABLED for the initial verification pulse.
+                                </p>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
         </div>
     );
 }

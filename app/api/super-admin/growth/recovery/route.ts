@@ -59,8 +59,8 @@ export async function POST(request: Request) {
         await requireSuperAdmin();
         const { userId, phone } = await request.json();
 
-        if (!phone) {
-            return NextResponse.json({ error: "Missing phone number" }, { status: 400 });
+        if (!userId || !phone) {
+            return NextResponse.json({ error: "Missing userId or phone number" }, { status: 400 });
         }
 
         // 1. Get Platform WABA Config

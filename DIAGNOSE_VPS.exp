@@ -1,0 +1,11 @@
+#!/usr/bin/expect -f
+
+set timeout 30
+set host "72.61.231.187"
+set password "Photoshop09@"
+
+spawn ssh -o StrictHostKeyChecking=no root@$host "docker network ls && docker ps -a && cd /root/wabot_bsp && docker compose -f docker-compose.prod.yml config && docker network inspect nuclear_net"
+expect {
+    "password:" { send "$password\r"; exp_continue }
+    eof
+}

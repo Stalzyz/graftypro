@@ -27,7 +27,7 @@ export async function POST(req: Request) {
         try {
             // Check Token validity
             const res = await axios.get(
-                `https://graph.facebook.com/v18.0/${phoneNumberId}`,
+                `https://graph.facebook.com/v20.0/${phoneNumberId}`,
                 { headers: { "Authorization": `Bearer ${token}` } }
             );
 

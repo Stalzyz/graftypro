@@ -22,15 +22,16 @@ export async function POST(req: Request) {
         });
 
         if (!admin) {
-            console.log(`[AUTH-DEBUG] No admin found for email: [${email}]`);
-            return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
+            console.warn(`[AUTH-ERROR] Admin not found: ${email}`);
+            return NextResponse.json({ error: "Invalid credentials (User not found)" }, { status: 401 });
         }
 
         const isValid = await bcrypt.compare(password, admin.password_hash);
-        console.log(`[AUTH-DEBUG] Login attempt for: [${email}] | Exists: true | ValidPass: ${isValid}`);
+        console.log(`[AUTH-DEBUG] Login attempt: email=${email}, role=${admin.role}, isValid=${isValid}`);
 
         if (!isValid) {
-            return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
+            console.warn(`[AUTH-ERROR] Password mismatch for: ${email}`);
+            return NextResponse.json({ error: "Invalid credentials (Password mismatch)" }, { status: 401 });
         }
 
         // Create Session
@@ -40,15 +41,13 @@ export async function POST(req: Request) {
             role: admin.role
         });
 
-        // Set Cookie
-        // Behind a reverse proxy (Nginx), req.url is always http:// internally.
-        // Use x-forwarded-proto to detect the actual client-facing protocol.
+        // Cookies Security (Handle Reverse Proxy)
         const forwardedProto = req.headers.get("x-forwarded-proto");
-        const isHttps = forwardedProto === "https" || req.url.startsWith("https") || process.env.NODE_ENV === "production";
+        const isClientHttps = forwardedProto === "https" || req.url.startsWith("https");
 
         cookies().set("admin_token", token, {
             httpOnly: true,
-            secure: isHttps,
+            secure: isClientHttps, // Only secure if actually HTTPS
             maxAge: 60 * 60 * 24, // 1 day
             path: "/",
             sameSite: "lax"

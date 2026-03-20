@@ -1,9 +1,9 @@
 
 import { NextResponse } from "next/server";
-import { prisma } from "../../../../lib/db";
+import { prisma } from "@/lib/db";
 import bcrypt from "bcryptjs";
-import { ResellerService } from "../../../../lib/reseller/service";
-import { encrypt } from "../../../../lib/security/encryption";
+import { ResellerService } from "@/lib/reseller/service";
+import { encrypt } from "@/lib/security/encryption";
 
 export const dynamic = "force-dynamic";
 

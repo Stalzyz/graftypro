@@ -10,9 +10,21 @@ export class AuthSecurityService {
 
     /**
      * Normalize email for consistent lookup
+     * Strips whitespace, lowercase, and removes sub-addressing (+tags) for common providers
      */
     static normalizeEmail(email: string): string {
-        return email.trim().toLowerCase();
+        let normalized = email.trim().toLowerCase();
+        
+        // Handle Gmail sub-addressing (e.g., user+tag@gmail.com -> user@gmail.com)
+        if (normalized.includes('+') && normalized.includes('@')) {
+            const [local, domain] = normalized.split('@');
+            if (domain === 'gmail.com' || domain === 'googlemail.com' || domain === 'outlook.com' || domain === 'hotmail.com') {
+                const baseLocal = local.split('+')[0];
+                normalized = `${baseLocal}@${domain}`;
+            }
+        }
+        
+        return normalized;
     }
 
     /**

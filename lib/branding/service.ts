@@ -68,7 +68,7 @@ export class BrandingService {
                     primary: config?.primary_color || "#0F172A",
                     secondary: config?.secondary_color || "#3B82F6"
                 },
-                features: config?.features || { commerce: true, flows: true, drips: true, edu: false, api: true },
+                features: config?.features || { commerce: true, flows: true, drips: true, edu: true, api: true },
                 custom_domain: null,
                 broadcast: null,
                 support: {
@@ -88,7 +88,7 @@ export class BrandingService {
                 favicon_url: "/grafty_fav.svg",
                 theme_mode: "LIGHT",
                 colors: { primary: "#0F172A", secondary: "#3B82F6" },
-                features: { commerce: true, flows: true, drips: true, edu: false, api: true },
+                features: { commerce: true, flows: true, drips: true, edu: true, api: true },
                 support: { email: "support@grafty.pro", whatsapp: "", url: null }
             };
         }
@@ -99,10 +99,27 @@ export class BrandingService {
      * Resolves a reseller based on the hostname.
      */
     static async getBrandingByDomain(hostname: string) {
+        if (!hostname) return null;
         try {
-            const reseller = await prisma.reseller.findUnique({
-                where: { custom_domain: hostname }
+            // Normalize: strip port and trim
+            const domain = hostname.split(':')[0].toLowerCase().trim();
+
+            // 1. Priority: Direct Reseller custom_domain match
+            let reseller = await prisma.reseller.findFirst({
+                where: { custom_domain: domain }
             });
+
+            // 2. Fallback: Search in PartnerDomain verify mapping
+            if (!reseller) {
+                const partnerDomain = await prisma.partnerDomain.findUnique({
+                    where: { domain: domain },
+                    include: { reseller: true }
+                });
+
+                if (partnerDomain?.reseller && partnerDomain.is_verified) {
+                    reseller = partnerDomain.reseller;
+                }
+            }
 
             if (reseller) {
                 return {
@@ -110,9 +127,11 @@ export class BrandingService {
                     brand_name: reseller.brand_name || reseller.name,
                     logo_url: reseller.logo_url,
                     favicon_url: reseller.favicon_url,
+                    primary_color: reseller.primary_color || "#0F172A",
+                    secondary_color: reseller.secondary_color || "#3B82F6",
                     colors: {
-                        primary: reseller.primary_color,
-                        secondary: reseller.secondary_color
+                        primary: reseller.primary_color || "#0F172A",
+                        secondary: reseller.secondary_color || "#3B82F6"
                     },
                     broadcast: {
                         banner: reseller.broadcast_banner,

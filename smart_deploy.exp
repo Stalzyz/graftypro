@@ -1,0 +1,43 @@
+#!/usr/bin/expect -f
+# ══════════════════════════════════════════════════
+#  SMART DEPLOY - Handles missing dirs automatically
+# ══════════════════════════════════════════════════
+
+set SERVER    "root@72.61.231.187"
+set PASS      "Photoshop09@"
+set REMOTE    "/var/www/wabot"
+set timeout   300
+
+# ── STEP 1: Create missing directories ──
+puts "\n🔧 STEP 1: Creating missing directories on server..."
+spawn ssh -o StrictHostKeyChecking=no $SERVER \
+  "mkdir -p $REMOTE/app/api/super-admin/billing/sync-razorpay"
+expect "password:" { send "$PASS\r" }
+expect eof
+
+# ── STEP 2: Upload sync-razorpay fix ──
+puts "\n📤 STEP 2: Uploading patched sync-razorpay route..."
+spawn scp -o StrictHostKeyChecking=no \
+  app/api/super-admin/billing/sync-razorpay/route.ts \
+  $SERVER:$REMOTE/app/api/super-admin/billing/sync-razorpay/route.ts
+expect "password:" { send "$PASS\r" }
+expect eof
+
+# ── STEP 3: Upload DynamicPricing fix ──
+puts "\n📤 STEP 3: Uploading DynamicPricing component..."
+spawn scp -o StrictHostKeyChecking=no \
+  components/landing-new/DynamicPricing.tsx \
+  $SERVER:$REMOTE/components/landing-new/DynamicPricing.tsx
+expect "password:" { send "$PASS\r" }
+expect eof
+
+# ── STEP 4: Rebuild & Restart ──
+puts "\n🔨 STEP 4: Building production bundle & restarting..."
+spawn ssh -o StrictHostKeyChecking=no $SERVER \
+  "cd $REMOTE && npm run build && pm2 restart wabot"
+expect "password:" { send "$PASS\r" }
+expect eof
+
+puts "\n\n✅ ══ DEPLOY COMPLETE ══"
+puts "   Razorpay Resync fix is now LIVE."
+puts "   Go to Super Admin → Subscription Plans → Force Re-sync\n"

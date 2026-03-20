@@ -66,7 +66,8 @@ export async function PATCH(
         // Whitelist allowed updates
         const {
             base_commission, tier_id, is_frozen, freeze_reason, status, kyc_status,
-            custom_domain, brand_name, logo_url, favicon_url, primary_color, secondary_color
+            custom_domain, brand_name, logo_url, favicon_url, primary_color, secondary_color,
+            role
         } = body;
 
         const updated = await prisma.reseller.update({
@@ -74,6 +75,7 @@ export async function PATCH(
             data: {
                 ...(base_commission !== undefined && { base_commission }),
                 ...(tier_id !== undefined && { tier_id }),
+                ...(role !== undefined && { role }),
                 ...(is_frozen !== undefined && { is_frozen }),
                 ...(freeze_reason !== undefined && { freeze_reason }),
                 ...(status !== undefined && {

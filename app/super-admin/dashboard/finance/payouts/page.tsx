@@ -9,7 +9,9 @@ import {
     Search,
     RefreshCcw,
     ExternalLink,
-    ShieldCheck
+    ShieldCheck,
+    AlertTriangle,
+    Zap
 } from 'lucide-react';
 
 export default function AdminPayoutsPage() {
@@ -32,20 +34,20 @@ export default function AdminPayoutsPage() {
         }
     };
 
-    const handleAction = async (requestId: string, action: 'APPROVE' | 'REJECT') => {
-        const notes = window.prompt(`Notes for ${action.toLowerCase()}:`);
+    const handleAction = async (requestId: string, action: 'APPROVE' | 'REJECT', mode: 'MANUAL' | 'AUTOMATED' = 'AUTOMATED') => {
+        const notes = window.prompt(`Notes for ${action.toLowerCase()} (${mode.toLowerCase()}):`);
         if (notes === null) return;
 
         setProcessing(requestId);
         try {
             const res = await fetch("/api/super-admin/reseller/payouts", {
                 method: "POST",
-                body: JSON.stringify({ requestId, action, adminNotes: notes }),
+                body: JSON.stringify({ requestId, action, adminNotes: notes, mode }),
                 headers: { "Content-Type": "application/json" }
             });
 
             if (res.ok) {
-                alert(`Payout ${action === 'APPROVE' ? 'Approved & Paid' : 'Rejected'}`);
+                alert(`Payout ${action === 'APPROVE' ? `Approved (${mode})` : 'Rejected'}`);
                 fetchPayouts();
             } else {
                 const error = await res.json();
@@ -84,6 +86,7 @@ export default function AdminPayoutsPage() {
                                 <th className="px-6 py-4">Amount</th>
                                 <th className="px-6 py-4">Current Balance</th>
                                 <th className="px-6 py-4">Method & Details</th>
+                                <th className="px-6 py-4">Risk Analysis</th>
                                 <th className="px-6 py-4">Status</th>
                                 <th className="px-6 py-4 text-right">Decisions</th>
                             </tr>
@@ -106,6 +109,41 @@ export default function AdminPayoutsPage() {
                                         <div className="text-[10px] text-zinc-500 truncate max-w-[150px]">{JSON.stringify(p.payment_details)}</div>
                                     </td>
                                     <td className="px-6 py-4">
+                                        <div className="flex items-center gap-2">
+                                            <div className={`px-2 py-0.5 rounded-full text-[10px] font-black tracking-widest uppercase border ${
+                                                p.risk_score > 70 ? 'bg-red-500/20 text-red-400 border-red-500/30 animate-pulse' :
+                                                p.risk_score > 40 ? 'bg-orange-500/20 text-orange-400 border-orange-500/30' :
+                                                'bg-zinc-800 text-zinc-500 border-zinc-700'
+                                            }`}>
+                                                Risk {p.risk_score}%
+                                            </div>
+                                            {p.risk_flags && p.risk_flags.length > 0 && (
+                                                <div className="flex items-center gap-1 group/flags relative">
+                                                    <div className="w-2 h-2 rounded-full bg-blue-500 animate-ping absolute -top-0.5 -right-0.5" />
+                                                    <AlertTriangle size={12} className={p.risk_score > 70 ? 'text-red-400' : 'text-orange-400'} />
+                                                    <div className="text-[8px] text-zinc-600 font-black cursor-help hover:text-blue-400 transition-colors">
+                                                        {p.risk_flags.length} Signal(s)
+                                                    </div>
+                                                    
+                                                    {/* Tooltip on hover */}
+                                                    <div className="absolute bottom-full left-0 mb-2 w-48 bg-zinc-950 border border-zinc-800 p-3 rounded-xl shadow-2xl opacity-0 invisible group-hover/flags:opacity-100 group-hover/flags:visible transition-all z-20 pointer-events-none">
+                                                        <p className="text-[8px] font-black uppercase tracking-widest text-zinc-500 mb-2 border-b border-zinc-900 pb-1">Fraud Signals</p>
+                                                        <div className="space-y-1.5">
+                                                            {p.risk_flags.map((f: any, i: number) => (
+                                                                <div key={i} className="flex justify-between items-start gap-2">
+                                                                    <span className="text-[8px] font-bold text-zinc-300 italic">#{f.flag}</span>
+                                                                    <span className={`text-[7px] font-black px-1 rounded uppercase ${
+                                                                        f.severity === 'HIGH' ? 'text-red-400 bg-red-400/10' : 'text-orange-400 bg-orange-400/10'
+                                                                    }`}>{f.severity}</span>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </td>
+                                    <td className="px-6 py-4">
                                         <div className={`inline-flex items-center gap-1 text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${p.status === 'PAID' ? 'bg-green-500/10 text-green-400' :
                                                 p.status === 'PENDING' ? 'bg-yellow-500/10 text-yellow-400 animate-pulse' :
                                                     'bg-red-500/10 text-red-400'
@@ -124,12 +162,25 @@ export default function AdminPayoutsPage() {
                                                 >
                                                     <XCircle size={18} />
                                                 </button>
+                                                {/* Automated One-Click Payout */}
                                                 <button
                                                     disabled={processing === p.id}
-                                                    onClick={() => handleAction(p.id, 'APPROVE')}
-                                                    className="p-2 bg-green-500 text-black hover:bg-green-400 rounded-lg transition-all shadow-lg shadow-green-500/20"
+                                                    onClick={() => handleAction(p.id, 'APPROVE', 'AUTOMATED')}
+                                                    className="px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-all flex items-center gap-2 text-xs font-black shadow-[0_0_20px_rgba(37,99,235,0.4)] border border-blue-400/20"
+                                                    title="Execute One-Click Razorpay Payout"
                                                 >
-                                                    {processing === p.id ? <RefreshCcw className="animate-spin" size={18} /> : <CheckCircle2 size={18} />}
+                                                    {processing === p.id ? <RefreshCcw size={14} className="animate-spin" /> : <Zap size={14} className="fill-current" />}
+                                                    Payout
+                                                </button>
+
+                                                {/* Manual Backup Approval */}
+                                                <button
+                                                    disabled={processing === p.id}
+                                                    onClick={() => handleAction(p.id, 'APPROVE', 'MANUAL')}
+                                                    className="p-2 border border-zinc-700 text-zinc-500 hover:text-white hover:border-zinc-500 rounded-lg transition-all"
+                                                    title="Mark as Paid Manually (No Money Sent)"
+                                                >
+                                                    <CheckCircle2 size={16} />
                                                 </button>
                                             </div>
                                         ) : (

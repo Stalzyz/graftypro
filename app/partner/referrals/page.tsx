@@ -6,6 +6,8 @@ import {
     ArrowUpRight, Target, Zap, Loader2, Search,
     Filter, AlertCircle, History, UserPlus, Building2
 } from 'lucide-react';
+import { safeToLocaleString, formatCurrency, ensureNumber } from '@/lib/utils/number-format';
+
 
 export default function ReferralsPage() {
     const [data, setData] = useState<any>(null);
@@ -131,7 +133,8 @@ export default function ReferralsPage() {
                     />
                     <StatCard
                         label="Total Yield"
-                        value={`₹${data.stats.total_earned.toLocaleString()}`}
+                        value={formatCurrency(data.stats.total_earned)}
+
                         icon={<Zap size={24} />}
                         color="amber"
                         className="col-span-2"
@@ -253,7 +256,8 @@ function PartnerList({ partners }: { partners: any[] }) {
                     </div>
                     <div className="flex items-center gap-4">
                         <div className="text-right">
-                            <p className="text-sm font-black text-slate-900 tabular-nums italic leading-none">₹{Number(partner.wallet_balance).toLocaleString()}</p>
+                            <p className="text-sm font-black text-slate-900 tabular-nums italic leading-none">{formatCurrency(partner.wallet_balance)}</p>
+
                             <span className="text-[9px] text-slate-400 font-black uppercase tracking-widest">Active Balance</span>
                         </div>
                         <ChevronRight size={16} className="text-slate-200 group-hover:translate-x-1 group-hover:text-blue-400 transition-all" />

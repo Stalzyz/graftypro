@@ -17,6 +17,7 @@ export const FINANCIAL_RULES = {
     // Fraud Risk (Phase 7)
     RISK_THRESHOLD_HIGH: 80,
     RAPID_SIGNUP_WINDOW_MINS: 60,
+    DAILY_PAYOUT_VELOCITY_LIMIT: 50000, // INR
 };
 
 /**

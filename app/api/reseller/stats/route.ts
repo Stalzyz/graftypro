@@ -1,7 +1,7 @@
 
 import { NextResponse } from "next/server";
-import { prisma } from "../../../../lib/db";
-import { getResellerSession } from "../../../../lib/reseller/auth-helper";
+import { prisma } from "@/lib/db";
+import { getResellerSession } from "@/lib/reseller/auth-helper";
 
 export const dynamic = 'force-dynamic';
 
@@ -67,21 +67,65 @@ export async function GET(req: Request) {
         });
 
         // Monthly Revenue & Growth Tracking (Hybrid Engine)
-        const monthStats = await prisma.resellerMonthlyStats.findUnique({
-            where: {
-                reseller_id_month_year: {
-                    reseller_id: resellerId,
-                    month: now.getMonth() + 1,
-                    year: now.getFullYear()
+        const lastMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const [monthStats, prevMonthStats] = await Promise.all([
+            prisma.resellerMonthlyStats.findUnique({
+                where: {
+                    reseller_id_month_year: {
+                        reseller_id: resellerId,
+                        month: now.getMonth() + 1,
+                        year: now.getFullYear()
+                    }
                 }
-            }
-        });
+            }),
+            prisma.resellerMonthlyStats.findUnique({
+                where: {
+                    reseller_id_month_year: {
+                        reseller_id: resellerId,
+                        month: lastMonthDate.getMonth() + 1,
+                        year: lastMonthDate.getFullYear()
+                    }
+                }
+            })
+        ]);
 
         // Load Global Rev Engine Config for bonus thresholds
         const revConfig = await prisma.systemConfig.findUnique({ where: { id: "global" } });
 
         const revMonth = Number(monthStats?.total_revenue || 0);
+        const prevRevMonth = Number(prevMonthStats?.total_revenue || 0);
         const profitMonth = Number(monthStats?.net_profit || 0);
+
+        // Calculate MoM Revenue Growth
+        let revGrowth = 0;
+        if (prevRevMonth > 0) {
+            revGrowth = ((revMonth - prevRevMonth) / prevRevMonth) * 100;
+        }
+
+        // Retention Rate Calculation
+        // Formula: (Current Active Vendors / Total Mapped Vendors) * 100
+        const activeVendors = await prisma.workspace.count({
+            where: {
+                reseller_id: resellerId,
+                status: "ACTIVE"
+            }
+        });
+        const totalMapped = reseller._count.vendor_mappings;
+        const retentionRate = totalMapped > 0 ? (activeVendors / totalMapped) * 100 : 100;
+
+        // Calculate Network Growth (MoM Vendor Count)
+        const prevMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+        const prevVendorCount = await prisma.resellerVendorMap.count({
+            where: {
+                reseller_id: resellerId,
+                mapped_at: { lt: startOfMonth }
+            }
+        });
+        const currentVendorCount = reseller._count.vendor_mappings;
+        let networkGrowth = 0;
+        if (prevVendorCount > 0) {
+            networkGrowth = ((currentVendorCount - prevVendorCount) / prevVendorCount) * 100;
+        }
 
         // Calculate Thresholds & Est Bonus
         let currentTierBonus = 0;
@@ -125,7 +169,10 @@ export async function GET(req: Request) {
                 next_threshold: nextThreshold,
                 bonus_pct: bonusPct,
                 est_bonus: estBonus,
-                remaining: nextThreshold > 0 ? nextThreshold - revMonth : 0
+                remaining: nextThreshold > 0 ? nextThreshold - revMonth : 0,
+                growth_pct: Number(revGrowth.toFixed(2)),
+                retention_rate: Number(retentionRate.toFixed(2)),
+                network_growth: Number(networkGrowth.toFixed(2))
             },
             gamification: {
                 current_vendors: reseller._count.vendor_mappings,
@@ -140,7 +187,11 @@ export async function GET(req: Request) {
                 low_balance_vendors: lowBalanceVendors,
                 leads_count: reseller._count.leads
             },
-            recent_activity: recentLedger
+            recent_activity: recentLedger.map(l => ({
+                ...l,
+                amount: Number(l.amount || 0),
+                balance_after: Number(l.balance_after || 0)
+            }))
         });
 
     } catch (error) {

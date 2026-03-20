@@ -235,6 +235,32 @@ export default function MetaArchitecture() {
                             </div>
                         </div>
                     </section>
+
+                    <section className="bg-white rounded-[40px] border border-slate-100 p-10 space-y-8">
+                        <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                                <Globe size={20} />
+                            </div>
+                            <div>
+                                <h2 className="text-xl font-black text-slate-900 tracking-tight">Platform Support</h2>
+                                <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">Global support & floating action button</p>
+                            </div>
+                        </div>
+
+                        <div className="space-y-6">
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Support WhatsApp (Floating FAB)</label>
+                                <input
+                                    type="text"
+                                    value={config.fab_whatsapp_number || ""}
+                                    onChange={(e) => setConfig({ ...config, fab_whatsapp_number: e.target.value })}
+                                    className="w-full bg-slate-50 border border-transparent rounded-2xl px-6 py-4 text-sm font-bold text-slate-900 focus:bg-white focus:border-indigo-100 focus:outline-none transition-all"
+                                    placeholder="e.g. 917304128557"
+                                />
+                                <p className="text-[9px] font-bold text-slate-400 italic">This number will be used for the global floating WhatsApp icon on landing pages and dashboard.</p>
+                            </div>
+                        </div>
+                    </section>
                 </div>
 
                 {/* Sidebar Info */}

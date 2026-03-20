@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { prisma } from "../../../../lib/db";
-import { getResellerSession } from "../../../../lib/reseller/auth-helper";
+import { prisma } from "@/lib/db";
+import { getResellerSession } from "@/lib/reseller/auth-helper";
 
 export const dynamic = 'force-dynamic';
 

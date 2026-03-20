@@ -1,8 +1,8 @@
 
 import { NextResponse } from "next/server";
-import { prisma } from "../../../../../lib/db";
-import { AuthSecurityService } from "../../../../../lib/security/auth-utils";
-import { OTPService } from "../../../../../lib/services/otp-service";
+import { prisma } from "@/lib/db";
+import { AuthSecurityService } from "@/lib/security/auth-utils";
+import { OTPService } from "@/lib/services/otp-service";
 
 export async function POST(request: Request) {
     try {

@@ -7,7 +7,7 @@ import { decrypt } from "../../../../lib/security/encryption";
 
 export const dynamic = "force-dynamic";
 
-const API_VER = "v18.0";
+const API_VER = "v20.0";
 
 /**
  * PHASE 9: Template Sync from Meta
@@ -41,12 +41,6 @@ export async function POST(req: Request) {
         let skipped = 0;
 
         for (const mt of metaTemplates) {
-            // Only sync APPROVED templates
-            if (mt.status !== "APPROVED") {
-                skipped++;
-                continue;
-            }
-
             // Map Meta category to our enum
             const category = mapCategory(mt.category);
 
@@ -63,7 +57,7 @@ export async function POST(req: Request) {
                     }
                 },
                 update: {
-                    status: "APPROVED",
+                    status: mt.status as any,
                     category,
                     components,
                     meta_id: mt.id
@@ -73,7 +67,7 @@ export async function POST(req: Request) {
                     name: mt.name,
                     language: mt.language,
                     category,
-                    status: "APPROVED",
+                    status: mt.status as any,
                     components,
                     meta_id: mt.id
                 }

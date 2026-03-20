@@ -63,7 +63,7 @@ async function nuke() {
     // 4. Create High-Quality Demo Contacts
     const mockContacts = [
         { name: "John Doe", phone: "15559876543", email: "john@example.com", tags: ["VIP", "Hot Lead"], avatar_url: "https://api.dicebear.com/7.x/avataaars/svg?seed=John" },
-        { name: "Maria Silva", phone: "5511999998888", email: "maria@empresa.br", tags: ["Qualified", "Enterprise"], avatar_url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Maria" },
+        { name: "Maria Smith", phone: "5511999998888", email: "maria@enterprise.com", tags: ["Qualified", "Enterprise"], avatar_url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Maria" },
         { name: "Alex Chen", phone: "85298887777", email: "alex@tech.hk", tags: ["Trial", "New"], avatar_url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Alex" },
         { name: "Sarah Connor", phone: "12134445555", email: "sarah@resistance.net", tags: ["URGENT"], avatar_url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah" }
     ];
@@ -108,7 +108,7 @@ async function nuke() {
                         meta_id: uuidv4(),
                         type: "TEXT",
                         direction: "INBOUND",
-                        content: { body: "Olá, gostaria de saber mais sobre o plano Enterprise." },
+                        content: { body: "Hello, I would like to know more about the Enterprise plan." },
                         status: "READ",
                         created_at: new Date(Date.now() - 3600000)
                     },
@@ -119,7 +119,7 @@ async function nuke() {
                         meta_id: uuidv4(),
                         type: "TEXT",
                         direction: "OUTBOUND",
-                        content: { body: "Olá! Com certeza. O plano Enterprise inclui suporte 24/7 e fluxos ilimitados. Posso te enviar uma proposta?" },
+                        content: { body: "Hello! Certainly. The Enterprise plan includes 24/7 support and unlimited flows. Can I send you a proposal?" },
                         status: "READ",
                         created_at: new Date(Date.now() - 1800000)
                     }

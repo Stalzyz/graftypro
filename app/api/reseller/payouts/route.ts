@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import { prisma } from "../../../../lib/db";
-import { getResellerSession } from "../../../../lib/reseller/auth-helper";
+import { prisma } from "@/lib/db";
+import { getResellerSession } from "@/lib/reseller/auth-helper";
+import { ResellerService } from "@/lib/reseller/service";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +15,12 @@ export async function GET(req: Request) {
             orderBy: { created_at: "desc" }
         });
 
-        return NextResponse.json({ success: true, data: payouts });
+        const formattedPayouts = payouts.map(p => ({
+            ...p,
+            amount: Number(p.amount || 0)
+        }));
+
+        return NextResponse.json({ success: true, data: formattedPayouts });
     } catch (error) {
         return NextResponse.json({ error: "Failed to load payouts" }, { status: 500 });
     }
@@ -27,30 +33,31 @@ export async function POST(req: Request) {
 
         const { amount, method, account_details } = await req.json();
 
-        if (!amount || amount <= 0) {
-            return NextResponse.json({ error: "Invalid amount" }, { status: 400 });
-        }
-
+        // Check for bank details
         const reseller = await prisma.reseller.findUnique({
             where: { id: session.userId },
-            select: { wallet_balance: true }
+            select: { bank_account_number: true, bank_ifsc: true }
         });
 
-        if (!reseller || Number(reseller.wallet_balance) < amount) {
-            return NextResponse.json({ error: "Insufficient wallet balance" }, { status: 400 });
+        if (!reseller?.bank_account_number || !reseller?.bank_ifsc) {
+            return NextResponse.json({ 
+                error: "Bank details missing. Please setup your bank account in Reseller Portal -> Payouts -> Edit Details." 
+            }, { status: 400 });
         }
 
-        const request = await prisma.resellerPayoutRequest.create({
-            data: {
-                reseller_id: session.userId,
-                amount,
-                method: method || "BANK_TRANSFER",
-                account_details: account_details || {},
-                status: "PENDING"
-            }
-        });
+        const request = await ResellerService.requestPayout(
+            session.userId,
+            Number(amount),
+            account_details || {}
+        );
 
-        return NextResponse.json({ success: true, data: request });
+        return NextResponse.json({ 
+            success: true, 
+            data: {
+                ...request,
+                amount: Number(request.amount || 0)
+            } 
+        });
     } catch (error) {
         return NextResponse.json({ error: "Failed to create payout request" }, { status: 500 });
     }

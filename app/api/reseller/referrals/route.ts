@@ -1,7 +1,7 @@
 
 import { NextResponse } from "next/server";
-import { prisma } from "../../../../lib/db";
-import { getResellerSession } from "../../../../lib/reseller/auth-helper";
+import { prisma } from "@/lib/db";
+import { getResellerSession } from "@/lib/reseller/auth-helper";
 
 export const dynamic = 'force-dynamic';
 
@@ -70,7 +70,10 @@ export async function GET(req: Request) {
                 total_earned: Number(reseller.total_earned)
             },
             vendors: referredVendors,
-            partners: reseller.sub_resellers
+            partners: reseller.sub_resellers.map(p => ({
+                ...p,
+                wallet_balance: Number(p.wallet_balance || 0)
+            }))
         });
 
     } catch (error) {

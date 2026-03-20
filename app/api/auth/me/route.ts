@@ -39,7 +39,8 @@ export async function GET(req: Request) {
                         billing_address: true,
                         bank_name: true,
                         account_number: true,
-                        ifsc_code: true
+                        ifsc_code: true,
+                        timezone: true
                     }
                 }
             }
@@ -146,7 +147,8 @@ export async function POST(req: Request) {
                     billing_address: body.billing_address,
                     bank_name: body.bank_name,
                     account_number: body.account_number,
-                    ifsc_code: body.ifsc_code
+                    ifsc_code: body.ifsc_code,
+                    timezone: body.timezone || undefined
                 }
             });
         }

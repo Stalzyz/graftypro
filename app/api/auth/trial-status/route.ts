@@ -1,48 +1,64 @@
-
 import { NextResponse } from "next/server";
 import { prisma } from "../../../../lib/db";
 import { getCurrentUser } from "../../../../lib/auth";
-
+import { AuthSecurityService } from "../../../../lib/security/auth-utils";
 export const dynamic = "force-dynamic";
-
 export async function GET(request: Request) {
     const user = await getCurrentUser(request);
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
     try {
         const workspace = await prisma.workspace.findUnique({
             where: { id: user.workspaceId },
-            select: {
-                trial_ends_at: true,
-                subscription_status: true,
-                current_plan_id: true,
-            }
+            select: { id: true, trial_ends_at: true, subscription_status: true, current_plan_id: true, plan: true, created_at: true }
         });
-
         if (!workspace) return NextResponse.json({ error: "Workspace not found" }, { status: 404 });
-
         const now = new Date();
-        const trialEnd = workspace.trial_ends_at;
-        const hasPaidPlan = workspace.current_plan_id && workspace.subscription_status === "active";
+        
+        // --- Fail-Proof Security Logic ---
+        const userEmail = AuthSecurityService.normalizeEmail(user.email);
+        const hasPaidPlan = !!workspace.current_plan_id || (workspace.plan && workspace.plan !== 'FREE');
+        
+        let trialEnd = workspace.trial_ends_at;
 
-        // If they have an active paid plan, trial is irrelevant
-        if (hasPaidPlan) {
-            return NextResponse.json({ status: "paid", trial_expired: false });
+        if (!hasPaidPlan) {
+            // Force verify against TrialLock to prevent bypassing trial limits
+            const lockedRecord = await prisma.trialLock.findUnique({
+                where: { email: userEmail }
+            });
+
+            if (lockedRecord) {
+                trialEnd = lockedRecord.trial_ends_at;
+                // If the workspace date differs from the lock, update the workspace (Self-Healing)
+                if (!workspace.trial_ends_at || workspace.trial_ends_at.getTime() !== trialEnd.getTime()) {
+                    await prisma.workspace.update({
+                        where: { id: workspace.id },
+                        data: { trial_ends_at: trialEnd }
+                    });
+                    console.log(`[Trial Security] Corrected workspace ${workspace.id} trial from lock table.`);
+                }
+            } else if (!trialEnd) {
+                // Fallback (Should rarely happen with new registration flow)
+                trialEnd = new Date(workspace.created_at.getTime() + 7 * 24 * 60 * 60 * 1000);
+                await prisma.trialLock.create({
+                    data: { email: userEmail, trial_ends_at: trialEnd }
+                });
+            }
         }
-
-        if (!trialEnd) {
-            // No trial set — treat as trial_expired to prompt upgrade
-            return NextResponse.json({ status: "no_trial", trial_expired: true, days_left: 0 });
-        }
-
+        
+        if (hasPaidPlan) return NextResponse.json({ status: "paid", trial_expired: false });
+        if (!trialEnd) return NextResponse.json({ status: "no_trial", trial_expired: true, days_left: 0 });
+        
+        // Calculate dynamic precision: if less than 24 hours left, we might want to show hours,
+        // but for now, we'll keep it at days but ensure Math.ceil works against a consistent endpoint.
         const daysLeft = Math.ceil((trialEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
         const expired = trialEnd < now;
 
-        return NextResponse.json({
-            status: expired ? "expired" : "trial",
-            trial_expired: expired,
-            trial_ends_at: trialEnd.toISOString(),
+        return NextResponse.json({ 
+            status: expired ? "expired" : "trial", 
+            trial_expired: expired, 
+            trial_ends_at: trialEnd.toISOString(), 
             days_left: Math.max(0, daysLeft),
+            server_time: now.toISOString()
         });
     } catch (e: any) {
         return NextResponse.json({ error: e.message }, { status: 500 });

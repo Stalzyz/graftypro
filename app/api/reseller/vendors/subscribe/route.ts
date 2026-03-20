@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { prisma } from "../../../../../lib/db";
-import { getResellerSession } from "../../../../../lib/reseller/auth-helper";
-import { ResellerFinanceEngine } from "../../../../../lib/reseller/finance-engine";
+import { prisma } from "@/lib/db";
+import { getResellerSession } from "@/lib/reseller/auth-helper";
+import { ResellerFinanceEngine } from "@/lib/reseller/finance-engine";
 
 export const dynamic = "force-dynamic";
 
@@ -18,19 +18,25 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: "Vendor email and plan selection are required." }, { status: 400 });
         }
 
-        // 1. Verify Plan Ownership
-        const plan = await prisma.subscriptionPlan.findUnique({
-            where: { id: plan_id }
+        // 1. Verify Plan Ownership (Atomic)
+        const plan = await prisma.subscriptionPlan.findFirst({
+            where: { 
+                id: plan_id,
+                AND: [
+                    { is_active: true },
+                    { 
+                        OR: [
+                            { reseller_id: resellerId },
+                            { is_public: true }
+                        ]
+                    }
+                ]
+            }
         });
 
-        if (!plan) return NextResponse.json({ error: "Selected plan does not exist." }, { status: 404 });
+        if (!plan) return NextResponse.json({ error: "Selected plan is invalid or restricted." }, { status: 403 });
 
-        // Ensure plan belongs to this reseller OR is a public system plan
-        if (plan.reseller_id !== resellerId && !plan.is_public) {
-            return NextResponse.json({ error: "Invalid plan selection." }, { status: 403 });
-        }
-
-        // 2. Escrow Deduction Transaction
+        // 2. Escrow Deduction Transaction (SERIALIZABLE Isolation Level Recommended)
         return await prisma.$transaction(async (tx) => {
             // A. Create the Workspace (Vendor Account) assigned to Reseller
             // Users are nested-created inside the workspace to satisfy workspace_id FK
@@ -46,6 +52,7 @@ export async function POST(req: Request) {
                     reseller_id: resellerId,
                     current_plan_id: plan.id,
                     status: "ACTIVE",
+                    trial_ends_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
                     users: {
                         create: {
                             email: vendor_email,

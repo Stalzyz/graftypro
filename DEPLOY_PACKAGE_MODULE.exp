@@ -1,0 +1,59 @@
+#!/usr/bin/expect -f
+
+set timeout -1
+set password "Photoshop09@"
+set vps_ip "72.61.231.187"
+set remote_path "/root/grafty_bsp"
+
+set files {
+    "prisma/schema.prisma"
+    "app/api/super-admin/packages/route.ts"
+    "app/api/super-admin/packages/[id]/route.ts"
+    "app/super-admin/dashboard/packages/page.tsx"
+    "lib/reseller/service.ts"
+    "components/tools/CostCalculator.tsx"
+    "components/tools/GreenTickChecker.tsx"
+    "app/super-admin/dashboard/growth/leads/page.tsx"
+    "lib/services/system-config-service.ts"
+    "app/super-admin/dashboard/branding/page.tsx"
+    "components/landing-new/WhatsAppWidget.tsx"
+    "app/robots.ts"
+    "app/api/chats/send/route.ts"
+    "app/dashboard/chat/page.tsx"
+    "lib/services/upload.ts"
+    "lib/utils/url.ts"
+    "app/api/conversations/\[id\]/messages/route.ts"
+}
+
+puts "🚀 Starting GOLDEN RULE DEPLOYMENT for Package Module..."
+
+puts "\n📦 Target Directory: $remote_path"
+foreach file $files {
+    puts "   📤 Uploading: $file"
+    spawn scp $file root@$vps_ip:$remote_path/$file
+    expect {
+        "password:" { send "$password\r" }
+        "(yes/no)?" { send "yes\r"; exp_continue }
+    }
+    expect eof
+}
+
+puts "\n🏗️ Running Remote Synchronization (DB Sync, Generate Client, Build, PM2 Restart)..."
+spawn ssh -o StrictHostKeyChecking=no root@$vps_ip "cd $remote_path && \
+    echo '🗄️ Syncing DB Schema...' && \
+    npx prisma generate && \
+    npx prisma db push --accept-data-loss && \
+    echo '📦 Building Application...' && \
+    ./node_modules/.bin/next build && \
+    echo '♻️ Restarting PM2...' && \
+    pm2 restart grafty"
+
+expect {
+    "password:" { send "$password\r" }
+    "(yes/no)?" { send "yes\r"; exp_continue }
+}
+expect eof
+
+puts "\n=============================================="
+puts "✅ GOLDEN RULE DEPLOYMENT COMPLETE"
+puts "=============================================="

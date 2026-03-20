@@ -7,7 +7,7 @@ import { v4 as uuidv4 } from "uuid";
 export async function POST(request: Request) {
     try {
         const body = await request.json();
-        const { email, password, confirmPassword, mobile, location, businessName, firstName, lastName } = body;
+        const { email, password, confirmPassword, mobile, location, businessName, firstName, lastName, referral } = body;
 
         // 1. Validate Inputs
         if (!email || !password || !confirmPassword || !mobile || !location || !businessName || !firstName || !lastName) {
@@ -52,34 +52,64 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: "Email already registered" }, { status: 409 });
         }
 
-        // 3. Create Workspace & User
-        // Use a transaction
+        // 3. Detect Partner Context
+        const host = request.headers.get("x-request-host") || request.headers.get("host") || "";
+        const { BrandingService } = await import("../../../../lib/branding/service");
+        const partner = await BrandingService.getBrandingByDomain(host);
+
+        // 4. Create Workspace & User
         const result = await prisma.$transaction(async (tx) => {
-            // Create Workspace
+            // Check for existing trial lock to prevent trial reset gaming
+            const existingLock = await tx.trialLock.findUnique({
+                where: { email: normalizedEmail }
+            });
+
+            let finalTrialEndsAt: Date;
+
+            if (existingLock) {
+                // Return users existing trial end date (Fail-Proof)
+                finalTrialEndsAt = existingLock.trial_ends_at;
+                console.log(`[Trial Security] Re-applying existing trial for ${normalizedEmail}. Ends: ${finalTrialEndsAt}`);
+            } else {
+                // First time trial
+                finalTrialEndsAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+                await tx.trialLock.create({
+                    data: {
+                        email: normalizedEmail,
+                        trial_ends_at: finalTrialEndsAt
+                    }
+                });
+            }
+
+            // 1. Generate Referral Code for this new Workspace
+            const referralCode = `${businessName.substring(0, 3).toUpperCase()}${Math.floor(1000 + Math.random() * 9000)}`;
+
+            // 2. Check for Referrer
+            let referredByWorkspaceId = null;
+            if (referral) {
+                const referrer = await tx.workspace.findUnique({
+                    where: { referral_code: referral }
+                });
+                if (referrer) {
+                    referredByWorkspaceId = referrer.id;
+                    console.log(`[Referral Engine] Linked signup to referrer: ${referrer.name}`);
+                }
+            }
+
+            // Create Workspace with partner attribution
             const workspace = await tx.workspace.create({
                 data: {
                     name: businessName,
                     business_name: businessName,
                     timezone: location === "India" ? "Asia/Kolkata" : "UTC",
-                    trial_ends_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7-day trial
+                    trial_ends_at: finalTrialEndsAt, 
+                    reseller_id: partner?.reseller_id || null, // Link to partner if detected
+                    referral_code: referralCode,
+                    referred_by_id: referredByWorkspaceId
                 }
             });
 
-            // Hash Password
             const passwordHash = await AuthSecurityService.hashPassword(password);
-
-            // Create User
-            const verificationToken = uuidv4();
-            // Store verification token in Redis or Database? 
-            // Schema has `email_verified` (DateTime).
-            // It doesn't seem to have a `verification_token` field on User.
-            // I should stick to the existing schema if possible, or use `RememberMeToken` or add a field.
-            // Wait, there is no `verification_token` in `User` model.
-            // I can use `RememberMeToken` model generic usage or add a field.
-            // Or store it in Redis. `redis.setEx(`verify:${token}`, 3600, email)`.
-
-            // Let's use Redis for verification tokens as it's cleaner and "clean signup" was requested.
-            // But wait, "Store user" is a requirement.
 
             const user = await tx.user.create({
                 data: {
@@ -94,59 +124,43 @@ export async function POST(request: Request) {
                 }
             });
 
-            // --- 100-Credit Trial Injection ---
             const wallet = await tx.vendorWallet.create({
                 data: {
                     workspace_id: workspace.id,
-                    current_balance: 100.00,
-                    total_purchased: 0.00, // Important: 0 indicates they haven't bought a paid plan yet
+                    current_balance: 0.00,
+                    total_purchased: 0.00,
                     total_used: 0.00,
                 }
             });
 
-            await tx.creditTransaction.create({
-                data: {
-                    workspace_id: workspace.id,
-                    wallet_id: wallet.id,
-                    type: "ADJUSTMENT",
-                    amount: 100.00,
-                    balance_before: 0.00,
-                    balance_after: 100.00,
-                    description: "Free Trial Welcome Bonus (100 Credits)",
-                    status: "COMPLETED",
-                    initiated_by: "SYSTEM"
-                }
-            });
-
-            return { user, workspace, verificationToken, wallet };
+            return { user, workspace, wallet };
         });
 
+        // Generate Verification Token
+        const verificationToken = uuidv4();
 
-        // 4. Set Redis Token
+        // 5. Set Redis Token
         const { redis } = await import("../../../../lib/redis");
-        await redis.set(`verify:${result.verificationToken}`, result.user.id, "EX", 86400); // 24 hours
+        await redis.set(`verify:${verificationToken}`, result.user.id, "EX", 86400); // 24 hours
 
-        // 5. Send Verification Email
+        // 6. Send Verification Email
         const { EmailService } = await import("../../../../lib/email/service");
 
-        // Dynamically construct verification URL based on the incoming request's host/origin.
-        // We use headers to ensure correct protocol (https) and host (grafty.pro) even when proxied.
         const protocol = request.headers.get("x-forwarded-proto") || "https";
-        const host = request.headers.get("host") || "grafty.pro";
-
-        // Safety: If host is still localhost in production, force the main domain
         const finalHost = (process.env.NODE_ENV === "production" && host.includes("localhost"))
             ? "grafty.pro"
             : host;
 
-        const verifyUrl = `${protocol}://${finalHost}/api/auth/verify?token=${result.verificationToken}`;
+        const verifyUrl = `${protocol}://${finalHost}/api/auth/verify?token=${verificationToken}`;
 
         await EmailService.sendSystemEmail({
             to: normalizedEmail,
-            subject: "Verify your Grafty account",
+            subject: partner ? `Verify your ${partner.brand_name} account` : "Verify your Grafty account",
             templateName: "VERIFY_EMAIL",
             context: {
-                verification_url: verifyUrl
+                verification_url: verifyUrl,
+                brand_name: partner?.brand_name || "Grafty",
+                logo_url: partner?.logo_url || "https://app.grafty.pro/grafty.svg"
             }
         });
 

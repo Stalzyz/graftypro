@@ -2,6 +2,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "../../../../../lib/db";
 import { ResellerService } from "../../../../../lib/reseller/service";
+import { verifyToken } from "../../../../../lib/auth";
+import { cookies } from "next/headers";
 
 export const dynamic = "force-dynamic";
 
@@ -24,13 +26,26 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
     try {
-        const { requestId, action, adminNotes } = await req.json();
+        const token = cookies().get("admin_token")?.value;
+        if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+        const payload = await verifyToken(token);
+        if (!payload || payload.role !== "ADMIN") {
+            return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        }
+
+        const { requestId, action, adminNotes, mode } = await req.json();
 
         if (!requestId || !action) {
             return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
         }
 
-        const result = await ResellerService.processAdminPayoutAction(requestId, action, adminNotes);
+        const result = await ResellerService.processAdminPayoutAction(
+            requestId, 
+            action, 
+            adminNotes, 
+            mode || 'AUTOMATED'
+        );
 
         return NextResponse.json(result);
 

@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 
 export const dynamic = 'force-dynamic';
-import { prisma } from "../../../../../lib/db";
+import { prisma } from "@/lib/db";
 import bcrypt from "bcryptjs";
-import { signToken } from "../../../../../lib/auth";
+import { signToken } from "@/lib/auth";
 
 export async function POST(req: Request) {
     try {

@@ -7,6 +7,8 @@ export default function OrdersPage() {
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
     const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
+    const [trackingLoading, setTrackingLoading] = useState<string | null>(null);
+    const [trackingData, setTrackingData] = useState<any>(null);
 
     useEffect(() => {
         fetchOrders();
@@ -25,8 +27,32 @@ export default function OrdersPage() {
     };
 
     const toggleExpand = (id: string) => {
-        if (expandedOrder === id) setExpandedOrder(null);
+        if (expandedOrder === id) {
+            setExpandedOrder(null);
+            setTrackingData(null);
+        }
         else setExpandedOrder(id);
+    };
+
+    const handleTrack = async (order: any) => {
+        if (!order.tracking_id) return alert("No tracking ID assigned to this order.");
+        
+        setTrackingLoading(order.id);
+        setTrackingData(null);
+        try {
+            const res = await fetch(`/api/commerce/logistics/track/${order.id}`);
+            const data = await res.json();
+            if (data.success) {
+                setTrackingData(data.tracking);
+                fetchOrders(); // Refresh order status in list
+            } else {
+                alert(data.error || "Failed to fetch tracking details");
+            }
+        } catch (e) {
+            alert("Error tracking order");
+        } finally {
+            setTrackingLoading(null);
+        }
     };
 
     return (
@@ -103,21 +129,53 @@ export default function OrdersPage() {
                                                                 <li key={item.id} className="flex justify-between items-center text-sm border-b border-gray-100 last:border-0 pb-2 last:pb-0">
                                                                     <div className="flex items-center gap-3">
                                                                         <div className="w-10 h-10 bg-gray-100 rounded flex items-center justify-center text-gray-400 overflow-hidden">
-                                                                            {item.product.image_url ? (
+                                                                            {item.product?.image_url ? (
                                                                                 <img src={item.product.image_url} className="w-full h-full object-cover" />
                                                                             ) : <ShoppingBag size={16} />}
                                                                         </div>
                                                                         <div>
-                                                                            <span className="font-medium text-gray-900 block">{item.product.name}</span>
+                                                                            <span className="font-medium text-gray-900 block">{item.product?.name || item.name}</span>
                                                                             <span className="text-gray-500 text-xs">Qty: {item.quantity}</span>
                                                                         </div>
                                                                     </div>
                                                                     <div className="font-medium text-gray-800">
-                                                                        ₹{item.total_price}
+                                                                        ₹{item.price}
                                                                     </div>
                                                                 </li>
                                                             ))}
                                                         </ul>
+
+                                                        {order.tracking_id && (
+                                                            <div className="mt-6 pt-6 border-t border-gray-100">
+                                                                <div className="flex items-center justify-between mb-4">
+                                                                    <div>
+                                                                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">Logistics Provider</span>
+                                                                        <span className="text-sm font-bold text-gray-900">{order.courier_name || "Shiprocket"}</span>
+                                                                    </div>
+                                                                    <button
+                                                                        onClick={() => handleTrack(order)}
+                                                                        disabled={trackingLoading === order.id}
+                                                                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 disabled:opacity-50"
+                                                                    >
+                                                                        <Package size={14} />
+                                                                        {trackingLoading === order.id ? "Tracking..." : "Track Order"}
+                                                                    </button>
+                                                                </div>
+
+                                                                {trackingData && expandedOrder === order.id && (
+                                                                    <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 animate-in fade-in slide-in-from-top-2">
+                                                                        <div className="flex items-center justify-between mb-3">
+                                                                            <span className="text-xs font-black text-blue-600 uppercase tracking-widest">Live Status</span>
+                                                                            <span className="bg-blue-600 text-white px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest">
+                                                                                {trackingData.status}
+                                                                            </span>
+                                                                        </div>
+                                                                        <p className="text-sm font-medium text-gray-700">{trackingData.last_location_address || "In Transit"}</p>
+                                                                        <p className="text-[10px] text-gray-400 mt-1">Last Update: {trackingData.updated_at}</p>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 </td>
                                             </tr>

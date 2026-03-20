@@ -4,36 +4,29 @@ import bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 
 async function main() {
+    const email = 'admin@grafty.com';
     const password = 'GraftyAdmin2026!';
     const password_hash = await bcrypt.hash(password, 10);
 
-    let admin = await prisma.adminUser.findFirst({
-        where: { role: 'SUPER_ADMIN' }
+    console.log(`[!] UPSERTING SUPER ADMIN: ${email}`);
+
+    const admin = await prisma.adminUser.upsert({
+        where: { email },
+        update: { 
+            password_hash, 
+            role: 'SUPER_ADMIN',
+            name: 'Super Admin'
+        },
+        create: {
+            email,
+            name: 'Super Admin',
+            password_hash,
+            role: 'SUPER_ADMIN'
+        }
     });
 
-    if (!admin) {
-        // Create one if it doesn't exist
-        admin = await prisma.adminUser.create({
-            data: {
-                email: 'admin@grafty.pro',
-                name: 'Super Admin',
-                password_hash,
-                role: 'SUPER_ADMIN'
-            }
-        });
-        console.log(`[+] Created new Super Admin!`);
-        console.log(`[>] Email: ${admin.email}`);
-        console.log(`[>] Password: ${password}`);
-    } else {
-        // Reset existing
-        await prisma.adminUser.update({
-            where: { id: admin.id },
-            data: { password_hash }
-        });
-        console.log(`[+] Password reset successful for existing Super Admin!`);
-        console.log(`[>] Email: ${admin.email}`);
-        console.log(`[>] New Password: ${password}`);
-    }
+    console.log(`[+] Super Admin ${admin.email} has been reset/created.`);
+    console.log(`[>] Login with: ${email} / ${password}`);
 }
 
 main()

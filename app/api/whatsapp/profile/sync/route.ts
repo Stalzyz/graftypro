@@ -26,7 +26,7 @@ export async function POST(req: Request) {
 
         try {
             const res = await axios.get(
-                `https://graph.facebook.com/v18.0/${phoneNumberId}/whatsapp_business_profile?fields=profile_picture_url,about,description,email,websites,vertical,address`,
+                `https://graph.facebook.com/v20.0/${phoneNumberId}/whatsapp_business_profile?fields=profile_picture_url,about,description,email,websites,vertical,address`,
                 {
                     headers: { "Authorization": `Bearer ${token}` }
                 }
@@ -39,7 +39,7 @@ export async function POST(req: Request) {
                 // Get meta name as display name as well
                 let displayName = account.display_name;
                 try {
-                    const nameRes = await axios.get(`https://graph.facebook.com/v18.0/${phoneNumberId}`, {
+                    const nameRes = await axios.get(`https://graph.facebook.com/v20.0/${phoneNumberId}`, {
                         headers: { "Authorization": `Bearer ${token}` }
                     });
                     if (nameRes.data?.verified_name) displayName = nameRes.data.verified_name;

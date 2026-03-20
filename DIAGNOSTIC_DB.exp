@@ -1,0 +1,7 @@
+#!/usr/bin/expect -f
+set password "Photoshop09@"
+set timeout 30
+spawn ssh -o StrictHostKeyChecking=no root@72.61.231.187 "docker compose -f /root/wabot_bsp/docker-compose.prod.yml exec -T db psql -U wabot -d wabot_db -c '\\d whatsapp_accounts'"
+expect "assword:"
+send "$password\r"
+interact

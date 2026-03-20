@@ -1,0 +1,101 @@
+#!/usr/bin/expect -f
+# ============================================================
+# 👹 MONSTER DEPLOY — Full System Sync & Rebuild
+# ============================================================
+# Syncs ALL project files to the VPS and performs a full clean rebuild.
+# Run from your Mac: expect MONSTER_DEPLOY.exp
+# ============================================================
+
+set VPS_PASS "Photoshop09@"
+set VPS_HOST "root@72.61.231.187"
+set REMOTE_PATH "/root/grafty_bsp"
+set LOCAL_PATH "/Users/stalinkumar/Downloads/Wabot_BSP"
+set timeout 1200
+
+puts "\n╔══════════════════════════════════════════════════════╗"
+puts "║  👹 MONSTER DEPLOY — Full System Sync & Rebuild      ║"
+puts "╚══════════════════════════════════════════════════════╝\n"
+
+# ─── STEP 1: Sync all files ───────────────────────────────────
+puts "📡 \[1/3\] Syncing project files to VPS (Aggressive Sync)..."
+
+spawn rsync -avz --no-perms --no-owner --no-group --delete \
+    --exclude "node_modules" \
+    --exclude ".next" \
+    --exclude ".git" \
+    --exclude ".DS_Store" \
+    --exclude ".npm_cache" \
+    --exclude "public/uploads" \
+    --exclude "logs" \
+    -e "ssh -o StrictHostKeyChecking=no" \
+    "$LOCAL_PATH/" $VPS_HOST:$REMOTE_PATH/
+
+expect {
+    "assword:" {
+        send "$VPS_PASS\r"
+        exp_continue
+    }
+    eof { puts "✅ Files synced." }
+}
+
+sleep 1
+
+# ─── STEP 2: Remote Docker rebuild (HARD DEPLOY) ────────────
+puts "\n🏗️ \[2/3\] Performing HARD clean rebuild on VPS..."
+
+spawn ssh -o StrictHostKeyChecking=no $VPS_HOST "cd $REMOTE_PATH && \
+    echo '🛑 Aggressively Cleaning Infrastructure (Stopping EVERYTHING)...' && \
+    docker compose -f docker-compose.prod.yml down --remove-orphans || true && \
+    docker compose -f docker-compose.yml down --remove-orphans || true && \
+    docker rm -f grafty_postgres grafty_redis grafty_bsp-web-1 grafty_bsp-worker-1 2>/dev/null || true && \
+    echo '🔥 Clearing Port 3001 (Docker, PM2, or Ghost processes)...' && \
+    (lsof -ti:3001 | xargs kill -9 2>/dev/null || true) && \
+    (pm2 stop all 2>/dev/null || true) && \
+    echo '🛜 Recreating Docker Network...' && \
+    docker network create grafty_bsp_default || true && \
+    docker network create grafty_net || true && \
+    echo '🗄️ Starting Infrastructure (DB/Redis)...' && \
+    docker compose -f docker-compose.yml up -d && \
+    echo '🧼 Removing old images to save space...' && \
+    docker rmi grafty-app:latest || true && \
+    echo '🧹 Cleaning old logs...' && \
+    rm -f logs/*.log && \
+    echo '🏗️ Building FROM SCRATCH (No Cache)...' && \
+    docker compose -f docker-compose.prod.yml build --no-cache && \
+    echo '🚀 Starting fresh containers...' && \
+    docker compose -f docker-compose.prod.yml up -d && \
+sleep 10 && \
+echo '🔗 Syncing Prisma Database Schema...' && \
+docker compose -f docker-compose.prod.yml exec -T web sh -c \"echo 'y' | npx prisma db push --accept-data-loss\" && \
+echo '🛠️ Generating Prisma Client...' && \
+docker compose -f docker-compose.prod.yml exec web npx prisma generate && \
+echo '🌱 Seeding Super Admin...' && \
+docker compose -f docker-compose.prod.yml exec web npx tsx scripts/seed-admin.ts && \
+echo '🌱 Seeding Monster Pricing Plans...' && \
+docker compose -f docker-compose.prod.yml exec web npx tsx scripts/seed-monster-plans.ts && \
+echo '✅ DEPLOY COMPLETE'"
+
+expect {
+    "assword:" {
+        send "$VPS_PASS\r"
+        exp_continue
+    }
+    "Permission denied" {
+        puts "\n❌ SSH Authentication failed."
+        exit 1
+    }
+    "DEPLOY COMPLETE" {
+        puts "\n╔══════════════════════════════════════════════════════╗"
+        puts "║  🎉 MONSTER FIX IS NOW LIVE ON VPS!                 ║"
+        puts "║  🌐 http://72.61.231.187:3001 (or your domain)        ║"
+        puts "╚══════════════════════════════════════════════════════╝"
+        exp_continue
+    }
+    timeout {
+        puts "\n❌ Deploy timed out during build."
+        exit 1
+    }
+    eof {
+        puts "\n✅ Done."
+    }
+}

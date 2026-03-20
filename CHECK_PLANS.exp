@@ -1,0 +1,11 @@
+#!/usr/bin/expect -f
+
+set timeout 300
+set host "72.61.231.187"
+set password "Photoshop09@"
+
+spawn ssh -o StrictHostKeyChecking=no root@$host "docker exec \$(docker ps --filter name=web --format '{{.Names}}' | head -1) npx tsx -e \"import { PrismaClient } from '@prisma/client'; const prisma = new PrismaClient(); prisma.subscriptionPlan.findMany().then(p => console.log(JSON.stringify(p, null, 2))).catch(e => console.error(e)).finally(() => prisma.\\\$disconnect());\""
+expect {
+    "password:" { send "$password\r"; exp_continue }
+    eof
+}

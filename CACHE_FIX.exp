@@ -1,0 +1,26 @@
+#!/usr/bin/expect -f
+
+set timeout 600
+set host "72.61.231.187"
+set password "Photoshop09@"
+
+puts "\n📤 Uploading cache fix..."
+spawn rsync -avz \
+    -e "ssh -o StrictHostKeyChecking=no" \
+    app/api/auth/debug-login/route.ts \
+    root@$host:/root/wabot_bsp/app/api/auth/debug-login/route.ts
+expect {
+    "password:" { send "$password\r"; exp_continue }
+    eof
+}
+
+puts "\n🔄 Rebuilding web container only..."
+spawn ssh -o StrictHostKeyChecking=no root@$host \
+    "cd /root/wabot_bsp && docker compose -f docker-compose.prod.yml build web && docker compose -f docker-compose.prod.yml up -d web && echo CACHE_FIX_DONE"
+expect {
+    "password:" { send "$password\r"; exp_continue }
+    "CACHE_FIX_DONE" { puts "\n✅ Cache fix deployed!" }
+    eof
+}
+
+puts "\nCheck the debug page now: https://grafty.pro/api/auth/debug-login"

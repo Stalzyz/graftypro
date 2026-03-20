@@ -1,4 +1,3 @@
-version: '3.8'
 
 services:
   postgres:
@@ -13,6 +12,8 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    networks:
+      - grafty
 
   redis:
     image: redis:7-alpine
@@ -22,6 +23,12 @@ services:
       - "6380:6379"
     volumes:
       - redis_data:/data
+    networks:
+      - grafty
+
+networks:
+  grafty:
+    driver: bridge
 
 volumes:
   postgres_data:

@@ -265,6 +265,12 @@ function CreditsContent() {
                             Each message cost depends on the category (Marketing, Utility, Auth, Service) and the destination country.
                             Top up your wallet to ensure uninterrupted messaging for your campaigns.
                         </p>
+                        <Link
+                            href="/dashboard/credits/help"
+                            className="inline-flex items-center gap-1 mt-4 text-xs font-black uppercase tracking-widest text-indigo-600 hover:text-indigo-800 transition-colors"
+                        >
+                            Learn how it works &rarr;
+                        </Link>
                     </div>
                 </div>
             </div>

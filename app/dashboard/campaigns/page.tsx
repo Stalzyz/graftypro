@@ -54,7 +54,7 @@ export default function CampaignsPage() {
 
             if (cData.data) setCampaigns(cData.data);
             if (sData.data) setSegments(sData.data);
-            if (tData.data) setTemplates(tData.data.filter((t: any) => t.status === 'APPROVED'));
+            if (tData.data) setTemplates(tData.data);
             if (fData.data) setFlows(fData.data.filter((f: any) => f.status === 'PUBLISHED'));
 
             setLoading(false);

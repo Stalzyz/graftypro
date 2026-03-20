@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import {
     Zap, Users, MessageSquare, Send, Clock, AlertCircle,
     CheckCircle2, Loader2, Search, Filter, ArrowUpRight,
@@ -85,6 +86,17 @@ export default function GrowthWarRoom() {
                     </div>
                 </div>
             </header>
+
+            <div className="flex justify-end gap-4 animate-up">
+                <Link 
+                    href="/super-admin/dashboard/growth/leads"
+                    className="flex items-center gap-3 px-8 py-5 bg-slate-900 text-white rounded-[2rem] font-black text-[10px] uppercase tracking-[0.2em] hover:bg-emerald-600 transition-all active:scale-95 shadow-2xl shadow-slate-200 group"
+                >
+                    <Users size={18} className="text-emerald-500 group-hover:scale-125 transition-transform" />
+                    View Tool Leads Dashboard
+                    <ArrowUpRight size={18} className="text-slate-400 group-hover:text-white group-hover:translate-x-1 group-hover:-translate-y-1 transition-all" />
+                </Link>
+            </div>
 
             {/* Growth KPIs */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">

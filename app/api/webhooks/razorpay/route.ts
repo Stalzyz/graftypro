@@ -41,20 +41,22 @@ export async function POST(req: Request) {
                 const { InvoiceService } = await import("@/lib/finance/invoice-service");
                 const { SystemConfigService } = await import("@/lib/services/system-config-service");
 
-                // Calculate tax breakup (assuming 18% GST inclusive for SaaS)
                 const totalAmount = paymentEntity.amount / 100;
-                const sysConfig = await SystemConfigService.getConfig();
-                const taxConfig = (sysConfig as any).tax_config || {};
-                // If default is 18%, taxable is total / 1.18
-                // But wait, subscription usually is Amount + GST. Let's assume inclusive for simplicity or extract from notes if passed.
-                // Better approach: Treat as a single line item
-
-                const taxableValue = totalAmount / 1.18; // Back-calculate assuming 18% inclusive
-
-                // Fetch customer details from Workspace
+                const { GSTService } = await import("@/lib/finance/gst-service");
                 const workspace = await prisma.workspace.findUnique({
                     where: { id: workspaceId }
                 });
+
+                const customerState = paymentEntity.notes?.state || workspace?.billing_state || "Karnataka";
+                
+                // Subscription is typically Inclusive of GST in this system's checkout
+                // To get taxableValue, we need to reverse calculate: Net = Total / (1 + Rate)
+                const sysConfig = await SystemConfigService.getConfig();
+                const taxConfig = (sysConfig as any).tax_config || {};
+                const currentGstRate = Number(taxConfig.gst_rate) || 0.18;
+                
+                const taxableValue = Number((totalAmount / (1 + currentGstRate)).toFixed(2));
+                const gstBreakdown = await GSTService.calculateGST(taxableValue, customerState);
 
                 if (workspace) {
                     const invoice = await InvoiceService.createInvoice({
@@ -71,8 +73,11 @@ export async function POST(req: Request) {
                             description: `Subscription Renewal - ${subEntity.plan_id}`,
                             hsn_code: "998439", // SaaS HSN
                             quantity: 1,
-                            rate: taxableValue,
-                            taxable_value: taxableValue
+                            rate: gstBreakdown.net_amount,
+                            taxable_value: gstBreakdown.net_amount,
+                            cgst_rate: gstBreakdown.cgst_rate,
+                            sgst_rate: gstBreakdown.sgst_rate,
+                            igst_rate: gstBreakdown.igst_rate
                         }],
                         paymentMethod: "RAZORPAY_SUBSCRIPTION",
                         paymentId: paymentEntity.id,
@@ -195,29 +200,46 @@ export async function POST(req: Request) {
 
                 // C. Fallback: Generate Invoice for Generic Payment if not handled elsewhere
                 else {
-                    // Check if invoice already exists
                     const { InvoiceService } = await import("@/lib/finance/invoice-service");
-                    const exists = await prisma.invoice.findFirst({ where: { payment_id: payment.id } });
+                    const { GSTService } = await import("@/lib/finance/gst-service");
+                    const { SystemConfigService } = await import("@/lib/services/system-config-service");
+                    
+                    const config = await SystemConfigService.getConfig();
+                    const taxConfig = (config as any).tax_config || {};
+                    const GST_RATE = Number(taxConfig.gst_rate) || 0.18;
 
-                    if (!exists) {
+                    const totalAmount = payment.amount / 100;
+                    const netAmount = Number((totalAmount / (1 + GST_RATE)).toFixed(2));
+                    const gstBreakdown = await GSTService.calculateGST(netAmount, billingDetails.state);
+
+                    // Use a locking mechanism or serializable transaction for idempotency
+                    const result = await prisma.$transaction(async (tx) => {
+                        const exists = await tx.invoice.findFirst({ where: { payment_id: payment.id } });
+                        if (exists) return { duplicate: true, invoice: exists };
+
                         // Create generic invoice
-                        const totalAmount = payment.amount / 100;
-                        const taxableValue = totalAmount / 1.18;
-
                         const invoice = await InvoiceService.createInvoice({
+                            tx,
                             workspaceId: workspaceId,
                             billingDetails: billingDetails as any,
                             items: [{
                                 description: payment.description || "Ad-hoc Payment",
                                 quantity: 1,
-                                rate: taxableValue,
-                                taxable_value: taxableValue
+                                rate: gstBreakdown.net_amount,
+                                taxable_value: gstBreakdown.net_amount,
+                                cgst_rate: gstBreakdown.cgst_rate,
+                                sgst_rate: gstBreakdown.sgst_rate,
+                                igst_rate: gstBreakdown.igst_rate
                             }],
                             paymentMethod: "RAZORPAY",
                             paymentId: payment.id,
                             status: "PAID"
                         });
-                        await InvoiceService.sendInvoiceEmail(invoice.id);
+                        return { duplicate: false, invoice };
+                    }, { isolationLevel: 'Serializable', timeout: 15000 });
+
+                    if (!result.duplicate && result.invoice) {
+                        await InvoiceService.sendInvoiceEmail(result.invoice.id);
                     }
                 }
             }
@@ -244,7 +266,7 @@ export async function POST(req: Request) {
                     await prisma.contact.update({ where: { id: contact.id }, data: { tags: [...currentTags, "Paid_Customer"] } });
                 }
                 const { FlowRunner } = await import("@/lib/engine/flow-runner");
-                await FlowRunner.processMessage(workspaceId, contact.id, "PAYMENT_SUCCESSFUL_INTERNAL_TRIGGER");
+                await FlowRunner.processMessage(workspaceId, contact.id, "PAYMENT_SUCCESSFUL_INTERNAL_TRIGGER" as any);
             }
         }
 

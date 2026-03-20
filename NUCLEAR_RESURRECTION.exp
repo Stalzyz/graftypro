@@ -1,0 +1,40 @@
+#!/usr/bin/expect -f
+
+set timeout 900
+set host "72.61.231.187"
+set password "Photoshop09@"
+
+puts "\n📤 Step 1: Uploading latest files..."
+spawn rsync -avz --no-perms --no-owner --no-group \
+    --exclude "node_modules" \
+    --exclude ".next" \
+    --exclude ".git" \
+    --exclude ".DS_Store" \
+    --exclude "public/uploads" \
+    -e "ssh -o StrictHostKeyChecking=no" ./ root@$host:/root/wabot_bsp/
+expect {
+    "password:" { send "$password\r"; exp_continue }
+    eof
+}
+
+puts "\n☢️  Step 2: Running FINAL nuclear fix directly on server..."
+spawn ssh -o StrictHostKeyChecking=no root@$host \
+    "cd /root/wabot_bsp && docker stop \$(docker ps -aq) 2>/dev/null; docker rm \$(docker ps -aq) 2>/dev/null; docker network prune -f; docker rmi grafty-app:latest grafty-app:nuclear 2>/dev/null; docker compose -f docker-compose.prod.yml up -d --build && echo BUILD_SUCCESS"
+expect {
+    "password:" { send "$password\r"; exp_continue }
+    "BUILD_SUCCESS" { puts "\n✅ Build complete! Waiting for DB..."; exp_continue }
+    eof
+}
+
+exec sleep 25
+
+puts "\n🗄️  Step 3: Syncing database schema..."
+spawn ssh -o StrictHostKeyChecking=no root@$host \
+    "docker exec \$(docker ps --filter name=web --format '{{.Names}}' | head -1) npx prisma db push && echo DB_SYNC_DONE"
+expect {
+    "password:" { send "$password\r"; exp_continue }
+    "DB_SYNC_DONE" { puts "\n✅ DB synced!"; exp_continue }
+    eof
+}
+
+puts "\n\n✅ EVERYTHING DONE. Check https://grafty.pro/api/auth/debug-login"

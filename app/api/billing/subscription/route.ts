@@ -2,7 +2,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "../../../../lib/db";
 import { getCurrentUser } from "../../../../lib/auth";
-import { createSubscription, PLANS } from "../../../../lib/saas/razorpay";
+import { saasRazorpay } from "../../../../lib/saas/razorpay";
 
 export const dynamic = "force-dynamic";
 
@@ -11,19 +11,56 @@ export async function POST(req: Request) {
         const user = await getCurrentUser(req);
         if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-        const { plan } = await req.json();
+        const { plan: planName, cycle = "monthly" } = await req.json();
 
-        // 1. Map Plan Name to ID
-        let planId = "";
-        if (plan === "PRO") planId = PLANS.PRO.id;
-        else if (plan === "ENTERPRISE") planId = PLANS.ENTERPRISE.id;
-        else return NextResponse.json({ error: "Invalid Plan" }, { status: 400 });
+        if (!planName) return NextResponse.json({ error: "Plan name is required" }, { status: 400 });
 
-        // 2. Create Subscription
-        // Note: You must replace 'plan_PqCXXXexample' in lib/saas/razorpay.ts with a REAL Plan ID from Razorpay Dashboard
-        const sub = await createSubscription(planId);
+        // 1. Find plan from DB (preferred - has Razorpay IDs synced via Super Admin)
+        const dbPlan = await prisma.subscriptionPlan.findFirst({
+            where: {
+                name: { equals: planName, mode: "insensitive" },
+                is_active: true,
+            }
+        });
 
-        // 3. Update Workspace with pending subscription
+        let razorpayPlanId: string | null = null;
+
+        if (dbPlan) {
+            razorpayPlanId = cycle === "yearly"
+                ? (dbPlan as any).razorpay_yearly_plan_id
+                : (dbPlan as any).razorpay_monthly_plan_id;
+        }
+
+        // 2. Fallback to env vars (legacy support)
+        if (!razorpayPlanId) {
+            const planKey = planName.toUpperCase();
+            const envMap: Record<string, string | undefined> = {
+                LITE: process.env.RAZORPAY_PLAN_LITE,
+                GROWTH: process.env.RAZORPAY_PLAN_GROWTH,
+                PRO: process.env.RAZORPAY_PLAN_PRO,
+                SCALE: process.env.RAZORPAY_PLAN_SCALE,
+                ENTERPRISE: process.env.RAZORPAY_PLAN_ENTERPRISE,
+            };
+            razorpayPlanId = envMap[planKey] || null;
+        }
+
+        if (!razorpayPlanId) {
+            return NextResponse.json({
+                error: `Plan "${planName}" has not been synced to Razorpay yet. Please go to Super Admin → Finance → Subscription Plans and click "Sync to Razorpay" for this plan.`
+            }, { status: 400 });
+        }
+
+        // 3. Create Razorpay Subscription
+        const sub = await saasRazorpay.subscriptions.create({
+            plan_id: razorpayPlanId,
+            customer_notify: 1,
+            quantity: 1,
+            total_count: cycle === "yearly" ? 10 : 120,
+            addons: [],
+            notes: { source: "grafty_bsp_saas", plan: planName, cycle }
+        });
+
+        // 4. Update workspace with pending subscription
         await prisma.workspace.update({
             where: { id: user.workspaceId },
             data: {
@@ -36,6 +73,8 @@ export async function POST(req: Request) {
 
     } catch (error: any) {
         console.error("Subscription Error:", error);
-        return NextResponse.json({ error: error.message || "Failed" }, { status: 500 });
+        return NextResponse.json({
+            error: error?.error?.description || error.message || "Failed to create subscription"
+        }, { status: 500 });
     }
 }

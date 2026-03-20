@@ -1,6 +1,6 @@
 "use client";
 
-import { Calendar, Check, Mail, Globe, Settings as SettingsIcon, AlertCircle } from "lucide-react";
+import { Calendar, Check, Mail, Globe, Settings as SettingsIcon, AlertCircle, ShoppingBag } from "lucide-react";
 import { useState, useEffect } from "react";
 
 export default function IntegrationsPage() {
@@ -50,47 +50,84 @@ export default function IntegrationsPage() {
                         onClick={() => window.location.href = '/api/auth/google?scope=calendar'}
                         className={`w-full mt-6 py-2.5 rounded-xl text-sm font-black transition-all ${isConnected('GOOGLE_CALENDAR')
                             ? 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                            : 'bg-zinc-900 text-white hover:bg-zinc-800 shadow-lg shadow-zinc-200'
+                            : 'btn-primary shadow-lg'
                             }`}>
                         {isConnected('GOOGLE_CALENDAR') ? 'Manage Connection' : 'Connect Calendar'}
                     </button>
                 </div>
 
-                {/* Calendly (Coming Soon) */}
-                <div className="soft-card p-6 border border-gray-100 opacity-60">
+                {/* Shopify Integration */}
+                <div className={`soft-card p-6 border-2 transition-all ${isConnected('SHOPIFY') ? 'border-emerald-500 bg-emerald-50/10' : 'border-gray-100'}`}>
                     <div className="flex items-center justify-between mb-4">
-                        <div className="w-12 h-12 bg-blue-50 text-blue-400 rounded-xl flex items-center justify-center">
-                            <Globe size={24} />
+                        <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center">
+                            <ShoppingBag size={24} />
                         </div>
-                        <span className="px-2 py-1 bg-gray-50 text-gray-400 text-[10px] font-black uppercase rounded-lg">
-                            Coming Soon
-                        </span>
+                        {isConnected('SHOPIFY') ? (
+                            <span className="px-2 py-1 bg-emerald-100 text-emerald-700 text-[10px] font-black uppercase rounded-lg flex items-center gap-1">
+                                <Check size={10} /> Active
+                            </span>
+                        ) : (
+                            <span className="px-2 py-1 bg-gray-100 text-gray-400 text-[10px] font-black uppercase rounded-lg">
+                                Disconnected
+                            </span>
+                        )}
                     </div>
-                    <h3 className="text-lg font-bold text-gray-800">Calendly</h3>
+                    <h3 className="text-lg font-bold text-gray-800">Shopify</h3>
                     <p className="text-xs text-gray-500 mt-2 leading-relaxed">
-                        Automate slot picking using your existing Calendly availability and booking pages.
+                        Sync products, recover abandoned carts, and send order updates via WhatsApp.
                     </p>
-                    <button disabled className="w-full mt-6 py-2.5 rounded-xl text-sm font-black bg-gray-50 text-gray-400 cursor-not-allowed">
-                        Connect Calendly
+                    <button
+                        onClick={() => window.location.href = '/dashboard/commerce'}
+                        className="w-full mt-6 py-2.5 rounded-xl text-sm font-black btn-primary shadow-lg">
+                        Configure Shopify
                     </button>
                 </div>
 
-                {/* Zapier (Coming Soon) */}
-                <div className="soft-card p-6 border border-gray-100 opacity-60">
+                {/* Google Sheets */}
+                <div className={`soft-card p-6 border-2 transition-all ${isConnected('GOOGLE_SHEETS') ? 'border-emerald-500 bg-emerald-50/10' : 'border-gray-100'}`}>
                     <div className="flex items-center justify-between mb-4">
-                        <div className="w-12 h-12 bg-orange-50 text-orange-400 rounded-xl flex items-center justify-center">
+                        <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center">
+                            <Globe size={24} />
+                        </div>
+                        {isConnected('GOOGLE_SHEETS') ? (
+                            <span className="px-2 py-1 bg-emerald-100 text-emerald-700 text-[10px] font-black uppercase rounded-lg flex items-center gap-1">
+                                <Check size={10} /> Active
+                            </span>
+                        ) : (
+                            <span className="px-2 py-1 bg-gray-100 text-gray-400 text-[10px] font-black uppercase rounded-lg">
+                                Disconnected
+                            </span>
+                        )}
+                    </div>
+                    <h3 className="text-lg font-bold text-gray-800">Google Sheets</h3>
+                    <p className="text-xs text-gray-500 mt-2 leading-relaxed">
+                        Export leads and conversation data directly to your sheets for real-time reporting.
+                    </p>
+                    <button
+                        onClick={() => window.location.href = '/api/auth/google?scope=sheets'}
+                        className="w-full mt-6 py-2.5 rounded-xl text-sm font-black btn-primary shadow-lg">
+                        Connect Sheets
+                    </button>
+                </div>
+
+                {/* Zapier */}
+                <div className={`soft-card p-6 border-2 transition-all ${isConnected('ZAPIER') ? 'border-emerald-500 bg-emerald-50/10' : 'border-gray-100'}`}>
+                    <div className="flex items-center justify-between mb-4">
+                        <div className="w-12 h-12 bg-orange-50 text-orange-600 rounded-xl flex items-center justify-center">
                             <Zap size={24} />
                         </div>
-                        <span className="px-2 py-1 bg-gray-50 text-gray-400 text-[10px] font-black uppercase rounded-lg">
-                            Coming Soon
+                        <span className="px-2 py-1 bg-emerald-100 text-emerald-700 text-[10px] font-black uppercase rounded-lg flex items-center gap-1">
+                            <Check size={10} /> Functional
                         </span>
                     </div>
                     <h3 className="text-lg font-bold text-gray-800">Zapier</h3>
                     <p className="text-xs text-gray-500 mt-2 leading-relaxed">
-                        Connect Grafty to 5000+ apps like Sheets, HubSpot, and Slack via Zaps.
+                        Connect Grafty to 5000+ apps like HubSpot, Slack, and Salesforce via Webhooks.
                     </p>
-                    <button disabled className="w-full mt-6 py-2.5 rounded-xl text-sm font-black bg-gray-50 text-gray-400 cursor-not-allowed">
-                        Connect Zapier
+                    <button
+                        onClick={() => window.open('https://zapier.com/apps/grafty/integrations', '_blank')}
+                        className="w-full mt-6 py-2.5 rounded-xl text-sm font-black btn-primary shadow-lg">
+                        Explore Zaps
                     </button>
                 </div>
             </div>
@@ -104,7 +141,7 @@ export default function IntegrationsPage() {
                     </p>
                 </div>
             </div>
-        </div>
+        </div >
     );
 }
 

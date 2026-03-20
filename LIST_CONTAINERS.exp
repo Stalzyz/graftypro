@@ -1,0 +1,7 @@
+#!/usr/bin/expect -f
+set password "Photoshop09@"
+set timeout 30
+spawn ssh -o StrictHostKeyChecking=no root@72.61.231.187 "docker ps"
+expect "assword:"
+send "$password\r"
+interact

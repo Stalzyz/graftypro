@@ -4,7 +4,7 @@ import {
     Layout, Palette, Shield, RefreshCw, Save,
     CheckCircle2, Globe, Eye, Loader2, Image as ImageIcon,
     Target, Monitor, Mail, HelpCircle, ArrowRight, Zap,
-    AlertTriangle, Send
+    AlertTriangle, Send, Megaphone, ExternalLink
 } from "lucide-react";
 import Link from 'next/link';
 import { SmartUploader } from "../../../components/ui/SmartUploader";
@@ -17,7 +17,9 @@ export default function BrandingPage() {
         primary_color: "#0F172A",
         secondary_color: "#3B82F6",
         support_email: "",
-        support_url: ""
+        support_url: "",
+        broadcast_banner: "",
+        broadcast_link: ""
     });
 
     const [loading, setLoading] = useState(true);
@@ -36,7 +38,9 @@ export default function BrandingPage() {
                         primary_color: data.data.primary_color || "#0F172A",
                         secondary_color: data.data.secondary_color || "#3B82F6",
                         support_email: data.data.support_email || "",
-                        support_url: data.data.support_url || ""
+                        support_url: data.data.support_url || "",
+                        broadcast_banner: data.data.broadcast_banner || "",
+                        broadcast_link: data.data.broadcast_link || ""
                     });
                 }
                 setLoading(false);
@@ -181,6 +185,48 @@ export default function BrandingPage() {
                                 onChange={(v: string) => setConfig({ ...config, support_url: v.toLowerCase() })}
                                 icon={<Globe size={14} />}
                             />
+                        </div>
+                    </section>
+
+                    {/* Broadcast Announcements */}
+                    <section className="bg-slate-900 rounded-[3rem] p-10 shadow-xl relative overflow-hidden group">
+                        <div className="absolute top-0 right-0 w-40 h-40 bg-white/5 blur-3xl rounded-full -mr-20 -mt-20" />
+                        <div className="flex items-center gap-4 mb-10 relative z-10">
+                            <div className="w-12 h-12 rounded-2xl bg-emerald-500 flex items-center justify-center text-white shadow-lg shadow-emerald-500/20">
+                                <Megaphone size={22} />
+                            </div>
+                            <div>
+                                <h2 className="text-xs font-black text-white uppercase tracking-[0.2em]">Broadcast Hub</h2>
+                                <p className="text-[10px] text-white/40 font-bold uppercase tracking-widest italic mt-1 leading-none">Global Vendor Announcements</p>
+                            </div>
+                        </div>
+
+                        <div className="space-y-8 relative z-10">
+                            <div className="space-y-3">
+                                <label className="text-[9px] font-black text-white/40 uppercase tracking-[0.3em] ml-1">Announcement Banner [DISPLAY-ONLY]</label>
+                                <div className="relative group/field">
+                                    <div className="absolute left-6 top-1/2 -translate-y-1/2 text-white/20 group-focus-within/field:text-emerald-400 transition-colors"><Megaphone size={16} /></div>
+                                    <input
+                                        className="w-full bg-white/5 border border-white/10 rounded-[2rem] pl-14 pr-8 py-5 text-sm font-black italic uppercase tracking-tighter text-white focus:border-emerald-500 focus:bg-white/10 outline-none transition-all placeholder:text-white/10 shadow-inner"
+                                        placeholder="URGENT: SYSTEM UPGRADE IN PROGRESS..."
+                                        value={config.broadcast_banner}
+                                        onChange={e => setConfig({ ...config, broadcast_banner: e.target.value })}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="space-y-3">
+                                <label className="text-[9px] font-black text-white/40 uppercase tracking-[0.3em] ml-1">Redirect Protocol [EXTERNAL-LINK]</label>
+                                <div className="relative group/field">
+                                    <div className="absolute left-6 top-1/2 -translate-y-1/2 text-white/20 group-focus-within/field:text-emerald-400 transition-colors"><ExternalLink size={16} /></div>
+                                    <input
+                                        className="w-full bg-white/5 border border-white/10 rounded-[2rem] pl-14 pr-8 py-5 text-sm font-black italic uppercase tracking-tighter text-white focus:border-emerald-500 focus:bg-white/10 outline-none transition-all placeholder:text-white/10 shadow-inner"
+                                        placeholder="HTTPS://STATUS.YOURBRAND.COM"
+                                        value={config.broadcast_link}
+                                        onChange={e => setConfig({ ...config, broadcast_link: e.target.value.toLowerCase() })}
+                                    />
+                                </div>
+                            </div>
                         </div>
                     </section>
                 </div>

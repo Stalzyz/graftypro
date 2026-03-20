@@ -102,6 +102,14 @@ model Workspace {
   // Reseller Migration (Phase 2: Permanent Mapping)
   reseller_id   String?
   reseller      Reseller?  @relation(fields: [reseller_id], references: [id])
+  
+  // Referral System
+  referral_code       String? @unique // short code for sharing
+  referred_by_id      String?
+  referral_bonus_awarded Boolean @default(false)
+  referred_by         Workspace? @relation("WorkspaceReferrals", fields: [referred_by_id], references: [id])
+  referrals           Workspace[] @relation("WorkspaceReferrals")
+
   coupon_id     String?
   used_coupon   ResellerCoupon? @relation(fields: [coupon_id], references: [id])
 
@@ -130,6 +138,7 @@ model Workspace {
 model Lead {
   id                String   @id @default(uuid())
   name              String
+  email             String?
   business_name     String?
   whatsapp_number   String
   revenue_range     String?
@@ -140,6 +149,15 @@ model Lead {
   created_at        DateTime @default(now())
 
   @@map("leads")
+}
+
+model TrialLock {
+  id            String   @id @default(uuid())
+  email         String   @unique
+  first_used_at DateTime @default(now())
+  trial_ends_at DateTime
+  
+  @@map("trial_locks")
 }
 
 // ... (existing models)
@@ -296,6 +314,8 @@ model CommerceOrder {
   billing_address     Json?              
   tracking_id         String?
   courier_name        String?
+  tracking_status     String?            // IN_TRANSIT, OUT_FOR_DELIVERY, DELIVERED, etc.
+  tracking_last_check DateTime?
 
   // Referral / Rewards
   referral_id         String?
@@ -318,7 +338,7 @@ model CommerceOrder {
 model CommerceOrderItem {
   id                  String             @id @default(uuid())
   order_id            String
-  product_id          String
+  product_id          String?
   variant_id          String?
   
   name                String             // Snapshot name
@@ -329,7 +349,7 @@ model CommerceOrderItem {
   total               Decimal            @db.Decimal(10, 2)
 
   order               CommerceOrder      @relation(fields: [order_id], references: [id], onDelete: Cascade)
-  product             CommerceProduct    @relation(fields: [product_id], references: [id])
+  product             CommerceProduct?    @relation(fields: [product_id], references: [id])
 
   @@map("commerce_order_items")
 }
@@ -616,6 +636,11 @@ enum HealthStatus {
   UNKNOWN         // Not yet checked
 }
 
+enum BillingModel {
+  MANAGED  // Platform Wallet (Meta Cost + Markup)
+  DIRECT   // Self-managed token (Flat Orchestration Fee)
+}
+
 enum WabaStatus {
   CONNECTED
   DISCONNECTED
@@ -630,6 +655,7 @@ model WhatsAppAccount {
   integration_status IntegrationStatus @default(DRAFT)
   health_status      HealthStatus      @default(UNKNOWN)
   status             WabaStatus       @default(CONNECTED) // Legacy field
+  billing_model      BillingModel     @default(MANAGED)
   
   // Custom Settings
   connection_name    String           @default("WhatsApp Channel")
@@ -654,6 +680,7 @@ model WhatsAppAccount {
   granted_permissions Json?            // Array of granted permissions
   required_permissions Json?           // Array of required permissions
   permission_check_at  DateTime?       // Last permission check
+  validated_at         DateTime?       // When credentials were last validated
   
   // Health Metrics & Status
   last_health_check_at DateTime?
@@ -670,10 +697,10 @@ model WhatsAppAccount {
   messaging_limit    String?           // 250, 1K, 10K, 100K, UNLIMITED
   rate_limit_tier    String?           // Tier information
   
-  // Audit Trail
-  validated_at       DateTime?
-  suspended_at       DateTime?
-  suspension_reason  String?
+  // Compliance Configuration
+  opt_out_keywords     String?           @default("STOP,CANCEL,UNSUBSCRIBE")
+  opt_out_message      String?           @default("Type STOP to unsubscribe from our messages.")
+  opt_out_reply        String?           @default("You have been successfully unsubscribed. You will no longer receive messages from us.")
   
   created_at       DateTime   @default(now())
   updated_at       DateTime   @updatedAt
@@ -771,6 +798,9 @@ enum TemplateStatus {
   REJECTED
   PAUSED
   DISABLED
+  IN_APPEAL
+  DELETED
+  PENDING_DELETION
 }
 
 model Template {
@@ -829,6 +859,7 @@ model Contact {
   
   opt_in       Boolean  @default(true)
   blocked      Boolean  @default(false)
+  unsubscribed_at DateTime?
   
   last_active_at DateTime @default(now())
   
@@ -1180,6 +1211,11 @@ model Order {
   currency     String   @default("INR")
   status       OrderStatus @default(PENDING)
   
+  tracking_id         String?
+  courier_name        String?
+  tracking_status     String?
+  tracking_last_check DateTime?
+  
   items        OrderItem[]
   
   created_at   DateTime @default(now())
@@ -1194,13 +1230,13 @@ model Order {
 model OrderItem {
   id           String   @id @default(uuid())
   order_id     String
-  product_id   String
+  product_id   String?
   quantity     Int
   unit_price   Float
   total_price  Float
   
   order        Order    @relation(fields: [order_id], references: [id], onDelete: Cascade)
-  product      Product  @relation(fields: [product_id], references: [id], onDelete: Cascade)
+  product      Product?  @relation(fields: [product_id], references: [id], onDelete: Cascade)
 
   @@map("order_items")
 }
@@ -1575,6 +1611,10 @@ model Reseller {
   bank_ifsc              String?        // Encrypted
   bank_name              String?
   
+  // RazorpayX (Automated Payouts)
+  razorpayx_contact_id   String?
+  razorpayx_fund_account_id String?
+  
   invoice_config         Json?          // White-label invoice settings
   
   // White-label Infrastructure
@@ -1582,6 +1622,8 @@ model Reseller {
   domain_settings        Json?          // { domain, status, ssl_active, verified_at }
   branding_settings     Json?          // { logo_url, dark_logo_url, favicon_url, primary_color, secondary_color }
   payment_gateways      Json?          // [{ provider: "Razorpay", key_id: "...", key_secret: "...", is_live: false, is_active: true }]
+  
+  partner_domains       PartnerDomain[]
   
   // Sub-Reseller Support (Multi-Tier)
   parent_reseller_id    String?
@@ -1635,6 +1677,7 @@ model ResellerRiskLog {
   reseller        Reseller @relation(fields: [reseller_id], references: [id])
 
   @@index([reseller_id])
+  @@index([created_at])
   @@map("reseller_risk_logs")
 }
 
@@ -1707,6 +1750,8 @@ model ResellerLedger {
 
   @@unique([reference_id, type])
   @@index([reseller_id])
+  @@index([reference_id])
+  @@index([created_at])
   @@map("reseller_ledger")
 }
 
@@ -1728,6 +1773,10 @@ model ResellerPayoutRequest {
   payment_details Json?               // VPA or Bank details
   admin_notes     String?
   
+  // Fraud Detection
+  risk_score      Int                 @default(0)
+  risk_flags      Json?               // [{ flag: "FREQUENT_PAYOUT", severity: "HIGH" }]
+  
   // Execution Info
   gateway_payout_id String?           // Razorpay Payout ID
   processed_by      String?           // Admin User ID
@@ -1737,6 +1786,8 @@ model ResellerPayoutRequest {
   reseller        Reseller            @relation(fields: [reseller_id], references: [id])
 
   @@index([reseller_id])
+  @@index([status])
+  @@index([created_at])
   @@map("reseller_payout_requests")
 }
 
@@ -1975,12 +2026,25 @@ model SystemConfig {
   support_email     String?
   support_phone     String?
   support_whatsapp  String?
+  fab_whatsapp_number String? @default("919789359407")
   
   // SEO & Social
   meta_title        String?
   meta_description  String?
+  meta_og_image     String?
+  sitemap_url       String?
   social_links      Json?    @default("{}") // { twitter: "", facebook: "" }
   landing_page_config Json?  @default("{}") // Stores sections, banner, cta
+
+  // ── PLATFORM OPERATOR CONTROLS ──────────────────────────────
+  maintenance_mode        Boolean  @default(false)
+  maintenance_message     String?  @default("We'll be back shortly. Scheduled maintenance in progress.")
+  registration_enabled    Boolean  @default(true)
+  require_signup_approval Boolean  @default(false)
+  announcement_banner     String?  // If set, shows as a top bar on all pages
+  announcement_type       String?  @default("info") // info, warning, success
+  trial_days              Int      @default(7)
+  default_trial_credits   Int      @default(500)
   
   // OAuth Config
   google_client_id        String?
@@ -2170,6 +2234,7 @@ model VendorWallet {
   locked_balance   Decimal  @default(0.00)
   total_purchased  Decimal  @default(0.00)
   total_used       Decimal  @default(0.00)
+  service_bonus_balance Decimal @default(0.00) // For Service-Only Referral Credits
   
   // Auto Top-up Settings
   auto_recharge_enabled   Boolean @default(false)
@@ -2218,6 +2283,7 @@ enum CreditTransactionType {
   REFUND
   REVERSAL
   ADJUSTMENT
+  REFERRAL_BONUS
 }
 
 model CreditTransaction {
@@ -2276,6 +2342,7 @@ model CreditTransaction {
   invoice          Invoice?      @relation("TransactionInvoice", fields: [invoice_id], references: [id])
 
   @@index([workspace_id])
+  @@index([workspace_id, created_at])
   @@index([wallet_id])
   @@index([type])
   @@index([created_at])
@@ -2324,31 +2391,72 @@ model SubscriptionPlan {
   description      String?
   price            Decimal  @default(0.00) // Deprecated: Use monthly_price
   monthly_price    Decimal  @default(0.00)
+  original_monthly_price Decimal @default(0.00)
   yearly_price     Decimal  @default(0.00)
+  original_yearly_price  Decimal @default(0.00)
   currency         String   @default("INR")
   billing_cycle    String   @default("MONTHLY") // Deprecated
-  min_reseller_price Decimal @default(0.00) // Margin protection
   
+  // Base Price for Whitelabel / Reseller Margin Protection
+  min_reseller_monthly_price Decimal @default(0.00)
+  min_reseller_yearly_price  Decimal @default(0.00)
+
+  // Expert Additions
+  setup_fee              Decimal  @default(0.00) // One-time onboarding fee
+  trial_days             Int      @default(0)    // e.g., 7 or 14 days free trial per plan
+  hidden_plan            Boolean  @default(false)// Useful for private agency deals or legacy users
+  
+  // Meta Billing Strategy
+  is_managed       Boolean  @default(true)  // Whether platform manages credits
+  unlimited_messaging Boolean @default(false) // Bypass credit deduction
+
   // Control Modules (Limits)
   max_contacts     Int      @default(100)
   max_flows        Int      @default(3)
   max_campaigns    Int      @default(1)
   max_messages     Int      @default(500)
-  max_users        Int      @default(1)    // Added limit
-  max_teams        Int      @default(0)    // Added limit
+  max_users        Int      @default(1)
+  max_teams        Int      @default(0)
   
-  // Module Access
-  api_access       Boolean  @default(false)
-  crm_access       Boolean  @default(true)
-  flow_builder_access Boolean @default(true)
-  drip_campaign_access Boolean @default(false)
-  commerce_access   Boolean  @default(false)
-  edu_engine_access Boolean  @default(false)
+  // Module Access (Major Modules)
+  module_quick_replies  Boolean @default(true)
+  module_crm           Boolean @default(true)
+  module_ecommerce     Boolean @default(false)
+  module_academy       Boolean @default(false)
+  module_drip          Boolean @default(false)
+  module_integration   Boolean @default(false)
+  
+  // Flow Node Permissions (Bot Builder Control)
+  flow_msg_access      Boolean @default(true)
+  flow_automation_access Boolean @default(false)
+  flow_logic_access     Boolean @default(false)
+  flow_commerce_access  Boolean @default(false)
+  flow_integration_access Boolean @default(false)
+
+  // System Access Flags (Legacy Support)
+  api_access          Boolean  @default(false)
+  crm_access          Boolean  @default(true)   // Mapping to module_crm
+  flow_builder_access  Boolean  @default(true)
+  drip_campaign_access Boolean  @default(false)  // Mapping to module_drip
+  commerce_access      Boolean  @default(false)  // Mapping to module_ecommerce
+  edu_engine_access    Boolean  @default(false)  // Mapping to module_academy
 
   // UI/UX Metadata
   credits          Int      @default(0)
   features_list    Json?    @default("[]")
+  bonus_text       String?   // Custom text for anything else (e.g. Everything in Growth, Mobile access)
+  ai_fallback_enabled             Boolean @default(false)
+  abandoned_cart_recovery_enabled Boolean @default(false)
   is_featured      Boolean  @default(false)
+  badge_text       String?  @default("Most Popular") // Badge shown on card e.g. "Best Value"
+  cta_label        String?  @default("Get Started")  // CTA button label
+  accent_color     String?  @default("#27954D")      // Card accent color
+  sort_order       Int      @default(0)              // Display order (lower = first)
+  allowed_nodes    Json?    @default("[]")            // Deprecated: Moving to Boolean flags
+
+  // Razorpay Plan IDs (auto-synced via Super Admin)
+  razorpay_monthly_plan_id String?  // Stored after syncing to Razorpay
+  razorpay_yearly_plan_id  String?  // Stored after syncing to Razorpay
 
   is_public        Boolean  @default(true)
   is_active        Boolean  @default(true)
@@ -2685,4 +2793,45 @@ model UniversalCrmActivity {
 
   @@index([lead_id])
   @@map("universal_crm_activities")
+}
+
+model PartnerDomain {
+  id              String   @id @default(uuid())
+  reseller_id     String
+  domain          String   @unique // e.g., "app.chatflow.ai"
+  
+  // Verification
+  verification_token String?  // For DNS verification
+  is_verified     Boolean  @default(false)
+  verified_at     DateTime?
+  
+  // Settings
+  is_active       Boolean  @default(true)
+  ssl_enabled     Boolean  @default(false)
+  
+  // CNAME tracking
+  target_host     String   @default("app.grafty.pro")
+  
+  reseller        Reseller @relation(fields: [reseller_id], references: [id], onDelete: Cascade)
+
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  @@index([reseller_id])
+  @@index([domain])
+  @@map("partner_domains")
+}
+
+// --------------------------------------
+// Marketing & Tools Lead Capture
+// --------------------------------------
+
+model PublicToolLead {
+  id         String   @id @default(uuid())
+  phone      String
+  tool_type  String   // e.g., 'LINK_GENERATOR', 'COST_CALCULATOR'
+  metadata   Json?    // Optional extra info (e.g. message, currency)
+  created_at DateTime @default(now())
+
+  @@index([phone])
 }

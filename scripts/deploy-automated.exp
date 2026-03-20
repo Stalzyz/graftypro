@@ -1,0 +1,60 @@
+#!/usr/bin/expect -f
+
+set timeout -1
+set password "Photoshop09@"
+set server "root@72.61.231.187"
+set remote_path "/root/grafty_bsp"
+
+puts "🚀 STARTING AUTOMATED DEPLOYMENT..."
+
+# 1. Sync files via rsync
+spawn rsync -avzc -P --exclude 'node_modules' --exclude '.next' --exclude '.git' --exclude '.npm-cache' ./ $server:$remote_path/
+expect {
+    "Are you sure you want to continue connecting" {
+        send "yes\r"
+        exp_continue
+    }
+    "password:" {
+        send "$password\r"
+    }
+}
+expect eof
+
+# 2. Execute remote commands via SSH
+spawn ssh $server "bash -s" << 'EOF'
+    set -e
+    cd /root/grafty_bsp
+    
+    echo "📂 verifying uploads directory..."
+    mkdir -p public/uploads
+    chmod 777 public/uploads
+    
+    echo "🛑 Cleanup existing containers..."
+    docker rm -f grafty_redis grafty_postgres grafty_web grafty_worker 2>/dev/null || true
+    
+    echo "🏗️ Rebuild and Start services..."
+    docker compose -f docker-compose.prod.yml build --no-cache
+    docker compose -f docker-compose.prod.yml up -d
+    
+    echo "⏳ Waiting for Database..."
+    sleep 15
+    
+    echo "💾 Database Sync..."
+    docker compose -f docker-compose.prod.yml exec -T web npx prisma db push --accept-data-loss
+    docker compose -f docker-compose.prod.yml exec -T web npx prisma generate
+    
+    echo "☢️ System Fix..."
+    docker compose -f docker-compose.prod.yml exec -T web npx tsx scripts/nuclear-fix.ts
+    
+    echo "♻️ Final Restart..."
+    docker compose -f docker-compose.prod.yml restart web worker
+    
+    echo "✅ DEPLOYMENT SUCCESSFUL!"
+EOF
+
+expect {
+    "password:" {
+        send "$password\r"
+    }
+}
+expect eof

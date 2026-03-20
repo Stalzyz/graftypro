@@ -1,0 +1,28 @@
+#!/usr/bin/expect -f
+
+set timeout 600
+set host "72.61.231.187"
+set password "Photoshop09@"
+
+puts "\n📤 Uploading nuclear fix script to VPS..."
+spawn rsync -avz \
+    -e "ssh -o StrictHostKeyChecking=no" \
+    nuclear_fix.sh docker-compose.prod.yml Dockerfile \
+    root@$host:/root/wabot_bsp/
+expect {
+    "password:" { send "$password\r"; exp_continue }
+    eof
+}
+
+puts "\n🚀 Executing nuclear fix DIRECTLY on VPS..."
+spawn ssh -o StrictHostKeyChecking=no root@$host "chmod +x /root/wabot_bsp/nuclear_fix.sh && bash /root/wabot_bsp/nuclear_fix.sh"
+expect {
+    "password:" { send "$password\r"; exp_continue }
+    "DONE!" { 
+        puts "\n\n✅ NUCLEAR FIX COMPLETE!"
+        exp_continue 
+    }
+    eof
+}
+
+puts "\n✅ All done! Check https://grafty.pro/api/auth/debug-login"

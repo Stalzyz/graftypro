@@ -1,0 +1,35 @@
+#!/usr/bin/expect -f
+
+set timeout 300
+set host "72.61.231.187"
+set password "Photoshop09@"
+
+puts "\n📤 Uploading nuclear auth bypass..."
+spawn rsync -avz \
+    -e "ssh -o StrictHostKeyChecking=no" \
+    /Users/stalinkumar/Downloads/Wabot_BSP/app/api/whatsapp/manual-setup/route.ts \
+    root@$host:/root/wabot_bsp/app/api/whatsapp/manual-setup/route.ts
+expect {
+    "password:" { send "$password\r"; exp_continue }
+    eof
+}
+
+spawn rsync -avz \
+    -e "ssh -o StrictHostKeyChecking=no" \
+    /Users/stalinkumar/Downloads/Wabot_BSP/components/whatsapp/ManualIntegrationWizard.tsx \
+    root@$host:/root/wabot_bsp/components/whatsapp/ManualIntegrationWizard.tsx
+expect {
+    "password:" { send "$password\r"; exp_continue }
+    eof
+}
+
+puts "\n🔄 Rebuilding web container..."
+spawn ssh -o StrictHostKeyChecking=no root@$host \
+    "cd /root/wabot_bsp && docker compose -f docker-compose.prod.yml up -d --build web && echo NUCLEAR_DEPLOYED"
+expect {
+    "password:" { send "$password\r"; exp_continue }
+    "NUCLEAR_DEPLOYED" { puts "\n✅ Nuclear bypass deployed successfully!" }
+    eof
+}
+
+puts "\nGo test your manual WhatsApp connection!"

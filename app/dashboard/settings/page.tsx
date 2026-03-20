@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { MessageCircle, CreditCard, Settings, Wallet, Shield, Users, Bell, LifeBuoy, Zap, Mail, MapPin } from "lucide-react";
+import { MessageCircle, CreditCard, Settings, Wallet, Shield, Users, Bell, LifeBuoy, Zap, Mail, MapPin, BookOpen } from "lucide-react";
 import { useBranding } from "../../../hooks/use-branding";
 
 export default function SettingsPage() {
@@ -72,6 +72,9 @@ export default function SettingsPage() {
                         <div className="mt-4 space-y-2 text-sm font-medium text-gray-700">
                             <div className="flex items-center gap-2"><Mail size={16} className="text-gray-400" /> support@grafty.pro</div>
                             <div className="flex items-center gap-2"><MapPin size={16} className="text-gray-400" /> India</div>
+                            <Link href="/dashboard/credits/help" className="flex items-center gap-2 text-blue-600 hover:text-blue-700 transition-colors">
+                                <BookOpen size={16} /> Credit System Guide &rarr;
+                            </Link>
                         </div>
                     </div>
                     <a href="https://wa.me/919789359407" target="_blank" rel="noopener noreferrer" className="mt-6 flex items-center justify-center gap-2 w-full py-2.5 bg-[#25D366] text-white rounded-xl font-bold hover:bg-[#1DA851] transition-colors shadow-md shadow-green-500/20">

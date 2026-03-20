@@ -53,11 +53,11 @@ export class CommerceSegmentation {
                     event_type: "checkout.abandoned",
                     order: { store: { workspace_id: workspaceId } }
                 },
-                select: { order: { select: { customer_phone: true } } }
+                select: { order: { select: { contact: { select: { phone: true } } } } }
             });
 
-            const phones = abandonedContacts.map(c => c.order.customer_phone).filter(Boolean);
-            where.phone = { in: phones };
+            const phones = abandonedContacts.map(c => c.order.contact?.phone).filter(Boolean);
+            where.phone = { in: phones as string[] };
         }
 
         return await prisma.contact.findMany({

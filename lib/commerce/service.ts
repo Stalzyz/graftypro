@@ -232,7 +232,12 @@ export class CommerceService {
             }
         }
 
-        await prisma.commerceStore.update({ where: { id: storeId }, data: { last_sync_at: new Date() } });
+        await prisma.commerceStore.update({ 
+            where: { id: storeId }, 
+            data: { 
+                last_sync_at: new Date()
+            } 
+        });
         return externalProducts.length;
     }
 
@@ -301,6 +306,14 @@ export class CommerceService {
                 });
                 if (!product) throw new Error(`Product ${item.product_id} not found`);
 
+                // MONSTER GUARD: Real-time Stock Check
+                const requestedQuantity = Number(item.quantity);
+                const availableStock = Number(product.stock);
+                
+                if (availableStock < requestedQuantity) {
+                    throw new Error(`Insufficient stock for product: ${product.name}. Requested: ${requestedQuantity}, Available: ${availableStock}`);
+                }
+
                 let unitPrice = product.price;
                 let name = product.name;
 
@@ -352,6 +365,7 @@ export class CommerceService {
                     contact_id: payload.contact_id,
                     order_number: orderNumber,
                     subtotal,
+                    shipping_total: new Decimal(0), // Defaulting for now as per schema requirements
                     tax_total,
                     discount_total: discount,
                     total_amount: total,
@@ -415,5 +429,16 @@ export class CommerceService {
         const store = await prisma.commerceStore.findUnique({ where: { id: storeId } });
         if (!store || !store.encrypted_credentials) throw new Error("Credentials not found");
         return JSON.parse(decrypt((store.encrypted_credentials as any).data));
+    }
+
+    static async getLogisticsCredentials(storeId: string) {
+        const store = await prisma.commerceStore.findUnique({ where: { id: storeId } });
+        if (!store || !store.shipping_config) throw new Error("Logistics configuration not found");
+        
+        const config = store.shipping_config as any;
+        if (config.password) {
+            config.password = decrypt(config.password);
+        }
+        return config;
     }
 }

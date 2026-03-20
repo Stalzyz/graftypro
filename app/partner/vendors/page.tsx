@@ -21,12 +21,15 @@ import {
     RefreshCw,
     X
 } from 'lucide-react';
+import { safeToLocaleString, formatCurrency, ensureNumber } from '@/lib/utils/number-format';
+
 
 const PLANS = ["FREE", "STARTER", "PRO", "ENTERPRISE"];
 
 export default function MyVendors() {
     const [vendors, setVendors] = useState<any[]>([]);
     const [partner, setPartner] = useState<any>(null);
+    const [stats, setStats] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -42,14 +45,17 @@ export default function MyVendors() {
 
     const fetchInitialData = async () => {
         try {
-            const [vRes, pRes] = await Promise.all([
+            const [vRes, pRes, sRes] = await Promise.all([
                 fetch("/api/reseller/vendors"),
-                fetch("/api/reseller/me")
+                fetch("/api/reseller/me"),
+                fetch("/api/reseller/stats")
             ]);
             const vData = await vRes.json();
             const pData = await pRes.json();
+            const sData = await sRes.json();
             if (vData.data) setVendors(vData.data);
             if (pData.data) setPartner(pData.data);
+            if (!sData.error) setStats(sData);
             setLoading(false);
         } catch (e) {
             console.error(e);
@@ -166,7 +172,8 @@ export default function MyVendors() {
                 </div>
                 <div className="bg-white p-6 rounded-[1.5rem] border border-slate-100 shadow-sm">
                     <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Portfolio Value</div>
-                    <div className="text-2xl font-black text-slate-900">₹{vendors.reduce((acc, v) => acc + (v.balance || 0), 0).toLocaleString()}</div>
+                    <div className="text-2xl font-black text-slate-900">{formatCurrency(vendors.reduce((acc, v) => acc + (v.balance || 0), 0))}</div>
+
                     <div className="text-[10px] text-slate-500 font-medium mt-1 uppercase">Aggregate Credits</div>
                 </div>
                 <div className="bg-white p-6 rounded-[1.5rem] border border-slate-100 shadow-sm">
@@ -176,8 +183,8 @@ export default function MyVendors() {
                 </div>
                 <div className="bg-[#E9F5ED] p-6 rounded-[1.5rem] border border-[#D1EADC] shadow-sm shadow-[#27954D]/5">
                     <div className="text-[10px] font-black text-[#1E743C] uppercase tracking-widest mb-2">Retention Rate</div>
-                    <div className="text-2xl font-black text-[#1E743C]">94.2%</div>
-                    <div className="text-[10px] text-[#27954D] font-medium mt-1 uppercase italic">AI Projected</div>
+                    <div className="text-2xl font-black text-[#1E743C]">{stats?.monthly?.retention_rate || '100'}%</div>
+                    <div className="text-[10px] text-[#27954D] font-medium mt-1 uppercase italic">Protocol Verified</div>
                 </div>
             </div>
 
@@ -228,7 +235,8 @@ export default function MyVendors() {
                                             <div className={`w-2 h-2 rounded-full ${v.balance < 500 ? 'bg-red-500 animate-pulse' : 'bg-blue-600'}`}></div>
                                             <div>
                                                 <div className={`text-lg font-black tracking-tight ${v.balance < 500 ? 'text-red-500' : 'text-slate-900'}`}>
-                                                    ₹{v.balance.toLocaleString()}
+                                                    {formatCurrency(v.balance)}
+
                                                 </div>
                                                 <div className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Credits</div>
                                             </div>
@@ -243,11 +251,13 @@ export default function MyVendors() {
                                     <td className="px-8 py-6">
                                         <div className="flex gap-6">
                                             <div>
-                                                <div className="text-xs font-black text-slate-700">{v.stats?.total_messages?.toLocaleString() || 0}</div>
+                                                <div className="text-xs font-black text-slate-700">{safeToLocaleString(v.stats?.total_messages)}</div>
+
                                                 <div className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Messages</div>
                                             </div>
                                             <div>
-                                                <div className="text-xs font-black text-slate-700">{v.stats?.total_campaigns?.toLocaleString() || 0}</div>
+                                                <div className="text-xs font-black text-slate-700">{safeToLocaleString(v.stats?.total_campaigns)}</div>
+
                                                 <div className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Campaigns</div>
                                             </div>
                                         </div>

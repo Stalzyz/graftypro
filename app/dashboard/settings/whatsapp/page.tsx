@@ -28,7 +28,10 @@ export default function WhatsAppSettingsPage() {
         waba_id: "",
         phone_number_id: "",
         app_id: "",
-        app_secret: "******"
+        app_secret: "******",
+        opt_out_keywords: "",
+        opt_out_message: "",
+        opt_out_reply: ""
     });
 
     // Picture upload state
@@ -139,7 +142,10 @@ export default function WhatsAppSettingsPage() {
                     waba_id: data.account.waba_id,
                     phone_number_id: data.account.phone_number_id,
                     app_id: data.account.app_id || "",
-                    app_secret: "******"
+                    app_secret: "******",
+                    opt_out_keywords: data.account.opt_out_keywords || "STOP,CANCEL,UNSUBSCRIBE",
+                    opt_out_message: data.account.opt_out_message || "Type STOP to unsubscribe from our messages.",
+                    opt_out_reply: data.account.opt_out_reply || "You have been successfully unsubscribed."
                 });
             } else {
                 setStatus("DISCONNECTED");
@@ -211,25 +217,74 @@ export default function WhatsAppSettingsPage() {
         }
     };
 
-    const launchWhatsAppSignup = () => {
-        const appId = publicConfig?.meta_app_id || process.env.NEXT_PUBLIC_META_APP_ID;
-        const configId = publicConfig?.meta_config_id || process.env.NEXT_PUBLIC_META_CONFIG_ID;
-
-        if (!appId || !configId || !workspaceId) {
+    const launchWhatsAppSignup = async () => {
+        if (!publicConfig?.meta_app_id || !publicConfig?.meta_config_id || !workspaceId) {
             alert("Meta Configuration Missing. Please contact support or set it in the Admin panel.");
             return;
         }
 
-        setLoading(true);
+        try {
+            // 1. Construct the Meta OAuth URL
+            const state = btoa(JSON.stringify({ workspaceId }));
 
-        const redirectUri = `${window.location.origin}/dashboard/settings/whatsapp`;
-        // Navigate users to the Hosted ES flow. We pass the workspaceId as the state
-        // so we can associate the `account_update` webhook with this specific workspace.
-        const metaUrl = `https://www.facebook.com/v20.0/dialog/oauth?client_id=${appId}&config_id=${configId}&state=${workspaceId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&override_default_response_type=true`;
+            // Merged User's recommended extras with our own for 2026 compatibility
+            const extras = {
+                "feature": "whatsapp_embedded_signup",
+                "sessionInfoVersion": "3",
+                "version": "v3",
+                "setup": {
+                    "business_id": publicConfig.meta_business_id || undefined
+                }
+            };
 
-        // Open in new tab or same tab. Since it's an OAuth flow, same-tab or popup is standard.
-        // A popup ensures they return to this page naturally, but for maximum compatibility we'll use a new tab or let them redirect.
-        window.location.href = metaUrl;
+            const params = new URLSearchParams({
+                app_id: publicConfig.meta_app_id, // Hub format uses app_id
+                config_id: publicConfig.meta_config_id,
+                state: state,
+                response_type: 'code',
+                scope: 'whatsapp_business_management,whatsapp_business_messaging',
+                extras: JSON.stringify(extras)
+            });
+
+            // Using the modern Business Hub onboarding URL as recommended by the user to avoid 404/Page Not Found
+            const url = `https://business.facebook.com/messaging/whatsapp/onboard/?${params.toString()}`;
+
+            console.log("[WABA-ONBOARDING] Opening URL:", url);
+
+            // 2. Open login in a popup
+            const width = 600, height = 700;
+            const left = (window.innerWidth - width) / 2;
+            const top = (window.innerHeight - height) / 2;
+
+            const popup = window.open(
+                url,
+                'Meta_WhatsApp_Onboarding',
+                `width=${width},height=${height},top=${top},left=${left}`
+            );
+
+            // 3. Listen for the callback message
+            const handleMessage = async (event: MessageEvent) => {
+                if (event.origin !== window.origin) return;
+
+                if (event.data?.type === 'WABA_ONBOARDED') {
+                    window.removeEventListener('message', handleMessage);
+                    if (popup) popup.close();
+
+                    if (event.data.success) {
+                        alert("WhatsApp Account Connected!");
+                        fetchStatus();
+                    } else {
+                        alert(event.data.error || "Connection failed");
+                    }
+                }
+            };
+
+            window.addEventListener('message', handleMessage);
+
+        } catch (e) {
+            console.error(e);
+            alert("Failed to launch onboarding.");
+        }
     };
 
     if (status === 'LOADING') {
@@ -463,6 +518,44 @@ export default function WhatsAppSettingsPage() {
                                                 value={editForm.phone_number_id}
                                                 onChange={(e) => setEditForm({ ...editForm, phone_number_id: e.target.value })}
                                                 className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-[12px] font-bold focus:ring-4 focus:ring-green-50 outline-none transition-all font-mono"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Compliance Section */}
+                                    <div className="pt-6 border-t border-slate-50 space-y-4">
+                                        <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                                            <Shield size={14} className="text-[#27954D]" /> Opt-out Compliance
+                                        </h3>
+                                        
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Stop Keywords (Comma separated)</label>
+                                            <input
+                                                value={editForm.opt_out_keywords}
+                                                onChange={(e) => setEditForm({ ...editForm, opt_out_keywords: e.target.value })}
+                                                className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-bold focus:ring-4 focus:ring-green-50 outline-none transition-all"
+                                                placeholder="STOP, CANCEL, UNSUBSCRIBE"
+                                            />
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Opt-out Helpful Hint</label>
+                                            <input
+                                                value={editForm.opt_out_message}
+                                                onChange={(e) => setEditForm({ ...editForm, opt_out_message: e.target.value })}
+                                                className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-bold focus:ring-4 focus:ring-green-50 outline-none transition-all"
+                                                placeholder="e.g. Type STOP to unsubscribe"
+                                            />
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Unsubscribe Confirmation Message</label>
+                                            <textarea
+                                                value={editForm.opt_out_reply}
+                                                onChange={(e) => setEditForm({ ...editForm, opt_out_reply: e.target.value })}
+                                                rows={2}
+                                                className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-bold focus:ring-4 focus:ring-green-50 outline-none transition-all resize-none"
+                                                placeholder="e.g. You have been unsubscribed."
                                             />
                                         </div>
                                     </div>

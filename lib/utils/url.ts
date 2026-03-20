@@ -35,19 +35,20 @@ export function getAbsoluteMediaUrl(url: string | null | undefined, request?: Re
         return absolute;
     }
 
-    // fallback to request headers if available (only in edge/node runtime with request object)
+    // 3. Fallback to request-based discovery (Most accurate for dynamic domains)
     if (request) {
         const protocol = request.headers.get("x-forwarded-proto") || "https";
-        const host = request.headers.get("host");
-        if (host) {
+        const host = request.headers.get("x-forwarded-host") || request.headers.get("host");
+        if (host && !host.includes("localhost") && !host.includes("127.0.0.1")) {
             const absolute = `${protocol}://${host}${url.startsWith("/") ? url : "/" + url}`;
-            console.log(`[URL_RESOLVE] Request-based: ${url} -> ${absolute}`);
+            console.log(`[URL_RESOLVE] Dynamic-Request: ${url} -> ${absolute}`);
             return absolute;
         }
     }
 
-    // Final Hardcoded Fallback for Production
-    const fallback = `https://grafty.pro${url.startsWith("/") ? url : "/" + url}`;
-    console.log(`[URL_RESOLVE] Fallback-based: ${url} -> ${fallback}`);
+    // 4. Final Hardcoded Fallback for Production
+    const finalBase = cleanBase || "https://grafty.pro";
+    const fallback = `${finalBase}${url.startsWith("/") ? url : "/" + url}`;
+    console.log(`[URL_RESOLVE] Final-Fallback: ${url} -> ${fallback}`);
     return fallback;
 }

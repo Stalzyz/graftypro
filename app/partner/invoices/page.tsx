@@ -14,6 +14,8 @@ import {
     Shield,
     Loader2
 } from 'lucide-react';
+import { safeToLocaleString, formatCurrency, ensureNumber } from '@/lib/utils/number-format';
+
 
 export default function InvoicesPage() {
     const [invoices, setInvoices] = useState<any[]>([]);
@@ -107,7 +109,8 @@ export default function InvoicesPage() {
                                         </div>
                                     </td>
                                     <td className="px-8 py-6">
-                                        <div className="text-lg font-black tracking-tight text-slate-900">₹{Number(invoice.total_amount).toLocaleString()}</div>
+                                        <div className="text-lg font-black tracking-tight text-slate-900">{formatCurrency(invoice.total_amount)}</div>
+
                                         <div className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-0.5 italic">INC. GST</div>
                                     </td>
                                     <td className="px-8 py-6">

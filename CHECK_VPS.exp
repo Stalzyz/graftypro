@@ -1,0 +1,24 @@
+#!/usr/bin/expect -f
+
+set timeout 60
+set host "72.61.231.187"
+set password "Photoshop09@"
+
+puts "\n🔍 Checking VPS state..."
+spawn ssh -o StrictHostKeyChecking=no root@$host "
+echo '=== DOCKER CONTAINERS ===' &&
+docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}' &&
+echo '' &&
+echo '=== NGINX SITES ===' &&
+ls /etc/nginx/sites-enabled/ 2>/dev/null || echo 'No sites-enabled dir' &&
+echo '' &&
+echo '=== NGINX CONFIG (grafty) ===' &&
+cat /etc/nginx/sites-enabled/grafty.pro 2>/dev/null || cat /etc/nginx/sites-enabled/default 2>/dev/null | head -50 &&
+echo '' &&
+echo '=== PORT 3001 CHECK ===' &&
+curl -s 'http://localhost:3001/api/auth/debug-login' | python3 -c 'import sys,json; d=json.load(sys.stdin); print(d[\"timestamp\"], d[\"checks\"].get(\"DATABASE_CONNECTION\",\"?\"))'
+"
+expect {
+    "password:" { send "$password\r"; exp_continue }
+    eof
+}

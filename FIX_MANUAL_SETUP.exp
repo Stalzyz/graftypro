@@ -1,0 +1,58 @@
+#!/usr/bin/expect -f
+# ============================================================
+# 🛠️ FINAL FIX: MANUAL SETUP & BILLING SCHEMA
+# ============================================================
+
+set VPS_PASS "Photoshop09@"
+set VPS_HOST "root@72.61.231.187"
+set REMOTE_PATH "/root/wabot_bsp"
+set LOCAL_PATH "/Users/stalinkumar/Downloads/Wabot_BSP"
+set timeout 600
+
+# ─── STEP 1: Sync all changes ────────────────────────────────
+puts "\n📡 Syncing latest code and schema..."
+
+spawn rsync -avz --no-perms --no-owner --no-group \
+    --exclude "node_modules" \
+    --exclude ".next" \
+    --exclude ".git" \
+    --exclude ".DS_Store" \
+    --exclude "public/uploads" \
+    -e "ssh -o StrictHostKeyChecking=no" \
+    "$LOCAL_PATH/" $VPS_HOST:$REMOTE_PATH/
+
+expect {
+    "assword:" {
+        send "$VPS_PASS\r"
+        exp_continue
+    }
+    eof { puts "✅ Sync complete." }
+}
+
+# ─── STEP 2: Database & Build ────────────────────────────────
+puts "\n🏗️ Updating Database Schema & Building..."
+
+# We use 'db push' to ensure the 'billing_model' column is added immediately
+spawn ssh -o StrictHostKeyChecking=no $VPS_HOST \
+"cd $REMOTE_PATH && \
+echo '📊 Updating Database Schema (db push)...' && \
+docker compose -f docker-compose.prod.yml run --rm web npx prisma db push --schema=./prisma/schema.prisma --accept-data-loss && \
+echo '🏗️ Regenerating Prisma Client...' && \
+docker compose -f docker-compose.prod.yml run --rm web npx prisma generate --schema=./prisma/schema.prisma && \
+echo '🚀 Rebuilding & Restarting...' && \
+docker compose -f docker-compose.prod.yml up -d --build && \
+echo '✅ PROCESS COMPLETE'"
+
+expect {
+    "assword:" {
+        send "$VPS_PASS\r"
+        exp_continue
+    }
+    "PROCESS COMPLETE" {
+        puts "\n🎉 SUCCESS! Manual setup and billing system fixed."
+        exp_continue
+    }
+    eof {
+        puts "\n✅ Done."
+    }
+}

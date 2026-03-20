@@ -56,7 +56,7 @@ export class HealthMonitorService {
             // Test 1: Validate Token & Reachability via simple API request
             try {
                 const res = await axios.get(
-                    `https://graph.facebook.com/v18.0/${account.phone_number_id}`,
+                    `https://graph.facebook.com/v20.0/${account.phone_number_id}`,
                     { headers: { "Authorization": `Bearer ${token}` } }
                 );
 
@@ -124,7 +124,7 @@ export class HealthMonitorService {
 
                 // Alert Vendor if Critical (If mailer is set up, call it here)
                 if (newHealthStatus === "CRITICAL") {
-                    this.alertVendor(account.workspace.email || "Vendor", errorMsg);
+                    this.alertVendor(account.workspace.billing_email || "Vendor", errorMsg);
                 }
             }
 

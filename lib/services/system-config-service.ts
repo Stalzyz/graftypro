@@ -24,6 +24,14 @@ export class SystemConfigService {
         const nonUpdatableFields = ['id', 'created_at', 'updated_at', 'error'];
         nonUpdatableFields.forEach(field => delete encryptedData[field]);
 
+        // Auto-trim Meta fields to prevent invisible character errors
+        const metaFields = ['meta_app_id', 'meta_config_id', 'meta_business_id', 'meta_waba_id', 'meta_phone_id', 'meta_onboarding_mode'];
+        metaFields.forEach(field => {
+            if (typeof encryptedData[field] === 'string') {
+                encryptedData[field] = encryptedData[field].trim();
+            }
+        });
+
         if (data.meta_app_secret) {
             encryptedData.meta_app_secret_enc = encrypt(data.meta_app_secret);
             delete encryptedData.meta_app_secret;
@@ -90,13 +98,20 @@ export class SystemConfigService {
             secondary_color: config.secondary_color,
             theme_mode: config.theme_mode,
             landing_page_config: config.landing_page_config,
+            meta_title: config.meta_title,
+            meta_description: config.meta_description,
+            meta_og_image: config.meta_og_image,
+            sitemap_url: config.sitemap_url,
             social_links: config.social_links,
             features: config.features,
             support_email: config.support_email,
             support_whatsapp: config.support_whatsapp,
+            fab_whatsapp_number: config.fab_whatsapp_number,
             meta_phone_id: config.meta_phone_id,
             meta_app_id: config.meta_app_id,
             meta_config_id: config.meta_config_id,
+            meta_business_id: config.meta_business_id,
+            meta_onboarding_mode: config.meta_onboarding_mode,
             google_client_id: config.google_client_id,
             facebook_client_id: config.facebook_client_id,
             pusher_app_id: config.pusher_app_id,

@@ -16,7 +16,12 @@ import {
     Zap,
     GraduationCap,
     Coins,
-    Activity
+    Activity,
+    LayoutGrid,
+    MessageCircle,
+    MonitorPlay,
+    Store,
+    Gift
 } from "lucide-react";
 import { useBranding } from "../../hooks/use-branding";
 import { BrandProvider } from "../../components/branding/BrandProvider";
@@ -24,6 +29,8 @@ import { DynamicLogo } from "../../components/branding/DynamicLogo";
 import { SetPasswordPrompt } from "../../components/auth/SetPasswordPrompt";
 import { SmartPartnerLink } from "../../components/landing-new/SmartPartnerLink";
 import { TrialBanner, TrialExpiredGate } from "../../components/trial/TrialGate";
+import { NotificationBell } from "../../components/crm/NotificationBell";
+import { ResellerAnnouncement } from "../../components/branding/ResellerAnnouncement";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
     const { branding } = useBranding();
@@ -31,6 +38,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
     return (
         <BrandProvider colors={branding ? { primary: branding.primary_color || "#27954D", secondary: branding.secondary_color || "#042F94" } : undefined}>
+            <ResellerAnnouncement banner={branding?.broadcast?.banner} link={branding?.broadcast?.link} />
             <div className="min-h-screen bg-slate-50 flex">
                 {/* Sidebar */}
                 <aside className="w-[280px] bg-white border-r border-slate-100 hidden lg:flex flex-col fixed h-screen z-50 overflow-hidden">
@@ -46,22 +54,23 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
                     <nav className="flex-1 px-4 py-8 space-y-1.5 overflow-y-auto custom-scrollbar">
                         <NavItem href="/dashboard" icon={<LayoutDashboard size={20} strokeWidth={1.5} />} label="Overview" pathname={pathname} />
-                        <NavItem href="/dashboard/crm" icon={<Users size={20} strokeWidth={1.5} />} label="Universal CRM" pathname={pathname} />
-                        <NavItem href="/dashboard/chat" icon={<MessageSquare size={20} strokeWidth={1.5} />} label="Live Chat" pathname={pathname} />
-                        <NavItem href="/dashboard/contacts" icon={<Users size={20} strokeWidth={1.5} />} label="Contacts" pathname={pathname} />
+                        <NavItem icon={<Zap size={20} />} label="Quick Replies" href="/dashboard/responders" pathname={pathname} />
+                        <NavItem icon={<LayoutGrid size={20} />} label="CRM" href="/dashboard/crm" pathname={pathname} />
+                        <NavItem icon={<MessageCircle size={20} />} label="Live Chat" href="/dashboard/chat" pathname={pathname} />
+                        <NavItem icon={<Users size={20} />} label="Contacts" href="/dashboard/contacts" pathname={pathname} />
 
                         <div className="pt-8 pb-3 px-6">
                             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] block">Automation</span>
                         </div>
                         {branding?.features?.flows !== false && <NavItem href="/dashboard/flows" icon={<GitBranch size={20} strokeWidth={1.5} />} label="Flow Builder" pathname={pathname} />}
                         {branding?.features?.drips !== false && <NavItem href="/dashboard/drips" icon={<Clock size={20} strokeWidth={1.5} />} label="Drip Sequences" pathname={pathname} />}
-                        <NavItem href="/dashboard/responders" icon={<Zap size={20} strokeWidth={1.5} />} label="Quick Replies" pathname={pathname} />
 
                         <div className="pt-8 pb-3 px-6">
                             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] block">Monetization</span>
                         </div>
-                        {branding?.features?.edu && <NavItem href="/dashboard/education" icon={<GraduationCap size={20} strokeWidth={1.5} />} label="Lead Engine" pathname={pathname} />}
-                        {branding?.features?.commerce !== false && <NavItem href="/dashboard/commerce" icon={<ShoppingBag size={20} strokeWidth={1.5} />} label="E-commerce" pathname={pathname} />}
+                        <NavItem icon={<MonitorPlay size={20} />} label="Academy CRM" href="/dashboard/education" pathname={pathname} />
+                        {branding?.features?.commerce !== false && <NavItem icon={<Store size={20} />} label="E-Commerce" href="/dashboard/commerce" pathname={pathname} />}
+                        <NavItem icon={<Gift size={20} />} label="Refer & Earn" href="/dashboard/referrals" pathname={pathname} />
 
                         <div className="pt-8 pb-3 px-6">
                             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] block">Campaigns & Analytics</span>
@@ -118,6 +127,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </div>
             <SetPasswordPrompt />
             <TrialExpiredGate />
+            <NotificationBell />
         </BrandProvider>
     );
 }

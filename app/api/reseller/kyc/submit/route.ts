@@ -1,7 +1,7 @@
 
 import { NextResponse } from "next/server";
-import { prisma } from "../../../../../lib/db";
-import { getResellerSession } from "../../../../../lib/reseller/auth-helper";
+import { prisma } from "@/lib/db";
+import { getResellerSession } from "@/lib/reseller/auth-helper";
 
 export async function POST(request: Request) {
     try {

@@ -7,6 +7,22 @@ export class EduService {
      * PHASE 1: Lead Capture & Auto-Automation Trigger
      */
     static async captureLead(workspaceId: string, data: any) {
+        // MONSTER GUARD: 5-minute De-duplication Cooldown
+        const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+        const existingLead = await prisma.eduLead.findFirst({
+            where: {
+                workspace_id: workspaceId,
+                whatsapp_number: data.whatsapp_number,
+                course_interested: data.course_interested,
+                created_at: { gte: fiveMinutesAgo }
+            }
+        });
+
+        if (existingLead) {
+            console.warn(`[EduService] Duplicate lead detected for ${data.whatsapp_number} within 5 mins. Skipping.`);
+            return existingLead;
+        }
+
         const lead = await prisma.eduLead.create({
             data: {
                 workspace_id: workspaceId,

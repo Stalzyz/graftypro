@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { prisma } from "../../../../lib/db";
-import { getResellerSession } from "../../../../lib/reseller/auth-helper";
+import { prisma } from "@/lib/db";
+import { getResellerSession } from "@/lib/reseller/auth-helper";
 
 export const dynamic = 'force-dynamic';
 
@@ -52,7 +52,8 @@ export async function PUT(req: Request) {
         const {
             brand_name, logo_url, favicon_url, primary_color, secondary_color,
             support_email, support_url,
-            custom_domain, smtp_config, domain_verified
+            custom_domain, smtp_config, domain_verified,
+            broadcast_banner, broadcast_link
         } = body;
 
         // Build update payload — only include fields that were sent
@@ -64,9 +65,56 @@ export async function PUT(req: Request) {
         if (secondary_color !== undefined) updateData.secondary_color = secondary_color;
         if (support_email !== undefined) updateData.support_email = support_email;
         if (support_url !== undefined) updateData.support_url = support_url;
+        if (broadcast_banner !== undefined) updateData.broadcast_banner = broadcast_banner;
+        if (broadcast_link !== undefined) updateData.broadcast_link = broadcast_link;
         if (custom_domain !== undefined) updateData.custom_domain = custom_domain || null;
-        if (smtp_config !== undefined) updateData.smtp_config = smtp_config;
-        if (domain_verified !== undefined) updateData.domain_verified = domain_verified;
+        if (smtp_config !== undefined) {
+            const config = { ...smtp_config };
+            if (config.pass) {
+                const { encrypt } = require("@/lib/security/encryption");
+                config.pass_enc = encrypt(config.pass);
+                delete config.pass;
+            }
+            updateData.smtp_config = config;
+        }
+        // --------------------------------------------------------
+        // DNS CROSS-CHECK (Security Hardening)
+        // --------------------------------------------------------
+        if (domain_verified === true) {
+            const currentReseller = await prisma.reseller.findUnique({
+                where: { id: session.userId },
+                select: { custom_domain: true }
+            });
+
+            const targetDomain = custom_domain || currentReseller?.custom_domain;
+            
+            if (!targetDomain) {
+                return NextResponse.json({ error: "No domain configured for verification." }, { status: 400 });
+            }
+
+            const { DnsService } = require("@/lib/reseller/dns-service");
+            const expectedTarget = "cname.grafty.pro"; // Standard Platform Target
+            
+            const dnsResult = await DnsService.verifyCname(targetDomain, expectedTarget);
+            
+            if (!dnsResult.success) {
+                console.warn(`[Security Alert] DNS verification failed for ${targetDomain}: ${dnsResult.error}`);
+                return NextResponse.json({ 
+                    error: "DNS Check Failed", 
+                    details: dnsResult.error,
+                    code: "DNS_MISMATCH"
+                }, { status: 422 });
+            }
+            
+            updateData.domain_verified = true;
+            updateData.domain_settings = {
+                verified_at: new Date(),
+                method: "CNAME",
+                target: expectedTarget
+            };
+        } else if (domain_verified === false) {
+            updateData.domain_verified = false;
+        }
 
         if (Object.keys(updateData).length === 0) {
             return NextResponse.json({ error: "No fields to update" }, { status: 400 });

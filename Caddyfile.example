@@ -1,0 +1,36 @@
+
+{
+    # On-Demand TLS allows Caddy to obtain certificates for domains dynamically.
+    # To prevent abuse, it calls the 'ask' endpoint to verify if the domain is ours.
+    on_demand_tls {
+        ask http://localhost:3001/api/internal/verify-domain
+        interval 2m
+        burst 5
+    }
+
+    # Administrative settings
+    email admin@grafty.pro
+}
+
+# Catch-all for any domain pointed to this server
+:443, :80 {
+    tls {
+        on_demand
+    }
+
+    # Proxy all traffic to the Next.js application
+    reverse_proxy localhost:3001 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+        
+        # Inject the original host so the app knows which brand to load
+        header_up x-request-host {host}
+    }
+
+    # Logging
+    log {
+        output file /var/log/caddy/access.log
+    }
+}

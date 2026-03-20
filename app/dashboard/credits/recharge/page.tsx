@@ -17,11 +17,10 @@ import { useRouter } from 'next/navigation';
 
 // Preset amounts
 const PRESET_AMOUNTS = [
-    { value: 1000, label: '₹1,000', popular: false },
-    { value: 5000, label: '₹5,000', popular: true },
-    { value: 10000, label: '₹10,000', popular: true },
-    { value: 25000, label: '₹25,000', popular: false },
-    { value: 50000, label: '₹50,000', popular: false },
+    { value: 500, label: '₹500', popular: false, subtitle: 'Standard' },
+    { value: 2000, label: '₹2,000', popular: true, subtitle: '+10% Bonus' },
+    { value: 5000, label: '₹5,000', popular: true, subtitle: '+15% Bonus' },
+    { value: 10000, label: '₹10,000', popular: true, subtitle: '+20% Bonus' },
 ];
 
 // Indian states
@@ -311,6 +310,9 @@ export default function RechargePage() {
                                     )}
                                     <div className="text-lg font-semibold text-gray-900">
                                         {preset.label}
+                                    </div>
+                                    <div className={`text-[10px] font-bold ${preset.subtitle.includes('+') ? 'text-green-600' : 'text-gray-400'}`}>
+                                        {preset.subtitle}
                                     </div>
                                 </button>
                             ))}

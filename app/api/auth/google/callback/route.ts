@@ -102,20 +102,45 @@ export async function GET(request: Request) {
 
             const wsId = crypto.randomUUID();
             const usrId = crypto.randomUUID();
+            const walletId = crypto.randomUUID();
             const now = new Date();
+
+            // Check TrialLock first (Fail-Proof)
+            const lockRows: any[] = await prisma.$queryRaw`
+                SELECT trial_ends_at FROM trial_locks WHERE email = ${normalizedEmail} LIMIT 1
+            `;
+
+            let finalTrialEnd: Date;
+
+            if (lockRows.length > 0) {
+                finalTrialEnd = new Date(lockRows[0].trial_ends_at);
+            } else {
+                finalTrialEnd = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+                await prisma.$executeRaw`
+                    INSERT INTO trial_locks (id, email, first_used_at, trial_ends_at)
+                    VALUES (${crypto.randomUUID()}, ${normalizedEmail}, ${now}, ${finalTrialEnd})
+                `;
+            }
 
             // Create workspace
             await prisma.$executeRaw`
-                INSERT INTO workspaces (id, name, business_name, status, timezone, created_at, updated_at)
+                INSERT INTO workspaces (id, name, business_name, status, timezone, trial_ends_at, created_at, updated_at)
                 VALUES (
                     ${wsId},
                     ${firstName ? `${firstName}'s Workspace` : "My Workspace"},
                     ${firstName ? `${firstName}'s Business` : "My Business"},
                     'ACTIVE',
                     'Asia/Kolkata',
+                    ${finalTrialEnd},
                     ${now},
                     ${now}
                 )
+            `;
+
+            // Create VendorWallet for the new workspace
+            await prisma.$executeRaw`
+                INSERT INTO vendor_wallets (id, workspace_id, current_balance, total_purchased, total_used, created_at, updated_at)
+                VALUES (${walletId}, ${wsId}, 0.00, 0.00, 0.00, ${now}, ${now})
             `;
 
             // Create user with only the guaranteed columns (no google_id etc. that may not exist yet)

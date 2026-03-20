@@ -1,0 +1,26 @@
+#!/usr/bin/expect -f
+
+set timeout 300
+set host "72.61.231.187"
+set password "Photoshop09@"
+
+puts "\n📤 Uploading auth tracing snippet..."
+spawn rsync -avz \
+    -e "ssh -o StrictHostKeyChecking=no" \
+    /Users/stalinkumar/Downloads/Wabot_BSP/lib/auth.ts \
+    root@$host:/root/wabot_bsp/lib/auth.ts
+expect {
+    "password:" { send "$password\r"; exp_continue }
+    eof
+}
+
+puts "\n🔄 Rebuilding web container..."
+spawn ssh -o StrictHostKeyChecking=no root@$host \
+    "cd /root/wabot_bsp && docker compose -f docker-compose.prod.yml up -d --build web && echo TRACE_DEPLOYED"
+expect {
+    "password:" { send "$password\r"; exp_continue }
+    "TRACE_DEPLOYED" { puts "\n✅ Trace deployed successfully!" }
+    eof
+}
+
+puts "\nNow trigger the Unauthorized error again, then I will pull the logs."

@@ -44,3 +44,5 @@ const createQueue = (name: string) => {
 
 export const campaignQueue = createQueue("campaign-queue");
 export const automationQueue = createQueue("automation-queue");
+export const dripDispatchQueue = createQueue("drip-dispatch-queue");
+export const metaApiQueue = createQueue("meta-api-queue");

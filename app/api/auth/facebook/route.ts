@@ -20,7 +20,7 @@ export async function GET(request: Request) {
         const scope = "email,public_profile";
 
         // Use standard Facebook OAuth Dialog
-        const url = `https://www.facebook.com/v18.0/dialog/oauth?client_id=${FACEBOOK_CLIENT_ID}&redirect_uri=${cleanRedirectUri}&response_type=code&scope=${scope}`;
+        const url = `https://www.facebook.com/v20.0/dialog/oauth?client_id=${FACEBOOK_CLIENT_ID}&redirect_uri=${cleanRedirectUri}&response_type=code&scope=${scope}`;
 
         return NextResponse.redirect(url);
     } catch (error) {

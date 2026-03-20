@@ -41,7 +41,8 @@ export async function POST(req: Request) {
                 status: "ACTIVE",
                 kyc_status: "VERIFIED",
                 email_verified: true,
-                tier_id: body.tier_id
+                tier_id: body.tier_id,
+                role: body.role || "AFFILIATE"
             }
         });
 

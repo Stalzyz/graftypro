@@ -6,7 +6,7 @@ WORKDIR /app
 COPY . .
 RUN npm install
 ENV DATABASE_URL="postgresql://user:password@postgres:5432/grafty_bsp?schema=public"
-ENV NODE_OPTIONS="--max-old-space-size=2048"
+ENV NODE_OPTIONS="--max-old-space-size=3072"
 RUN npx prisma generate --schema=./prisma/schema.prisma
 RUN npm run build
 

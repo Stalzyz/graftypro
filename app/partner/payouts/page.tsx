@@ -6,18 +6,69 @@ import {
     ChevronRight, X, AlertCircle, Loader2, ArrowUpRight,
     Zap, DollarSign, Clock, CheckCircle2
 } from 'lucide-react';
+import { safeToLocaleString, formatCurrency, ensureNumber } from '@/lib/utils/number-format';
+
 
 export default function PayoutsPage() {
     const [stats, setStats] = useState<any>(null);
     const [payouts, setPayouts] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isBankModalOpen, setIsBankModalOpen] = useState(false);
+    const [profile, setProfile] = useState<any>(null);
+    const [loadingProfile, setLoadingProfile] = useState(true);
+    const [bankDetails, setBankDetails] = useState({ 
+        bank_account_holder: "", 
+        bank_account_number: "", 
+        bank_ifsc: "", 
+        bank_name: "" 
+    });
+    const [bankSaving, setBankSaving] = useState(false);
     const [request, setRequest] = useState({ amount: "", paymentMethod: "BANK_TRANSFER", paymentDetails: "" });
     const [submitting, setSubmitting] = useState(false);
 
     useEffect(() => {
         fetchData();
+        fetchProfile();
     }, []);
+
+    const fetchProfile = async () => {
+        try {
+            const res = await fetch("/api/reseller/profile");
+            const data = await res.json();
+            setProfile(data);
+            setBankDetails({
+                bank_account_holder: data.bank_account_holder || "",
+                bank_account_number: data.bank_account_number || "",
+                bank_ifsc: data.bank_ifsc || "",
+                bank_name: data.bank_name || ""
+            });
+            setLoadingProfile(false);
+        } catch (e) {
+            console.error(e);
+            setLoadingProfile(false);
+        }
+    };
+
+    const handleBankSubmit = async (e: any) => {
+        e.preventDefault();
+        setBankSaving(true);
+        try {
+            const res = await fetch("/api/reseller/profile", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(bankDetails)
+            });
+            if (res.ok) {
+                setIsBankModalOpen(false);
+                fetchProfile();
+            } else {
+                alert("Failed to update bank details");
+            }
+        } finally {
+            setBankSaving(false);
+        }
+    };
 
     const fetchData = async () => {
         try {
@@ -99,7 +150,8 @@ export default function PayoutsPage() {
                         <div>
                             <div className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-1 italic">Available Yield</div>
                             <div className="text-4xl font-black text-slate-900 italic tracking-tighter uppercase tabular-nums leading-none">
-                                ₹{stats?.wallet.balance.toLocaleString()}
+                                {formatCurrency(stats?.wallet.balance)}
+
                             </div>
                         </div>
                         <div className="flex items-center gap-2 text-[9px] font-black text-[#27954D] uppercase tracking-widest bg-emerald-50 px-3 py-1.5 rounded-full w-fit border border-emerald-100">
@@ -135,12 +187,74 @@ export default function PayoutsPage() {
                         <div>
                             <div className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-1 italic">Lifetime Harvest</div>
                             <div className="text-4xl font-black text-slate-900 italic tracking-tighter uppercase tabular-nums leading-none">
-                                ₹{(stats?.wallet.total_earned).toLocaleString()}
+                                {formatCurrency(stats?.wallet.total_earned)}
+
                             </div>
                         </div>
                         <div className="flex items-center gap-2 text-[9px] font-black text-slate-400 uppercase tracking-widest bg-slate-50 px-3 py-1.5 rounded-full w-fit border border-slate-100">
                             <DollarSign size={12} /> Cumulative Gain
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Bank details & Settlement Control */}
+            <div className="bg-slate-900 rounded-[3.5rem] p-12 text-white shadow-2xl relative overflow-hidden group">
+                <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/10 blur-[120px] rounded-full -mr-48 -mt-48 animate-pulse" />
+                <div className="relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+                    <div>
+                        <div className="flex items-center gap-2 text-blue-400 font-black text-[9px] uppercase tracking-[0.3em] mb-6 italic">
+                            <ShieldCheck size={16} /> Settlement Protocol
+                        </div>
+                        <h2 className="text-4xl font-black italic tracking-tighter mb-6 leading-none uppercase">
+                            Your Yield <br /> <span className="text-blue-400">Destination.</span>
+                        </h2>
+                        <p className="text-slate-400 font-medium text-lg leading-relaxed max-w-md">
+                            Ensure your liquidity endpoint is correctly configured. Automated payouts trigger high-speed IMPS/NEFT transfers.
+                        </p>
+                    </div>
+
+                    <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-[2.5rem] p-10 space-y-8">
+                        {loadingProfile ? (
+                            <div className="flex justify-center py-10"><Loader2 className="animate-spin text-blue-400" /></div>
+                        ) : (
+                            <>
+                                <div className="space-y-6">
+                                    <div className="flex justify-between items-center pb-6 border-b border-white/5">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center text-blue-400">
+                                                <CreditCard size={24} />
+                                            </div>
+                                            <div>
+                                                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">Settlement Account</p>
+                                                <p className="text-sm font-black italic tracking-tight">{profile?.bank_account_number || "NOT CONFIGURED"}</p>
+                                            </div>
+                                        </div>
+                                        {profile?.bank_account_number && <div className="bg-emerald-500/10 text-emerald-400 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border border-emerald-500/20 flex items-center gap-2">
+                                            <CheckCircle2 size={12} /> Verified
+                                        </div>}
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-8">
+                                        <div>
+                                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">Gate Code (IFSC)</p>
+                                            <p className="text-sm font-black italic tracking-tight uppercase tabular-nums">{profile?.bank_ifsc || "---"}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">Protocol Name</p>
+                                            <p className="text-sm font-black italic tracking-tight uppercase line-clamp-1">{profile?.bank_name || "---"}</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <button 
+                                    onClick={() => setIsBankModalOpen(true)}
+                                    className="w-full py-5 bg-blue-600 hover:bg-blue-500 text-white font-black text-[10px] uppercase tracking-[0.3em] rounded-2xl flex items-center justify-center gap-3 transition-all shadow-xl shadow-blue-600/20 active:scale-95 translate-y-2"
+                                >
+                                    Update Payment Node <ChevronRight size={18} />
+                                </button>
+                            </>
+                        )}
                     </div>
                 </div>
             </div>
@@ -187,7 +301,8 @@ export default function PayoutsPage() {
                                         <span className="text-[10px] font-black text-slate-400 font-mono tracking-tighter uppercase group-hover:text-slate-900 transition-colors">#{p.id.slice(-8)}</span>
                                     </td>
                                     <td className="px-10 py-7">
-                                        <span className="text-xl font-black text-slate-900 italic tracking-tighter tabular-nums leading-none">₹{Number(p.amount).toLocaleString()}</span>
+                                        <span className="text-xl font-black text-slate-900 italic tracking-tighter tabular-nums leading-none">{formatCurrency(p.amount)}</span>
+
                                     </td>
                                     <td className="px-10 py-7">
                                         <div className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full border text-[9px] font-black uppercase tracking-widest shadow-sm ${p.status === 'PAID' ? 'bg-emerald-50 text-[#27954D] border-emerald-100' :
@@ -248,7 +363,8 @@ export default function PayoutsPage() {
                                 </div>
                                 <div className="flex justify-between px-2">
                                     <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest">Available Pool</span>
-                                    <span className="text-[10px] font-black text-slate-900 italic tracking-tighter">₹{stats?.wallet.balance.toLocaleString()}</span>
+                                    <span className="text-[10px] font-black text-slate-900 italic tracking-tighter">{formatCurrency(stats?.wallet.balance)}</span>
+
                                 </div>
                             </div>
 
@@ -289,6 +405,71 @@ export default function PayoutsPage() {
                                 className="w-full py-6 bg-slate-900 text-white font-black text-[10px] uppercase tracking-[0.4em] rounded-[2rem] flex items-center justify-center gap-3 hover:bg-black transition-all shadow-2xl active:scale-[0.98] disabled:opacity-50"
                             >
                                 {submitting ? <Loader2 className="animate-spin" /> : <>Initiate Settle Artifact <ArrowUpRight size={20} /></>}
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            )}
+            {/* Bank Modal */}
+            {isBankModalOpen && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300">
+                    <div className="absolute inset-0" onClick={() => setIsBankModalOpen(false)}></div>
+                    <div className="bg-white border border-slate-200 w-full max-w-xl rounded-[3.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 relative z-10">
+                        <div className="px-10 py-8 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+                            <div>
+                                <h2 className="text-2xl font-black text-slate-900 tracking-tight italic uppercase leading-none mb-1">Payment Node</h2>
+                                <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest italic leading-none mt-1">Configure Settlement Endpoint</p>
+                            </div>
+                            <button onClick={() => setIsBankModalOpen(false)} className="w-10 h-10 flex items-center justify-center rounded-2xl bg-white border border-slate-100 hover:border-rose-200 hover:text-rose-500 transition-all text-slate-400 shadow-sm">
+                                <X size={20} />
+                            </button>
+                        </div>
+                        <form onSubmit={handleBankSubmit} className="p-10 space-y-6">
+                            <div className="space-y-2">
+                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Account Holder Name</label>
+                                <input 
+                                    required
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-6 py-4 text-sm font-bold outline-none focus:border-blue-600 transition-all text-slate-900 appearance-none"
+                                    value={bankDetails.bank_account_holder}
+                                    onChange={e => setBankDetails({...bankDetails, bank_account_holder: e.target.value})}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Account Number</label>
+                                <input 
+                                    required
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-6 py-4 text-sm font-bold outline-none focus:border-blue-600 transition-all text-slate-900"
+                                    value={bankDetails.bank_account_number}
+                                    placeholder={profile?.bank_account_number ? "********" : "Enter account number"}
+                                    onChange={e => setBankDetails({...bankDetails, bank_account_number: e.target.value})}
+                                />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Bank IFSC</label>
+                                    <input 
+                                        required
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-6 py-4 text-sm font-bold outline-none focus:border-blue-600 transition-all uppercase text-slate-900"
+                                        value={bankDetails.bank_ifsc}
+                                        onChange={e => setBankDetails({...bankDetails, bank_ifsc: e.target.value})}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Bank Name</label>
+                                    <input 
+                                        required
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-6 py-4 text-sm font-bold outline-none focus:border-blue-600 transition-all text-slate-900"
+                                        value={bankDetails.bank_name}
+                                        onChange={e => setBankDetails({...bankDetails, bank_name: e.target.value})}
+                                    />
+                                </div>
+                            </div>
+                            <button 
+                                disabled={bankSaving}
+                                type="submit" 
+                                className="w-full py-5 bg-slate-900 text-white font-black text-[10px] uppercase tracking-[0.3em] rounded-2xl flex items-center justify-center gap-3 mt-4 hover:bg-black transition-all"
+                            >
+                                {bankSaving ? <Loader2 className="animate-spin" /> : "Authorize Settlement Endpoint"}
                             </button>
                         </form>
                     </div>

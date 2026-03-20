@@ -1,0 +1,27 @@
+#!/usr/bin/expect -f
+
+set VPS_PASS "Photoshop09@"
+set VPS_HOST "root@72.61.231.187"
+set REMOTE_PATH "/root/wabot_bsp"
+set LOCAL_PATH "/Users/stalinkumar/Downloads/Wabot_BSP"
+set timeout 600
+
+# 1. Sync just the modified API file
+spawn rsync -avz --no-perms -e "ssh -o StrictHostKeyChecking=no" "$LOCAL_PATH/app/api/auth/login/route.ts" $VPS_HOST:$REMOTE_PATH/app/api/auth/login/route.ts
+expect {
+    "assword:" {
+        send "$VPS_PASS\r"
+        exp_continue
+    }
+    eof { }
+}
+
+# 2. Rebuild the Next.js container
+spawn ssh -o StrictHostKeyChecking=no $VPS_HOST "cd $REMOTE_PATH && docker compose -f docker-compose.prod.yml build web && docker compose -f docker-compose.prod.yml up -d web"
+expect {
+    "assword:" {
+        send "$VPS_PASS\r"
+        exp_continue
+    }
+    eof { }
+}

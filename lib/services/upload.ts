@@ -35,17 +35,38 @@ export class ImageUploadService {
 
     // Strict MIME-to-Extension Map (Security: Prevent extension spoofing)
     private static MIME_MAP: Record<string, string> = {
+        // Images
         "image/jpeg": ".jpg",
         "image/png": ".png",
         "image/webp": ".webp",
         "image/gif": ".gif",
-        "application/pdf": ".pdf",
-        "text/csv": ".csv",
         "image/svg+xml": ".svg",
-        "application/json": ".json",
         "image/avif": ".avif",
         "image/heif": ".heic",
-        "image/heic": ".heic"
+        "image/heic": ".heic",
+        // Video
+        "video/mp4": ".mp4",
+        "video/3gp": ".3gp",
+        "video/quicktime": ".mov",
+        // Audio
+        "audio/mpeg": ".mp3",
+        "audio/mp3": ".mp3",
+        "audio/ogg": ".ogg",
+        "audio/wav": ".wav",
+        "audio/webm": ".webm",
+        "audio/aac": ".aac",
+        "audio/mp4": ".m4a",
+        "audio/amr": ".amr",
+        // Documents
+        "application/pdf": ".pdf",
+        "application/msword": ".doc",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document": ".docx",
+        "application/vnd.ms-excel": ".xls",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": ".xlsx",
+        "application/zip": ".zip",
+        "text/plain": ".txt",
+        "text/csv": ".csv",
+        "application/json": ".json"
     };
 
     /**
@@ -97,8 +118,8 @@ export class ImageUploadService {
             console.log(`[NUCLEAR UPLOAD] Writing file: ${uniqueFilename}`);
             await writeFile(filepath, buffer);
 
-            // 8. Return URL (Ensure standard web paths)
-            const webUrl = `/uploads/vendor/${tenantId.replace(/[^a-z0-9-]/gi, '_').toLowerCase()}/${safeMod}/${uniqueFilename}`;
+            // 8. Return NUCLEAR DYNAMIC ROUTE URL (bypasses Next.js static cache)
+            const webUrl = `/api/media/local/vendor/${tenantId.replace(/[^a-z0-9-]/gi, '_').toLowerCase()}/${safeMod}/${uniqueFilename}`;
             console.log(`[NUCLEAR UPLOAD] Success -> ${webUrl}`);
 
             return {

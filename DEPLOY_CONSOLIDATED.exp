@@ -1,0 +1,32 @@
+#!/usr/bin/expect -f
+
+set timeout -1
+set password "stalin"
+set vps_ip "103.111.97.227"
+set remote_path "/app"
+
+puts "🚀 Starting CONSOLIDATED NUCLEAR DEPLOYMENT..."
+
+# 1. Upload the tarball
+puts "📤 Uploading package..."
+spawn scp nuclear_fix.tar.gz root@$vps_ip:$remote_path/
+expect {
+    "password:" { send "$password\r" }
+    "(yes/no)?" { send "yes\r"; exp_continue }
+}
+expect eof
+
+# 2. Extract and Build
+puts "🏗️ Extracting and building containers..."
+spawn ssh root@$vps_ip "cd $remote_path && tar -xzf nuclear_fix.tar.gz && docker compose up -d --build web && rm nuclear_fix.tar.gz"
+expect {
+    "password:" { send "$password\r" }
+    "(yes/no)?" { send "yes\r"; exp_continue }
+}
+expect {
+    "Successfully built" { puts "✅ Build successful!" }
+    "done" { puts "✅ Container up!" }
+}
+expect eof
+
+puts "✅ NUCLEAR DEPLOYMENT COMPLETE"

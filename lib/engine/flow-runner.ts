@@ -11,6 +11,7 @@
  * 
  * It does NOT do any business logic — that lives in the sub-engines.
  */
+import { AIService } from '../ai/openai';
 
 import { prisma } from '../db';
 import { decrypt } from '../security/encryption';
@@ -57,7 +58,14 @@ export class FlowRunner {
             // ----------------------------------------------------------------
             const contact = await prisma.contact.findUnique({
                 where: { id: contactId },
-                include: { workspace: { include: { waba: true } } },
+                include: {
+                    workspace: {
+                        include: {
+                            waba: true,
+                            plan_details: true
+                        }
+                    }
+                },
             });
 
             if (!contact || !contact.workspace?.waba) {
@@ -121,9 +129,50 @@ export class FlowRunner {
             }
 
             // ----------------------------------------------------------------
-            // STEP 6: No session, no trigger — silently ignore
+            // STEP 6: No session, no trigger — check AI Fallback
             // ----------------------------------------------------------------
-            console.log(`[FlowRunner] 💤 No session and no trigger for "${normalizedMsg.value}" — ignoring`);
+            const plan = contact.workspace?.plan_details;
+            if (plan?.ai_fallback_enabled) {
+                console.log(`[FlowRunner] 🤖 AI Fallback active for ${contact.phone}`);
+
+                // Load last 5 messages for context
+                const history = await prisma.message.findMany({
+                    where: { contact_id: contactId, workspace_id: workspaceId },
+                    orderBy: { created_at: 'desc' },
+                    take: 5,
+                });
+
+                const messages = history.reverse().map(m => ({
+                    role: (m.direction === 'INBOUND' ? 'user' : 'assistant') as 'user' | 'assistant',
+                    content: (m.content as any)?.body || ''
+                }));
+
+                // Add current message if not in history yet
+                if (messages.length === 0 || messages[messages.length - 1].content !== normalizedMsg.value) {
+                    messages.push({ role: 'user', content: normalizedMsg.value });
+                }
+
+                const suggestions = await AIService.suggestReply(messages);
+                if (suggestions && suggestions.length > 0) {
+                    const aiReply = suggestions[0];
+                    const p = buildTextPayload(contact.phone, aiReply);
+                    if (p) {
+                        await sendMessageDirect({
+                            phoneNumberId: waba.phone_number_id,
+                            accessToken: waba.access_token,
+                            payload: p,
+                            sessionId: 'ai-fallback',
+                            nodeId: 'ai-fallback',
+                            workspaceId,
+                            contactId,
+                        });
+                        await saveOutboundText(waba, contact, aiReply);
+                    }
+                    return;
+                }
+            }
+
+            console.log(`[FlowRunner] 💤 No session, no trigger, and no AI fallback for "${normalizedMsg.value}" — ignoring`);
 
         } catch (error: any) {
             console.error(`[FlowRunner] ❌ Unhandled error:`, error?.message || error);

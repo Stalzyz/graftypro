@@ -1,5 +1,10 @@
 import { prisma } from "../db";
 import crypto from "crypto";
+import { ResellerFinanceEngine } from "./finance-engine";
+import { FraudDetectionEngine } from "./fraud";
+import { EmailService } from "../email/service";
+import { ResellerPayoutService } from "./payout-service";
+import { FINANCIAL_RULES } from "./config";
 
 export class ResellerService {
     /**
@@ -30,7 +35,6 @@ export class ResellerService {
      * Supports both direct referral codes and coupon-based attribution.
      */
     static async mapVendorToReseller(workspaceId: string, referralCode?: string, couponCode?: string) {
-        const { FraudDetectionEngine } = require("./fraud");
 
         return await prisma.$transaction(async (tx) => {
             let resellerId: string | null = null;
@@ -77,7 +81,7 @@ export class ResellerService {
 
             // 3. Validate Mapping Lock (Inside TX is better but already has upsert below)
             // Still calling it to ensure business rules
-            await FraudDetectionEngine.validateMappingLock(workspaceId, referralCode || couponCode || "");
+            await FraudDetectionEngine.validateMappingLock(workspaceId, resellerId!);
 
             // A. Create permanent mapping record
             const map = await tx.resellerVendorMap.upsert({
@@ -188,7 +192,6 @@ export class ResellerService {
      * Implements Multi-Step Split: Base Cost -> Profit Share -> Margin Control
      */
     static async processPaymentCommission(tx: any, workspaceId: string, amount: number, transactionId: string) {
-        const { ResellerFinanceEngine } = require("./finance-engine");
 
         // 1. Load System & Workspace Configuration
         const [workspace, config] = await Promise.all([
@@ -210,7 +213,7 @@ export class ResellerService {
         const reseller = workspace.reseller;
 
         // 2. Define Economics (Dynamic from config or plan)
-        const basePlatformCost = Number(workspace.plan_details?.min_reseller_price || config?.rev_base_platform_cost || 2000);
+        const basePlatformCost = Number(workspace.plan_details?.min_reseller_monthly_price ?? config?.rev_base_platform_cost ?? 2000);
         const paidAmount = Number(amount);
 
         // 3. Split Calculation (Margin Protection)
@@ -223,25 +226,16 @@ export class ResellerService {
         }
 
         // 4. ATOMIC LEDGER DISTRIBUTION
-        // We log both parts for full audit transparency
+        // We record the Partner Profit Share as the net earning.
+        // The Base Cost is an implicit platform cut and doesn't need to be deducted from the partner's wallet
+        // since the partner never received the gross amount in their wallet to begin with.
 
-        // 4a. Base Cost Split (Platform Revenue)
-        await ResellerFinanceEngine.recordTransaction(tx, {
-            resellerId: reseller.id,
-            workspaceId: workspaceId,
-            amount: -basePlatformCost, // Shown as cost in partner ledger context if needed, or separate entry
-            type: "BASE_COST_SPLIT",
-            description: `Base Platform Cost: Transaction ${transactionId}`,
-            referenceId: transactionId
-        });
-
-        // 4b. Partner Profit Share (Liquid Credit)
         await ResellerFinanceEngine.recordTransaction(tx, {
             resellerId: reseller.id,
             workspaceId: workspaceId,
             amount: partnerProfit,
             type: "PROFIT_SHARE",
-            description: `Partner Profit Share: Transaction ${transactionId}`,
+            description: `Partner Profit Share: Transaction ${transactionId} (Base: ₹${basePlatformCost})`,
             referenceId: transactionId
         });
 
@@ -279,7 +273,6 @@ export class ResellerService {
      * Automatically calculates and credits bonuses based on monthly performance thresholds.
      */
     static async calculateMonthEndBonuses(month: number, year: number) {
-        const { ResellerFinanceEngine } = require("./finance-engine");
 
         return await prisma.$transaction(async (tx) => {
             // 1. Load System Thresholds
@@ -299,15 +292,26 @@ export class ResellerService {
                 const netProfit = Number(stat.net_profit);
 
                 let bonusPct = 0;
-                let tierName = "None";
+                let tierName = "Base";
 
-                // Threshold Check (Highest tier first)
-                if (totalRevenue >= Number(config.rev_tier_threshold_2)) {
-                    bonusPct = Number(config.rev_tier_bonus_2);
-                    tierName = "Empire";
-                } else if (totalRevenue >= Number(config.rev_tier_threshold_1)) {
-                    bonusPct = Number(config.rev_tier_bonus_1);
-                    tierName = "Growth";
+                // 1. Check Partner Specific Tier (Priority)
+                const resellerTier = stat.reseller.tier;
+                if (resellerTier) {
+                    if (totalRevenue >= Number(resellerTier.monthly_revenue_threshold)) {
+                        bonusPct = Number(resellerTier.bonus_percentage);
+                        tierName = resellerTier.name;
+                    }
+                }
+
+                // 2. Fallback to Global Thresholds if no tier bonus hit
+                if (bonusPct === 0) {
+                    if (totalRevenue >= Number(config.rev_tier_threshold_2)) {
+                        bonusPct = Number(config.rev_tier_bonus_2);
+                        tierName = "Empire (Global)";
+                    } else if (totalRevenue >= Number(config.rev_tier_threshold_1)) {
+                        bonusPct = Number(config.rev_tier_bonus_1);
+                        tierName = "Growth (Global)";
+                    }
                 }
 
                 if (bonusPct > 0) {
@@ -351,7 +355,6 @@ export class ResellerService {
      * Reverses previous commission when a vendor's payment is refunded.
      */
     static async reversePaymentCommission(tx: any, originalTransactionId: string) {
-        const { ResellerFinanceEngine } = require("./finance-engine");
 
         // 1. Find previous entries (Both Profit Share and Base Cost Split if we want to reverse everything)
         const entries = await tx.resellerLedger.findMany({
@@ -394,7 +397,6 @@ export class ResellerService {
      * Splits usage charges based on Meta Cost + Platform Margin + WL Margin
      */
     static async processUsageCommission(tx: any, workspaceId: string, totalDeducted: number, messageId: string) {
-        const { ResellerFinanceEngine } = require("./finance-engine");
 
         // 1. Fetch Economics
         const [workspace, config] = await Promise.all([
@@ -434,12 +436,33 @@ export class ResellerService {
         }
 
         // Safety: Ensure we don't pay out more than the amount (impossible via math above, but good practice)
-        if (wlMargin >= totalDeducted) {
-            console.error(`[Revenue Engine] Critical: Calculated margin ${wlMargin} >= total ${totalDeducted}. Capping.`);
-            wlMargin = totalDeducted * 0.5; // Emergency cap
+        if (wlMargin >= totalDeducted || wlMargin < 0) {
+            console.error(`[Revenue Engine] Critical: Calculated margin ${wlMargin} invalid for total ${totalDeducted}. Capping.`);
+            wlMargin = Math.max(0, totalDeducted * 0.4); // Stricter cap (40% max margin payout)
+            
+            // Log security event for Super Admin Audit
+            try {
+                // @ts-ignore
+                await tx.resellerRiskLog.create({
+                    data: {
+                        reseller_id: reseller.id,
+                        signal_type: "INVALID_MARGIN_CALCULATION",
+                        risk_impact: 40,
+                        details: {
+                            message_id: messageId,
+                            total_deducted: totalDeducted,
+                            raw_margin: wlMargin,
+                            markup_applied: reseller.markup_percentage,
+                            capped_to: wlMargin
+                        }
+                    }
+                });
+            } catch(e) {
+                console.error("Failed to log margin risk signal:", e);
+            }
         }
 
-        if (wlMargin <= 0) return;
+        if (wlMargin < 0.01) return; // Skip sub-standard ledger noise
 
         // 3. Update Partner Balance
         await ResellerFinanceEngine.recordTransaction(tx, {
@@ -491,7 +514,6 @@ export class ResellerService {
             if (reseller.status !== "ACTIVE") throw new Error("Account is not active");
 
             // --- PHASE 7: FRAUD GUARD ---
-            const { FraudDetectionEngine } = require("./fraud");
             await FraudDetectionEngine.validatePayoutEligibility(resellerId);
 
             // 1. Atomic Balance & Pending Check
@@ -514,13 +536,18 @@ export class ResellerService {
                 throw new Error(`Minimum payout amount is ${FINANCIAL_RULES.MINIMUM_PAYOUT_AMOUNT}`);
             }
 
-            // 3. Create Request
+            // 3. Risk Assessment
+            const riskAssessment = await FraudDetectionEngine.calculatePayoutRisk(resellerId, amount);
+
+            // 4. Create Request
             const request = await tx.resellerPayoutRequest.create({
                 data: {
                     reseller_id: resellerId,
                     amount: amount,
                     status: "PENDING",
-                    payment_details: paymentDetails
+                    payment_details: paymentDetails,
+                    risk_score: riskAssessment.score,
+                    risk_flags: riskAssessment.flags
                 }
             });
 
@@ -533,7 +560,9 @@ export class ResellerService {
      * PHASE 6: ADMIN PAYOUT APPROVAL
      * Final step: Marks as PAID, debits wallet, and logs to ledger.
      */
-    static async processAdminPayoutAction(requestId: string, action: 'APPROVE' | 'REJECT', adminNotes?: string) {
+    static async processAdminPayoutAction(requestId: string, action: 'APPROVE' | 'REJECT', adminNotes?: string, mode: 'MANUAL' | 'AUTOMATED' = 'AUTOMATED') {
+        const adminId = "system"; // This should be passed from the route, but let's default for safety
+
         return await prisma.$transaction(async (tx) => {
             const request = await tx.resellerPayoutRequest.findUnique({
                 where: { id: requestId },
@@ -545,27 +574,51 @@ export class ResellerService {
             }
 
             if (action === 'REJECT') {
-                return await tx.resellerPayoutRequest.update({
+                const updatedRequest = await tx.resellerPayoutRequest.update({
                     where: { id: requestId },
                     data: { status: "REJECTED", admin_notes: adminNotes }
                 });
+
+                // Notify Reseller of Rejection
+                await EmailService.sendResellerPayoutEmail(request.reseller_id, {
+                    amount: Number(request.amount),
+                    status: "REJECTED",
+                    reason: adminNotes || "Request did not meet settlement criteria."
+                });
+
+                return updatedRequest;
             }
 
             // --- APPROVE & PAY ---
+            if (mode === 'AUTOMATED' && process.env.RAZORPAYX_ACCOUNT_NUMBER) {
+                // This will handle ledger, debit, status and notification internally
+                return await ResellerPayoutService.executePayout(requestId, adminId, tx);
+            }
+
+            // --- MANUAL FALLBACK ---
             const amount = Number(request.amount);
-            const reseller = request.reseller;
+            const resellerId = request.reseller_id;
+
+            // 0. Concurrency Protection & Current Balance Sync
+            const resellers: any[] = await tx.$queryRaw`SELECT wallet_balance FROM resellers WHERE id = ${resellerId} FOR UPDATE`;
+            const reseller = resellers[0];
+
+            if (!reseller) throw new Error("Reseller not found");
 
             if (Number(reseller.wallet_balance) < amount) {
                 throw new Error("Reseller balance insufficient at time of approval");
             }
 
-            // 1. Debit Wallet
-            const updatedReseller = await tx.reseller.update({
-                where: { id: reseller.id },
-                data: {
-                    wallet_balance: { decrement: amount }
-                }
+            // 1. Debit Wallet & Log to Ledger (using Unified Engine)
+            const ledgerEntry = await ResellerFinanceEngine.recordTransaction(tx, {
+                resellerId: resellerId,
+                amount: -amount,
+                type: "PAYOUT",
+                description: `Payout Disbursed: Request ${requestId}`,
+                referenceId: requestId
             });
+
+            if (!ledgerEntry) throw new Error("Failed to record payout transaction");
 
             // 2. Update Request Status
             await tx.resellerPayoutRequest.update({
@@ -577,19 +630,13 @@ export class ResellerService {
                 }
             });
 
-            // 3. Create Ledger Entry (Safety & Audit)
-            await tx.resellerLedger.create({
-                data: {
-                    reseller_id: reseller.id,
-                    amount: -amount, // Negative for payout
-                    type: "PAYOUT",
-                    description: `Payout Success: ${requestId}`,
-                    reference_id: requestId,
-                    balance_after: Number(updatedReseller.wallet_balance)
-                }
+            // Notify Reseller of Manual Approval (Fallback)
+            await EmailService.sendResellerPayoutEmail(resellerId, {
+                amount: amount,
+                status: "PAID"
             });
 
-            return { success: true, balance: updatedReseller.wallet_balance };
+            return { success: true, balance: ledgerEntry.balance_after };
         });
     }
 }

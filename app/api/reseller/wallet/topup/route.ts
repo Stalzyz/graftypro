@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { prisma } from "../../../../../lib/db";
-import { getResellerSession } from "../../../../../lib/reseller/auth-helper";
+import { prisma } from "@/lib/db";
+import { getResellerSession } from "@/lib/reseller/auth-helper";
 import Razorpay from "razorpay";
 
 export const dynamic = "force-dynamic";
@@ -46,15 +46,27 @@ export async function POST(req: Request) {
         const orderAmount = Math.round(amount * 100); // Amount in paise
 
         // 3. Create the Order
-        const order = await razorpay.orders.create({
-            amount: orderAmount,
-            currency: 'INR',
-            receipt: `escrow_${session.userId}_${Date.now()}`,
-            notes: {
-                type: 'ESCROW_TOPUP',
-                resellerId: session.userId,
-            }
-        });
+        let order;
+        try {
+            order = await razorpay.orders.create({
+                amount: orderAmount,
+                currency: 'INR',
+                // Razorpay receipt ID limited to 40 characters. 
+                // UUID (36) + "escrow_" (7) was definitely exceeding it.
+                receipt: `esc_${session.userId.slice(0, 8)}_${Date.now().toString().slice(-10)}`,
+                notes: {
+                    type: 'ESCROW_TOPUP',
+                    resellerId: session.userId,
+                }
+            });
+        } catch (rzpError: any) {
+            console.error("Razorpay Order Creation Details:", {
+                message: rzpError.message,
+                metadata: rzpError.metadata,
+                stack: rzpError.stack
+            });
+            throw new Error(`Razorpay Error: ${rzpError.message || 'Failed to create order'}`);
+        }
 
         return NextResponse.json({
             success: true,

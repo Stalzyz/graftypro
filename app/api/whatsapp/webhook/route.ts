@@ -118,10 +118,13 @@ async function handleIncomingMessage(workspaceId: string, wabaId: string, msg: a
         content = { media_id: msg.document.id, filename: msg.document.filename };
     } else if (msg.audio) {
         type = "AUDIO";
-        content = { media_id: msg.audio.id };
+        content = { media_id: msg.audio.id, mime_type: msg.audio.mime_type };
     } else if (msg.video) {
         type = "VIDEO";
-        content = { media_id: msg.video.id };
+        content = { media_id: msg.video.id, caption: msg.video.caption };
+    } else if (msg.voice) {
+        type = "AUDIO";
+        content = { media_id: msg.voice.id, mime_type: msg.voice.mime_type };
     } else if (msg.interactive) {
         type = "INTERACTIVE";
         content = msg.interactive;

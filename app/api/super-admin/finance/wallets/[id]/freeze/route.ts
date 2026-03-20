@@ -24,44 +24,47 @@ export async function POST(
             return NextResponse.json({ error: "Missing freeze status" }, { status: 400 });
         }
 
-        const wallet = await prisma.vendorWallet.findUnique({
-            where: { id: walletId }
-        });
+        // Atomic Transaction (Monster Mode: Ensures no status change without an audit trail)
+        const result = await prisma.$transaction(async (tx) => {
+            const wallet = await tx.vendorWallet.findUnique({
+                where: { id: walletId }
+            });
 
-        if (!wallet) {
-            return NextResponse.json({ error: "Wallet not found" }, { status: 404 });
-        }
+            if (!wallet) throw new Error("Wallet not found");
 
-        // Update Wallet
-        const updatedWallet = await prisma.vendorWallet.update({
-            where: { id: walletId },
-            data: {
-                is_frozen: is_frozen,
-                freeze_reason: reason || (is_frozen ? "Suspicious activity flagged by admin" : null),
-                frozen_at: is_frozen ? new Date() : null,
-                frozen_by: is_frozen ? (admin.email || admin.id) : null
-            }
-        });
+            // Update Wallet
+            const updatedWallet = await tx.vendorWallet.update({
+                where: { id: walletId },
+                data: {
+                    is_frozen: is_frozen,
+                    freeze_reason: reason || (is_frozen ? "Suspicious activity flagged by admin" : null),
+                    frozen_at: is_frozen ? new Date() : null,
+                    frozen_by: is_frozen ? (admin.email || admin.id) : null
+                }
+            });
 
-        // Audit Log
-        await prisma.auditLog.create({
-            data: {
-                admin_id: admin.id,
-                admin_email: admin.email || 'system',
-                action_type: is_frozen ? 'FREEZE_WALLET' : 'UNFREEZE_WALLET',
-                target_type: 'WALLET',
-                target_id: walletId,
-                target_workspace: wallet.workspace_id,
-                before_value: { is_frozen: wallet.is_frozen, reason: wallet.freeze_reason },
-                after_value: { is_frozen: is_frozen, reason: reason },
-                reason: reason || (is_frozen ? "Freezing wallet" : "Unfreezing wallet")
-            }
+            // Audit Log
+            await tx.auditLog.create({
+                data: {
+                    admin_id: admin.id,
+                    admin_email: admin.email || 'system',
+                    action_type: is_frozen ? 'FREEZE_WALLET' : 'UNFREEZE_WALLET',
+                    target_type: 'WALLET',
+                    target_id: walletId,
+                    target_workspace: wallet.workspace_id,
+                    before_value: { is_frozen: wallet.is_frozen, reason: wallet.freeze_reason },
+                    after_value: { is_frozen: is_frozen, reason: reason },
+                    reason: reason || (is_frozen ? "Freezing wallet" : "Unfreezing wallet")
+                }
+            });
+
+            return updatedWallet;
         });
 
         return NextResponse.json({
             success: true,
             message: `Wallet ${is_frozen ? 'frozen' : 'unfrozen'} successfully`,
-            wallet: updatedWallet
+            wallet: result
         });
 
     } catch (error: any) {

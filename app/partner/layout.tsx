@@ -76,7 +76,6 @@ export default function PartnerLayout({ children }: { children: React.ReactNode 
                         <NavItem href="/partner/leads" icon={<Target size={18} />} label="Leads" pathname={pathname} />
                         <NavItem href="/partner/coupons" icon={<Zap size={18} />} label="Coupons" pathname={pathname} />
                         {!isPlatform && <NavItem href="/partner/referrals" icon={<Users size={18} />} label="Referrals" pathname={pathname} />}
-                        <NavItem href="/partner/proposals" icon={<FileText size={18} />} label="Proposals" pathname={pathname} />
                     </div>
 
                     <div className="space-y-1">

@@ -1,0 +1,31 @@
+#!/usr/bin/expect -f
+
+set timeout -1
+set password "stalin"
+set vps_ip "103.111.97.227"
+set remote_path "/app"
+
+puts "🚀 Starting DEPLOYMENT of Package UI Unification..."
+
+# Just upload the file
+spawn scp app/super-admin/dashboard/packages/page.tsx root@$vps_ip:$remote_path/app/super-admin/dashboard/packages/page.tsx
+expect {
+    "password:" { send "$password\r" }
+    "(yes/no)?" { send "yes\r"; exp_continue }
+}
+expect eof
+
+puts "🏗️ Building Production Containers..."
+spawn ssh root@$vps_ip "cd $remote_path && docker compose up -d --build web"
+expect {
+    "password:" { send "$password\r" }
+    "(yes/no)?" { send "yes\r"; exp_continue }
+}
+expect {
+    "Finished" { puts "✅ Build successful!" }
+    eof { puts "✅ DONE" }
+}
+
+puts "\n=============================================="
+puts "✅ PACKAGE UI DEPLOYMENT COMPLETE"
+puts "=============================================="

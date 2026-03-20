@@ -6,6 +6,7 @@
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from "../../../../../lib/auth";
 import { GSTService } from "../../../../../lib/finance/gst-service";
+import { CreditService } from "../../../../../lib/credits/service";
 import Razorpay from 'razorpay';
 
 export const dynamic = "force-dynamic";
@@ -50,6 +51,7 @@ export async function POST(req: Request) {
 
         // Create Razorpay order
         if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
+            console.error("[Recharge] Missing Razorpay credentials in environment");
             return NextResponse.json({ success: false, error: 'Payment gateway not configured' }, { status: 500 });
         }
 
@@ -58,24 +60,35 @@ export async function POST(req: Request) {
             key_secret: process.env.RAZORPAY_KEY_SECRET,
         });
 
-        const order = await razorpay.orders.create({
-            amount: orderAmount,
-            currency: 'INR',
-            receipt: `rcpt_${Date.now()}`,
-            notes: {
-                type: 'CREDIT_PURCHASE',
-                workspaceId: user.workspaceId,
-                netAmount: String(amount),
-                gstAmount: String(gstBreakdown.gst_total),
-                billingName: billingDetails.name,
-                billingAddress: billingDetails.address,
-                billingState: billingDetails.state,
-                billingPincode: billingDetails.pincode,
-                gstin: billingDetails.gstin || '',
-                email: billingDetails.email || '',
-                phone: billingDetails.phone || '',
-            }
-        });
+        let order;
+        try {
+            order = await razorpay.orders.create({
+                amount: orderAmount,
+                currency: 'INR',
+                receipt: `rcpt_${user.workspaceId.slice(0, 8)}_${Date.now().toString().slice(-10)}`,
+                notes: {
+                    type: 'CREDIT_PURCHASE',
+                    workspaceId: user.workspaceId,
+                    netAmount: String(amount),
+                    gstAmount: String(gstBreakdown.gst_total),
+                    billingName: billingDetails.name,
+                    billingAddress: billingDetails.address,
+                    billingState: billingDetails.state,
+                    billingPincode: billingDetails.pincode,
+                    gstin: billingDetails.gstin || '',
+                    email: billingDetails.email || '',
+                    phone: billingDetails.phone || '',
+                }
+            });
+        } catch (rzpError: any) {
+            console.error("[Recharge] Razorpay Order Creation Error:", {
+                message: rzpError.message,
+                metadata: rzpError.metadata,
+                stack: rzpError.stack,
+                workspaceId: user.workspaceId
+            });
+            throw new Error(`Razorpay Error: ${rzpError.message || 'Failed to create order'}`);
+        }
 
         console.log(`[Recharge] Razorpay order created: ${order.id} | Amount: ₹${gstBreakdown.total_amount} | Workspace: ${user.workspaceId}`);
 
@@ -91,7 +104,7 @@ export async function POST(req: Request) {
                 net_amount: gstBreakdown.net_amount,
                 gst_total: gstBreakdown.gst_total,
                 total_amount: gstBreakdown.total_amount,
-                credits: amount, // 1 credit = ₹1
+                credits: CreditService.calculateRechargeCredits(amount), // Includes bonus logic
                 is_same_state: gstBreakdown.is_same_state,
                 formatted: {
                     net_amount: GSTService.formatINR(gstBreakdown.net_amount),
@@ -102,7 +115,7 @@ export async function POST(req: Request) {
         });
 
     } catch (error: any) {
-        console.error('[Recharge] Order creation error:', error);
+        console.error('[Recharge] Critical Initiation Error:', error);
         return NextResponse.json({ success: false, error: error.message || 'Failed to create payment order' }, { status: 500 });
     }
 }

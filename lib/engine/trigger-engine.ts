@@ -31,8 +31,8 @@ export async function findTrigger(
     workspaceId: string,
     msg: NormalizedMessage
 ): Promise<TriggerResult> {
-    // Only text messages can trigger flows
-    if (msg.type !== 'text') return { matched: false };
+    // Only text/button/interactive messages can trigger flows
+    if (!['text', 'button', 'interactive', 'list'].includes(msg.type)) return { matched: false };
 
     const input = msg.value; // already lowercased by normalizer
 

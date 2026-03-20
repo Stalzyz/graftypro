@@ -1,0 +1,38 @@
+#!/usr/bin/expect -f
+
+set timeout 30
+
+# Ensure arguments are provided
+if {[llength $argv] < 2} {
+    puts "Usage: ./FIND_PROJECT.exp <ip_address> <password>"
+    exit 1
+}
+
+set vps_ip [lindex $argv 0]
+set password [lindex $argv 1]
+
+puts "🔍 Scanning server $vps_ip for Wabot_BSP files..."
+
+# Start SSH session
+spawn ssh root@$vps_ip "find / -name 'DynamicPricingSection.tsx' -type f 2>/dev/null"
+expect {
+    "yes/no" {
+        send "yes\r"
+        exp_continue
+    }
+    "password:" {
+        send "$password\r"
+        exp_continue
+    }
+    "Connection refused" {
+        puts "❌ Connection refused. Server might be down or blocking SSH."
+        exit 1
+    }
+    "Operation timed out" {
+        puts "❌ Connection timed out. Network issue or incorrect IP."
+        exit 1
+    }
+    eof {
+        puts "\n✅ Search complete on $vps_ip. (If no paths printed above, the file doesn't exist on this server)."
+    }
+}

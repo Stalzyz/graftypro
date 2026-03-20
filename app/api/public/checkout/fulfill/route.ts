@@ -67,10 +67,11 @@ export async function POST(req: Request) {
                 // It is the Partner's responsibility to maintain a pre-paid float.
                 await ResellerFinanceEngine.processPartnerSubscriptionDeduction(tx, {
                     resellerId: reseller.id,
-                    workspaceId: "PENDING_CREATION", // Will update after
+                    workspaceId: "PENDING_CREATION", 
                     wholesaleCost: Number(plan.min_reseller_price),
                     retailPrice: Number(plan.monthly_price),
-                    planName: plan.name
+                    planName: plan.name,
+                    referenceId: `FULFILL-${payment_id}`
                 });
             }
 
@@ -89,6 +90,7 @@ export async function POST(req: Request) {
                     reseller_id: reseller.id,
                     current_plan_id: plan.id,
                     status: "ACTIVE",
+                    trial_ends_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
                     users: {
                         create: {
                             email: vendor_email,
@@ -106,9 +108,12 @@ export async function POST(req: Request) {
                 await tx.resellerLedger.updateMany({
                     where: {
                         reseller_id: reseller.id,
-                        reference_id: "PENDING_CREATION" // Find the one we just made
+                        reference_id: `FULFILL-${payment_id}`
                     },
-                    data: { reference_id: workspace.id }
+                    data: { 
+                        workspace_id: workspace.id,
+                        description: `Wholesale Cost Deduction: Vendor Subscription [${plan.name}] - Workspace: ${workspace.id}`
+                    }
                 });
             }
 

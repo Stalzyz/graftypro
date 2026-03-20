@@ -61,7 +61,7 @@ export default function FlowsPage() {
                 </div>
                 <Link
                     href="/dashboard/flows/create"
-                    className="btn-primary"
+                    className="btn-primary px-10"
                 >
                     <Plus size={18} /> New Flow
                 </Link>
@@ -95,7 +95,7 @@ export default function FlowsPage() {
                     </div>
                     <h3 className="text-lg font-semibold text-gray-800">No automation flows yet</h3>
                     <p className="text-gray-500 text-sm mt-1 mb-6">Create your first automated flow to engage customers effortlessly.</p>
-                    <Link href="/dashboard/flows/create" className="btn-primary mx-auto">
+                    <Link href="/dashboard/flows/create" className="btn-primary px-10 mx-auto">
                         Get Started
                     </Link>
                 </div>

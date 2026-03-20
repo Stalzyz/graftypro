@@ -27,6 +27,7 @@ interface ExecutionContext {
     session: FlowSessionData;
     waba: any;
     contact: any;
+    plan?: any;
 }
 
 // -----------------------------------------------------------------------
@@ -58,7 +59,8 @@ export async function executeFrom(
 
     const nodes: any[] = session.flow.nodes || [];
     const edges: any[] = session.flow.edges || [];
-    const ctx: ExecutionContext = { session, waba, contact };
+    const plan = (contact as any).workspace?.plan_details;
+    const ctx: ExecutionContext = { session, waba, contact, plan };
 
     // ----------------------------------------------------------------
     // Find the next node to execute
@@ -79,10 +81,9 @@ export async function executeFrom(
     } else {
         // Default traversal: follow the single outgoing edge from fromNodeId
         const fromNode = nodes.find((n: any) => n.id === fromNodeId);
-        const interactiveTypes = new Set(['list', 'meta_flow', 'appointment', 'payment', 'catalog', 'Catalog', 'product_catalog', 'product_catalog_node']);
-        const isInteractiveButton = fromNode?.type === 'message' && (fromNode?.data?.buttons || []).some(
-            (b: any) => b.type === 'reply'
-        );
+        const interactiveTypes = new Set(['list', 'meta_flow', 'appointment', 'payment', 'catalog', 'Catalog', 'product_catalog', 'product_catalog_node', 'location']);
+        const isInteractiveButton = (fromNode?.type === 'message' && (fromNode?.data?.buttons || []).some((b: any) => b.type === 'reply')) ||
+            (fromNode?.type === 'location' && fromNode?.data?.locationType === 'REQUEST');
 
         if (interactiveTypes.has(fromNode?.type) || isInteractiveButton) {
             // Interactive node — do NOT auto-advance. Wait for user input.
@@ -214,6 +215,10 @@ async function executeNode(
             await executeFrom(session, waba, contact, node.id, null, depth + 1);
             break;
 
+        case 'location':
+            await runMessageNode(ctx, node, depth);
+            break;
+
         // ── MESSAGE NODE (text / media / buttons / lists) ──
         case 'message':
         case 'list':
@@ -230,13 +235,36 @@ async function runMessageNode(ctx: ExecutionContext, node: any, depth: number): 
     const { session, waba, contact } = ctx;
     const data = node.data || {};
     const phone = contact.phone;
-    const token = waba.access_token; // still encrypted
+    const token = waba.access_token;
+
+    // ── Nuclear Fix: Pre-upload media to Meta CDN ──────────────────────────
+    // WHY: buildNodePayload uses links, but Meta servers can't fetch our
+    //      auth-gated URLs. Uploading first gives us a media_id that is
+    //      served from Meta's own CDN — guaranteed 100% delivery.
+    const rawMediaUrl = data.mediaUrl || data.headerUrl || data.imageUrl || data.videoUrl;
+    if (rawMediaUrl) {
+        try {
+            const { WhatsAppService } = await import('../whatsapp/service');
+            const absoluteUrl = getAbsoluteMediaUrl(rawMediaUrl);
+            console.log(`[FlowMedia] Pre-uploading to Meta: ${absoluteUrl}`);
+            const mediaId = await WhatsAppService.uploadMediaFromUrl(absoluteUrl, waba.phone_number_id, waba.access_token);
+            if (mediaId) {
+                console.log(`[FlowMedia] Got media_id: ${mediaId} — injecting into node data`);
+                // Inject mediaId so buildNodePayload / buildMediaPayload can use it
+                data._mediaId = mediaId;
+            } else {
+                console.warn(`[FlowMedia] Upload returned no ID — falling back to link.`);
+            }
+        } catch (e: any) {
+            console.error(`[FlowMedia] Pre-upload failed: ${e.message} — falling back to link.`);
+        }
+    }
+    // ────────────────────────────────────────────────────────────────────────
 
     const { payloads, isInteractive } = buildNodePayload(phone, node.type, data);
 
     if (payloads.length === 0) {
         console.warn(`[FlowExecutor] ⚠️ Node ${node.id} produced no sendable payloads. Skipping.`);
-        // Don't block the flow — continue to next node
         if (!isInteractive) {
             await executeFrom(session, waba, contact, node.id, null, depth + 1);
         }
@@ -262,18 +290,16 @@ async function runMessageNode(ctx: ExecutionContext, node: any, depth: number): 
             console.error(`[FlowExecutor] ❌ Failed to send payload ${i}: ${err?.message}`);
         }
 
-        // Brief delay between multiple sequential payloads
         if (i < payloads.length - 1) {
             await sleep(600);
         }
     }
 
-    // If NOT interactive, continue to next node
     if (!isInteractive) {
         await executeFrom(session, waba, contact, node.id, null, depth + 1);
     }
-    // If interactive, we stop here. Flow resumes when user replies.
 }
+
 
 // -----------------------------------------------------------------------
 // Condition Node — evaluates state and branches
@@ -647,6 +673,30 @@ async function runCatalogNode(ctx: ExecutionContext, node: any): Promise<void> {
         // Add a small delay between sending multiple products
         if (products.length > 1) await new Promise(r => setTimeout(r, 800));
     }
+
+    // --- ABANDONED CART RECOVERY ---
+    if (ctx.plan?.abandoned_cart_recovery_enabled) {
+        try {
+            const drip = await prisma.dripSequence.findFirst({
+                where: {
+                    workspace_id: contact.workspace_id,
+                    status: 'ACTIVE',
+                    name: { contains: 'Abandoned Cart', mode: 'insensitive' }
+                }
+            });
+            if (drip) {
+                const { DripService } = await import('../services/drip-service');
+                await DripService.enroll(contact.workspace_id, contact.id, drip.id, {
+                    source: 'flow_abandonment',
+                    node_id: node.id,
+                    flow_id: session.flow_id
+                });
+                console.log(`[FlowExecutor] 🛒 Enrolled ${contact.phone} in Abandoned Cart recovery drip`);
+            }
+        } catch (err) {
+            console.error("[FlowExecutor] Failed to trigger recovery drip:", err);
+        }
+    }
 }
 
 async function runPaymentNode(ctx: ExecutionContext, node: any): Promise<void> {
@@ -712,10 +762,28 @@ async function runPaymentNode(ctx: ExecutionContext, node: any): Promise<void> {
             await saveOutboundMessage(waba, contact, metaId, p);
         }
     } catch (err: any) {
-        console.error(`[FlowExecutor] ❌ Payment Failure (${provider}): ${err.message}`);
-        const errorText = `❌ *Payment Generation Failed*\n\nReason: ${err.message || 'System error'}`;
-        const p = buildTextPayload(contact.phone, errorText);
-        if (p) await sendMessageDirect({ phoneNumberId: waba.phone_number_id, accessToken: waba.access_token, payload: p, sessionId: session.id, nodeId: node.id, workspaceId: session.workspace_id, contactId: contact.id });
+        console.error(`[FlowExecutor] ❌ Payment Failure: ${err.message}`);
+    }
+
+    // --- ABANDONED CART RECOVERY (for Payment Nodes too) ---
+    if (ctx.plan?.abandoned_cart_recovery_enabled) {
+        try {
+            const drip = await prisma.dripSequence.findFirst({
+                where: {
+                    workspace_id: contact.workspace_id,
+                    status: 'ACTIVE',
+                    name: { contains: 'Abandoned Cart', mode: 'insensitive' }
+                }
+            });
+            if (drip) {
+                const { DripService } = await import('../services/drip-service');
+                await DripService.enroll(contact.workspace_id, contact.id, drip.id, {
+                    source: 'payment_abandonment',
+                    node_id: node.id,
+                    flow_id: session.id
+                });
+            }
+        } catch { }
     }
 }
 
@@ -748,8 +816,32 @@ async function runMetaFlowNode(ctx: ExecutionContext, node: any): Promise<void> 
     const data = node.data || {};
     if (!data.flowId) return;
 
+    let mediaId: string | undefined;
+    if (data.headerType === 'image' && data.headerUrl) {
+        try {
+            const { WhatsAppService } = await import('../whatsapp/service');
+            const absoluteUrl = getAbsoluteMediaUrl(data.headerUrl);
+            console.log(`[MetaFlowSync] Syncing header image: ${absoluteUrl}`);
+            mediaId = await WhatsAppService.uploadMediaFromUrl(absoluteUrl, waba.phone_number_id, waba.access_token) || undefined;
+        } catch (e) {
+            console.error('[MetaFlowSync] Failed to sync media:', e);
+        }
+    }
+
     const { buildMetaFlowPayload } = await import('./payload-builder');
-    const p = buildMetaFlowPayload(contact.phone, data.flowId, data.flowCTA || 'Open', data.flowHeader || '', data.text || '', data.flowFooter || '');
+    const p = buildMetaFlowPayload(
+        contact.phone,
+        data.flowId,
+        data.flowCTA || 'Open',
+        data.flowHeader || '',
+        data.text || '',
+        data.flowFooter || '',
+        data.initialScreen || 'QUESTION_1',
+        data.flowToken || `tk_${Date.now()}`,
+        data.headerType || 'text',
+        getAbsoluteMediaUrl(data.headerUrl),
+        mediaId
+    );
     if (p) {
         const metaId = await sendMessageDirect({ phoneNumberId: waba.phone_number_id, accessToken: waba.access_token, payload: p, sessionId: ctx.session.id, nodeId: node.id, workspaceId: ctx.session.workspace_id, contactId: contact.id });
         if (metaId) await saveOutboundMessage(waba, contact, metaId, p);
@@ -1056,9 +1148,9 @@ export async function handleUserInput(
 
     // Special internal triggers (payment, cart, form submission)
     const internalTriggers = new Set([
-        'PAYMENT_SUCCESSFUL_INTERNAL_TRIGGER',
-        'FLOW_SUBMITTED_SUCCESSFULLY',
-        'CART_SUBMITTED',
+        'payment_successful_internal_trigger',
+        'flow_submitted_successfully',
+        'cart_submitted',
     ]);
 
     if (internalTriggers.has(inputValue)) {
@@ -1068,13 +1160,68 @@ export async function handleUserInput(
     }
 
     // ----------------------------------------------------------------
+    // Meta Flow JSON Capture & Auto-Mapping (Phase 6)
+    // ----------------------------------------------------------------
+    if (currentNode.type === 'meta_flow' && inputValue.startsWith('{') && inputValue.endsWith('}')) {
+        try {
+            const flowData = JSON.parse(inputValue);
+            console.log(`[FlowExecutor] 🧪 Flow submission detected for node ${currentNodeId}:`, flowData);
+
+            // 1. Update Session State
+            await updateSessionState(session.id, session.state, {
+                ...flowData,
+                last_flow_response: flowData
+            });
+
+            // 2. Auto-Map to CRM
+            const updatePayload: any = {
+                attributes: {
+                    ...(contact.attributes as any || {}),
+                    ...flowData
+                }
+            };
+
+            if (flowData.name) updatePayload.name = flowData.name;
+            if (flowData.email) updatePayload.email = flowData.email;
+
+            await prisma.contact.update({
+                where: { id: contact.id },
+                data: updatePayload
+            });
+
+            console.log(`[FlowExecutor] ✅ CRM Auto-mapped for contact ${contact.phone}`);
+
+            // 3. Advance to next node
+            await executeFrom(session, waba, contact, currentNodeId, null, 0);
+            return;
+        } catch (e) {
+            console.error("[FlowExecutor] Failed to parse flow JSON response:", e);
+        }
+    }
+
+    // ----------------------------------------------------------------
+    // Location Data Capture
+    // ----------------------------------------------------------------
+    if (currentNode.type === 'location' && /^-?\d+(\.\d+)?,-?\d+(\.\d+)?$/.test(inputValue)) {
+        console.log(`[FlowExecutor] 📍 Location received for node ${currentNodeId}: ${inputValue}`);
+        // Save to state
+        await updateSessionState(session.id, session.state, {
+            last_location: inputValue,
+            [`location_${currentNode.id}`]: inputValue
+        });
+        // Advance
+        await executeFrom(session, waba, contact, currentNodeId, null, 0);
+        return;
+    }
+
+    // ----------------------------------------------------------------
     // Button/List routing — match input value to edge sourceHandle
     // ----------------------------------------------------------------
     let handleId: string | null = null;
 
-    if (inputValue.startsWith('LIST_SELECT_ID:')) {
-        // List selection: "LIST_SELECT_ID:item_id" → handle "item-item_id"
-        const itemId = inputValue.replace('LIST_SELECT_ID:', '');
+    if (inputValue.startsWith('list_select_id:')) {
+        // List selection: "list_select_id:item_id" → handle "item-item_id"
+        const itemId = inputValue.replace('list_select_id:', '');
         handleId = `item-${itemId}`;
     } else {
         // Button reply: the button's id IS the value
@@ -1082,13 +1229,14 @@ export async function handleUserInput(
         handleId = `button-${inputValue}`;
     }
 
-    // Try to find a matching edge from the current node
-    const matchedEdge = edges.find((e: any) =>
-        e.source === currentNodeId && (
-            e.sourceHandle === handleId ||
-            e.sourceHandle === inputValue // direct handle match
-        )
-    );
+    // Try to find a matching edge from the current node (case-insensitive)
+    const matchedEdge = edges.find((e: any) => {
+        if (e.source !== currentNodeId) return false;
+        const sh = (e.sourceHandle || '').toLowerCase();
+        const targetHandle = (handleId || '').toLowerCase();
+        const targetValue = (inputValue || '').toLowerCase();
+        return sh === targetHandle || sh === targetValue;
+    });
 
     // ----------------------------------------------------------------
     // Numbered Input Routing (Fallback for URL-prioritized single bubbles)
@@ -1115,7 +1263,7 @@ export async function handleUserInput(
             handleId = `button-${targetBtn.id}`;
             // Re-search edge with the resolved handleId
             const secondChanceMatch = edges.find((e: any) =>
-                e.source === currentNodeId && e.sourceHandle === handleId
+                e.source === currentNodeId && (e.sourceHandle || '').toLowerCase() === (handleId || '').toLowerCase()
             );
             if (secondChanceMatch) {
                 await executeFrom(session, waba, contact, currentNodeId, secondChanceMatch.target, 0);
@@ -1133,7 +1281,7 @@ export async function handleUserInput(
                 const listHandle = `item-${targetItem.id}`;
                 console.log(`[FlowExecutor] 🔢 List Numbered Routing: ${num} → Item "${targetItem.title}" (${listHandle})`);
                 const listEdgeMatch = edges.find((e: any) =>
-                    e.source === currentNodeId && e.sourceHandle === listHandle
+                    e.source === currentNodeId && (e.sourceHandle || '').toLowerCase() === (listHandle || '').toLowerCase()
                 );
                 if (listEdgeMatch) {
                     await executeFrom(session, waba, contact, currentNodeId, listEdgeMatch.target, 0);
@@ -1153,13 +1301,13 @@ export async function handleUserInput(
     // Fallback: No matching button/list item
     // ----------------------------------------------------------------
     const isInteractiveNode = (
-        ['list', 'meta_flow', 'appointment', 'payment', 'catalog', 'Catalog', 'product_catalog', 'product_catalog_node'].includes(currentNode.type) ||
+        ['list', 'meta_flow', 'appointment', 'payment', 'catalog', 'Catalog', 'product_catalog', 'product_catalog_node', 'location'].includes(currentNode.type) ||
         (currentNode.type === 'message' && (currentNode.data?.buttons || []).some((b: any) => b.type === 'reply'))
     );
 
     // NUCLEAR FIX: Advance Meta Flow nodes automatically when NFM JSON payload is received 
     if (currentNode.type === 'meta_flow' || currentNode.type === 'MetaFlow') {
-        if ((inputValue.startsWith('{') && inputValue.endsWith('}')) || inputValue === 'FLOW_SUBMITTED_SUCCESSFULLY') {
+        if ((inputValue.startsWith('{') && inputValue.endsWith('}')) || inputValue === 'flow_submitted_successfully') {
             console.log(`[FlowExecutor] 🌊 NFM form submitted. JSON Payload parsed. Advancing from node ${currentNodeId}.`);
             await executeFrom(session, waba, contact, currentNodeId, null, 0);
             return;

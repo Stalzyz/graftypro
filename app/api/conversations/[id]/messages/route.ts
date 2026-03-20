@@ -70,10 +70,7 @@ export async function POST(
         let type: string = "TEXT";
         let content: any = { body: text };
 
-        const absoluteMediaUrl = getAbsoluteMediaUrl(mediaUrl, req);
-        if (mediaUrl) {
-            console.log(`[WA_SEND] Media detected. Source: ${mediaUrl}, Absolute: ${absoluteMediaUrl}`);
-        }
+
 
         // Send the message first (delivery is never blocked by billing)
         if (templateName) {
@@ -82,12 +79,48 @@ export async function POST(
             type = "TEMPLATE";
             content = { template_name: templateName, lang: langCode || "en" };
         } else if (mediaUrl) {
+            // Nuclear Fix: Pre-upload media to Meta → get media_id → use id (not link).
+            // This guarantees delivery since Meta fetches from its own CDN, not our server.
+            const absoluteMediaUrl = getAbsoluteMediaUrl(mediaUrl, req);
+            console.log(`[WA_SEND] Media detected. Source: ${mediaUrl}, Absolute: ${absoluteMediaUrl}`);
+
+            let mediaId: string | null = null;
+            try {
+                console.log(`[WA_SEND] Pre-uploading media to Meta CDN...`);
+                mediaId = await WhatsAppService.uploadMediaFromUrl(absoluteMediaUrl, waba.phone_number_id, token);
+                if (mediaId) console.log(`[WA_SEND] Media synced to Meta. media_id: ${mediaId}`);
+                else console.warn(`[WA_SEND] Media upload returned no ID, falling back to link.`);
+            } catch (uploadErr: any) {
+                console.error(`[WA_SEND] Pre-upload failed:`, uploadErr.message, '— falling back to link.');
+            }
+
             if (mediaType === "IMAGE") {
-                response = await WhatsAppService.sendImage(waba.phone_number_id, token, conversation.contact.phone, absoluteMediaUrl, text);
+                const imagePayload = mediaId
+                    ? { to: conversation.contact.phone, type: "image", image: { id: mediaId, caption: text } }
+                    : { to: conversation.contact.phone, type: "image", image: { link: absoluteMediaUrl, caption: text } };
+                response = await WhatsAppService.sendMessage(waba.phone_number_id, token, imagePayload);
                 type = "IMAGE";
                 content = { link: mediaUrl, caption: text };
+            } else if (mediaType === "VIDEO") {
+                const videoPayload = mediaId
+                    ? { to: conversation.contact.phone, type: "video", video: { id: mediaId, caption: text } }
+                    : { to: conversation.contact.phone, type: "video", video: { link: absoluteMediaUrl, caption: text } };
+                response = await WhatsAppService.sendMessage(waba.phone_number_id, token, videoPayload);
+                type = "VIDEO";
+                content = { link: mediaUrl, caption: text };
+            } else if (mediaType === "AUDIO") {
+                const audioPayload = mediaId
+                    ? { to: conversation.contact.phone, type: "audio", audio: { id: mediaId } }
+                    : { to: conversation.contact.phone, type: "audio", audio: { link: absoluteMediaUrl } };
+                response = await WhatsAppService.sendMessage(waba.phone_number_id, token, audioPayload);
+                type = "AUDIO";
+                content = { link: mediaUrl };
             } else {
-                response = await WhatsAppService.sendDocument(waba.phone_number_id, token, conversation.contact.phone, absoluteMediaUrl, filename || "document.pdf");
+                // DOCUMENT default
+                const docPayload = mediaId
+                    ? { to: conversation.contact.phone, type: "document", document: { id: mediaId, filename: filename || "document" } }
+                    : { to: conversation.contact.phone, type: "document", document: { link: absoluteMediaUrl, filename: filename || "document.pdf" } };
+                response = await WhatsAppService.sendMessage(waba.phone_number_id, token, docPayload);
                 type = "DOCUMENT";
                 content = { link: mediaUrl, filename: filename || "document.pdf", caption: text };
             }
@@ -95,6 +128,7 @@ export async function POST(
             if (!text) return NextResponse.json({ error: "Text is required" }, { status: 400 });
             response = await WhatsAppService.sendText(waba.phone_number_id, token, conversation.contact.phone, text);
         }
+
 
         const metaId = response?.messages?.[0]?.id;
 

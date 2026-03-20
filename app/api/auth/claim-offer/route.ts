@@ -23,34 +23,10 @@ export async function POST(req: Request) {
             }
         });
 
-        // Add 500 Credits if selected
+        // Removed the free credits offering
         if (offer === "credits") {
-            const wallet = await prisma.vendorWallet.findUnique({
-                where: { workspace_id: payload.workspaceId }
-            });
-
-            if (wallet) {
-                await prisma.vendorWallet.update({
-                    where: { workspace_id: payload.workspaceId },
-                    data: {
-                        current_balance: { increment: 500 }
-                    }
-                });
-
-                // Track in Transaction
-                await prisma.creditTransaction.create({
-                    data: {
-                        workspace_id: payload.workspaceId,
-                        wallet_id: wallet.id,
-                        amount: 500,
-                        type: "PURCHASE",
-                        description: "Welcome Offer: 500 Free Credits",
-                        status: "COMPLETED",
-                        balance_before: wallet.current_balance,
-                        balance_after: Number(wallet.current_balance) + 500
-                    }
-                });
-            }
+            // Keep this for backward compatibility if called, but do nothing.
+            console.log("Welcome offer for credits was claimed, but free credits are now disabled.");
         }
 
         return NextResponse.json({ success: true });

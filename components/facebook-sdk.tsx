@@ -29,7 +29,7 @@ export function FacebookSDK() {
                             appId      : '${APP_ID}',
                             cookie     : true,
                             xfbml      : false,
-                            version    : 'v18.0'
+                            version    : 'v20.0'
                         });
                         FB.AppEvents.logPageView();
                     };

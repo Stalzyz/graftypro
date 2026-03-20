@@ -11,6 +11,17 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 
         const { id } = params;
 
+        // Auto-mark all inbound messages in this conversation as READ
+        await prisma.message.updateMany({
+            where: {
+                conversation_id: id,
+                workspace_id: user.workspaceId,
+                direction: "INBOUND",
+                status: { not: "READ" }
+            },
+            data: { status: "READ" }
+        });
+
         const messages = await prisma.message.findMany({
             where: {
                 conversation_id: id,

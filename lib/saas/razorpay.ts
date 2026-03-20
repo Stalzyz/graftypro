@@ -1,5 +1,5 @@
-
 import Razorpay from "razorpay";
+import { prisma } from "../db";
 
 // Initialize properly with Environment Variables
 const key_id = process.env.RAZORPAY_KEY_ID;
@@ -14,23 +14,29 @@ export const saasRazorpay = new Razorpay({
 export const razorpay = saasRazorpay;
 
 export const PLANS = {
-    PRIME_STARTER: {
-        id: "plan_starter_default",
-        name: "PRIME STARTER",
-        price: 1999,
+    LITE: {
+        id: process.env.RAZORPAY_PLAN_LITE || "plan_lite_default",
+        name: "LITE",
+        price: 999,
         limits: { contacts: 1000, campaigns: 5, messages: 2500 }
     },
-    ACCELERATOR_PRO: {
-        id: process.env.RAZORPAY_PLAN_PRO || "plan_pro_default",
-        name: "ACCELERATOR PRO",
-        price: 4999,
+    GROWTH: {
+        id: process.env.RAZORPAY_PLAN_GROWTH || "plan_growth_default",
+        name: "GROWTH",
+        price: 2499,
         limits: { contacts: 10000, campaigns: 25, messages: 25000 }
     },
-    ULTIMATE_SCALE: {
-        id: process.env.RAZORPAY_PLAN_ENTERPRISE || "plan_enterprise_default",
-        name: "ULTIMATE SCALE",
-        price: 12999,
-        limits: { contacts: 100000, campaigns: 100, messages: 1000000 }
+    PRO: {
+        id: process.env.RAZORPAY_PLAN_PRO || "plan_pro_default",
+        name: "PRO",
+        price: 4999,
+        limits: { contacts: 50000, campaigns: 100, messages: 100000 }
+    },
+    SCALE: {
+        id: process.env.RAZORPAY_PLAN_SCALE || "plan_scale_default",
+        name: "SCALE",
+        price: 9999,
+        limits: { contacts: 200000, campaigns: 500, messages: 500000 }
     }
 };
 
@@ -56,15 +62,24 @@ export async function createOrder(amount: number, currency: string = "INR", note
     });
 }
 
-export async function createSubscription(planId: string) {
+export async function createSubscription(planIdOrRzpId: string) {
+    // If it doesn't start with 'plan_', assume it's a DB ID and we need to fetch the synced ID
+    let finalRzpId = planIdOrRzpId;
+    
+    if (!planIdOrRzpId.startsWith('plan_')) {
+        const dbPlan = await prisma.subscriptionPlan.findUnique({ where: { id: planIdOrRzpId } });
+        finalRzpId = (dbPlan as any)?.razorpay_monthly_plan_id || "plan_lite_default";
+    }
+
     return await saasRazorpay.subscriptions.create({
-        plan_id: planId,
+        plan_id: finalRzpId,
         customer_notify: 1,
         quantity: 1,
         total_count: 120, // 10 years
         addons: [],
         notes: {
-            source: "grafty_bsp_saas"
+            source: "grafty_bsp_saas",
+            plan_id: planIdOrRzpId
         }
     });
 }

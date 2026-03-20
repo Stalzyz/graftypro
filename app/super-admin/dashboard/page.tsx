@@ -5,6 +5,7 @@ import {
     Users,
     MessageSquare,
     IndianRupee,
+    CreditCard,
     Activity,
     ArrowUpRight,
     Zap,
@@ -244,9 +245,16 @@ export default function SuperAdminDashboard() {
                     <QuickActionCard
                         title="Revenue"
                         description="Audit platform revenue"
-                        href="/super-admin/dashboard/finance/revenue"
+                        href="/super-admin/dashboard/finance"
                         icon={<IndianRupee size={18} strokeWidth={1.5} />}
                         color="emerald"
+                    />
+                    <QuickActionCard
+                        title="Subscription Plans"
+                        description="Sync & Manage Razorpay"
+                        href="/super-admin/billing"
+                        icon={<CreditCard size={18} strokeWidth={1.5} />}
+                        color="indigo"
                     />
 
                     {/* Scale Card - Executive Calm */}

@@ -117,8 +117,9 @@ export async function POST(req: Request) {
                 data: {
                     name: business_name,
                     business_name: business_name,
-                    plan: plan || "FREE",
-                    status: "ACTIVE"
+                    plan: (plan || "FREE") as any,
+                    status: "ACTIVE",
+                    trial_ends_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
                 }
             });
 

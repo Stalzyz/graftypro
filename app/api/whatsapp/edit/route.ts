@@ -14,7 +14,10 @@ export async function POST(req: Request) {
         }
 
         const body = await req.json();
-        const { connection_name, waba_id, phone_number_id, app_id, app_secret, access_token } = body;
+        const { 
+            connection_name, waba_id, phone_number_id, app_id, app_secret, access_token,
+            opt_out_keywords, opt_out_message, opt_out_reply 
+        } = body;
 
         // Fetch current account
         const account = await prisma.whatsAppAccount.findUnique({
@@ -30,6 +33,9 @@ export async function POST(req: Request) {
         if (waba_id) updates.waba_id = waba_id;
         if (phone_number_id) updates.phone_number_id = phone_number_id;
         if (app_id !== undefined) updates.app_id = app_id;
+        if (opt_out_keywords !== undefined) updates.opt_out_keywords = opt_out_keywords;
+        if (opt_out_message !== undefined) updates.opt_out_message = opt_out_message;
+        if (opt_out_reply !== undefined) updates.opt_out_reply = opt_out_reply;
 
         let actualTokenToTest = decrypt(account.access_token);
 
@@ -46,7 +52,7 @@ export async function POST(req: Request) {
 
         // Validate token with Meta using the actual token
         try {
-            const res = await axios.get(`https://graph.facebook.com/v18.0/${testPhoneNumberId}`, {
+            const res = await axios.get(`https://graph.facebook.com/v20.0/${testPhoneNumberId}`, {
                 headers: { Authorization: `Bearer ${actualTokenToTest}` }
             });
             if (res.data) {

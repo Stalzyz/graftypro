@@ -1,13 +1,14 @@
-
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Loader2, Eye, EyeOff, Check, ArrowRight, Star } from "lucide-react";
 import { Logo } from "../../../components/ui/Logo";
+import { useBranding } from "../../../hooks/use-branding";
 
 export default function RegisterPage() {
+    const { branding } = useBranding();
     const router = useRouter();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
@@ -57,7 +58,25 @@ export default function RegisterPage() {
             });
 
             const data = await res.json();
-            if (res.ok) { setSuccess(true); } else { setError(data.error || "Registration failed"); }
+            if (res.ok) { 
+                setSuccess(true); 
+                // Meta CAPI: Track CompleteRegistration
+                fetch('/api/meta/events', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        eventName: 'CompleteRegistration',
+                        email: formData.email,
+                        phone: formData.mobile,
+                        customData: {
+                            content_name: 'Grafty User Signup',
+                            status: 'success'
+                        }
+                    })
+                }).catch(() => {});
+            } else { 
+                setError(data.error || "Registration failed"); 
+            }
         } catch (err) {
             setError("Network error. Please try again.");
         } finally {
@@ -93,7 +112,14 @@ export default function RegisterPage() {
 
                 <div className="relative z-10">
                     <div className="flex items-center gap-3 mb-10">
-                        <Logo variant="light" size={40} showText={false} href="/" />
+                        <Logo 
+                            variant="light" 
+                            size={40} 
+                            showText={true} 
+                            brandName={branding?.brand_name || branding?.name || "Grafty"} 
+                            logoUrl={branding?.logo_url}
+                            href="/" 
+                        />
                     </div>
                     <h1 className="text-4xl xl:text-5xl font-extrabold leading-[1.15] tracking-tight mb-8">
                         Turn conversations <br /> into <span className="text-[#4ade80]">revenue</span>.
@@ -131,13 +157,19 @@ export default function RegisterPage() {
             <div className="w-full lg:w-1/2 flex flex-col justify-center overflow-y-auto h-screen bg-[#FAFAFA]">
                 {/* Mobile Logo */}
                 <div className="lg:hidden p-6 pb-0">
-                    <Logo size={40} showText={false} href="/" />
+                    <Logo 
+                        size={40} 
+                        showText={true} 
+                        brandName={branding?.brand_name || branding?.name || "Grafty"} 
+                        logoUrl={branding?.logo_url}
+                        href="/" 
+                    />
                 </div>
 
                 <div className="w-full max-w-[520px] mx-auto p-6 sm:p-10 lg:p-12 my-auto">
                     <div className="mb-10 text-center lg:text-left">
                         <h2 className="text-3xl font-bold text-slate-900 mb-2">Create your free account</h2>
-                        <p className="text-slate-500 text-base">Get started with your 14-day free trial. No credit card required.</p>
+                        <p className="text-slate-500 text-base">Get started with your {branding?.brand_name || branding?.name || "Grafty"} trial.</p>
                     </div>
 
                     <div className="grid grid-cols-1 gap-4 mb-8">
@@ -145,17 +177,6 @@ export default function RegisterPage() {
                             <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" className="w-5 h-5" />
                             <span className="text-slate-700 font-bold text-sm">Sign up with Google</span>
                         </Link>
-                        <Link href="/api/auth/facebook" className="flex items-center justify-center gap-2 bg-[#1877F2] border border-[#1877F2] rounded-xl py-3 hover:bg-[#166FE5] transition-all shadow-sm">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512" className="w-5 h-5 fill-white"><path d="M279.14 288l14.22-92.66h-88.91v-60.13c0-25.35 12.42-50.06 52.24-50.06h40.42V6.26S260.43 0 225.36 0c-73.22 0-121.08 44.38-121.08 124.72v70.62H22.89V288h81.39v224h100.17V288z" /></svg>
-                            <span className="text-white font-bold text-sm">Sign up with Facebook</span>
-                        </Link>
-                    </div>
-
-                    <div className="relative mb-8">
-                        <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-200"></div></div>
-                        <div className="relative flex justify-center text-xs uppercase tracking-widest font-bold text-slate-400">
-                            <span className="bg-[#FAFAFA] px-4">OR REGISTER WITH EMAIL</span>
-                        </div>
                     </div>
 
                     {error && (

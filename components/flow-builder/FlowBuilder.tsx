@@ -29,6 +29,7 @@ import EndNode from './nodes/EndNode';
 import AppointmentNode from './nodes/AppointmentNode';
 import OrderSummaryNode from './nodes/OrderSummaryNode';
 import MetaTemplateNode from './nodes/MetaTemplateNode';
+import LocationNode from './nodes/LocationNode';
 import FlowSidebar from './FlowSidebar';
 import FlowPropertiesPanel from './FlowPropertiesPanel';
 
@@ -50,6 +51,7 @@ const nodeTypes = {
     appointment: AppointmentNode,
     order_summary: OrderSummaryNode,
     meta_template: MetaTemplateNode,
+    location: LocationNode,
 };
 
 // ── Default Canvas ───────────────────────────────────────────────────────────
@@ -98,7 +100,16 @@ function validateFlow(nodes: Node[], edges: Edge[]): ValidationError[] {
 }
 
 // ── Simulator ────────────────────────────────────────────────────────────────
-interface SimMessage { role: 'bot' | 'user'; text: string; }
+interface SimButton { id: string; title: string; type: string; value?: string; }
+interface SimListItem { id: string; title: string; description?: string; }
+
+interface SimMessage {
+    role: 'bot' | 'user';
+    text: string;
+    mediaUrl?: string;
+    buttons?: SimButton[];
+    listItems?: SimListItem[];
+}
 
 // ── Main Component ────────────────────────────────────────────────────────────
 export default function FlowBuilder({ initialData }: { initialData?: any }) {
@@ -148,8 +159,15 @@ export default function FlowBuilder({ initialData }: { initialData?: any }) {
     const [simMessages, setSimMessages] = useState<SimMessage[]>([]);
     const [simCurrentNodeId, setSimCurrentNodeId] = useState<string | null>(null);
 
+    // ── API Errors ───────────────────────────────────────────────────────────
+    const [apiErrors, setApiErrors] = useState<ValidationError[]>([]);
+
     // ── Validation ───────────────────────────────────────────────────────────
-    const validationErrors = useMemo(() => validateFlow(nodes, edges), [nodes, edges]);
+    const validationErrors = useMemo(() => {
+        const local = validateFlow(nodes, edges);
+        return [...local, ...apiErrors];
+    }, [nodes, edges, apiErrors]);
+
     const hasErrors = validationErrors.some(e => e.severity === 'error');
     const hasWarnings = validationErrors.some(e => e.severity === 'warning');
 
@@ -167,6 +185,8 @@ export default function FlowBuilder({ initialData }: { initialData?: any }) {
 
     useEffect(() => {
         triggerAutoSave();
+        // Clear API errors when flow changes manually
+        if (apiErrors.length > 0) setApiErrors([]);
     }, [nodes, edges, flowName]);
 
     // ── Push to History ───────────────────────────────────────────────────────
@@ -330,9 +350,25 @@ export default function FlowBuilder({ initialData }: { initialData?: any }) {
                     }
                 }
             } else {
-                const err = await res.json();
+                const resData = await res.json();
                 setSaveStatus('unsaved');
-                if (!silent) alert(`Save failed: ${err.error || 'Unknown error'}`);
+                
+                if (resData.details && Array.isArray(resData.details)) {
+                    // Extract structured errors from server strings
+                    const mappedErrors: ValidationError[] = resData.details.map((msg: string) => {
+                        // Extract "node_xxx" from strings like "Message node node_1 must have text"
+                        const match = msg.match(/(node|Edge)\s+([^\s]+)/i);
+                        return {
+                            nodeId: match ? match[2] : undefined,
+                            message: msg,
+                            severity: 'error'
+                        };
+                    });
+                    setApiErrors(mappedErrors);
+                    setShowValidation(true);
+                } else if (!silent) {
+                    alert(`Save failed: ${resData.error || 'Unknown error'}`);
+                }
             }
         } catch (e) {
             setSaveStatus('unsaved');
@@ -429,10 +465,10 @@ export default function FlowBuilder({ initialData }: { initialData?: any }) {
             // Let's find the matching button title in current node
             const currNode = nodes.find(n => n.id === simCurrentNodeId);
             if (currNode && currNode.data.buttons) {
-                const btn = currNode.data.buttons.find(b => b.title === userMsg || b.id === userMsg);
+                const btn = currNode.data.buttons.find((b: any) => b.title === userMsg || b.id === userMsg);
                 if (btn) handleId = `button-${btn.id}`;
             } else if (currNode && currNode.data.items) {
-                const itm = currNode.data.items.find(i => i.title === userMsg || i.id === userMsg);
+                const itm = currNode.data.items.find((i: any) => i.title === userMsg || i.id === userMsg);
                 if (itm) handleId = `item-${itm.id}`;
             }
         }
@@ -641,8 +677,21 @@ export default function FlowBuilder({ initialData }: { initialData?: any }) {
                         ref={reactFlowWrapper}
                     >
                         <ReactFlow
-                            nodes={nodes}
-                            edges={edges}
+                            nodes={nodes.map(n => {
+                                const err = validationErrors.find(e => e.nodeId === n.id && e.severity === 'error');
+                                return {
+                                    ...n,
+                                    className: err ? 'ring-4 ring-red-500 ring-offset-4 rounded-2xl animate-pulse' : n.className
+                                };
+                            })}
+                            edges={edges.map(e => {
+                                const err = validationErrors.find(eErr => eErr.nodeId === e.id && eErr.severity === 'error');
+                                return {
+                                    ...e,
+                                    animated: err ? true : e.animated,
+                                    style: err ? { ...e.style, stroke: '#ef4444', strokeWidth: 4 } : e.style
+                                };
+                            })}
                             onNodesChange={onNodesChange}
                             onEdgesChange={onEdgesChange}
                             onConnect={onConnect}
@@ -733,7 +782,7 @@ export default function FlowBuilder({ initialData }: { initialData?: any }) {
 
                                         {msg.buttons && msg.buttons.length > 0 && (
                                             <div className="mt-2 space-y-1">
-                                                {msg.buttons.map((b, bIdx) => (
+                                                {msg.buttons.map((b: SimButton, bIdx: number) => (
                                                     <div key={bIdx} className="w-full bg-blue-50/50 hover:bg-blue-100 border border-blue-100 text-blue-600 text-center py-1.5 rounded-lg text-[10px] font-bold cursor-pointer transition-colors"
                                                         onClick={() => {
                                                             if (b.type === 'reply') {
@@ -752,7 +801,7 @@ export default function FlowBuilder({ initialData }: { initialData?: any }) {
                                         {msg.listItems && msg.listItems.length > 0 && (
                                             <div className="mt-2 space-y-1 border-t pt-2">
                                                 <div className="text-[10px] font-bold text-gray-500 mb-1">List Menu:</div>
-                                                {msg.listItems.map((li, lIdx) => (
+                                                {msg.listItems.map((li: SimListItem, lIdx: number) => (
                                                     <div key={lIdx} className="w-full bg-fuchsia-50 hover:bg-fuchsia-100 border border-fuchsia-100 text-fuchsia-700 p-1.5 rounded-lg text-[10px] cursor-pointer transition-colors flex flex-col"
                                                         onClick={() => {
                                                             setSimInput(`LIST_SELECT_ID:${li.id}`);

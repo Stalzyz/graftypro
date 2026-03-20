@@ -1,207 +1,142 @@
 "use client";
-import React, { useEffect, useState } from 'react';
-import { Check, ArrowRight, Loader2, Zap, Star } from 'lucide-react';
-import Link from 'next/link';
+import React, { useState } from 'react';
+import { Check, Zap, Rocket, Building2, MessageCircle } from 'lucide-react';
 
-interface Plan {
-    id: string;
-    name: string;
-    monthly_price: number;
-    yearly_price: number;
-    credits: number;
-    features: string[];
-    is_featured: boolean;
-    flow_builder_access: boolean;
-    drip_campaign_access: boolean;
-}
-
-interface DynamicPricingProps {
-    title?: string;
-    subtitle?: string;
-    manualPlans?: any[];
-    autoSync?: boolean;
-}
-
-export default function DynamicPricing({
-    title = "Simple, Transparent Pricing",
-    subtitle = "Start your 7-day free trial. No credit card required.",
-    manualPlans,
-    autoSync = true
-}: DynamicPricingProps) {
-    const [plans, setPlans] = useState<Plan[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [billing, setBilling] = useState<'monthly' | 'yearly'>('monthly');
-
-    useEffect(() => {
-        if (!autoSync && manualPlans) {
-            setPlans(manualPlans);
-            setLoading(false);
-            return;
-        }
-        const fetchPlans = async () => {
-            try {
-                const res = await fetch('/api/billing/plans');
-                const json = await res.json();
-                if (json.data) setPlans(json.data);
-            } catch (err) {
-                console.error("Failed to fetch plans", err);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchPlans();
-    }, [autoSync, manualPlans]);
-
-    if (loading) {
-        return (
-            <section id="pricing" className="section-white flex items-center justify-center min-h-[400px]">
-                <Loader2 className="animate-spin text-[var(--brand-light)]" size={40} />
-            </section>
-        );
+const plans = [
+    {
+        name: "STARTER",
+        monthly_price: 1999,
+        yearly_price: 19999,
+        original_monthly: 2999,
+        icon: <Zap className="w-5 h-5" />,
+        desc: "Essential WhatsApp Automation for small teams.",
+        features: [
+            "Quick Replies Access",
+            "Visual Flow Builder",
+            "Message Nodes Only",
+            "Shared Inbox (2 Agents)",
+            "Unlimited Broadcasts"
+        ],
+        gradient: "from-blue-500 to-indigo-600"
+    },
+    {
+        name: "GROWTH",
+        monthly_price: 3999,
+        yearly_price: 39999,
+        original_monthly: 5999,
+        icon: <Rocket className="w-5 h-5" />,
+        desc: "Scale your sales with E-commerce and CRM.",
+        features: [
+            "Everything in Starter",
+            "CRM & Lead Management",
+            "E-Commerce WhatsApp Shop",
+            "Courses & Academy Engine",
+            "Logic & Automation Nodes",
+            "Shared Inbox (10 Agents)"
+        ],
+        gradient: "from-purple-500 to-pink-600",
+        popular: true
+    },
+    {
+        name: "ENTERPRISE",
+        monthly_price: 14999,
+        yearly_price: 149999,
+        original_monthly: 24999,
+        icon: <Building2 className="w-5 h-5" />,
+        desc: "Ultimate scale with Drips and Integrations.",
+        features: [
+            "Everything in Growth",
+            "Drip Message Sequences",
+            "Advanced CRM Engine",
+            "Integration Nodes (Webhooks/API)",
+            "Dedicated Success Manager",
+            "Shared Inbox (50 Agents)"
+        ],
+        gradient: "from-orange-500 to-red-600"
     }
+];
 
-    if (plans.length === 0) return null;
-
-    const yearlySavings = 17; // percent
+export default function DynamicPricing() {
+    const [isYearly, setIsYearly] = useState(false);
 
     return (
-        <section id="pricing" className="section-white">
-            <div className="max-w-7xl mx-auto px-6">
-                {/* Header */}
-                <div className="text-center mb-12 animate-up">
-                    <h2 className="g-h2 mb-4" dangerouslySetInnerHTML={{ __html: title }} />
-                    <p className="g-p text-xl mb-8">{subtitle}</p>
-
-                    {/* Billing Toggle */}
-                    <div className="inline-flex items-center gap-1 bg-slate-100 p-1 rounded-2xl">
-                        <button
-                            onClick={() => setBilling('monthly')}
-                            className={`px-6 py-2.5 rounded-xl text-sm font-black transition-all ${billing === 'monthly' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+        <section className="py-24 bg-white relative overflow-hidden" id="pricing">
+            <div className="container mx-auto px-4">
+                <div className="text-center max-w-3xl mx-auto mb-16">
+                    <h2 className="text-4xl md:text-5xl font-black mb-6 tracking-tight">Simple, Transparent Pricing</h2>
+                    <p className="text-slate-500 text-lg">Choose the perfect plan for your business growth.</p>
+                    
+                    {/* Toggle Switch */}
+                    <div className="mt-10 flex items-center justify-center gap-4">
+                        <span className={`text-sm font-bold ${!isYearly ? 'text-slate-900' : 'text-slate-400'}`}>Monthly</span>
+                        <button 
+                            onClick={() => setIsYearly(!isYearly)}
+                            className="relative w-16 h-8 rounded-full p-1 transition-all duration-300 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 focus:outline-none"
                         >
-                            Monthly
+                            <div className={`w-6 h-6 bg-white rounded-full transition-transform shadow-md transform ${isYearly ? 'translate-x-8' : 'translate-x-0'}`} />
                         </button>
-                        <button
-                            onClick={() => setBilling('yearly')}
-                            className={`px-6 py-2.5 rounded-xl text-sm font-black transition-all flex items-center gap-2 ${billing === 'yearly' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                        >
-                            Yearly
-                            <span className="bg-green-100 text-green-700 text-[10px] font-black px-2 py-0.5 rounded-full">
-                                Save {yearlySavings}%
-                            </span>
-                        </button>
+                        <div className="flex items-center gap-2">
+                            <span className={`text-sm font-bold ${isYearly ? 'text-slate-900' : 'text-slate-400'}`}>Yearly</span>
+                            <span className="bg-green-100 text-green-700 text-[10px] font-black px-2 py-0.5 rounded-full">SAVE 20%</span>
+                        </div>
                     </div>
                 </div>
 
-                {/* Plan Cards */}
-                <div className={`grid grid-cols-1 ${plans.length <= 2 ? 'md:grid-cols-2 max-w-3xl mx-auto' : plans.length === 3 ? 'md:grid-cols-3' : 'md:grid-cols-2 lg:grid-cols-4'} gap-8`}>
-                    {plans.map((plan) => {
-                        const price = billing === 'yearly'
-                            ? Math.round((plan.yearly_price / 12))
-                            : plan.monthly_price;
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+                    {plans.map((p) => (
+                        <div key={p.name} className={`relative flex flex-col p-8 rounded-[2.5rem] border ${p.popular ? 'border-purple-200 shadow-2xl shadow-purple-100 ring-2 ring-purple-50' : 'border-slate-100'} bg-white transition-all hover:scale-[1.02]`}>
+                            {p.popular && (
+                                <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-gradient-to-r from-purple-600 to-pink-600 text-white text-[10px] font-black px-4 py-1.5 rounded-full tracking-widest shadow-lg">
+                                    MOST POPULAR
+                                </div>
+                            )}
 
-                        return (
-                            <PriceCard
-                                key={plan.id}
-                                name={plan.name}
-                                price={price}
-                                yearly={billing === 'yearly'}
-                                yearlyTotal={plan.yearly_price}
-                                credits={plan.credits}
-                                features={plan.features}
-                                featured={plan.is_featured}
-                                hasFlows={plan.flow_builder_access}
-                            />
-                        );
-                    })}
+                            <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${p.gradient} text-white flex items-center justify-center mb-6 shadow-lg`}>
+                                {p.icon}
+                            </div>
+
+                            <h3 className="text-xl font-black mb-2 tracking-tight text-slate-800">{p.name}</h3>
+                            <p className="text-sm text-slate-400 mb-6 font-medium leading-relaxed">{p.desc}</p>
+
+                            <div className="mb-8">
+                                <div className="flex items-baseline gap-1">
+                                    <span className="text-lg font-bold">₹</span>
+                                    <span className="text-5xl font-black tracking-tight">
+                                        {isYearly ? (p.yearly_price / 12).toLocaleString(undefined, { maximumFractionDigits: 0 }) : p.monthly_price.toLocaleString()}
+                                    </span>
+                                    <span className="text-slate-400 font-bold">/mo</span>
+                                </div>
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-2">+ Tax & WhatsApp charges</p>
+                            </div>
+
+                            <div className="space-y-4 mb-10 flex-grow">
+                                {p.features.map(f => (
+                                    <div key={f} className="flex items-start gap-3">
+                                        <div className="bg-green-50 p-1 rounded-full mt-0.5">
+                                            <Check className="w-3 h-3 text-green-600" />
+                                        </div>
+                                        <span className="text-sm font-medium text-slate-600">{f}</span>
+                                    </div>
+                                ))}
+                            </div>
+
+                            <button className={`w-full py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${p.popular ? 'bg-slate-900 text-white hover:bg-black shadow-lg shadow-slate-200' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+                                Start Free Trial
+                            </button>
+                        </div>
+                    ))}
                 </div>
-
-                {/* Bottom Note */}
-                <p className="text-center text-slate-400 text-sm font-medium mt-10">
-                    All plans include a <strong className="text-slate-700">7-day free trial</strong>. No credit card required. Cancel anytime.
-                </p>
-            </div>
-        </section>
-    );
-}
-
-function PriceCard({
-    name, price, yearly, yearlyTotal, credits, features, featured, hasFlows
-}: {
-    name: string;
-    price: number;
-    yearly: boolean;
-    yearlyTotal: number;
-    credits: number;
-    features: string[];
-    featured?: boolean;
-    hasFlows?: boolean;
-}) {
-    const slug = name.toLowerCase().replace(/\s+/g, '-');
-
-    return (
-        <div className={`g-card flex flex-col h-full border-2 relative ${featured ? 'border-[var(--brand-light)] ring-4 ring-[var(--brand-light)]/10 scale-[1.02]' : 'border-slate-100'}`}>
-            {featured && (
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest px-6 py-2 rounded-full shadow-lg flex items-center gap-1.5">
-                    <Star size={11} fill="white" /> Most Popular
-                </div>
-            )}
-
-            <div className="mb-6">
-                <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-3">{name}</h3>
-
-                {/* Price Display */}
-                <div className="flex items-baseline gap-1 mb-1">
-                    <span className="text-2xl font-bold text-slate-700">₹</span>
-                    <span className="text-5xl font-black tracking-tight text-slate-900">
-                        {price.toLocaleString()}
-                    </span>
-                    <span className="text-slate-400 font-bold uppercase text-xs">/mo</span>
-                </div>
-                {yearly && (
-                    <p className="text-xs text-slate-400 font-medium mb-4">
-                        ₹{yearlyTotal.toLocaleString()} billed annually
-                    </p>
-                )}
-
-                {/* Credits */}
-                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 mb-4 mt-3">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[3px] mb-1">Operational Credits</p>
-                    <p className="text-2xl font-black tracking-tighter text-[var(--brand-light)]">{credits.toLocaleString()}</p>
-                </div>
-
-                {/* Feature Tags */}
-                {!hasFlows && (
-                    <div className="flex flex-wrap gap-1.5 mb-2">
-                        <span className="px-2 py-0.5 bg-blue-50 text-blue-600 text-[10px] font-black rounded-lg">Live Chat</span>
-                        <span className="px-2 py-0.5 bg-green-50 text-green-600 text-[10px] font-black rounded-lg">Templates</span>
-                        <span className="px-2 py-0.5 bg-purple-50 text-purple-600 text-[10px] font-black rounded-lg">Campaigns</span>
-                    </div>
-                )}
             </div>
 
-            {/* Feature List */}
-            <ul className="space-y-3 mb-8 flex-grow">
-                {features.map((f, i) => (
-                    <li key={i} className="flex gap-3 items-start">
-                        <Check size={16} className="shrink-0 text-[var(--brand-light)] mt-0.5" />
-                        <span className="text-slate-600 font-medium text-sm leading-snug">{f}</span>
-                    </li>
-                ))}
-            </ul>
-
-            {/* CTA — Start Trial Button */}
-            <Link
-                href={`/register?plan=${slug}&billing=${yearly ? 'yearly' : 'monthly'}`}
-                className={`${featured ? 'g-btn-primary' : 'g-btn-outline'} w-full group py-4 text-sm font-black flex items-center justify-center gap-2`}
+            {/* WhatsApp Floating Button */}
+            <a 
+                href="https://wa.me/919789359407" 
+                target="_blank" 
+                rel="noreferrer"
+                className="fixed bottom-8 right-8 w-16 h-16 bg-[#25D366] rounded-full flex items-center justify-center text-white shadow-2xl hover:scale-110 transition-transform z-50 animate-bounce"
             >
-                <Zap size={15} className={featured ? "text-yellow-300" : "text-[var(--brand-light)]"} />
-                Start 7-Day Free Trial
-                <ArrowRight size={15} className="group-hover:translate-x-1 transition-transform" />
-            </Link>
-
-            <p className="text-center text-[10px] text-slate-400 font-medium mt-2">
-                No credit card required
-            </p>
-        </div>
+                <MessageCircle fill="currentColor" size={32} />
+            </a>
+        </section>
     );
 }

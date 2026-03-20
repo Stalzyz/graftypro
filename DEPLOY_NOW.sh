@@ -49,23 +49,33 @@ ssh -o StrictHostKeyChecking=no $SERVER "bash -s" << 'EOF'
     set -e
     cd /root/wabot_bsp
     
-    # --- ☢️ AGGRESSIVE NUCLEAR MODE: Wipe & Force Rebuild ---
-    echo "☢️ EXECUTING AGGRESSIVE NUCLEAR MODE..."
+    # --- ☢️ EXTREME CLEANUP MODE: Port 3001 Guardian ---
+    echo "🛡️ Investigating port 3001 conflict..."
     
-    # 1. Stop and remove EVERYTHING related to this project
-    docker compose -f docker-compose.prod.yml down --volumes --remove-orphans || true
-    
-    # 2. Wipe local build caches and Next.js artifacts on the host
-    echo "🧹 Wiping host-side build artifacts..."
-    rm -rf .next node_modules prisma/client
-    
-    # 3. Docker System Prune (Aggressive)
-    echo "🗑️ Purging dangling Docker images and build cache..."
-    docker image prune -af
-    docker builder prune -af
-    
-    # 4. Force clear port 3001
+    # 1. Identify and kill containers holding port 3001 (Host-wide)
+    CONFLICT_CONTAINERS=$(docker ps -a --format '{{.ID}} {{.Ports}}' | grep "3001" | awk '{print $1}')
+    if [ ! -z "$CONFLICT_CONTAINERS" ]; then
+        echo "🚩 Found conflicting containers: $CONFLICT_CONTAINERS"
+        docker rm -f $CONFLICT_CONTAINERS || true
+    fi
+
+    # 2. Hard kill host processes on 3001 (IPv4 & IPv6 + Ghost Proxies)
+    echo "🔓 Forcing closure of port 3001 sockets..."
     fuser -k 3001/tcp || true
+    lsof -ti:3001 | xargs kill -9 || true
+    # Kill any zombie docker-proxy processes
+    ps aux | grep docker-proxy | grep 3001 | awk '{print $2}' | xargs kill -9 || true
+    
+    # 3. Nuclear Compose Down
+    docker compose -f docker-compose.prod.yml down --remove-orphans || true
+    
+    # 1b. Force Purge base service names
+    echo "🚨 Forced Purge of named dependencies..."
+    docker rm -f grafty_redis grafty_postgres || true
+    
+    # 4. Clean Docker Network Stack
+    echo "🧹 Pruning stale networks..."
+    docker network prune -f || true
     
     # Pre-cleanup of legacy structures
     echo "🧹 Cleaning up legacy structures..."
@@ -73,9 +83,9 @@ ssh -o StrictHostKeyChecking=no $SERVER "bash -s" << 'EOF'
     rm -rf app/white-label/dashboard app/white-label/layout.tsx
     rm -rf app/super-admin/settings app/super-admin/branding app/super-admin/email
     
-    # Restart services from absolute zero with NO CACHE
-    echo "🏗️ Rebuilding & Starting Fresh Containers from ZERO (NO-CACHE)..."
-    docker compose -f docker-compose.prod.yml build --no-cache
+    # Restart services from absolute zero
+    echo "🏗️ Rebuilding & Starting Fresh Containers..."
+    docker compose -f docker-compose.prod.yml build
     docker compose -f docker-compose.prod.yml up -d --force-recreate
     
     # Wait for container to be ready
@@ -94,10 +104,9 @@ ssh -o StrictHostKeyChecking=no $SERVER "bash -s" << 'EOF'
     docker compose -f docker-compose.prod.yml exec -T web npx prisma generate --schema=./prisma/schema.prisma < /dev/null
     docker compose -f docker-compose.prod.yml exec -T worker npx prisma generate --schema=./prisma/schema.prisma < /dev/null
 
-    # � Seeding Super Admin
-    echo "🔐 Seeding Super Admin..."
-    docker cp /tmp/reset_superadmin.js wabot_bsp-web-1:/app/reset_superadmin.js < /dev/null 2>/dev/null && \
-    docker exec wabot_bsp-web-1 node /app/reset_superadmin.js < /dev/null 2>/dev/null || echo "⚠️ Super admin seed skipped"
+    # 🔐 Seeding Super Admin
+    echo "🔐 Seeding Super Admin (RESETTING)..."
+    docker compose -f docker-compose.prod.yml exec -T web npx tsx scripts/reset-admin.ts < /dev/null
     
     # Final seeding
     echo "⚙️ Seeding SMTP Configuration..."

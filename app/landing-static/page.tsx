@@ -1,11 +1,12 @@
 "use client";
+export const dynamic = "force-dynamic";
 
 import React, { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import LandingNavbar from "../../components/landing-new/LandingNavbar";
 import LandingFooter from "../../components/landing-new/LandingFooter";
-import { DynamicPricingSection } from "../../components/landing-new/DynamicPricingSection";
+import DynamicPricingSection from "../../components/landing-new/DynamicPricingSection";
 import { SmartPartnerLink } from "../../components/landing-new/SmartPartnerLink";
 import {
     ArrowRight, Check, Star, GitBranch, Send, Clock,
@@ -156,7 +157,7 @@ const FAQS = [
     { q: "How much does WhatsApp API cost?", a: "Meta charges per conversation. Costs vary by country and message type. Grafty shows exact costs before sending so there are zero surprises. Marketing messages in India cost ~₹0.88, utility ₹0.13." },
     { q: "Can I send bulk messages?", a: "Yes. Broadcast campaigns allow targeted bulk messaging with delivery tracking and performance analytics. You can segment by behavior, tags, or custom filters." },
     { q: "Can I run e-commerce on WhatsApp?", a: "Yes. You can sell products, collect payments via Razorpay, manage orders, send COD confirmations, and generate GST invoices — all inside WhatsApp." },
-    { q: "Is there a free trial?", a: "Yes. Sign up and explore all modules before upgrading to a paid plan. You get 1,000 welcome credits to start." },
+    { q: "Is there a free trial?", a: "Yes. Sign up and explore all modules before upgrading to a paid plan. You get a perfect 7-day free trial to start." },
     { q: "What prerequisites does WhatsApp API need?", a: "Meta Business Manager account, business verification documents, a dedicated phone number, and a business email. GST registration and a business website are recommended for faster approval." },
 ];
 
@@ -270,7 +271,7 @@ export default function StaticLandingPage() {
                             href="/register"
                             className="group flex items-center gap-2 bg-[#27954D] hover:bg-[#1f7a3f] text-white font-bold px-8 py-4 rounded-xl transition-all shadow-xl shadow-green-200/60 text-base active:scale-95"
                         >
-                            Start Free — 1,000 Credits Included
+                            Start Free Trial
                             <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
                         </Link>
                         <Link
@@ -737,7 +738,7 @@ export default function StaticLandingPage() {
                     </p>
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                         <Link href="/register" className="flex items-center gap-2 bg-[#27954D] hover:bg-[#1f7a3f] text-white font-bold px-10 py-4 rounded-xl transition-all shadow-xl shadow-green-900/40 text-base">
-                            Start Free — 1,000 Credits Included <ArrowRight size={18} />
+                            Start Free Trial <ArrowRight size={18} />
                         </Link>
                         <Link href="/pricing" className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white font-bold px-10 py-4 rounded-xl border border-white/20 transition-all text-base">
                             View Pricing

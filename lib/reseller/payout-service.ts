@@ -1,82 +1,208 @@
-import Razorpay from "razorpay";
 import { prisma } from "../db";
+import { encrypt, decrypt } from "../security/encryption";
+import axios from "axios";
+import { EmailService } from "../email/service";
 
 /**
- * PHASE: AUTOMATED PAYOUTS (RazorpayX)
- * Handles automated transfers to Resellers.
+ * Reseller Payout Service - RazorpayX Integration
+ * 
+ * Handles automated payouts to resellers via IMPS/NEFT/UPI.
  */
-export class RazorpayPayoutService {
-    private static razorpay = new Razorpay({
-        key_id: process.env.RAZORPAY_KEY_ID!,
-        key_secret: process.env.RAZORPAY_KEY_SECRET!,
-    });
+export class ResellerPayoutService {
+    private static BASE_URL = "https://api.razorpay.com/v1";
+    private static ACCOUNT_NUMBER = process.env.RAZORPAYX_ACCOUNT_NUMBER;
+    private static KEY_ID = process.env.RAZORPAY_KEY_ID;
+    private static KEY_SECRET = process.env.RAZORPAY_KEY_SECRET;
+
+    private static getAuth() {
+        return {
+            auth: {
+                username: this.KEY_ID || "",
+                password: this.KEY_SECRET || ""
+            }
+        };
+    }
 
     /**
-     * Create a Contact in RazorpayX
+     * Sync Reseller as a RazorpayX Contact
      */
-    static async createContact(resellerId: string) {
+    static async syncContact(resellerId: string) {
         const reseller = await prisma.reseller.findUnique({
             where: { id: resellerId }
         });
 
         if (!reseller) throw new Error("Reseller not found");
+        if (reseller.razorpayx_contact_id) return reseller.razorpayx_contact_id;
 
         try {
-            // Check if contact already exists in our DB (Phase: Save contact_id in Reseller model)
-            // For now, call Razorpay API
-            const contact = await (this.razorpay as any).items.create({
+            const response = await axios.post(`${this.BASE_URL}/contacts`, {
                 name: reseller.name,
                 email: reseller.email,
                 type: "vendor",
                 reference_id: reseller.id,
-                notes: { type: "reseller" }
-            }, 'contacts'); // RazorpayX uses different endpoints, often require custom axios/fetch if SDK doesn't support X yet. 
-            // Note: Standard Razorpay SDK might not support RazorpayX Payouts directly in all versions.
+                notes: {
+                    business_name: reseller.business_name || ""
+                }
+            }, this.getAuth());
 
-            return contact;
+            const contactId = response.data.id;
+            await prisma.reseller.update({
+                where: { id: resellerId },
+                data: { razorpayx_contact_id: contactId }
+            });
+
+            return contactId;
         } catch (error: any) {
-            console.error("Razorpay Contact Error:", error);
-            throw error;
+            console.error("RazorpayX Contact Error:", error.response?.data || error.message);
+            throw new Error(`Failed to create RazorpayX contact: ${error.response?.data?.error?.description || error.message}`);
         }
     }
 
     /**
-     * Execute a Payout
-     * Note: This usually requires RazorpayX setup and a separate account/fund.
+     * Sync Bank Account as a RazorpayX Fund Account
      */
-    static async executePayout(requestId: string) {
-        const request = await prisma.resellerPayoutRequest.findUnique({
-            where: { id: requestId },
-            include: { reseller: true }
+    static async syncFundAccount(resellerId: string) {
+        const reseller = await prisma.reseller.findUnique({
+            where: { id: resellerId }
         });
 
-        if (!request || request.status !== "PENDING") {
-            throw new Error("Invalid payout request");
+        if (!reseller) throw new Error("Reseller not found");
+        if (reseller.razorpayx_fund_account_id) return reseller.razorpayx_fund_account_id;
+
+        const contactId = await this.syncContact(resellerId);
+
+        if (!reseller.bank_account_number || !reseller.bank_ifsc) {
+            throw new Error("Bank details missing from reseller profile");
         }
 
-        const amount = Number(request.amount);
-        const details = request.payment_details as any;
+        const accountNumber = decrypt(reseller.bank_account_number);
+        const ifsc = decrypt(reseller.bank_ifsc);
+        const holderName = reseller.bank_account_holder ? decrypt(reseller.bank_account_holder) : reseller.name;
 
         try {
-            // Mocking the Payout execution as standard SDK doesn't natively handle X Payouts well without additional config
-            // In a real production environment, we would use fetch/axios to https://api.razorpay.com/v1/payouts
-
-            console.log(`[Razorpay] Executing Payout of ₹${amount} to ${request.reseller.name}`);
-
-            // 1. Mark as PAID in our system
-            await prisma.resellerPayoutRequest.update({
-                where: { id: requestId },
-                data: {
-                    status: "PAID",
-                    processed_at: new Date(),
-                    admin_notes: `Razorpay Payout Executed. Ref: ${Math.random().toString(36).substring(7)}`
+            const response = await axios.post(`${this.BASE_URL}/fund_accounts`, {
+                contact_id: contactId,
+                account_type: "bank_account",
+                bank_account: {
+                    name: holderName,
+                    ifsc: ifsc,
+                    account_number: accountNumber
                 }
+            }, this.getAuth());
+
+            const fundAccountId = response.data.id;
+            await prisma.reseller.update({
+                where: { id: resellerId },
+                data: { razorpayx_fund_account_id: fundAccountId }
             });
 
-            return { success: true, amount };
+            return fundAccountId;
         } catch (error: any) {
-            console.error("Razorpay Payout Failed:", error);
-            throw error;
+            console.error("RazorpayX Fund Account Error:", error.response?.data || error.message);
+            throw new Error(`Failed to create Fund Account: ${error.response?.data?.error?.description || error.message}`);
+        }
+    }
+
+    /**
+     * Execute Automated Payout
+     */
+    static async executePayout(requestId: string, adminId: string, txContext?: any) {
+        const execute = async (tx: any) => {
+            const request = await tx.resellerPayoutRequest.findUnique({
+                where: { id: requestId },
+                include: { reseller: true }
+            });
+
+            if (!request) throw new Error("Payout request not found");
+            if (request.status !== "PENDING") throw new Error("Payout already processed");
+
+            const reseller = request.reseller;
+            const amount = Number(request.amount);
+
+            if (Number(reseller.wallet_balance) < amount) {
+                throw new Error("Insufficient reseller wallet balance");
+            }
+
+            // 1. Sync Payout Identity
+            // Note: In transaction, we can't easily wait for external API call while holding locks, 
+            // but for Payouts it's often safer to do outside or handle idempotency.
+            // For now, we'll assume the calls happen.
+            
+            const fundAccountId = await this.syncFundAccount(reseller.id);
+
+            // 2. Trigger RazorpayX Payout
+            const idempotencyKey = `payout_${request.id}`;
+            
+            try {
+                const response = await axios.post(`${this.BASE_URL}/payouts`, {
+                    account_number: this.ACCOUNT_NUMBER,
+                    fund_account_id: fundAccountId,
+                    amount: amount * 100, // to paise
+                    currency: "INR",
+                    mode: "IMPS",
+                    purpose: "payout",
+                    queue_if_low_balance: true,
+                    reference_id: request.id,
+                    notes: {
+                        reseller_name: reseller.name
+                    }
+                }, {
+                    ...this.getAuth(),
+                    headers: { "X-Payout-Idempotency": idempotencyKey }
+                });
+
+                const rzpPayoutId = response.data.id;
+
+                // 3. Update Ledger and Request
+                const balanceAfter = Number(reseller.wallet_balance) - amount;
+
+                await tx.reseller.update({
+                    where: { id: reseller.id },
+                    data: {
+                        wallet_balance: { decrement: amount }
+                    }
+                });
+
+                await tx.resellerLedger.create({
+                    data: {
+                        reseller_id: reseller.id,
+                        amount: -amount,
+                        type: "PAYOUT",
+                        description: `Automated Payout via RazorpayX (ID: ${rzpPayoutId})`,
+                        reference_id: request.id,
+                        balance_after: balanceAfter
+                    }
+                });
+
+                await tx.resellerPayoutRequest.update({
+                    where: { id: requestId },
+                    data: {
+                        status: "PAID",
+                        gateway_payout_id: rzpPayoutId,
+                        processed_by: adminId,
+                        processed_at: new Date()
+                    }
+                });
+
+                // Send Confirmation Alert
+                await EmailService.sendResellerPayoutEmail(reseller.id, {
+                    amount: amount,
+                    status: "PAID",
+                    payoutId: rzpPayoutId
+                });
+
+                return { success: true, payoutId: rzpPayoutId };
+
+            } catch (error: any) {
+                console.error("RazorpayX Payout execution error:", error.response?.data || error.message);
+                throw new Error(`Payout Failed: ${error.response?.data?.error?.description || error.message}`);
+            }
+        };
+
+        if (txContext) {
+            return await execute(txContext);
+        } else {
+            return await prisma.$transaction(async (tx) => await execute(tx));
         }
     }
 }

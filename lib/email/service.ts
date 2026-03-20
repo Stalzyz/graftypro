@@ -6,20 +6,56 @@ export class EmailService {
     /**
      * Create a transporter using system configuration
      */
-    static async getTransporter() {
-        // Try database config first
+    static async getTransporter(resellerId?: string) {
+        let smtpHost = process.env.SMTP_HOST;
+        let smtpPort = parseInt(process.env.SMTP_PORT || "587");
+        let smtpUser = process.env.SMTP_USER;
+        let smtpPass = process.env.SMTP_PASS;
+        let encryption = "STARTTLS";
+
+        // 1. Check for Reseller-specific SMTP
+        if (resellerId) {
+            const reseller = await prisma.reseller.findUnique({
+                where: { id: resellerId },
+                select: { smtp_config: true }
+            });
+
+            if (reseller?.smtp_config) {
+                const rConf = reseller.smtp_config as any;
+                if (rConf.host && rConf.user && (rConf.pass || rConf.pass_enc)) {
+                    smtpHost = rConf.host;
+                    smtpPort = Number(rConf.port) || 587;
+                    smtpUser = rConf.user;
+                    
+                    if (rConf.pass_enc) {
+                        const { decrypt } = require("../security/encryption");
+                        smtpPass = decrypt(rConf.pass_enc);
+                    } else {
+                        smtpPass = rConf.pass;
+                    }
+                    
+                    encryption = rConf.encryption || (smtpPort === 465 ? "SSL" : "STARTTLS");
+                    
+                    return nodemailer.createTransport({
+                        host: smtpHost,
+                        port: smtpPort,
+                        secure: smtpPort === 465 || encryption === "SSL",
+                        auth: { user: smtpUser, pass: smtpPass },
+                        tls: { rejectUnauthorized: false }
+                    });
+                }
+            }
+        }
+
+        // 2. Fallback to Database System Config
         const config = await SystemConfigService.getConfig();
         const secrets = await SystemConfigService.getDecryptedSecrets();
 
-        // Fallback to environment variables if database config not set or empty
-        const smtpHost = (config.smtp_host && config.smtp_host.trim() !== "") ? config.smtp_host : process.env.SMTP_HOST;
-        const smtpPort = Number(config.smtp_port) || parseInt(process.env.SMTP_PORT || "587");
-        const smtpUser = (config.smtp_user && config.smtp_user.trim() !== "") ? config.smtp_user : process.env.SMTP_USER;
-        const smtpPass = (secrets.smtp_pass && secrets.smtp_pass.trim() !== "") ? secrets.smtp_pass : process.env.SMTP_PASS;
-
-        // Logic: Port 465 is ALWAYS SSL (secure: true). All others (587, 25) are STARTTLS (secure: false).
-        // If config specifies SSL, we honor it, otherwise we infer from port.
-        const smtpSecure = smtpPort === 465 || config.smtp_encryption === "SSL";
+        if (config.smtp_host) smtpHost = config.smtp_host;
+        if (config.smtp_port) smtpPort = Number(config.smtp_port);
+        if (config.smtp_user) smtpUser = config.smtp_user;
+        if (secrets.smtp_pass) smtpPass = secrets.smtp_pass;
+        encryption = config.smtp_encryption || (smtpPort === 465 ? "SSL" : "STARTTLS");
 
         if (!smtpHost || !smtpUser || !smtpPass) {
             console.warn("⚠️ SMTP not configured. Emails will not be sent.", { smtpHost, smtpUser, hasPass: !!smtpPass });
@@ -29,15 +65,9 @@ export class EmailService {
         return nodemailer.createTransport({
             host: smtpHost,
             port: smtpPort,
-            secure: smtpSecure,
-            auth: {
-                user: smtpUser,
-                pass: smtpPass
-            },
-            tls: {
-                // Do not fail on invalid certs (common for PrivateEmail/Namecheap)
-                rejectUnauthorized: false
-            }
+            secure: smtpPort === 465 || encryption === "SSL",
+            auth: { user: smtpUser, pass: smtpPass },
+            tls: { rejectUnauthorized: false }
         });
     }
 
@@ -60,11 +90,14 @@ export class EmailService {
 
         const config = await SystemConfigService.getConfig();
 
-        // 1. Resolve Branding
+        // 1. Resolve Branding & Identity
+        const rSmtp = (workspace?.reseller?.smtp_config as any);
         const brandName = workspace?.reseller?.brand_name || config.platform_name || "Grafty";
         const logoUrl = workspace?.reseller?.logo_url || config.logo_url || "https://grafty.pro/logo.png";
-        const fromEmail = config.smtp_from_email || "no-reply@grafty.pro";
-        const fromName = workspace?.reseller?.brand_name || config.smtp_from_name || brandName;
+        
+        // Sender Identity: Priority to Reseller SMTP Config -> System Config -> Default
+        const fromEmail = rSmtp?.from_email || config.smtp_from_email || "no-reply@grafty.pro";
+        const fromName = rSmtp?.from_name || workspace?.reseller?.brand_name || config.smtp_from_name || brandName;
 
         // 2. Prepare HTML with Template Logic
         let contentHtml = "";
@@ -97,7 +130,7 @@ export class EmailService {
             </div>
         `;
 
-        const transporter = await this.getTransporter();
+        const transporter = await this.getTransporter(workspace?.reseller_id || undefined);
         if (!transporter) return { success: false, message: "SMTP not configured" };
 
         try {
@@ -252,5 +285,115 @@ export class EmailService {
                 }
             ]
         });
+    }
+    /**
+     * Send Payout Confirmation to Reseller
+     */
+    static async sendResellerPayoutEmail(resellerId: string, options: { 
+        amount: number; 
+        status: 'PAID' | 'FAILED' | 'REVERSED' | 'REJECTED'; 
+        payoutId?: string; 
+        reason?: string; 
+    }) {
+        const reseller = await prisma.reseller.findUnique({
+            where: { id: resellerId }
+        });
+
+        if (!reseller || !reseller.email) return;
+
+        const config = await SystemConfigService.getConfig();
+        const brandName = config.platform_name || "Grafty";
+        const logoUrl = config.logo_url || "https://grafty.pro/logo.png";
+        const isSuccess = options.status === 'PAID';
+        
+        const amountStr = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(options.amount);
+        
+        const contentHtml = `
+            <div style="text-align: center;">
+                <div style="width: 80px; height: 80px; background: ${isSuccess ? '#ECFDF5' : '#FEF2F2'}; border-radius: 40px; display: inline-block; line-height: 80px; margin-bottom: 24px;">
+                    <span style="font-size: 32px; vertical-align: middle;">${isSuccess ? '✅' : '❌'}</span>
+                </div>
+                <h1 style="color: #0F172A; font-size: 28px; font-weight: 800; margin-bottom: 8px; letter-spacing: -0.5px;">
+                    ${isSuccess ? 'Settlement Disbursed' : 'Internal Alert'}
+                </h1>
+                <p style="color: #64748B; font-size: 16px; margin-bottom: 32px; line-height: 1.6;">
+                    ${isSuccess 
+                        ? `A settlement of <b style="color: #0F172A;">${amountStr}</b> has been successfully processed to your bank account.`
+                        : `Your payout request of <b style="color: #0F172A;">${amountStr}</b> could not be completed at this time.`}
+                </p>
+
+                <table width="100%" cellpadding="0" cellspacing="0" style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 20px; padding: 24px; margin-bottom: 32px; text-align: left;">
+                    <tr>
+                        <td colspan="2" style="padding-bottom: 16px;">
+                            <span style="font-size: 11px; color: #94A3B8; text-transform: uppercase; font-weight: 800; letter-spacing: 1.5px;">Transaction Details</span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="color: #64748B; font-size: 14px; padding: 8px 0;">Amount</td>
+                        <td align="right" style="color: #0F172A; font-weight: 800; font-size: 14px; padding: 8px 0;">${amountStr}</td>
+                    </tr>
+                    ${options.payoutId ? `
+                    <tr>
+                        <td style="color: #64748B; font-size: 14px; padding: 8px 0;">Reference ID</td>
+                        <td align="right" style="color: #0F172A; font-family: 'Courier New', Courier, monospace; font-weight: bold; font-size: 12px; padding: 8px 0;">${options.payoutId}</td>
+                    </tr>` : ''}
+                    <tr>
+                        <td style="color: #64748B; font-size: 14px; padding: 8px 0;">Status</td>
+                        <td align="right" style="color: ${isSuccess ? '#10B981' : '#EF4444'}; font-weight: 800; font-size: 13px; padding: 8px 0; text-transform: uppercase;">
+                            ${options.status}
+                        </td>
+                    </tr>
+                    ${!isSuccess && options.reason ? `
+                    <tr>
+                        <td colspan="2" style="margin-top: 16px; padding-top: 16px; border-top: 1px solid #E2E8F0;">
+                            <p style="margin: 0; color: #EF4444; font-size: 13px; font-weight: bold;">
+                                <span style="color: #94A3B8; font-weight: normal;">Reason:</span> ${options.reason}
+                            </p>
+                        </td>
+                    </tr>` : ''}
+                </table>
+
+                <p style="color: #94A3B8; font-size: 13px; font-style: italic;">
+                    ${isSuccess 
+                        ? 'Funds may take some time to reflect in your bank account depending on IMPS/NEFT cycles.' 
+                        : 'If this was unexpected, please check your bank details in the partner dashboard or contact support.'}
+                </p>
+            </div>
+        `;
+
+        const html = `
+            <div style="background-color: #F1F5F9; padding: 40px 20px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+                <div style="max-width: 600px; margin: auto; padding: 48px; border-radius: 32px; background: white; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);">
+                    <div style="text-align: left; margin-bottom: 40px;">
+                        <img src="${logoUrl}" alt="${brandName}" style="height: 32px;">
+                    </div>
+                    ${contentHtml}
+                    <div style="margin-top: 48px; padding-top: 24px; border-top: 1px solid #F1F5F9; text-align: center;">
+                        <p style="font-size: 10px; color: #94A3B8; text-transform: uppercase; font-weight: 800; letter-spacing: 2px; margin: 0;">
+                            SECURE FINANCIAL SETTLEMENT &middot; ${brandName.toUpperCase()} TREASURY
+                        </p>
+                    </div>
+                </div>
+                <div style="max-width: 600px; margin: 24px auto 0; text-align: center;">
+                    <p style="font-size: 11px; color: #64748B;">
+                        This is an automated notification. Please do not reply to this email.
+                    </p>
+                </div>
+            </div>
+        `;
+
+        const transporter = await this.getTransporter();
+        if (!transporter) return;
+
+        try {
+            await transporter.sendMail({
+                from: `"${brandName} Treasury" <${process.env.SMTP_FROM_EMAIL || 'no-reply@grafty.pro'}>`,
+                to: reseller.email,
+                subject: `[${options.status}] Payout Confirmation - ${amountStr}`,
+                html: html
+            });
+        } catch (e: any) {
+            console.error("Failed to send payout confirmation email:", e.message);
+        }
     }
 }

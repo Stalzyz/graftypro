@@ -48,6 +48,25 @@ export async function PUT(
         if (nodes && !Array.isArray(nodes)) return NextResponse.json({ error: "Nodes must be an array" }, { status: 400 });
         if (edges && !Array.isArray(edges)) return NextResponse.json({ error: "Edges must be an array" }, { status: 400 });
 
+        let finalNodes = nodes;
+        let finalEdges = edges;
+
+        // Apply Nuclear Architectural Node & Edge Validation Check
+        if (nodes && edges) {
+            const { validateFlowData } = await import("../../../../lib/engine/node-validator");
+            const val = validateFlowData(nodes, edges);
+            
+            if (!val.valid && val.errors.length > 0) {
+                console.error(`[FlowSave] ❌ Flow Validation Failed for ${params.id}:`, val.errors);
+                // Return 400 with exact schematic errors to trigger self-healing UI
+                return NextResponse.json({ error: "Flow Schema Validation Failed", details: val.errors }, { status: 400 });
+            }
+            
+            // Apply the self-healed, de-duped arrays
+            finalNodes = val.cleanedNodes || nodes;
+            finalEdges = val.cleanedEdges || edges;
+        }
+
         // Security: Ensure flow belongs to user's workspace
         const flow = await prisma.flow.findFirst({
             where: { id: params.id, workspace_id: user.workspaceId }
@@ -76,8 +95,8 @@ export async function PUT(
         const updatedFlow = await prisma.flow.update({
             where: { id: params.id },
             data: {
-                nodes: nodes ?? undefined,
-                edges: edges ?? undefined,
+                nodes: finalNodes ?? undefined,
+                edges: finalEdges ?? undefined,
                 name: name ?? undefined,
                 trigger_keyword: resolvedTriggerKeyword ?? undefined,
                 status: status ?? undefined,

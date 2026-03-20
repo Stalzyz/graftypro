@@ -14,8 +14,10 @@ import {
     ArrowRight,
     ArrowLeft,
     Copy,
-    ExternalLink
+    ExternalLink,
+    BookOpen
 } from "lucide-react";
+import Link from "next/link";
 
 interface ManualWizardProps {
     onComplete: () => void;
@@ -33,8 +35,27 @@ export default function ManualIntegrationWizard({ onComplete, onCancel }: Manual
         phoneNumberId: "",
         appId: "",
         appSecret: "",
-        accessToken: ""
+        accessToken: "",
+        billingModel: "DIRECT" as "DIRECT" | "MANAGED"
     });
+
+    // Persistence: Load from localStorage on mount
+    useEffect(() => {
+        const saved = localStorage.getItem("manual_setup_draft");
+        if (saved) {
+            try {
+                const parsed = JSON.parse(saved);
+                setFormData(prev => ({ ...prev, ...parsed }));
+            } catch (e) {
+                console.error("Failed to parse saved draft:", e);
+            }
+        }
+    }, []);
+
+    // Persistence: Save to localStorage on change
+    useEffect(() => {
+        localStorage.setItem("manual_setup_draft", JSON.stringify(formData));
+    }, [formData]);
 
     const [config, setConfig] = useState({
         webhookUrl: "",
@@ -64,12 +85,22 @@ export default function ManualIntegrationWizard({ onComplete, onCancel }: Manual
             const res = await fetch("/api/whatsapp/manual-setup", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(formData)
+                credentials: "include",
+                body: JSON.stringify({
+                    wabaId: formData.wabaId,
+                    phoneNumberId: formData.phoneNumberId,
+                    appId: formData.billingModel === 'MANAGED' ? 'SYSTEM' : formData.appId,
+                    appSecret: formData.billingModel === 'MANAGED' ? 'SYSTEM' : formData.appSecret,
+                    accessToken: formData.accessToken,
+                    billingModel: formData.billingModel
+                })
             });
             const data = await res.json();
 
             if (!res.ok) {
-                throw new Error(data.error || "Validation failed");
+                const message = data.error || "Validation failed";
+                const details = data.details ? ` - ${data.details}` : "";
+                throw new Error(`${message}${details}`);
             }
 
             setValidationResult(data.data);
@@ -114,7 +145,50 @@ export default function ManualIntegrationWizard({ onComplete, onCancel }: Manual
                     <div className="space-y-6 animate-slide-in">
                         <div className="space-y-4">
                             <h3 className="text-lg font-bold text-slate-800">Step 1 — API Credentials</h3>
-                            <p className="text-sm text-slate-500">Enter your Meta App and WABA identification numbers.</p>
+                            <p className="text-sm text-slate-500">Choose your hosting model and enter your Meta identification numbers.</p>
+                        </div>
+
+                        {/* Billing Model Toggle */}
+                        <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100 flex flex-col gap-4">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-sm font-bold text-slate-800">App Hosting Model</p>
+                                    <p className="text-[10px] text-slate-400 font-medium">Determines your credit orchestration fees.</p>
+                                </div>
+                                <div className="flex bg-white p-1 rounded-xl border border-slate-200 shadow-inner">
+                                    <button
+                                        onClick={() => setFormData({ ...formData, billingModel: 'MANAGED' })}
+                                        className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${formData.billingModel === 'MANAGED' ? 'bg-[#27954D] text-white shadow-md' : 'text-slate-400 hover:bg-slate-50'}`}
+                                    >
+                                        Grafty Hub
+                                    </button>
+                                    <button
+                                        onClick={() => setFormData({ ...formData, billingModel: 'DIRECT' })}
+                                        className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${formData.billingModel === 'DIRECT' ? 'bg-slate-800 text-white shadow-md' : 'text-slate-400 hover:bg-slate-50'}`}
+                                    >
+                                        Own App
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="p-3 bg-white/50 rounded-xl border border-slate-100/50">
+                                {formData.billingModel === 'MANAGED' ? (
+                                    <p className="text-[10px] text-green-600 font-bold leading-relaxed">
+                                        🚀 <b>Managed Mode:</b> You use Grafty's verified Meta App. Pay for conversations via credits (Meta Cost + 15% Markup).
+                                    </p>
+                                ) : (
+                                    <p className="text-[10px] text-slate-500 font-bold leading-relaxed text-blue-600">
+                                        ⚡ <b>Direct Mode:</b> You pay Meta directly. We only charge a flat <b>₹0.05 execution fee</b> per automated message.
+                                    </p>
+                                )}
+                                <Link
+                                    href="/dashboard/credits/help"
+                                    target="_blank"
+                                    className="inline-flex items-center gap-1 mt-2 text-[9px] font-black uppercase tracking-wider text-slate-400 hover:text-indigo-600 transition-colors"
+                                >
+                                    <BookOpen size={10} /> How billing works &rarr;
+                                </Link>
+                            </div>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -132,21 +206,25 @@ export default function ManualIntegrationWizard({ onComplete, onCancel }: Manual
                                 value={formData.phoneNumberId}
                                 onChange={(v: string) => setFormData({ ...formData, phoneNumberId: v })}
                             />
-                            <InputGroup
-                                label="App ID"
-                                icon={<Globe size={16} />}
-                                placeholder="82736451..."
-                                value={formData.appId}
-                                onChange={(v: string) => setFormData({ ...formData, appId: v })}
-                            />
-                            <InputGroup
-                                label="App Secret"
-                                icon={<Lock size={16} />}
-                                placeholder="••••••••"
-                                type="password"
-                                value={formData.appSecret}
-                                onChange={(v: string) => setFormData({ ...formData, appSecret: v })}
-                            />
+                            {formData.billingModel === 'DIRECT' && (
+                                <>
+                                    <InputGroup
+                                        label="App ID"
+                                        icon={<Globe size={16} />}
+                                        placeholder="82736451..."
+                                        value={formData.appId}
+                                        onChange={(v: string) => setFormData({ ...formData, appId: v })}
+                                    />
+                                    <InputGroup
+                                        label="App Secret"
+                                        icon={<Lock size={16} />}
+                                        placeholder="••••••••"
+                                        type="password"
+                                        value={formData.appSecret}
+                                        onChange={(v: string) => setFormData({ ...formData, appSecret: v })}
+                                    />
+                                </>
+                            )}
                         </div>
 
                         <InputGroup
@@ -246,7 +324,10 @@ export default function ManualIntegrationWizard({ onComplete, onCancel }: Manual
                                 <ArrowLeft size={18} /> Back
                             </button>
                             <button
-                                onClick={onComplete}
+                                onClick={() => {
+                                    localStorage.removeItem("manual_setup_draft");
+                                    onComplete();
+                                }}
                                 className="bg-gradient-to-r from-[#27954D] to-[#042f94] text-white px-10 py-4 rounded-2xl font-bold flex items-center gap-2 transition-all hover:shadow-xl hover:shadow-green-900/10 active:scale-95 shadow-lg shadow-green-100"
                             >
                                 Establish Connection <Zap size={18} />

@@ -72,7 +72,11 @@ export async function POST(req: Request) {
                 if (!pendingWorkspace) {
                     try {
                         pendingWorkspace = await prisma.workspace.create({
-                            data: { name: "Pending Connections", status: "SUSPENDED" }
+                            data: { 
+                                name: "Pending Connections", 
+                                status: "SUSPENDED",
+                                trial_ends_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+                            }
                         });
                     } catch {
                         pendingWorkspace = await prisma.workspace.findFirst();
@@ -134,6 +138,28 @@ export async function POST(req: Request) {
             let msgType: any = "TEXT";
 
             if (message.text) {
+                const incomingText = message.text.body.trim().toUpperCase();
+                const optOutKeywords = waba.opt_out_keywords?.split(',').map(k => k.trim().toUpperCase()) || ["STOP", "CANCEL", "UNSUBSCRIBE"];
+                
+                if (optOutKeywords.includes(incomingText)) {
+                    console.log(`[OPT_OUT] Contact ${phone} requested unsubscribe from Workspace ${waba.workspace_id}`);
+                    await prisma.contact.update({
+                        where: { id: contact.id },
+                        data: { opt_in: false, unsubscribed_at: new Date() }
+                    });
+                    
+                    // Auto-reply with confirmation
+                    if (waba.opt_out_reply) {
+                        try {
+                            const { WhatsAppService } = await import("../../../../lib/whatsapp/service");
+                            const token = decrypt(waba.access_token);
+                            await WhatsAppService.sendText(waba.phone_number_id, token, phone, waba.opt_out_reply);
+                        } catch (e) {
+                            console.error("Opt-out confirmation reply failed", e);
+                        }
+                    }
+                }
+
                 msgContent = { body: message.text.body };
                 msgType = "TEXT";
             } else if (message.image) {
@@ -273,7 +299,11 @@ export async function POST(req: Request) {
                 let pendingWorkspace = await prisma.workspace.findFirst({ where: { name: "Pending Connections" } });
                 if (!pendingWorkspace) {
                     pendingWorkspace = await prisma.workspace.create({
-                        data: { name: "Pending Connections", status: "SUSPENDED" }
+                        data: { 
+                            name: "Pending Connections", 
+                            status: "SUSPENDED",
+                            trial_ends_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+                        }
                     });
                 }
 

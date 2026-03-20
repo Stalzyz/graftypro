@@ -53,7 +53,28 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     switch (action) {
         case "upgrade":
         case "downgrade":
-            if (plan) updateData.plan = plan;
+            if (plan) {
+                // Check if the plan name is valid for the legacy Plan enum
+                const validLegacyPlans = ["FREE", "PRO", "ENTERPRISE"];
+                if (validLegacyPlans.includes(plan.toUpperCase())) {
+                    updateData.plan = plan.toUpperCase();
+                } else {
+                    // If not a legacy plan, we still set plan_details reference
+                    // but we don't force it into the legacy 'plan' enum field
+                    console.log(`[Subscription] Dynamic plan detected: ${plan}`);
+                }
+
+                // Auto-lookup the Plan ID to prevent lockouts
+                const dbPlan = await prisma.subscriptionPlan.findFirst({
+                    where: { name: { equals: plan, mode: 'insensitive' } }
+                });
+                if (dbPlan) {
+                    updateData.current_plan_id = dbPlan.id;
+                    // If we found a dynamic plan, we set the legacy field to 'PRO' 
+                    // or similar to ensure basic access if logic depends on it
+                    if (!updateData.plan) updateData.plan = "PRO"; 
+                }
+            }
             if (plan_id) updateData.current_plan_id = plan_id;
             updateData.subscription_status = "active";
             auditDetails.old_plan = ws.plan;

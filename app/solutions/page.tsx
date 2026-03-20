@@ -6,6 +6,8 @@ import LandingFooter from "../../components/landing-new/LandingFooter";
 import { ChevronRight, ArrowRight, GraduationCap, ShoppingBag, HeartPulse, Landmark, Plane, UserCheck, Zap, BarChart4 } from "lucide-react";
 import Link from "next/link";
 
+import { SOLUTIONS_DATA } from "./solutions-data";
+
 export default function SolutionsPage() {
     return (
         <main className="g-body">
@@ -25,11 +27,28 @@ export default function SolutionsPage() {
                     <p className="g-p text-xl mb-12 max-w-3xl">
                         Generic automation is fragile. Industry-standard infrastructure is resilient. We’ve mapped precise logic trees for every major vertical to ensure outcome-driven results.
                     </p>
-                    <div className="flex flex-wrap gap-4">
-                        <a href="#education" className="g-btn-primary px-8 py-4">Education</a>
-                        <a href="#ecommerce" className="g-btn-outline px-8 py-4">Ecommerce</a>
-                        <a href="#healthcare" className="g-btn-outline px-8 py-4">Healthcare</a>
-                        <a href="#finance" className="g-btn-outline px-8 py-4">Finance</a>
+                    
+                    {/* Industry Matrix / Selection Grid */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-16 pb-12">
+                        {Object.values(SOLUTIONS_DATA).map((sol) => {
+                            const Icon = sol.icon;
+                            return (
+                                <Link 
+                                    key={sol.slug}
+                                    href={`/solutions/${sol.slug}`}
+                                    className="g-card !p-8 border-none group hover:scale-[1.02] transition-all bg-white relative overflow-hidden"
+                                >
+                                    <div className="absolute top-0 right-0 p-4 text-slate-50 font-black text-4xl italic transform translate-x-1/2 -translate-y-1/2 uppercase tracking-tighter opacity-10 group-hover:opacity-20 transition-opacity uppercase">{sol.slug}</div>
+                                    <div className="w-12 h-12 bg-slate-900 text-white rounded-2xl flex items-center justify-center mb-6 group-hover:bg-emerald-600 transition-colors">
+                                        <Icon size={20} />
+                                    </div>
+                                    <h4 className="font-black text-lg uppercase tracking-tight mb-3 flex items-center gap-3">
+                                        {sol.title.split('for ')[1] || sol.title} <ArrowRight size={16} className="text-emerald-500 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
+                                    </h4>
+                                    <p className="text-xs text-slate-500 font-medium leading-relaxed">{sol.description}</p>
+                                </Link>
+                            );
+                        })}
                     </div>
                 </div>
             </section>

@@ -6,11 +6,12 @@ export const dynamic = "force-dynamic";
 export async function POST(req: Request) {
     try {
         const body = await req.json();
-        const { name, business_name, whatsapp_number, revenue_range, goal } = body;
+        const { name, email, business_name, whatsapp_number, revenue_range, goal } = body;
 
         const lead = await prisma.lead.create({
             data: {
                 name,
+                email,
                 business_name,
                 whatsapp_number,
                 revenue_range,

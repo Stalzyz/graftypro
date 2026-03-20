@@ -14,13 +14,30 @@ export async function POST(req: Request) {
         const body = await req.json();
         const { name, trigger_keyword, nodes, edges, status } = body;
 
+        let finalNodes = nodes || [];
+        let finalEdges = edges || [];
+
+        // Apply Nuclear Architectural Node & Edge Validation Check
+        if (finalNodes.length > 0) {
+            const { validateFlowData } = await import("../../../lib/engine/node-validator");
+            const val = validateFlowData(finalNodes, finalEdges);
+
+            if (!val.valid && val.errors.length > 0) {
+                console.error(`[FlowSave] ❌ Flow Validation Failed for new flow:`, val.errors);
+                return NextResponse.json({ error: "Flow Schema Validation Failed", details: val.errors }, { status: 400 });
+            }
+
+            finalNodes = val.cleanedNodes || finalNodes;
+            finalEdges = val.cleanedEdges || finalEdges;
+        }
+
         const flow = await prisma.flow.create({
             data: {
                 workspace_id: user.workspaceId,
                 name: name || "Untitled Flow",
                 trigger_keyword: trigger_keyword,
-                nodes: nodes || [],
-                edges: edges || [],
+                nodes: finalNodes,
+                edges: finalEdges,
                 status: status || "DRAFT",
             },
         });

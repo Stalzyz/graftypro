@@ -36,7 +36,7 @@ export class CommerceService {
                 await tx.orderItem.create({
                     data: {
                         order_id: order.id,
-                        product_id: product?.id || "manual-entry", // Fallback if product not synced
+                        product_id: product?.id || null, // Allow null if product not synced
                         quantity: item.quantity,
                         unit_price: item.item_price,
                         total_price: item.item_price * item.quantity

@@ -20,14 +20,25 @@ const REDIS_CONNECTION = {
         await prisma.$connect();
         console.log("✅ [Worker] Database Connected successfully.");
 
+        // Initialize Repeatable Jobs
+        const { dripDispatchQueue, automationQueue } = await import("@/lib/queue");
+        if (dripDispatchQueue) {
+            await dripDispatchQueue.add("drip-pulse", {}, { repeat: { every: 60000 } });
+            console.log("⏱️ [Worker] Drip Pulse scheduled (Every 60s)");
+        }
+
+        if (automationQueue) {
+            await automationQueue.add("nightly-reconciliation", {}, {
+                repeat: { pattern: "0 2 * * *" } // Run at 2 AM every night
+            });
+            console.log("🌙 [Worker] Nightly Reconciliation scheduled (2 AM)");
+        }
+
         // Start Global Health Monitor
         const { HealthMonitorService } = await import("@/lib/whatsapp/health-monitor");
         console.log("🩺 [Worker] Initializing Connection Health Monitor...");
-
-        // Run once on startup
         HealthMonitorService.runGlobalHealthCheck().catch(console.error);
 
-        // Then run every 6 hours (21600000 ms)
         setInterval(() => {
             HealthMonitorService.runGlobalHealthCheck().catch(console.error);
         }, 6 * 60 * 60 * 1000);
@@ -38,37 +49,50 @@ const REDIS_CONNECTION = {
 })();
 
 // ---------------------------------------------------------
-// 1. CAMPAIGN WORKER (Bulk Processing)
+// 1. META API WORKER (Dedicated Outbound Layer)
+// ---------------------------------------------------------
+const metaApiWorker = new Worker(
+    "meta-api-queue",
+    async (job) => {
+        const { type, payload } = job.data;
+        
+        if (type === "SEND_TEMPLATE") {
+            const { phoneNumberId, accessToken, to, templateName } = payload;
+            return await WhatsAppService.sendTemplate(
+                phoneNumberId,
+                accessToken,
+                to,
+                templateName
+            );
+        }
+    },
+    { 
+        connection: REDIS_CONNECTION,
+        limiter: { max: 80, duration: 1000 } // Global Throttling for Meta API
+    }
+);
+
+// ---------------------------------------------------------
+// 2. CAMPAIGN WORKER (Bulk Processing)
 // ---------------------------------------------------------
 const campaignWorker = new Worker(
     "campaign-queue",
     async (job) => {
         const { campaignId, workspaceId, segmentId, targetStatus, course } = job.data;
-        console.log(`[Worker] Processing Campaign: ${campaignId} (Type: ${job.name})`);
+        const { metaApiQueue } = await import("@/lib/queue");
+
+        console.log(`[Worker] Dispatching Campaign: ${campaignId}`);
 
         try {
-            // A. Fetch Campaign Details
-            // A. Fetch Campaign Details
-            const campaign = await prisma.campaign.findUnique({
-                where: { id: campaignId }
-            });
+            const campaign = await prisma.campaign.findUnique({ where: { id: campaignId } });
+            if (!campaign) return;
 
-            if (!campaign) {
-                console.error(`[Worker] Campaign ${campaignId} not found.`);
-                return;
-            }
-
-            // Fetch WABA separately to avoid Workspace schema issues
             const waba = await prisma.whatsAppAccount.findUnique({
                 where: { workspace_id: campaign.workspace_id }
             });
+            if (!waba) return;
 
-            if (!waba) {
-                console.error(`[Worker] WABA not found for workspace ${campaign.workspace_id}`);
-                return;
-            }
-
-            // B. Fetch Audience
+            // Fetch Audience
             let recipients: { phone: string, name: string, id: string }[] = [];
 
             if (job.name === "edu-bulk-broadcast") {
@@ -97,250 +121,135 @@ const campaignWorker = new Worker(
                 recipients = contacts.map(c => ({ phone: c.phone, name: c.name || "Customer", id: c.id }));
             }
 
-            console.log(`[Worker] Found ${recipients.length} recipients.`);
-
-            // C. Update Campaign Stats
+            // Update stats to PROCESSING
             await prisma.campaign.update({
                 where: { id: campaignId },
                 data: {
                     status: "PROCESSING",
                     stats: {
-                        upsert: {
-                            create: { total: recipients.length },
-                            update: { total: recipients.length }
-                        }
+                        upsert: { create: { total: recipients.length }, update: { total: recipients.length } }
                     }
                 }
             });
 
-            // D. Iterate and Send
-            let sentCount = 0;
-            let failedCount = 0;
-
+            // Dispatch to Meta Queue
             for (const person of recipients) {
                 try {
                     if (campaign.template_name) {
-                        // --- Credit & Reseller Integration ---
                         const countryCode = person.phone.replace(/[^0-9]/g, "").substring(0, 2) || "91";
                         const cost = await CreditService.getMessageCost("MARKETING", countryCode, workspaceId);
 
                         await prisma.$transaction(async (tx) => {
-                            await CreditService.deductCredits(
-                                tx,
-                                workspaceId,
-                                cost,
-                                `CAMPAIGN-${campaignId}-${person.id}-${Date.now()}`,
-                                `Bulk Campaign: ${campaign.name}`
-                            );
+                            await CreditService.deductCredits(tx, workspaceId, cost, `CAMPAIGN-${campaignId}-${person.id}-${Date.now()}`, `Bulk: ${campaign.name}`);
                         });
 
-                        await WhatsAppService.sendTemplate(
-                            waba.phone_number_id,
-                            decrypt(waba.access_token),
-                            person.phone,
-                            campaign.template_name
-                        );
-                        sentCount++;
+                        await metaApiQueue!.add("send-template", {
+                            type: "SEND_TEMPLATE",
+                            payload: {
+                                phoneNumberId: waba.phone_number_id,
+                                accessToken: decrypt(waba.access_token),
+                                to: person.phone,
+                                templateName: campaign.template_name
+                            }
+                        });
                     } else if (campaign.flow_id) {
-                        // FlowRunner handles its own internal credit deduction per node
                         await FlowRunner.startFlow(workspaceId, person.id, campaign.flow_id);
-                        sentCount++;
                     }
-                } catch (error: any) {
-                    console.error(`[Worker] Failed for ${person.phone}:`, error);
-                    failedCount++;
+                } catch (e) {
+                    console.error(`[Campaign Worker] Failed to dispatch for ${person.phone}`, e);
                 }
-
-                // Batch update stats every 50 messages for live monitoring
-                if ((sentCount + failedCount) % 50 === 0) {
-                    await prisma.campaignStats.updateMany({
-                        where: { campaign_id: campaignId },
-                        data: {
-                            sent: sentCount,
-                            failed: failedCount
-                        }
-                    });
-                }
-
-                if ((sentCount + failedCount) % 100 === 0) {
-                    console.log(`[Worker] Progress: ${sentCount + failedCount} / ${recipients.length}`);
-                }
-
-                await new Promise(r => setTimeout(r, 5));
             }
 
-            // E. Complete
             await prisma.campaign.update({
                 where: { id: campaignId },
-                data: {
-                    status: "COMPLETED",
-                    stats: { update: { sent: sentCount, failed: failedCount } }
-                }
+                data: { status: "COMPLETED" }
             });
 
         } catch (error) {
-            console.error(`[Worker] Campaign Failed`, error);
-            await prisma.campaign.update({
-                where: { id: campaignId },
-                data: { status: "FAILED" }
-            });
+            console.error(`[Campaign Worker] Fatal Error`, error);
         }
     },
     { connection: REDIS_CONNECTION }
 );
 
-// Worker Lifecycle Events
-campaignWorker.on('ready', () => console.log("✅ [Worker] Campaign Worker READY and Listening!"));
-campaignWorker.on('error', (err) => console.error("❌ [Worker] Campaign Worker Error:", err));
-campaignWorker.on('failed', (job, err) => console.error(`❌ [Worker] Job ${job?.id} Failed:`, err));
-campaignWorker.on('active', (job) => console.log(`▶️ [Worker] Job ${job.id} Active (Processing...)`));
-campaignWorker.on('stalled', (jobId) => console.warn(`⚠️ [Worker] Job ${jobId} Stalled`));
-
-
 // ---------------------------------------------------------
-// 2. DRIP SCHEDULER (Polling)
+// 3. DRIP DISPATCHER (Repeatable Pulse)
 // ---------------------------------------------------------
-// Check every 60 seconds
-const DRIP_INTERVAL = 60000;
+const dripDispatchWorker = new Worker(
+    "drip-dispatch-queue",
+    async (job) => {
+        console.log(`[Drip Dispatcher] Executing Pulse: ${job.id}`);
+        const { metaApiQueue } = await import("@/lib/queue");
 
-async function processDrips() {
-    console.log(`[Scheduler] Checking Drips at ${new Date().toISOString()}...`);
-
-    try {
-        console.log("[Scheduler] Trace: Attempting findMany on dripEnrollment...");
-        // Find enrollments due for processing
         const dueEnrollments = await prisma.dripEnrollment.findMany({
-            where: {
-                is_stopped: false,
-                next_run_at: { lte: new Date() }
-            },
+            where: { is_stopped: false, next_run_at: { lte: new Date() } },
             include: {
                 drip: { include: { steps: { orderBy: { step_order: 'asc' } } } },
                 contact: { include: { workspace: { include: { waba: true } } } }
             },
-            take: 50 // Process in batches
+            take: 100
         });
 
-        if (dueEnrollments.length === 0) return;
-
-        console.log(`[Scheduler] Found ${dueEnrollments.length} drips to process.`);
-
         for (const enrollment of dueEnrollments) {
-            const { drip, contact, current_step } = enrollment;
-            const step = drip.steps[current_step]; // Current step index corresponds to step array index if ordered? 
-            // Better: Find step with step_order == current_step + 1 if 1-based, or array index if 0-based.
-            // Schema has `step_order` Int. Let's assume array index logic for simplicity but verify order.
-            // Logic: `current_step` in Enrollment is the *index* of the step we are about to execute? 
-            // OR is it the index of the *last* executed step?
-            // "next_run_at" implies we serve the *next* thing.
+            const step = enrollment.drip.steps[enrollment.current_step];
+            if (!step || !enrollment.contact.workspace?.waba) continue;
 
-            // Let's treat `current_step` as the index of the step *to be executed now*.
-
-            if (!step) {
-                // End of Drip
-                await prisma.dripEnrollment.update({
-                    where: { id: enrollment.id },
-                    // @ts-ignore
-                    data: { is_stopped: true, stop_reason: "COMPLETED" }
-                });
-                continue;
-            }
-
-            const waba = contact.workspace?.waba;
-            if (!waba) continue;
-
-            // Execute Step
             try {
                 if (step.template_id) {
                     const template = await prisma.template.findUnique({ where: { id: step.template_id } });
                     if (template) {
-                        // --- Credit & Reseller Integration ---
-                        const countryCode = contact.phone.replace(/[^0-9]/g, "").substring(0, 2) || "91";
-                        const cost = await CreditService.getMessageCost("UTILITY", countryCode, contact.workspace_id);
+                        const countryCode = enrollment.contact.phone.replace(/[^0-9]/g, "").substring(0, 2) || "91";
+                        const cost = await CreditService.getMessageCost("UTILITY", countryCode, enrollment.contact.workspace_id);
+                        
+                        await prisma.$transaction(async (tx) => {
+                            await CreditService.deductCredits(tx, enrollment.contact.workspace_id, cost, `DRIP-${enrollment.id}-${step.id}`, `Drip Step`);
+                        });
 
-                        try {
-                            await prisma.$transaction(async (tx) => {
-                                await CreditService.deductCredits(
-                                    tx,
-                                    contact.workspace_id,
-                                    cost,
-                                    `DRIP-${enrollment.id}-${step.id}`,
-                                    `Drip: ${drip.name} (Step ${current_step + 1})`
-                                );
-                            });
-
-                            await WhatsAppService.sendTemplate(
-                                waba.phone_number_id,
-                                decrypt(waba.access_token),
-                                contact.phone,
-                                template.name
-                            );
-                        } catch (creditErr: any) {
-                            console.error(`[Scheduler] Credit block for drip ${enrollment.id}:`, creditErr.message);
-                            continue; // Skip this step if no credits
-                        }
-                    }
-                } else if ((step as any).flow_id) {
-                    // Trigger Flow
-                    const flow = await prisma.flow.findUnique({ where: { id: (step as any).flow_id } });
-                    if (flow) {
-                        await FlowRunner.startFlow(
-                            contact.workspace_id,
-                            contact.id,
-                            flow.trigger_keyword || "DRIP_STEP"
-                        );
+                        await metaApiQueue!.add("drip-send", {
+                            type: "SEND_TEMPLATE",
+                            payload: {
+                                phoneNumberId: enrollment.contact.workspace.waba.phone_number_id,
+                                accessToken: decrypt(enrollment.contact.workspace.waba.access_token),
+                                to: enrollment.contact.phone,
+                                templateName: template.name
+                            }
+                        });
                     }
                 }
 
-                // Update Analytics
-                // @ts-ignore
-                if (prisma.dripStepAnalytics) {
-                    // @ts-ignore
-                    await prisma.dripStepAnalytics.upsert({
-                        where: { step_id: step.id },
-                        update: { sent_count: { increment: 1 } },
-                        create: { step_id: step.id, sent_count: 1 }
-                    });
-                }
-
-                // Schedule Next Step
-                const nextStepIndex = current_step + 1;
-                const nextStep = drip.steps[nextStepIndex];
-
-                if (nextStep) {
-                    await prisma.dripEnrollment.update({
-                        where: { id: enrollment.id },
-                        data: {
-                            current_step: nextStepIndex,
-                            next_run_at: new Date(Date.now() + nextStep.delay_hours * 60 * 60 * 1000)
-                        }
-                    });
-                } else {
-                    // No more steps, mark complete
-                    await prisma.dripEnrollment.update({
-                        where: { id: enrollment.id },
+                const nextIdx = enrollment.current_step + 1;
+                const nextStep = enrollment.drip.steps[nextIdx];
+                await prisma.dripEnrollment.update({
+                    where: { id: enrollment.id },
+                    data: {
+                        current_step: nextIdx,
+                        next_run_at: nextStep ? new Date(Date.now() + nextStep.delay_hours * 3600000) : undefined,
+                        is_stopped: !nextStep,
                         // @ts-ignore
-                        data: { is_stopped: true, stop_reason: "COMPLETED", current_step: nextStepIndex }
-                    });
-                }
-
+                        stop_reason: nextStep ? null : "COMPLETED"
+                    }
+                });
             } catch (e) {
-                console.error(`[Scheduler] Failed to process enrollment ${enrollment.id}`, e);
+                console.error(`[Drip Dispatcher] Failed ${enrollment.id}`, e);
             }
         }
+    },
+    { connection: REDIS_CONNECTION }
+);
 
-    } catch (e) {
-        console.error("[Scheduler] Error in loop", e);
-    }
-}
-
-// Start Scheduler Loop
-setInterval(processDrips, DRIP_INTERVAL);
-
-// 3. AUTOMATION WORKER (Phase 8: Abandoned Cart Recovery)
+// ---------------------------------------------------------
+// 4. AUTOMATION WORKER
+// ---------------------------------------------------------
 const automationWorker = new Worker(
     "automation-queue",
     async (job) => {
+        if (job.name === "nightly-reconciliation") {
+            const { ResellerFinanceEngine } = await import("@/lib/reseller/finance-engine");
+            console.log("🌙 [Worker] Starting Nightly Financial Audit...");
+            await ResellerFinanceEngine.auditAllWallets();
+            console.log("✅ [Worker] Nightly Audit Complete.");
+        }
+
         if (job.name === "abandoned-cart-recovery") {
             const { workspaceId, orderId } = job.data;
             const order = await (prisma as any).commerceOrder.findUnique({
@@ -348,7 +257,6 @@ const automationWorker = new Worker(
             });
 
             if (order && order.status === "PLACED") {
-                // Not converted yet
                 const recoveryFlow = await prisma.flow.findFirst({
                     where: { workspace_id: workspaceId, name: { contains: "Abandoned", mode: "insensitive" } }
                 });
@@ -385,4 +293,4 @@ const automationWorker = new Worker(
     { connection: REDIS_CONNECTION }
 );
 
-console.log("🚀 Automation Worker (Campaigns + Drips + Commerce) Started");
+console.log("🚀 Enterprise Workers (Drip Pulse + Meta API + Campaign Dispatch + Audit) Active");

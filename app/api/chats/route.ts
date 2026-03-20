@@ -16,10 +16,19 @@ export async function GET(req: Request) {
                 contact: {
                     select: { id: true, name: true, phone: true }
                 },
-                // Fetch last message via sorting (or relation if optimized)
                 messages: {
                     take: 1,
                     orderBy: { created_at: "desc" }
+                },
+                _count: {
+                    select: {
+                        messages: {
+                            where: {
+                                direction: "INBOUND",
+                                status: { not: "READ" }
+                            }
+                        }
+                    }
                 }
             },
             orderBy: { updated_at: "desc" }
@@ -30,7 +39,7 @@ export async function GET(req: Request) {
             id: c.id,
             contact: c.contact,
             lastMessage: c.messages[0] || null,
-            unreadCount: 0, // Placeholder for unread count logic
+            unreadCount: (c as any)._count.messages,
             updatedAt: c.updated_at
         }));
 

@@ -1,0 +1,52 @@
+#!/usr/bin/expect -f
+
+set timeout 300
+set host "72.61.231.187"
+set password "Photoshop09@"
+
+puts "\n🔧 Patching docker-compose.prod.yml to load all env vars from .env file..."
+spawn ssh -o StrictHostKeyChecking=no root@$host {bash -s << 'ENDSSH'
+cd /root/wabot_bsp
+
+# Read all vars from .env and pass them to docker-compose by adding env_file directive
+# First, check if .env exists
+if [ ! -f .env ]; then
+    echo "❌ ERROR: No .env file found at /root/wabot_bsp/.env"
+    exit 1
+fi
+
+# Show relevant env vars (masked)
+echo "=== Found ENV vars ==="
+grep -E "JWT_SECRET|NEXTAUTH|NODE_ENV|DATABASE|REDIS" .env | sed 's/=.*/=***MASKED***/'
+
+echo ""
+echo "=== Patching docker-compose.prod.yml to use env_file ==="
+
+# Add env_file directive to web service if not there already
+if ! grep -q "env_file:" docker-compose.prod.yml; then
+    # Insert env_file after "web:" service definition before the image line
+    sed -i '/^  web:$/a\    env_file:\n      - .env' docker-compose.prod.yml
+    echo "✅ Added env_file to web service"
+else
+    echo "ℹ️  env_file already present"
+fi
+
+# Add env_file directive to worker service if not there already  
+if ! grep -q "env_file:" docker-compose.prod.yml; then
+    sed -i '/^  worker:$/a\    env_file:\n      - .env' docker-compose.prod.yml
+    echo "✅ Added env_file to worker service"
+fi
+
+cat docker-compose.prod.yml
+echo ""
+echo "=== Rebuilding web container ==="
+docker compose -f docker-compose.prod.yml up -d --build web && echo "✅ REBUILD_COMPLETE"
+ENDSSH}
+
+expect {
+    "password:" { send "$password\r"; exp_continue }
+    "REBUILD_COMPLETE" { puts "\n✅ JWT fix deployed!" }
+    eof
+}
+
+puts "\nDone! Go test the dashboard."

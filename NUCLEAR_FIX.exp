@@ -1,0 +1,68 @@
+#!/usr/bin/expect -f
+
+set timeout 600
+set host "72.61.231.187"
+set password "Photoshop09@"
+
+puts "\n☣️ STARTING NUCLEAR FIX DEPLOYMENT..."
+
+# 1. Sync Code
+puts "\n📡 Syncing nuclear infrastructure..."
+spawn rsync -avz --no-perms --no-owner --no-group \
+    --exclude "node_modules" \
+    --exclude ".next" \
+    --exclude ".git" \
+    --exclude ".DS_Store" \
+    --exclude "public/uploads" \
+    -e "ssh -o StrictHostKeyChecking=no" ./ root@$host:/root/wabot_bsp/
+expect {
+    "password:" { send "$password\r"; exp_continue }
+    eof
+}
+
+# 2. NUCLEAR PURGE
+puts "\n💥 PERFORMING NUCLEAR PURGE (Stopping all containers & cleaning networks)..."
+# Stop all containers, prune networks, and remove any ghost 'grafty' volumes or containers
+spawn ssh -o StrictHostKeyChecking=no root@$host "docker stop $(docker ps -aq) || true && docker network prune -f && cd /root/wabot_bsp && docker compose -f docker-compose.prod.yml down --remove-orphans || true"
+expect {
+    "password:" { send "$password\r"; exp_continue }
+    eof
+}
+
+# 3. REBUILD & START
+puts "\n🛠️ REBUILDING CLEAN ENVIRONMENT..."
+spawn ssh -o StrictHostKeyChecking=no root@$host "cd /root/wabot_bsp && docker compose -f docker-compose.prod.yml up -d --build"
+expect {
+    "password:" { send "$password\r"; exp_continue }
+    eof
+}
+
+# 4. SYNC DATABASE
+puts "\n🗄️ SYNCING DATABASE SCHEMA..."
+exec sleep 15
+spawn ssh -o StrictHostKeyChecking=no root@$host "docker exec grafty_postgres pg_isready -U user -d grafty_bsp"
+expect {
+    "password:" { send "$password\r"; exp_continue }
+    eof
+}
+
+# Use the 'web' service container to push schema. 
+# Docker Compose typically names containers as [project]_[service]_[index]
+# We'll try to find the web container name dynamically or use the standard one.
+spawn ssh -o StrictHostKeyChecking=no root@$host "docker exec \$(docker ps --filter name=web --format '{{.Names}}') npx prisma db push"
+expect {
+    "password:" { send "$password\r"; exp_continue }
+    eof
+}
+
+# 5. HEALTH CHECK
+puts "\n🔍 VERIFYING CONNECTIVITY..."
+exec sleep 5
+spawn ssh -o StrictHostKeyChecking=no root@$host "docker logs \$(docker ps --filter name=web --format '{{.Names}}') --tail=30"
+expect {
+    "password:" { send "$password\r"; exp_continue }
+    eof
+}
+
+puts "\n✅ NUCLEAR FIX COMPLETE."
+puts "Please check https://grafty.pro/api/auth/debug-login in 30 seconds."

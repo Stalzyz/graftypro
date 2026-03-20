@@ -14,6 +14,7 @@ export type MessageType =
     | 'audio'
     | 'document'
     | 'order'
+    | 'location'
     | 'unknown';
 
 export interface NormalizedMessage {
@@ -66,13 +67,13 @@ export function normalizeMessage(
         const interactive = rawMessage.interactive;
         if (interactive.type === 'list_reply') {
             type = 'list';
-            value = `LIST_SELECT_ID:${interactive.list_reply.id}`;
+            value = `list_select_id:${interactive.list_reply.id}`;
         } else if (interactive.type === 'button_reply') {
             type = 'interactive';
             value = interactive.button_reply.id;
         } else if (interactive.type === 'nfm_reply') {
             type = 'interactive';
-            value = interactive.nfm_reply.response_json || 'FLOW_SUBMITTED_SUCCESSFULLY';
+            value = interactive.nfm_reply.response_json || 'flow_submitted_successfully';
         } else {
             type = 'interactive';
             value = JSON.stringify(interactive);
@@ -95,7 +96,11 @@ export function normalizeMessage(
         value = rawMessage.document.id;
     } else if (rawMessage.order) {
         type = 'order';
-        value = 'CART_SUBMITTED';
+        value = 'cart_submitted';
+    } else if (rawMessage.location) {
+        type = 'location';
+        const loc = rawMessage.location;
+        value = `${loc.latitude},${loc.longitude}`;
     } else {
         type = 'unknown';
         value = '';
@@ -104,7 +109,7 @@ export function normalizeMessage(
     return {
         phone,
         type,
-        value,
+        value: (rawMessage.interactive?.type === 'nfm_reply') ? value.trim() : value.toLowerCase().trim(),
         raw: rawMessage,
         metaId,
         timestamp,

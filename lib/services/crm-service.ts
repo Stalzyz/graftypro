@@ -111,9 +111,13 @@ export class CRMService {
     }
 
     static async getRevenueGoals() {
-        return await prisma.salesTarget.findMany({
+        const goals = await prisma.salesTarget.findMany({
             orderBy: [{ year: 'desc' }, { month: 'desc' }]
         });
+        return goals.map(g => ({
+            ...g,
+            target_value: Number(g.target_value || 0)
+        }));
     }
 
     static async updateTarget(year: number, month: number, type: string, targetValue: number) {

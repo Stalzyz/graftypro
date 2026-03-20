@@ -55,7 +55,7 @@ export default function ProfilingPage() {
                         <TrendingUp size={32} />
                     </div>
                     <h1 className="text-3xl font-black text-slate-900 mb-2">Let's Set Up Your Growth Plan</h1>
-                    <p className="text-slate-500 font-medium tracking-tight">Tell us about your business to personalize your 500 free credits offer.</p>
+                    <p className="text-slate-500 font-medium tracking-tight">Tell us about your business to personalize your dashboard experience.</p>
                 </div>
 
                 <div className="glass-card p-8 border-slate-100 shadow-xl space-y-8 bg-white/80 backdrop-blur-xl rounded-2xl">
@@ -128,7 +128,7 @@ export default function ProfilingPage() {
                                 ))}
                             </div>
 
-                            <p className="text-xs text-slate-400 text-center font-medium italic">"Every user offered something irresistible." - Claim your bonus credits after setup.</p>
+                            <p className="text-xs text-slate-400 text-center font-medium italic">"Every user offered something irresistible." - Start your journey with automated workflows.</p>
 
                             <button
                                 onClick={handleSubmit}
