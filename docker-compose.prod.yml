@@ -77,4 +77,8 @@ networks:
 
 volumes:
   postgres_data:
+    external: true
+    name: wabot_vps_postgres_data_prod
   redis_data:
+    external: true
+    name: grafty_bsp_redis_data_prod

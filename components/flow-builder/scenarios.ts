@@ -560,5 +560,76 @@ export const INDUSTRY_SCENARIOS = [
                 { "id": "e6", "source": "node_loc_req", "target": "node_loc_send" }
             ]
         }
+    },
+    {
+        "id": "bsp_master_support",
+        "title": "27. BSP Master Support",
+        "description": "Platform Triage, Billing Queries using API Sync, and Human Escalation for BSPs.",
+        "modulesUsed": ["Message", "Action", "Webhook"],
+        "flowData": {
+            "nodes": [
+                { "id": "node_start", "type": "start", "position": { "x": 250, "y": 50 }, "data": { "label": "SUPPORT" } },
+                { "id": "node_msg_init", "type": "message", "position": { "x": 250, "y": 150 }, "data": { "label": "Welcome", "text": "*Welcome to Grafty BSP Support 🟢*\n\nHow can we assist you today?", "buttons": [{ "id": "triage", "title": "Platform Triage", "type": "reply" }, { "id": "billing", "title": "Billing Query", "type": "reply" }, { "id": "agent", "title": "Human Agent", "type": "reply" }] } },
+                { "id": "node_list_triage", "type": "list", "position": { "x": 50, "y": 300 }, "data": { "label": "Triage Options", "buttonText": "View Issues", "sectionTitle": "Issue Type", "items": [{ "id": "t1", "title": "API Down" }, { "id": "t2", "title": "Message Failures" }] } },
+                { "id": "node_msg_api", "type": "message", "position": { "x": 0, "y": 450 }, "data": { "label": "API Check", "text": "Our systems show all APIs are operational. If you still face issues, type 'Help'." } },
+                { "id": "node_msg_fail", "type": "message", "position": { "x": 150, "y": 450 }, "data": { "label": "Message Failures", "text": "Please ensure your Meta template is approved. Reply with your Template Name to check status." } },
+                { "id": "node_action_billing", "type": "action", "position": { "x": 250, "y": 300 }, "data": { "label": "Fetch Invoice", "actionType": "webhook" } },
+                { "id": "node_msg_invoice", "type": "message", "position": { "x": 250, "y": 450 }, "data": { "label": "Show Invoice", "text": "Fetching your invoice... Invoice: {{invoice_url}} - Amount: {{amount}}" } },
+                { "id": "node_action_escalate", "type": "action", "position": { "x": 450, "y": 300 }, "data": { "label": "Escalate to L2", "actionType": "assign_to_agent" } },
+                { "id": "node_msg_escalate", "type": "message", "position": { "x": 450, "y": 450 }, "data": { "label": "Wait", "text": "Transferring to L2 Support... please hold." } }
+            ],
+            "edges": [
+                { "id": "e_bsp1", "source": "node_start", "target": "node_msg_init" },
+                { "id": "e_bsp2", "source": "node_msg_init", "target": "node_list_triage", "sourceHandle": "button-triage" },
+                { "id": "e_bsp3", "source": "node_msg_init", "target": "node_action_billing", "sourceHandle": "button-billing" },
+                { "id": "e_bsp4", "source": "node_msg_init", "target": "node_action_escalate", "sourceHandle": "button-agent" },
+                { "id": "e_bsp5", "source": "node_list_triage", "target": "node_msg_api", "sourceHandle": "item-t1" },
+                { "id": "e_bsp6", "source": "node_list_triage", "target": "node_msg_fail", "sourceHandle": "item-t2" },
+                { "id": "e_bsp7", "source": "node_action_billing", "target": "node_msg_invoice" },
+                { "id": "e_bsp8", "source": "node_action_escalate", "target": "node_msg_escalate" }
+            ]
+        }
+    },
+    {
+        "id": "vendor_onboarding",
+        "title": "28. Vendor Onboarding",
+        "description": "Welcome to the Vendor Portal! Let's get your brand setup.",
+        "modulesUsed": ["Message", "Action"],
+        "flowData": {
+            "nodes": [
+                { "id": "node_start", "type": "start", "position": { "x": 250, "y": 50 }, "data": { "label": "VENDOR" } },
+                { "id": "node_msg_init", "type": "message", "position": { "x": 250, "y": 150 }, "data": { "label": "Welcome", "text": "Welcome to the Vendor Portal! Let's get your store set up.", "buttons": [{ "id": "start", "title": "Start Onboarding", "type": "reply" }, { "id": "pricing", "title": "Pricing Rules", "type": "reply" }] } },
+                { "id": "node_msg_name", "type": "message", "position": { "x": 150, "y": 300 }, "data": { "label": "Brand Name", "text": "What is the name of your brand?" } },
+                { "id": "node_action_save", "type": "action", "position": { "x": 150, "y": 450 }, "data": { "label": "Save to CRM", "actionType": "save_to_crm" } },
+                { "id": "node_msg_pricing", "type": "message", "position": { "x": 350, "y": 300 }, "data": { "label": "Pricing", "text": "Platform fees are 5% per transaction." } }
+            ],
+            "edges": [
+                { "id": "e_ven1", "source": "node_start", "target": "node_msg_init" },
+                { "id": "e_ven2", "source": "node_msg_init", "target": "node_msg_name", "sourceHandle": "button-start" },
+                { "id": "e_ven3", "source": "node_msg_init", "target": "node_msg_pricing", "sourceHandle": "button-pricing" },
+                { "id": "e_ven4", "source": "node_msg_name", "target": "node_action_save" }
+            ]
+        }
+    },
+    {
+        "id": "affiliate_intake",
+        "title": "29. Affiliate Partner Intake",
+        "description": "Want to earn commissions? Intake flow for brand advocates.",
+        "modulesUsed": ["Message", "Action"],
+        "flowData": {
+            "nodes": [
+                { "id": "node_start", "type": "start", "position": { "x": 250, "y": 50 }, "data": { "label": "AFFILIATE" } },
+                { "id": "node_msg_init", "type": "message", "position": { "x": 250, "y": 150 }, "data": { "label": "Welcome", "text": "Welcome to the Partner Network! 🚀\nWant to earn commissions?", "buttons": [{ "id": "apply", "title": "Apply Now", "type": "reply" }, { "id": "details", "title": "Commission Plan", "type": "reply" }] } },
+                { "id": "node_msg_handle", "type": "message", "position": { "x": 150, "y": 300 }, "data": { "label": "Get Handle", "text": "Awesome! What's your Instagram or YouTube handle?" } },
+                { "id": "node_action_save", "type": "action", "position": { "x": 150, "y": 450 }, "data": { "label": "Save Affiliate", "actionType": "save_to_crm" } },
+                { "id": "node_msg_comm", "type": "message", "position": { "x": 350, "y": 300 }, "data": { "label": "Plan", "text": "You get 20% recurring for every referral! Reply 'Apply' to start." } }
+            ],
+            "edges": [
+                { "id": "e_aff1", "source": "node_start", "target": "node_msg_init" },
+                { "id": "e_aff2", "source": "node_msg_init", "target": "node_msg_handle", "sourceHandle": "button-apply" },
+                { "id": "e_aff3", "source": "node_msg_handle", "target": "node_action_save" },
+                { "id": "e_aff4", "source": "node_msg_init", "target": "node_msg_comm", "sourceHandle": "button-details" }
+            ]
+        }
     }
 ];

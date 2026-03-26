@@ -276,7 +276,8 @@ export function buildCTAUrlPayload(
 export function buildTemplatePayload(
     to: string,
     templateName: string,
-    languageCode: string = 'en_US'
+    languageCode: string = 'en_US',
+    components: any[] = []
 ): any | null {
     const errors: ValidationError[] = [];
     if (!to) errors.push({ field: 'to', message: 'Phone required' });
@@ -290,6 +291,43 @@ export function buildTemplatePayload(
             name: templateName,
             language: {
                 code: languageCode
+            },
+            components: components.length > 0 ? components : undefined
+        }
+    };
+}
+
+// -----------------------------------------------------------------------
+// PRODUCT LIST (Multi-Product Catalog)
+// -----------------------------------------------------------------------
+export function buildProductListPayload(
+    to: string,
+    catalogId: string,
+    headerText: string,
+    bodyText: string,
+    footerText: string,
+    sections: { title: string; product_retailer_ids: string[] }[]
+): any | null {
+    const errors: ValidationError[] = [];
+    if (!to) errors.push({ field: 'to', message: 'Phone required' });
+    if (!catalogId) errors.push({ field: 'catalogId', message: 'Catalog ID required' });
+    if (sections.length === 0) errors.push({ field: 'sections', message: 'At least one section required' });
+    if (!validate(errors)) return null;
+
+    return {
+        to,
+        type: 'interactive',
+        interactive: {
+            type: 'product_list',
+            header: { type: 'text', text: sanitizeText(headerText, 'Catalog').substring(0, 60) },
+            body: { text: sanitizeText(bodyText, 'Browse our products below:') },
+            footer: { text: sanitizeText(footerText, '').substring(0, 60) },
+            action: {
+                catalog_id: catalogId,
+                sections: sections.map(s => ({
+                    title: s.title.substring(0, 24),
+                    product_items: s.product_retailer_ids.map(id => ({ product_retailer_id: id }))
+                }))
             }
         }
     };

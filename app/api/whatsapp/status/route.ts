@@ -11,9 +11,17 @@ export async function GET(req: Request) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
+        console.log(`[STATUS DEBUG] Checking status for Workspace: ${user.workspaceId}`);
+
         const account = await prisma.whatsAppAccount.findUnique({
             where: { workspace_id: user.workspaceId }
         });
+
+        if (!account) {
+            console.log(`[STATUS DEBUG] No account found in DB for Workspace: ${user.workspaceId}`);
+        } else {
+            console.log(`[STATUS DEBUG] Account found! Status: ${account.status}, Integration: ${account.integration_status}`);
+        }
 
         if (account && account.status === 'CONNECTED') {
             return NextResponse.json({

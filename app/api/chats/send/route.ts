@@ -43,25 +43,9 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: "WhatsApp account not connected" }, { status: 400 });
         }
 
-        // 3. ENTERPRISE CREDIT SYSTEM (Phase 3 & 4)
-        // A. Identify Price (Country + Category)
-        const { CreditService } = require("@/lib/credits/service");
-        const countryCode = conversation.contact.phone.replace(/[^0-9]/g, "").substring(0, 2);
-        const category = type === 'template' ? "MARKETING" : "SERVICE"; // Simplified for chat
-        const cost = await CreditService.getMessageCost(category, countryCode);
+        const category = type === 'template' ? "MARKETING" : "SERVICE";
 
-        // B. Atomic Deduction Transaction
-        await prisma.$transaction(async (tx) => {
-            await CreditService.deductCredits(
-                tx,
-                user.workspaceId,
-                cost,
-                `PENDING-${Date.now()}`,
-                `Manual Message (${type})`
-            );
-        });
-
-        // 4. Send Message via Meta API
+        // 4. Send Message via Meta API (With pre-flight automatic credit deduction)
         let metaId = null;
         let finalContent = {};
         const token = decrypt(waba.access_token);
@@ -73,7 +57,11 @@ export async function POST(req: Request) {
                     token,
                     conversation.contact.phone,
                     template.name,
-                    template.language?.code || "en"
+                    template.language?.code || "en",
+                    [],
+                    user.workspaceId,
+                    category,
+                    "Manual Dashboard Reply"
                 );
                 metaId = res?.messages?.[0]?.id;
                 finalContent = { template_name: template.name, lang: template.language?.code || "en" };
@@ -101,7 +89,14 @@ export async function POST(req: Request) {
                     payload.document = mediaId ? { id: mediaId, filename: filename || "document" } : { link: absoluteMediaUrl, filename: filename || "document" };
                 }
 
-                const res = await WhatsAppService.sendMessage(waba.phone_number_id, token, payload);
+                const res = await WhatsAppService.sendMessage(
+                    waba.phone_number_id, 
+                    token, 
+                    payload,
+                    user.workspaceId,
+                    category,
+                    "Manual Dashboard Media"
+                );
                 metaId = res?.messages?.[0]?.id;
                 finalContent = { link: mediaUrl, caption: text, type: mediaType, filename };
             } else if (text) {
@@ -109,7 +104,10 @@ export async function POST(req: Request) {
                     waba.phone_number_id,
                     token,
                     conversation.contact.phone,
-                    text
+                    text,
+                    user.workspaceId,
+                    category,
+                    "Manual Dashboard Reply"
                 );
                 metaId = res?.messages?.[0]?.id;
                 finalContent = { body: text };

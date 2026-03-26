@@ -16,11 +16,8 @@ const LOCK_TTL_MS = 10_000;
 // Session TTL: 24 hours of inactivity
 const SESSION_EXPIRE_HOURS = 24;
 
-// In-memory lock fallback when Redis is unavailable
-const memoryLocks = new Map<string, { until: number }>();
-
 // -------------------------------------------------------------------
-// Lock Management (Redis with in-memory fallback)
+// Lock Management (STRICT REDIS ONLY - NUCLEAR HARDENED)
 // -------------------------------------------------------------------
 
 async function acquireLock(lockKey: string): Promise<boolean> {
@@ -33,12 +30,9 @@ async function acquireLock(lockKey: string): Promise<boolean> {
             'NX'
         );
         return result === 'OK';
-    } catch {
-        // Redis unavailable — use memory lock
-        const existing = memoryLocks.get(lockKey);
-        if (existing && existing.until > Date.now()) return false;
-        memoryLocks.set(lockKey, { until: Date.now() + LOCK_TTL_MS });
-        return true;
+    } catch (e) {
+        console.error(`[SessionManager] CRITICAL: Redis Lock Failure for ${lockKey}. Blocking execution.`, e);
+        return false; // Strict Fail-Close: prevent race conditions if Redis is down
     }
 }
 
@@ -46,8 +40,8 @@ async function releaseLock(lockKey: string): Promise<void> {
     try {
         const { redis } = await import('../redis');
         await redis.del(`flow_lock:${lockKey}`);
-    } catch {
-        memoryLocks.delete(lockKey);
+    } catch (e) {
+        console.error(`[SessionManager] Warning: Could not release lock for ${lockKey}`, e);
     }
 }
 

@@ -21,7 +21,7 @@ export function DynamicLogo({
     brandName,
     className = "",
     size = 40,
-    showText = true,
+    showText = false,
     variant = "color"
 }: DynamicLogoProps) {
     if (logoUrl && logoUrl !== "/grafty.svg" && logoUrl !== "/grafty_fav.png" && logoUrl !== "/grafty_brand.svg") {
@@ -61,6 +61,7 @@ export function DynamicLogo({
             showText={showText}
             variant={variant}
             brandName={brandName}
+            logoUrl={logoUrl}
         />
     );
 }

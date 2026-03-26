@@ -10,23 +10,54 @@ import "./landing/new-grafty.css";
 import { getLandingPage } from "../lib/cms";
 import StaticLandingPage from "./landing-static/page";
 import { headers } from "next/headers";
+import { getTenantBranding, isWhiteLabeled } from "../lib/tenant/context";
 
 export async function generateMetadata() {
     const page = await getLandingPage("home");
+    const isWhitelabel = isWhiteLabeled();
+    const branding = getTenantBranding();
+
+    const brandName = isWhitelabel && branding ? (branding as any).brand_name : "Grafty";
+    const defaultTitle = `${brandName} | WhatsApp Business Marketing & Automation Platform`;
+    const defaultDesc = `The ultimate official WhatsApp Business API platform. Build flows, automate customer support, and scale retail sales on WhatsApp with ${brandName}.`;
+
     const seo = (page as any)?.seo_config || {};
     return {
-        title: seo.title || "Grafty | WhatsApp Business Marketing & Automation Platform",
-        description: seo.description || "The ultimate official WhatsApp Business API platform. Build flows, automate customer support, and scale retail sales on WhatsApp with Grafty.",
+        title: seo.title || defaultTitle,
+        description: seo.description || defaultDesc,
         openGraph: {
-            title: seo.title || "Grafty | WhatsApp Business Marketing & Automation Platform",
-            description: seo.description || "The ultimate official WhatsApp Business API platform.",
-            images: [seo.og_image].filter(Boolean)
+            title: seo.title || defaultTitle,
+            description: seo.description || defaultDesc,
+            images: [seo.og_image || (isWhitelabel && branding ? (branding as any).logo_url : null)].filter(Boolean)
         }
     };
 }
 
 export default async function LandingPage() {
     headers(); // force dynamic
+    
+    // 1. Check for Whitelabel Branding
+    const isWhitelabel = isWhiteLabeled();
+    const branding = getTenantBranding();
+
+    if (isWhitelabel && branding) {
+        const type = (branding as any).home_page_type || "DEFAULT";
+        
+        // Tier 3: Custom HTML
+        if (type === "CUSTOM" && (branding as any).custom_home_html) {
+            return (
+                <main dangerouslySetInnerHTML={{ __html: (branding as any).custom_home_html }} />
+            );
+        }
+
+        // Tier 1: Branded Default
+        // We pass the branding to the static landing page
+        if (type === "DEFAULT") {
+            return <StaticLandingPage branding={branding} />;
+        }
+    }
+
+    // 2. Main App: CMS Logic
     const page = await getLandingPage("home");
     const sections = (page as any)?.sections || [];
     const bannerConfig = (page as any)?.banner_config;

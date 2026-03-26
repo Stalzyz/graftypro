@@ -85,7 +85,10 @@ export async function POST(
                         form.workspace.waba.phone_number_id,
                         token,
                         finalPhone,
-                        message
+                        message,
+                        form.workspace_id,
+                        "UTILITY",
+                        "Education Form Auto-Reply"
                     );
                 }
             } catch (waError) {

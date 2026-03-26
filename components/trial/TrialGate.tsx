@@ -5,6 +5,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import { AlertTriangle, Zap, Clock, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useBranding } from "@/hooks/use-branding";
 
 interface TrialState {
     status: "loading" | "paid" | "trial" | "expired" | "no_trial";
@@ -17,6 +18,7 @@ export function TrialExpiredGate() {
     const pathname = usePathname();
     const [trial, setTrial] = useState<TrialState>({ status: "loading", days_left: 0, trial_expired: false });
     const [plans, setPlans] = useState<any[]>([]);
+    const { branding } = useBranding();
 
     const fetchTrial = useCallback(async () => {
         try {
@@ -71,7 +73,7 @@ export function TrialExpiredGate() {
                 </div>
 
                 <h2 className="text-2xl font-black text-slate-900 mb-3 tracking-tight">
-                    Your 7-Day Trial Has Ended
+                    Your {branding?.brand_name || "7-Day"} Trial Has Ended
                 </h2>
                 <p className="text-slate-500 text-base leading-relaxed mb-8">
                     Your free trial period is over. Upgrade to a plan to continue accessing your dashboard, campaigns, templates, and conversations.
@@ -99,7 +101,7 @@ export function TrialExpiredGate() {
                 </Link>
 
                 <p className="text-xs text-slate-400 mt-4">
-                    Need help? <a href="mailto:support@grafty.pro" className="text-[#27954D] font-bold hover:underline">Contact support</a>
+                    Need help? <a href={`mailto:${branding?.support?.email || "support@grafty.pro"}`} className="text-[#27954D] font-bold hover:underline">Contact support</a>
                 </p>
             </div>
         </div>

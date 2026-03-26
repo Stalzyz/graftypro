@@ -1,0 +1,45 @@
+# Database Connection
+DATABASE_URL="postgresql://user:password@localhost:5432/wabot_bsp?schema=public"
+
+# Auth - PRODUCTION GRADE SECRETS
+JWT_SECRET="gF7Yg9i/IfmX5vV3Y3lRlIb/Ks/Wm3BL+Xq0o3PtQn7c+PtxLYFnepp0F+sZBX4HygIdkpKKurQUdYecB+LZwQ=="
+ADMIN_JWT_SECRET="GpJGYmukAJ9hTB1wbhYDQ+AhzOlQujdQIB3TTbbSqr4LHsUbyDP6/Alj0wn5KspRwJ/OMi+3X1Ij487RVV3B9Q=="
+GOOGLE_CLIENT_ID="363172627856-1tjse3r9jbgnu71m4fgiolefbjp8cvv9.apps.googleusercontent.com"
+GOOGLE_CLIENT_SECRET="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"
+GOOGLE_REDIRECT_URI="https://grafty.pro/api/auth/google/callback"
+
+# Meta WhatsApp Config
+META_APP_ID="1183066783900270"
+META_APP_SECRET="5db51ac570b334b41c759fa1df5bda02"
+META_WEBHOOK_VERIFY_TOKEN="grafty_secure_token"
+
+# Frontend Public Config (Required for Embedded Signup)
+NEXT_PUBLIC_META_APP_ID="1183066783900270"
+NEXT_PUBLIC_META_CONFIG_ID="918094017369610"
+
+# Redis (BullMQ)
+REDIS_HOST="localhost"
+REDIS_PORT="6379"
+
+# Security
+ENCRYPTION_KEY="b01ae9dd3204da75d401caffbae5e8dc6c27df4a494202d98b0148b9c99d7b4c"
+
+# Finance (Razorpay)
+RAZORPAY_KEY_ID="rzp_live_ST01oX2AVae3qA"
+RAZORPAY_KEY_SECRET="7pSur1LMCalOAMv65zlI7zhd"
+NEXT_PUBLIC_RAZORPAY_KEY_ID="rzp_live_ST01oX2AVae3qA"
+RAZORPAY_WEBHOOK_SECRET="YOUR_WEBHOOK_SECRET_HERE"
+
+# SMTP Email Configuration (PrivateEmail)
+SMTP_HOST="mail.privateemail.com"
+SMTP_PORT="465"
+SMTP_SECURE="true"
+SMTP_USER="support@grafty.pro"
+SMTP_PASS="Wabot@1234"
+SMTP_FROM_EMAIL="support@grafty.pro"
+SMTP_FROM_NAME="Team Grafty"
+
+OPENAI_API_KEY="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"
+NODE_ENV="production"
+NEXT_TELEMETRY_DISABLED="1"
+NEXT_PUBLIC_APP_URL="https://grafty.pro"

@@ -56,10 +56,10 @@ export default function EmailPage() {
                 })
             });
             if (res.ok) {
-                setMessage({ type: "success", text: "Relay Matrix Synchronized Successfully." });
+                setMessage({ type: "success", text: "Email Relay Configuration Saved." });
             } else {
                 const d = await res.json();
-                setMessage({ type: "error", text: d.error || "Save Sequence Aborted." });
+                setMessage({ type: "error", text: d.error || "Failed to save configuration." });
             }
         } finally {
             setSaving(false);
@@ -80,10 +80,10 @@ export default function EmailPage() {
                 body: JSON.stringify({ smtp_config: config })
             });
             if (res.ok) {
-                setMessage({ type: "success", text: "Protocol Pulse Sent: Check " + (config.from_email || config.user) });
+                setMessage({ type: "success", text: "Test Email Sent: Check " + (config.from_email || config.user) });
             } else {
                 const d = await res.json();
-                setMessage({ type: "error", text: d.error || "Pulse Failed. Check SMTP Credentials." });
+                setMessage({ type: "error", text: d.error || "Test Failed. Check SMTP Credentials." });
             }
         } catch {
             setMessage({ type: "error", text: "Endpoint Connection Timeout." });
@@ -120,7 +120,7 @@ export default function EmailPage() {
                         className="px-6 py-4 bg-white border border-slate-200 text-slate-600 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-slate-50 transition-all shadow-sm active:scale-95 flex items-center gap-2"
                     >
                         {testing ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
-                        {testing ? "Sending Pulse..." : "Test Protocol"}
+                        {testing ? "Sending..." : "Test SMTP"}
                     </button>
                     <button
                         onClick={handleSave}
@@ -128,7 +128,7 @@ export default function EmailPage() {
                         className="group bg-slate-900 text-white px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] transition-all flex items-center gap-3 shadow-xl active:scale-95 hover:bg-black"
                     >
                         {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} className="group-hover:scale-110 transition-transform" />}
-                        {saving ? "Transmitting..." : "Sync Gateway"}
+                        {saving ? "Saving..." : "Save Config"}
                     </button>
                 </div>
             </div>
@@ -160,7 +160,7 @@ export default function EmailPage() {
                                 <Server size={22} />
                             </div>
                             <div>
-                                <h2 className="text-xs font-black text-slate-900 uppercase tracking-[0.2em]">Relay Matrix</h2>
+                                <h2 className="text-xs font-black text-slate-900 uppercase tracking-[0.2em]">Relay Configuration</h2>
                                 <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest italic mt-1 leading-none">SMTP Core Endpoint Data</p>
                             </div>
                         </div>
@@ -194,7 +194,7 @@ export default function EmailPage() {
 
                         {/* Encryption Matrix */}
                         <div className="mt-10 pt-10 border-t border-slate-50">
-                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em] ml-1 mb-4 block">Encryption Protocol</label>
+                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em] ml-1 mb-4 block">Security Protocol</label>
                             <div className="grid grid-cols-3 gap-4">
                                 {["TLS", "SSL", "NONE"].map(enc => (
                                     <button
@@ -238,7 +238,7 @@ export default function EmailPage() {
                         {/* Live Dispatch Preview */}
                         <div className="bg-slate-900 rounded-[2.5rem] p-6 space-y-4 relative overflow-hidden group/prev">
                             <div className="absolute top-0 right-0 w-24 h-24 bg-blue-600/10 blur-2xl rounded-full" />
-                            <div className="text-[8px] font-black text-white/20 uppercase tracking-[0.3em] italic">Pulse.Preview</div>
+                            <div className="text-[8px] font-black text-white/20 uppercase tracking-[0.3em] italic">Email.Preview</div>
 
                             <div className="bg-white/5 border border-white/10 rounded-2xl p-4 space-y-2">
                                 <div className="flex items-center gap-3">

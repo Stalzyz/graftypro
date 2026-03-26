@@ -1,8 +1,11 @@
 
 import { NextResponse } from "next/server";
 import { prisma } from "../../../../../lib/db";
+import { redis } from "../../../../../lib/redis";
 import { getAdminSession } from "../../../../../lib/admin-auth";
 import { signToken } from "../../../../../lib/auth";
+import { revalidatePath } from "next/cache";
+import { validateAdminVendorMutation } from "../../../../../lib/admin/guard";
 
 export const dynamic = "force-dynamic";
 
@@ -49,19 +52,54 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
         }
 
         const body = await req.json();
-        const { plan, status, business_name, phone, password } = body;
+        const { name, plan, status, phone, password, current_plan_id } = body;
+
+        // 🛡️ SECURITY GUARD: Ensure target exists and current admin is valid
+        const targetWorkspace = await validateAdminVendorMutation(session, params.id);
+
+        const updateData: any = {};
+        if (name) {
+            updateData.name = name;
+            updateData.business_name = name;
+        }
+
+        // 🚀 PLAN SYNC LOGIC: Map custom plan names (like STARTER) to base Enum (FREE, PRO, ENTERPRISE)
+        const normalizePlan = (name: string) => {
+            const n = name.toUpperCase();
+            if (n === "FREE") return "FREE";
+            if (n === "ENTERPRISE") return "ENTERPRISE";
+            // Map STARTER, BASIC, etc. to PRO/ENTERPRISE for legacy system support
+            return "PRO"; 
+        };
+
+        if (current_plan_id) {
+            updateData.current_plan_id = current_plan_id;
+            const p = await prisma.subscriptionPlan.findUnique({ where: { id: current_plan_id } });
+            if (p) {
+                updateData.plan = normalizePlan(p.name);
+            }
+        } else if (plan) {
+            updateData.plan = normalizePlan(plan);
+        }
+
+        if (status) updateData.status = status;
 
         // Perform Update in Transaction
         const updated = await prisma.$transaction(async (tx) => {
             // Update Workspace
             const ws = await tx.workspace.update({
                 where: { id: params.id },
-                data: {
-                    ...(plan && { plan }),
-                    ...(status && { status }),
-                    ...(business_name && { name: business_name, business_name })
-                }
+                data: updateData
             });
+
+            // 🐛 HARD FIX: Sync Status to Redis for INSTANT middleware enforcement
+            if (status) {
+                if (status === "SUSPENDED") {
+                    await redis.set(`suspended:${params.id}`, "true", "EX", 60 * 60 * 24 * 7);
+                } else if (status === "ACTIVE") {
+                    await redis.del(`suspended:${params.id}`);
+                }
+            }
 
             // Update Owner Profile (Phone, Password)
             if (phone || password) {
@@ -87,16 +125,28 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
             return ws;
         });
 
+        // 🚀 Cache Busters: Make sure the Dashboard reflects the change immediately
+        try {
+            revalidatePath("/dashboard");
+            revalidatePath("/super-admin/dashboard/vendors");
+        } catch (e) {
+            console.warn("Revalidation failed:", e);
+        }
+
         // Audit Log
-        // @ts-ignore
-        await prisma.adminAuditLog.create({
-            data: {
-                admin_id: session.id,
-                action: "UPDATE_VENDOR",
-                resource: params.id,
-                details: { ...body, password: password ? "[REDACTED]" : undefined }
-            }
-        });
+        try {
+            // @ts-ignore
+            await prisma.adminAuditLog.create({
+                data: {
+                    admin_id: session.id,
+                    action: "UPDATE_VENDOR",
+                    resource: params.id,
+                    details: { ...body, password: password ? "[REDACTED]" : undefined }
+                }
+            });
+        } catch (auditError) {
+            console.error("[Audit] Log creation failed (likely due to stale session auth fallback):", auditError);
+        }
 
         return NextResponse.json({ success: true, workspace: updated });
 

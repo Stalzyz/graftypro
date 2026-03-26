@@ -9,7 +9,7 @@
 set VPS_PASS "Photoshop09@"
 set VPS_HOST "root@72.61.231.187"
 set REMOTE_PATH "/root/grafty_bsp"
-set LOCAL_PATH "/Users/stalinkumar/Downloads/Wabot_BSP"
+set LOCAL_PATH "/Users/stalinkumar/Downloads/Grafty_Bsp"
 set timeout 1200
 
 puts "\n╔══════════════════════════════════════════════════════╗"

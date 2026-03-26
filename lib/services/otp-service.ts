@@ -7,7 +7,7 @@ export class OTPService {
     /**
      * Generate and send a 6-digit OTP with security hardening
      */
-    static async sendOTP(identifier: string, type: 'EMAIL' | 'PHONE', workspaceId?: string) {
+    static async sendOTP(identifier: string, type: 'EMAIL' | 'PHONE', workspaceId?: string, hostname?: string) {
         // 1. Rate Limit Resend Attempts
         const isResendLimited = await RateLimiter.isRestricted(`otp_resend:${identifier}`, 3, 3600); // 3 per hour
         if (isResendLimited) {
@@ -43,12 +43,14 @@ export class OTPService {
                     });
                     if (!result.success) throw new Error(result.error || "Failed to send branded email");
                 } else {
-                    // System-level email dispatch
+                    // System-level email dispatch (with whitelabel context)
                     const result = await EmailService.sendSystemEmail({
                         to: identifier,
                         subject: "Your Security Verification Code",
                         templateName: "OTP_VERIFICATION",
-                        context: { otp: code }
+                        context: { otp: code },
+                        hostname,
+                        workspaceId
                     });
                     if (!result.success) throw new Error(result.error || "Failed to send system email");
                 }

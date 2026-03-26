@@ -144,6 +144,11 @@ async function executeNode(
             await executeFrom(session, waba, contact, node.id, null, depth + 1);
             break;
 
+        case 'sync_data':
+            await runSyncDataNode(ctx, node);
+            await executeFrom(session, waba, contact, node.id, null, depth + 1);
+            break;
+
         case 'drip':
             await runDripNode(ctx, node);
             await executeFrom(session, waba, contact, node.id, null, depth + 1);
@@ -236,6 +241,11 @@ async function runMessageNode(ctx: ExecutionContext, node: any, depth: number): 
     const data = node.data || {};
     const phone = contact.phone;
     const token = waba.access_token;
+
+    // Resolve Variables in Text
+    if (data.text) {
+        data.text = resolveVariables(data.text, session.state, contact);
+    }
 
     // ── Nuclear Fix: Pre-upload media to Meta CDN ──────────────────────────
     // WHY: buildNodePayload uses links, but Meta servers can't fetch our
@@ -786,14 +796,26 @@ async function runPaymentNode(ctx: ExecutionContext, node: any): Promise<void> {
         } catch { }
     }
 }
-
 async function runTemplateNode(ctx: ExecutionContext, node: any): Promise<void> {
     const { waba, contact } = ctx;
     const data = node.data || {};
     if (!data.templateName) return;
 
+    // Resolve template parameters from state
+    // We assume data.variables is an array of variable keys or direct values
+    const components: any[] = [];
+    if (data.variables && Array.isArray(data.variables)) {
+        const parameters = data.variables.map((v: string) => ({
+            type: "text",
+            text: resolveVariables(v, ctx.session.state, contact)
+        }));
+        if (parameters.length > 0) {
+            components.push({ type: "body", parameters });
+        }
+    }
+
     const { buildTemplatePayload } = await import('./payload-builder');
-    const p = buildTemplatePayload(contact.phone, data.templateName, data.language || 'en_US');
+    const p = buildTemplatePayload(contact.phone, data.templateName, data.language || 'en_US', components);
     if (p) {
         const metaId = await sendMessageDirect({
             phoneNumberId: waba.phone_number_id,
@@ -1326,3 +1348,113 @@ export async function handleUserInput(
         await executeFrom(session, waba, contact, currentNodeId, null, 0);
     }
 }
+
+/**
+ * 🔄 KEY-VALUE SYNC NODE
+ * Performs a synchronous API request and maps the response to a session variable.
+ */
+async function runSyncDataNode(ctx: ExecutionContext, node: any): Promise<void> {
+    const { session, contact } = ctx;
+    const config = node.data?.apiConfig || {};
+    
+    if (!config.url) {
+        console.warn(`[FlowExecutor] ⚠️ SyncDataNode ${node.id} missing URL. Skipping.`);
+        return;
+    }
+
+    try {
+        const url = resolveVariables(config.url, session.state, contact);
+        const method = config.method || 'GET';
+        const headers = {
+            'Content-Type': 'application/json',
+            ...(config.headers || {})
+        };
+        let body = config.body;
+
+        if (body && typeof body === 'object') {
+            const bodyStr = JSON.stringify(body);
+            const resolvedBody = resolveVariables(bodyStr, session.state, contact);
+            try {
+                body = JSON.parse(resolvedBody);
+            } catch {
+                body = resolvedBody;
+            }
+        }
+
+        console.log(`[FlowSync] 🛰️ Synchronizing [${method}] ${url}...`);
+
+        const response = await fetch(url, {
+            method,
+            headers,
+            body: method === 'POST' ? JSON.stringify(body) : undefined,
+        });
+
+        if (!response.ok) {
+            throw new Error(`API returned ${response.status}: ${response.statusText}`);
+        }
+
+        const json = await response.json();
+        
+        // Extract value using jsonPath (e.g., "data.user.balance")
+        let extractedValue = json;
+        if (config.jsonPath) {
+            const paths = config.jsonPath.split('.');
+            for (const p of paths) {
+                if (extractedValue && typeof extractedValue === 'object') {
+                    extractedValue = extractedValue[p];
+                } else {
+                    extractedValue = config.fallbackValue || null;
+                    break;
+                }
+            }
+        }
+
+        const syncKey = config.syncKey || 'last_sync_result';
+        console.log(`[FlowSync] ✅ Extracted "${syncKey}" = ${extractedValue}`);
+
+        // Update session state with the synced value
+        const newState = await updateSessionState(session.id, session.state, { [syncKey]: extractedValue });
+        session.state = newState;
+
+    } catch (err: any) {
+        console.error(`[FlowSync] ❌ Sync failed for ${node.id}: ${err.message}`);
+        if (config.syncKey) {
+            const fallback = config.fallbackValue || 'ERROR';
+            const newState = await updateSessionState(session.id, session.state, { [config.syncKey]: fallback });
+            session.state = newState;
+        }
+    }
+}
+
+function resolveVariables(text: string, state: any = {}, contact: any = {}): string {
+    if (!text || typeof text !== 'string') return text;
+    
+    return text.replace(/\{\{([^}]+)\}\}/g, (match, key) => {
+        const trimmedKey = key.trim(); // preserve case for nested access
+        
+        // ── Deep Resolution Helper ───────────────────────────────────────────
+        const getDeep = (obj: any, path: string) => {
+            return path.split('.').reduce((acc, part) => acc && acc[part], obj);
+        };
+        // ───────────────────────────────────────────────────────────────────
+
+        // 1. Search in session state (e.g. {{user.meta.balance}})
+        const stateVal = getDeep(state, trimmedKey);
+        if (stateVal !== undefined) return String(stateVal);
+        
+        // 2. Search in contact object (e.g. {{name}}, {{phone}})
+        const contactVal = getDeep(contact, trimmedKey);
+        if (contactVal !== undefined) return String(contactVal);
+        
+        // 3. Lowercase Fallback
+        const lowerKey = trimmedKey.toLowerCase();
+        if (state[lowerKey] !== undefined) return String(state[lowerKey]);
+        if (contact[lowerKey] !== undefined) return String(contact[lowerKey]);
+        
+        // 4. Special Aliases
+        if (lowerKey === 'last_input') return state?.last_input || '';
+        
+        return match; // Keep as is if not found
+    });
+}
+

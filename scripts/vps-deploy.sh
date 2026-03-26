@@ -27,7 +27,12 @@ echo "🔧 Step 2: Server-side build and migrations..."
 ssh $SERVER "bash -s" << 'EOF'
     cd /root/grafty_bsp
     
-    # Ensure Docker containers are running and rebuild with new code
+    # Ensure clean state to prevent container name conflicts (e.g., grafty_redis, grafty_postgres)
+    echo "🛑 Stopping existing containers..."
+    docker compose -f docker-compose.prod.yml down --remove-orphans || true
+    docker rm -f grafty_redis grafty_postgres || true
+    
+    # Rebuild with new code
     echo "🏗️ Rebuilding Docker containers..."
     docker compose -f docker-compose.prod.yml up -d --build
     

@@ -14,7 +14,7 @@ export async function GET(
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        const contact = await prisma.contact.findUnique({
+        const contact = await prisma.contact.findFirst({
             where: {
                 id: params.id,
                 // Security: Ensure contact belongs to requesting user's workspace
@@ -51,12 +51,16 @@ export async function DELETE(
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        await prisma.contact.delete({
+        const res = await prisma.contact.deleteMany({
             where: {
                 id: params.id,
                 workspace_id: user.workspaceId,
             },
         });
+
+        if (res.count === 0) {
+            return NextResponse.json({ error: "Contact not found" }, { status: 404 });
+        }
 
         return NextResponse.json({ success: true });
     } catch (error) {
@@ -76,7 +80,7 @@ export async function PATCH(
 
         const { name, email, tags } = await req.json();
 
-        const contact = await prisma.contact.update({
+        const res = await prisma.contact.updateMany({
             where: {
                 id: params.id,
                 workspace_id: user.workspaceId
@@ -88,7 +92,11 @@ export async function PATCH(
             }
         });
 
-        return NextResponse.json({ success: true, data: contact });
+        if (res.count === 0) {
+            return NextResponse.json({ error: "Contact not found" }, { status: 404 });
+        }
+
+        return NextResponse.json({ success: true });
     } catch (error) {
         return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
     }

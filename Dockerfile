@@ -3,10 +3,11 @@ RUN apt-get update -y && apt-get install -y openssl ca-certificates
 
 FROM base AS builder
 WORKDIR /app
-COPY . .
+COPY package.json package-lock.json* ./
 RUN npm install
+COPY . .
 ENV DATABASE_URL="postgresql://user:password@postgres:5432/grafty_bsp?schema=public"
-ENV NODE_OPTIONS="--max-old-space-size=3072"
+ENV NODE_OPTIONS="--max-old-space-size=1536"
 RUN npx prisma generate --schema=./prisma/schema.prisma
 RUN npm run build
 

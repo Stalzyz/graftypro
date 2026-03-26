@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "../../../../lib/db";
 import { requireSuperAdmin } from "../../../../lib/admin-auth";
 import { hash } from "bcryptjs";
+import { getAbsoluteMediaUrl } from "../../../../lib/utils/url";
 
 export const dynamic = "force-dynamic";
 
@@ -101,9 +102,15 @@ export async function GET(req: Request) {
             prisma.reseller.count({ where })
         ]);
 
+        const normalizedResellers = resellers.map(r => ({
+            ...r,
+            logo_url: getAbsoluteMediaUrl(r.logo_url, req),
+            favicon_url: getAbsoluteMediaUrl(r.favicon_url, req)
+        }));
+
         return NextResponse.json({
             success: true,
-            data: resellers,
+            data: normalizedResellers,
             pagination: {
                 total,
                 page,

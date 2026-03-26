@@ -145,10 +145,19 @@ export async function sendMessageDirect(msg: QueuedMessage): Promise<string | nu
         const { CreditService } = await import('../credits/service');
         const { prisma } = await import('../db');
 
-        const category = msg.payload.template?.name
-            ? 'MARKETING'
-            : (msg.payload.type === 'text' ? 'SERVICE' : 'UTILITY');
-        const countryCode = (msg.payload.to || '91').substring(0, 2);
+        const getCategory = (payload: any) => {
+            if (payload.template?.name) return 'MARKETING'; // Default for template
+            if (payload.type === 'interactive') {
+                const i = payload.interactive || {};
+                if (i.type === 'flow' || i.type === 'button') return 'SERVICE';
+                if (i.type === 'list' || i.type === 'product' || i.type === 'product_list') return 'UTILITY';
+            }
+            if (['image', 'video', 'audio', 'document'].includes(payload.type)) return 'UTILITY';
+            return 'SERVICE';
+        };
+
+        const category = getCategory(msg.payload);
+        const countryCode = (msg.payload.to || '91').replace(/\D/g, '').substring(0, 2);
 
         let cost = 0;
         try {
@@ -194,10 +203,19 @@ export async function sendMessageDirect(msg: QueuedMessage): Promise<string | nu
                     const { CreditService } = await import('../credits/service');
 
                     // Determine message category
-                    const category = msg.payload.template?.name
-                        ? 'MARKETING'
-                        : (msg.payload.type === 'text' ? 'SERVICE' : 'UTILITY');
-                    const countryCode = (msg.payload.to || '91').substring(0, 2);
+                    const getCategory = (payload: any) => {
+                        if (payload.template?.name) return 'MARKETING';
+                        if (payload.type === 'interactive') {
+                            const i = payload.interactive || {};
+                            if (i.type === 'flow' || i.type === 'button') return 'SERVICE';
+                            if (i.type === 'list' || i.type === 'product' || i.type === 'product_list') return 'UTILITY';
+                        }
+                        if (['image', 'video', 'audio', 'document'].includes(payload.type)) return 'UTILITY';
+                        return 'SERVICE';
+                    };
+
+                    const category = getCategory(msg.payload);
+                    const countryCode = (msg.payload.to || '91').replace(/\D/g, '').substring(0, 2);
 
                     // Get cost (with fallback to 0 if pricing not configured)
                     let cost = 0;

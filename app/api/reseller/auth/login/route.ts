@@ -54,10 +54,11 @@ export async function POST(req: Request) {
 
         const response = NextResponse.json({ success: true, name: reseller.name });
 
+        const isHttps = (req as any).headers?.get?.("x-forwarded-proto") === "https";
         response.cookies.set("partner_token", token, {
             httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "lax",
+            secure: isHttps,
+            sameSite: isHttps ? "none" : "lax",
             maxAge: 60 * 60 * 24 * 7, // 7 days
             path: "/",
         });

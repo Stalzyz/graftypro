@@ -135,7 +135,7 @@ data-theme="light">
                 <div className="space-y-2">
                     <div className="flex items-center gap-2 text-indigo-600 font-black text-[10px] uppercase tracking-[0.3em] mb-4">
                         <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse shadow-[0_0_12px_rgba(99,102,241,0.6)]" />
-                        Monetization Engine
+                        Subscription Management
                     </div>
                     <h1 className="text-5xl font-black text-slate-900 tracking-tighter leading-none">
                         Manage Plans<span className="text-indigo-600">.</span>
@@ -174,14 +174,14 @@ data-theme="light">
                     bg="bg-indigo-50"
                     border="border-indigo-100"
                     label="Portfolio Base"
-                    value="52 Nodes"
+                    value="52 Users"
                 />
                 <MetricCard
                     icon={<TrendingUp />}
                     color="text-amber-500"
                     bg="bg-amber-50"
                     border="border-amber-100"
-                    label="Yield Efficiency"
+                    label="Retention Rate"
                     value="98.4%"
                 />
             </div>
@@ -211,11 +211,11 @@ data-theme="light">
                             </div>
 
                             <div className="space-y-3.5 mb-8">
-                                <PlanFeature icon={<Users size={16} />} text={`${plan.max_users} Agent Nodes`} />
+                                <PlanFeature icon={<Users size={16} />} text={`${plan.max_users} Agents`} />
                                 <PlanFeature icon={<Ticket size={16} />} text={`${plan.max_contacts} Unique Leads`} />
-                                {plan.flow_builder_access && <PlanFeature icon={<Layout size={16} />} text="Flow Logic Engine" />}
-                                {plan.commerce_access && <PlanFeature icon={<ShoppingBag size={16} />} text="Commerce Artifacts" />}
-                                {plan.drip_campaign_access && <PlanFeature icon={<Zap size={16} />} text="Drip Sequences" />}
+                                {plan.flow_builder_access && <PlanFeature icon={<Layout size={16} />} text="Chat Flows" />}
+                                {plan.commerce_access && <PlanFeature icon={<ShoppingBag size={16} />} text="Commerce Features" />}
+                                {plan.drip_campaign_access && <PlanFeature icon={<Zap size={16} />} text="Drip Campaigns" />}
                             </div>
 
                             <div className="flex items-center gap-3 pt-6 border-t border-slate-100/80">
@@ -258,7 +258,7 @@ data-theme="light">
                             <div>
                                 <h2 className="text-xl font-black text-slate-900 tracking-tight">Deploy Custom Plan</h2>
                                 <p className="text-xs text-slate-500 font-medium mt-1">
-                                    {step === 1 && "Step 1: Select Wholesale Base Engine"}
+                                    {step === 1 && "Step 1: Select Base Plan"}
                                     {step === 2 && "Step 2: Configure Retail Pricing"}
                                     {step === 3 && "Step 3: Review & Finalize"}
                                 </p>
@@ -288,7 +288,7 @@ data-theme="light">
                                                 <ShieldCheck size={20} />
                                             </div>
                                             <div>
-                                                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-0.5">Escrow Balance</span>
+                                                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-0.5">Wallet Balance</span>
                                                 <span className="text-sm font-black text-slate-900">{formatCurrency(walletBalance)}</span>
 
                                             </div>
@@ -318,12 +318,12 @@ data-theme="light">
                                                                 <span className={`text-lg font-black tracking-tight ${active ? 'text-white' : 'text-slate-900'}`}>{base.name}</span>
                                                                 {active && <CheckCircle size={16} className="text-indigo-200" />}
                                                             </div>
-                                                            <div className={`text-[10px] font-bold uppercase tracking-widest ${active ? 'text-indigo-200' : 'text-slate-400'}`}>Wholesale: ₹{base.min_reseller_price || 0}/mo</div>
+                                                            <div className={`text-[10px] font-bold uppercase tracking-widest ${active ? 'text-indigo-200' : 'text-slate-400'}`}>Base Cost: ₹{base.min_reseller_price || 0}/mo</div>
                                                         </div>
 
                                                         {!canAfford && (
                                                             <div className="text-[10px] font-bold uppercase tracking-widest bg-rose-100 text-rose-600 px-3 py-1.5 rounded-xl flex items-center gap-1.5">
-                                                                <AlertCircle size={12} /> Low Escrow
+                                                                <AlertCircle size={12} /> Low Balance
                                                             </div>
                                                         )}
                                                     </div>
@@ -338,7 +338,7 @@ data-theme="light">
                                         })}
                                         {basePlans.length === 0 && (
                                             <div className="col-span-2 p-12 text-center border-2 border-dashed border-slate-200 rounded-[2rem] text-slate-500 font-medium">
-                                                No Base Engines Available.
+                                                No Base Plans Available.
                                             </div>
                                         )}
                                     </div>
@@ -388,7 +388,7 @@ data-theme="light">
                                         </div>
                                     </div>
 
-                                    {/* Real-time Margin Calculator */}
+                                    {/* Real-time Profit Calculator */}
                                     <div className="bg-gradient-to-br from-indigo-900 to-slate-900 p-8 rounded-[2rem] text-white shadow-xl relative overflow-hidden">
                                         <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500 rounded-full blur-[80px] opacity-20 -translate-y-1/2 translate-x-1/2" />
 
@@ -396,7 +396,7 @@ data-theme="light">
 
                                         <div className="flex items-center justify-between mb-8">
                                             <div>
-                                                <div className="text-slate-400 text-xs font-medium mb-1">Wholesale Cost</div>
+                                                <div className="text-slate-400 text-xs font-medium mb-1">Base Cost</div>
                                                 <div className="text-xl font-bold line-through decoration-rose-500/50">₹{wholesaleCost}</div>
                                             </div>
                                             <ChevronRight className="text-slate-600" />
@@ -438,7 +438,7 @@ data-theme="light">
 
                                     <div className="max-w-md mx-auto bg-slate-50 p-6 rounded-[2rem] border border-slate-100 mt-8 text-left space-y-4">
                                         <div className="flex justify-between items-center pb-4 border-b border-slate-200/60">
-                                            <span className="text-slate-500 font-medium text-sm">Escrow Deduction</span>
+                                            <span className="text-slate-500 font-medium text-sm">Wallet Deduction</span>
                                             <span className="font-bold text-rose-500">-₹{wholesaleCost}/mo</span>
                                         </div>
                                         <div className="flex justify-between items-center pb-4 border-b border-slate-200/60">
@@ -482,7 +482,7 @@ data-theme="light">
                                     className="px-8 py-4 bg-indigo-600 text-white rounded-2xl text-[11px] font-bold uppercase tracking-widest hover:bg-indigo-700 transition-all flex items-center gap-2 active:scale-95 disabled:opacity-70 shadow-xl shadow-indigo-600/20"
                                 >
                                     {creating ? <Loader2 className="animate-spin" size={16} /> : <CheckCircle size={16} />}
-                                    Deploy Matrix Now
+                                    Deploy Plan Now
                                 </button>
                             )}
                         </div>
@@ -505,12 +505,12 @@ data-theme="light">
                             </div>
                             <div>
                                 <h2 className="text-2xl font-black text-slate-900 tracking-tight leading-none mb-1">Embed Layout</h2>
-                                <p className="text-xs text-slate-500 font-medium">Cross-Protocol Initialization</p>
+                                <p className="text-xs text-slate-500 font-medium">Installation Setup</p>
                             </div>
                         </div>
 
                         <p className="text-sm text-slate-600 leading-relaxed mb-6">
-                            Injection script for external node synchronization. Place this artifact on your primary portal (e.g. WordPress, Webflow) to render your commercial pricing tiers via iframe.
+                            Pricing script for your website. Place this code on your primary portal (e.g. WordPress, Webflow) to render your commercial pricing tiers.
                         </p>
 
                         <div className="bg-slate-900 rounded-[2rem] p-6 mb-8 font-mono text-[13px] text-indigo-300 break-all shadow-inner relative group border border-slate-800">
@@ -523,7 +523,7 @@ data-theme="light">
                             className="w-full py-4.5 bg-slate-900 text-white font-bold text-[11px] uppercase tracking-widest rounded-2xl flex items-center justify-center gap-3 hover:bg-black transition-all active:scale-[0.98] shadow-xl shadow-slate-900/10"
                         >
                             {copied ? <CheckCircle size={18} className="text-emerald-400" /> : <Copy size={18} />}
-                            {copied ? "Artifact Copied" : "Copy Injection Script"}
+                            {copied ? "Code Copied" : "Copy Pricing Script"}
                         </button>
                     </div>
                 </div>

@@ -19,7 +19,12 @@ export async function GET(request: Request) {
         "https://www.googleapis.com/auth/userinfo.profile"
     ].join(" ");
 
-    const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${GOOGLE_CLIENT_ID}&redirect_uri=${cleanRedirectUri}&response_type=code&scope=${scope}&access_type=offline&prompt=consent`;
+    // Preserve the originating white-label domain
+    const host = request.headers.get("x-forwarded-host") || request.headers.get("host") || "grafty.pro";
+    const protocol = request.headers.get("x-forwarded-proto") || "https";
+    const originState = encodeURIComponent(Buffer.from(JSON.stringify({ returnTo: `${protocol}://${host}` })).toString('base64'));
+
+    const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${GOOGLE_CLIENT_ID}&redirect_uri=${cleanRedirectUri}&response_type=code&scope=${scope}&access_type=offline&prompt=consent&state=${originState}`;
 
     return NextResponse.redirect(url);
 }

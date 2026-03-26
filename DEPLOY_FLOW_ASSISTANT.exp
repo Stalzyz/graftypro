@@ -1,0 +1,60 @@
+#!/usr/bin/expect -f
+
+set timeout 600
+set password "Photoshop09@"
+set vps_ip "72.61.231.187"
+set remote_path "/root/grafty_bsp"
+
+set files {
+    "package.json"
+    "next.config.js"
+    "lib/goals/templates.ts"
+    "lib/engine/flow-generator.ts"
+    "app/api/flows/generate/route.ts"
+    "app/api/flows/generate/ai/route.ts"
+    "components/flow-builder/FlowInjectorModal.tsx"
+    "app/dashboard/flows/page.tsx"
+    "app/globals.css"
+    "lib/ai/openai.ts"
+    ".env"
+    "hooks/use-user.ts"
+    "app/dashboard/layout.tsx"
+    "app/dashboard/page.tsx"
+    "app/dashboard/settings/profile/page.tsx"
+    "components/flow-builder/scenarios.ts"
+}
+
+puts "🚀 Starting NATIVE PM2 DEPLOYMENT for AI Flow Assistant..."
+
+# 1. Create Directories
+spawn ssh root@$vps_ip "mkdir -p $remote_path/lib/goals $remote_path/lib/engine $remote_path/app/api/flows/generate/ai $remote_path/components/flow-builder $remote_path/lib/ai $remote_path/hooks $remote_path/app/dashboard/settings/profile"
+expect {
+    "password:" { send "$password\r" }
+    "(yes/no)?" { send "yes\r"; exp_continue }
+}
+expect eof
+wait
+
+# 2. Upload Files
+foreach file $files {
+    puts "   📤 Uploading: $file"
+    spawn scp $file root@$vps_ip:$remote_path/$file
+    expect {
+        "password:" { send "$password\r" }
+    }
+    expect eof
+    wait
+}
+
+# 3. Build & Restart using PM2
+puts "   🏗️ Installing Dependencies & Building Next.js..."
+spawn ssh root@$vps_ip "cd $remote_path && npm install --legacy-peer-deps && ./node_modules/.bin/next build && pm2 restart grafty"
+expect {
+    "password:" { send "$password\r" }
+}
+expect eof
+wait
+
+puts "\n=============================================="
+puts "✅ PM2 DEPLOYMENT COMPLETE & ONLINE!"
+puts "=============================================="

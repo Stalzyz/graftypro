@@ -149,6 +149,19 @@ html {
   }
 }
 
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.animate-shimmer {
+  animation: shimmer 2s infinite;
+}
+
 .animate-fade-in {
   animation: fadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
@@ -323,6 +336,27 @@ button[class*="bg-[#27954D]"]:not(:disabled):hover:after {
 
 .btn-danger:hover {
   background: #dc2626 !important;
+}
+
+.btn-soft {
+  background: white !important;
+  color: var(--gray-800) !important;
+  border: 1px solid var(--gray-200) !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 24px;
+  font-weight: 600;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.btn-soft:hover {
+  background: var(--gray-50) !important;
+  border-color: var(--gray-300) !important;
+  transform: translateY(-1px) !important;
 }
 
 /* ========================================

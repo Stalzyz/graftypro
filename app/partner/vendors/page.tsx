@@ -184,7 +184,7 @@ export default function MyVendors() {
                 <div className="bg-[#E9F5ED] p-6 rounded-[1.5rem] border border-[#D1EADC] shadow-sm shadow-[#27954D]/5">
                     <div className="text-[10px] font-black text-[#1E743C] uppercase tracking-widest mb-2">Retention Rate</div>
                     <div className="text-2xl font-black text-[#1E743C]">{stats?.monthly?.retention_rate || '100'}%</div>
-                    <div className="text-[10px] text-[#27954D] font-medium mt-1 uppercase italic">Protocol Verified</div>
+                    <div className="text-[10px] text-[#27954D] font-medium mt-1 uppercase italic">Verified</div>
                 </div>
             </div>
 
@@ -285,8 +285,8 @@ export default function MyVendors() {
                     <div className="bg-white border border-slate-200 w-full max-w-xl rounded-[2.5rem] shadow-2xl relative overflow-hidden animate-in zoom-in-95 duration-300">
                         <div className="p-10 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
                             <div>
-                                <h2 className="text-2xl font-black text-slate-900 tracking-tight italic uppercase">Manual Sync</h2>
-                                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">Acquire existing workspace ID into portfolio</p>
+                                <h2 className="text-2xl font-black text-slate-900 tracking-tight italic uppercase">Add Vendor</h2>
+                                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">Link existing workspace to your profile</p>
                             </div>
                             <div className="w-12 h-12 bg-white border border-slate-200 rounded-2xl flex items-center justify-center text-slate-400 shadow-sm">
                                 <Lock size={20} />
@@ -333,7 +333,7 @@ export default function MyVendors() {
                                     className="flex-[2] py-4 bg-blue-600 text-white hover:bg-blue-700 rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-blue-600/20 active:scale-95 transition-all flex items-center justify-center gap-2"
                                 >
                                     {adding ? <Loader2 size={16} className="animate-spin" /> : <ChevronRight size={18} />}
-                                    Initialize Mapping
+                                    Link Vendor
                                 </button>
                             </div>
                         </form>
@@ -347,7 +347,7 @@ export default function MyVendors() {
                     <div className="bg-white border border-slate-200 w-full max-w-xl rounded-[2.5rem] shadow-2xl relative overflow-hidden animate-in zoom-in-95 duration-300">
                         <div className="p-10 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
                             <div>
-                                <h2 className="text-2xl font-black text-slate-900 tracking-tight italic uppercase">Provision Workspace</h2>
+                                <h2 className="text-2xl font-black text-slate-900 tracking-tight italic uppercase">Create Workspace</h2>
                                 <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">Create a new tenant node directly</p>
                             </div>
                             <button onClick={() => setIsCreateModalOpen(false)} className="w-12 h-12 bg-white border border-slate-200 rounded-2xl flex items-center justify-center text-slate-400 shadow-sm hover:text-rose-500 transition-all">
@@ -426,7 +426,7 @@ export default function MyVendors() {
                                 className="w-full py-4 bg-slate-900 text-white hover:bg-black rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-black/10 active:scale-95 transition-all flex items-center justify-center gap-3 mt-4"
                             >
                                 {creating ? <RefreshCw size={18} className="animate-spin" /> : <Plus size={18} />}
-                                Initialize New Vendor
+                                Create Vendor
                             </button>
                         </form>
                     </div>

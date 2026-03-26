@@ -65,7 +65,7 @@ export async function POST(req: Request) {
                 plan: newPlan as any,
                 subscription_status: "active",
                 subscription_id: razorpay_subscription_id,
-                current_plan_id: dbPlanRecord?.id || (await prisma.subscriptionPlan.findUnique({ where: { name: newPlan } }))?.id
+                current_plan_id: dbPlanRecord?.id || null
             }
         });
 

@@ -31,10 +31,13 @@ rsync -az --delete \
   --exclude '.git' \
   --exclude 'temp_project' \
   --exclude '.DS_Store' \
-  --exclude '.env' \
+  --exclude 'grafty-mobile/.expo' \
+  --exclude 'grafty-mobile/expo_tmp' \
+  --exclude 'grafty-mobile/node_modules' \
   --exclude '*.zip' \
   --exclude '*.tar.gz' \
   --exclude 'public/uploads' \
+  --exclude 'public/uploads_old' \
   ./ $SERVER:$REMOTE_PATH/
 
 echo "✅ Sync complete."
@@ -81,6 +84,35 @@ ssh -o StrictHostKeyChecking=no $SERVER "bash -s" << 'REMOTE_EOF'
         npx prisma generate --schema=./prisma/schema.prisma < /dev/null
     docker compose -f docker-compose.prod.yml exec -T worker \
         npx prisma generate --schema=./prisma/schema.prisma < /dev/null 2>/dev/null || true
+    
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "🩹 [Atomic Healer] Sanitizing phone records..."
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    docker compose -f docker-compose.prod.yml exec -T web \
+        npx tsx scripts/migrate-phones.ts < /dev/null
+    
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "🔗 [Magic Handshake] Restoring Meta live stream..."
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    docker compose -f docker-compose.prod.yml exec -T web \
+        npx tsx scripts/force-subscribe.ts < /dev/null
+
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "🌐 [Nuclear Override] Bypassing Meta Developer Portal..."
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    docker compose -f docker-compose.prod.yml exec -T web \
+        npx tsx scripts/force-webhook-url.ts < /dev/null || true
+
+
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "📬 [History Recoverer] Rescuing orphaned messages..."
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    docker compose -f docker-compose.prod.yml exec -T web \
+        npx tsx scripts/recover-history.ts < /dev/null || true
 
     echo ""
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

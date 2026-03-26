@@ -1,7 +1,8 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useTransition } from "react";
+import { uploadBrandingImage, saveBrandingConfig, loadBrandingConfig } from "./actions";
 import {
     Save,
     Upload,
@@ -21,6 +22,7 @@ export default function BrandingPanel() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState("");
+    const [isPending, startTransition] = useTransition();
     const [config, setConfig] = useState<any>({
         platform_name: "",
         platform_tagline: "",
@@ -31,26 +33,25 @@ export default function BrandingPanel() {
     });
 
     useEffect(() => {
-        fetch("/api/super-admin/config")
-            .then(res => res.json())
-            .then(data => {
-                if (data) setConfig(data);
-                setLoading(false);
-            });
+        startTransition(async () => {
+            const data = await loadBrandingConfig();
+            if (data) setConfig(data);
+            setLoading(false);
+        });
     }, []);
 
     const handleSave = async () => {
         setSaving(true);
-        const res = await fetch("/api/super-admin/config", {
-            method: "POST",
-            body: JSON.stringify(config),
-            headers: { "Content-Type": "application/json" }
+        startTransition(async () => {
+            const result = await saveBrandingConfig(config);
+            if (result.success) {
+                setMessage("Branding saved successfully.");
+                setTimeout(() => setMessage(""), 3000);
+            } else {
+                setMessage(result.error || "Save failed.");
+            }
+            setSaving(false);
         });
-        if (res.ok) {
-            setMessage("Branding saved successfully.");
-            setTimeout(() => setMessage(""), 3000);
-        }
-        setSaving(false);
     };
 
     if (loading) return (
@@ -121,10 +122,11 @@ export default function BrandingPanel() {
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                            <LogoUpload label="Main Logo" value={config.logo_url} onChange={(val: string) => setConfig({ ...config, logo_url: val })} />
-                            <LogoUpload label="Favicon" value={config.favicon_url} onChange={(val: string) => setConfig({ ...config, favicon_url: val })} />
-                            <LogoUpload label="Login Logo" value={config.login_logo_url} onChange={(val: string) => setConfig({ ...config, login_logo_url: val })} />
+                        <div className="bg-slate-50 rounded-2xl p-6 border border-slate-100 flex items-center gap-3 text-slate-500">
+                            <Shield size={20} className="text-slate-400" />
+                            <div className="text-xs font-bold">
+                                File Uploads Locked: Logo and Favicon are strictly managed through static `/grafty.svg` assets.
+                            </div>
                         </div>
                     </section>
 
@@ -249,33 +251,37 @@ export default function BrandingPanel() {
 
 function LogoUpload({ label, value, onChange }: any) {
     const [uploading, setUploading] = useState(false);
+    const [, startTransition] = useTransition();
 
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
 
+        console.log("[CLIENT] File selected:", file.name, file.type, file.size);
         setUploading(true);
+        
+        // Use Server Action directly — no middleware, no fetch(), no cookie issues
         const formData = new FormData();
         formData.append("file", file);
         formData.append("module", "branding");
 
-        try {
-            const res = await fetch("/api/media/upload", {
-                method: "POST",
-                body: formData,
-            });
-            const data = await res.json();
-            if (res.ok && data.url) {
-                onChange(data.url);
-            } else {
-                alert(data.error || "Upload failed");
+        console.log("[CLIENT] Dispatching uploadBrandingImage Server Action...");
+        startTransition(async () => {
+            try {
+                const result = await uploadBrandingImage(formData);
+                console.log("[CLIENT] Server Action Response:", result);
+                if (result.success && result.url) {
+                    onChange(result.url);
+                } else {
+                    alert(result.error || "Upload failed");
+                }
+            } catch (error: any) {
+                console.error("[CLIENT] Upload error catch:", error);
+                alert(`Upload failed: ${error.message || error}`);
+            } finally {
+                setUploading(false);
             }
-        } catch (error) {
-            console.error("Upload error:", error);
-            alert("Upload failed");
-        } finally {
-            setUploading(false);
-        }
+        });
     };
 
     return (

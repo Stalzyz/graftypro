@@ -49,13 +49,13 @@ export default function AdminLogin() {
             </div>
 
             <div className="w-full max-w-md animate-fade-in relative z-10">
-                <div className="bg-white border border-slate-100 p-12 rounded-[3rem] shadow-2xl shadow-slate-200/50">
+                <div className="bg-white border border-slate-200 p-12 rounded-[3rem] shadow-2xl shadow-slate-200/50">
                     <div className="flex flex-col items-center mb-12">
                         <div className="mb-10">
                             <Logo size={64} variant="color" />
                         </div>
                         <h1 className="text-3xl font-semibold text-slate-800 tracking-tight">Console Access</h1>
-                        <p className="text-slate-400 text-[10px] font-bold uppercase tracking-[0.25em] mt-3">Super Admin Authentication</p>
+                        <p className="text-slate-600 text-[10px] font-bold uppercase tracking-[0.25em] mt-3">Super Admin Authentication</p>
                     </div>
 
                     {error && (
@@ -67,23 +67,23 @@ export default function AdminLogin() {
 
                     <form onSubmit={handleLogin} className="space-y-8">
                         <div className="space-y-2">
-                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1 block">Administrator Email</label>
+                            <label className="text-[10px] font-bold text-slate-600 uppercase tracking-widest pl-1 block">Administrator Email</label>
                             <input
                                 type="email"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
-                                className="w-full p-4 bg-slate-50/50 border border-slate-100 rounded-2xl focus:border-[#27954D]/30 outline-none transition-all font-medium text-sm text-slate-700"
+                                className="w-full p-4 bg-slate-50/50 border border-slate-200 rounded-2xl focus:border-[#27954D]/30 outline-none transition-all font-medium text-sm text-slate-700"
                                 placeholder="admin@grafty.ai"
                                 required
                             />
                         </div>
                         <div className="space-y-2">
-                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1 block">Security Password</label>
+                            <label className="text-[10px] font-bold text-slate-600 uppercase tracking-widest pl-1 block">Security Password</label>
                             <input
                                 type="password"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
-                                className="w-full p-4 bg-slate-50/50 border border-slate-100 rounded-2xl focus:border-[#27954D]/30 outline-none transition-all font-medium text-sm text-slate-700"
+                                className="w-full p-4 bg-slate-50/50 border border-slate-200 rounded-2xl focus:border-[#27954D]/30 outline-none transition-all font-medium text-sm text-slate-700"
                                 placeholder="••••••••••••"
                                 required
                             />
@@ -99,7 +99,7 @@ export default function AdminLogin() {
                     </form>
                 </div>
 
-                <p className="mt-12 text-center text-[9px] text-slate-300 font-bold uppercase tracking-[0.4em]">
+                <p className="mt-12 text-center text-[9px] text-slate-500 font-bold uppercase tracking-[0.4em]">
                     Grafty Enterprise Portal
                 </p>
             </div>

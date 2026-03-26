@@ -1,4 +1,7 @@
 import { NextResponse } from 'next/server';
+import { getCurrentUser } from '../../../../lib/auth';
+import { prisma } from '../../../../lib/db';
+import { decrypt } from '../../../../lib/security/encryption';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,9 +14,22 @@ export async function GET(req: Request) {
     }
 
     try {
+        const user = await getCurrentUser(req);
+        if (!user) return new NextResponse("Unauthorized", { status: 401 });
+
+        const account = await prisma.whatsAppAccount.findFirst({
+            where: { workspace_id: user.workspaceId }
+        });
+
+        if (!account || !account.access_token) {
+            return new NextResponse("WhatsApp account not configured", { status: 404 });
+        }
+
+        const token = decrypt(account.access_token);
+
         const response = await fetch(mediaUrl, {
             headers: {
-                'Authorization': `Bearer ${process.env.META_SYSTEM_TOKEN}`
+                'Authorization': `Bearer ${token}`
             }
         });
 

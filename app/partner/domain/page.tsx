@@ -61,18 +61,18 @@ export default function DomainPage() {
             if (res.ok) {
                 setDomains([data.data, ...domains]);
                 setNewDomain("");
-                setMessage({ text: "Primary namespace declared. DNS anchor established.", type: "success" });
+                setMessage({ text: "Primary domain added. DNS target provided.", type: "success" });
             } else {
-                setMessage({ text: data.error || "Establishment protocol failed", type: "error" });
+                setMessage({ text: data.error || "Failed to add domain", type: "error" });
             }
         } catch {
-            setMessage({ text: "Network signal lost during establishment", type: "error" });
+            setMessage({ text: "Connection error during setup", type: "error" });
         } finally {
             setAdding(false);
         }
     };
 
-    const handleVerifyPulse = async (id: string) => {
+    const handleVerifyDomain = async (id: string) => {
         setVerifyingId(id);
         setMessage(null);
         try {
@@ -80,12 +80,12 @@ export default function DomainPage() {
             const data = await res.json();
             if (data.success) {
                 setDomains(domains.map(d => d.id === id ? { ...d, is_verified: true } : d));
-                setMessage({ text: "DNS Checksum Valid. Shield protocol active.", type: "success" });
+                setMessage({ text: "DNS verified. Domain now active.", type: "success" });
             } else {
-                setMessage({ text: data.error || "Verification pulse failed. DNS records not detected.", type: "error" });
+                setMessage({ text: data.error || "Verification failed. DNS records not detected.", type: "error" });
             }
         } catch {
-            setMessage({ text: "Resolver handshake rejected", type: "error" });
+            setMessage({ text: "Verification request failed", type: "error" });
         } finally {
             setVerifyingId(null);
         }
@@ -98,9 +98,9 @@ export default function DomainPage() {
             const res = await fetch(`/api/reseller/domains/${id}/ssl-check`, { method: "POST" });
             const data = await res.json();
             if (data.success) {
-                setMessage({ text: "SSL Handshake Decrypted & Secure. Encryption active.", type: "success" });
+                setMessage({ text: "SSL verified and secure. Encryption active.", type: "success" });
             } else {
-                setMessage({ text: data.error || "SSL Handshake failure. Cert may still be provisioning.", type: "error" });
+                setMessage({ text: data.error || "SSL check failed. Certificate may still be provisioning.", type: "error" });
             }
         } catch {
             setMessage({ text: "SSL scanning failed", type: "error" });
@@ -110,16 +110,16 @@ export default function DomainPage() {
     };
 
     const handleDelete = async (id: string) => {
-        if (!window.confirm("Permanent deletion of this namespace will break resolving. Proceed?")) return;
+        if (!window.confirm("Permanently deleting this domain will break its connection. Proceed?")) return;
         setDeletingId(id);
         try {
             const res = await fetch(`/api/reseller/domains/${id}`, { method: "DELETE" });
             if (res.ok) {
                 setDomains(domains.filter(d => d.id !== id));
-                setMessage({ text: "Namespace purged from edge network.", type: "info" });
+                setMessage({ text: "Domain removed from system.", type: "info" });
             }
         } catch {
-            setMessage({ text: "Decommisison protocol failed", type: "error" });
+            setMessage({ text: "Delete request failed", type: "error" });
         } finally {
             setDeletingId(null);
         }
@@ -138,12 +138,12 @@ export default function DomainPage() {
                 <div className="space-y-1">
                     <div className="flex items-center gap-2 text-blue-600 font-black text-[9px] uppercase tracking-[0.3em] mb-4">
                         <div className="w-1.5 h-1.5 rounded-full bg-blue-600 shadow-[0_0_8px_rgba(37,99,235,0.4)]" />
-                        Infrastructure Matrix
+                        Infrastructure Management
                     </div>
                     <h1 className="text-4xl font-black text-slate-900 tracking-tighter leading-none italic uppercase">
                         White-Label Domains<span className="text-blue-600">.</span>
                     </h1>
-                    <p className="text-slate-400 font-bold text-sm tracking-tight italic">Provision and manage custom namespaces for your white-labeled platform.</p>
+                    <p className="text-slate-400 font-bold text-sm tracking-tight italic">Provision and manage custom domains for your white-labeled platform.</p>
                 </div>
                 <div className="flex items-center gap-4">
                     <a href="#setup-guide" className="px-6 py-3 bg-white border border-slate-200 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-blue-600 hover:border-blue-600 transition-all flex items-center gap-2">
@@ -186,8 +186,8 @@ export default function DomainPage() {
                                     <Plus size={22} />
                                 </div>
                                 <div className="hidden sm:block">
-                                    <h2 className="text-xs font-black text-slate-900 uppercase tracking-[0.2em]">Add New Namespace</h2>
-                                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest italic mt-1 leading-none">Initialize White-Label Cluster</p>
+                                    <h2 className="text-xs font-black text-slate-900 uppercase tracking-[0.2em]">Add New Domain</h2>
+                                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest italic mt-1 leading-none">Link Your Custom Branding</p>
                                 </div>
                             </div>
                         </div>
@@ -212,7 +212,7 @@ export default function DomainPage() {
                                     className="w-full md:w-auto px-12 py-5 bg-slate-900 text-white rounded-[2rem] font-black text-[10px] uppercase tracking-[0.3em] hover:bg-black transition-all shadow-xl shadow-slate-900/10 active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-3"
                                 >
                                     {adding ? <Loader2 size={16} className="animate-spin" /> : <ArrowUpRight size={16} />}
-                                    Provision Domain
+                                    Add Domain
                                 </button>
                             </div>
                         </div>
@@ -221,7 +221,7 @@ export default function DomainPage() {
                     {/* Domains List */}
                     <div className="space-y-6">
                         <div className="flex items-center justify-between px-6">
-                            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em]">Active Clusters</h3>
+                            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em]">Connected Domains</h3>
                             <button onClick={fetchDomains} className="p-2 hover:bg-slate-50 rounded-xl text-slate-400 transition-all">
                                 <Activity size={14} />
                             </button>
@@ -230,13 +230,13 @@ export default function DomainPage() {
                         {loading ? (
                             <div className="py-20 flex flex-col items-center justify-center space-y-4">
                                 <Loader2 size={32} className="text-slate-200 animate-spin" />
-                                <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest">Scanning Grid...</span>
+                                <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest">Scanning...</span>
                             </div>
                         ) : domains.length === 0 ? (
                             <div className="bg-slate-50 border border-dashed border-slate-200 rounded-[3rem] py-24 flex flex-col items-center justify-center text-center space-y-4">
                                 <Globe size={48} className="text-slate-200 mb-2" />
-                                <h4 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">No Active Namespaces</h4>
-                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest italic leading-none max-w-xs">Declare your first custom domain to activate the white-label matrix.</p>
+                                <h4 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">No Active Domains</h4>
+                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest italic leading-none max-w-xs">Declare your first custom domain to activate your white-label platform.</p>
                             </div>
                         ) : (
                             <div className="grid grid-cols-1 gap-6">
@@ -247,7 +247,7 @@ export default function DomainPage() {
                                         verifying={verifyingId === domain.id} 
                                         sslChecking={sslCheckingId === domain.id}
                                         deleting={deletingId === domain.id}
-                                        onVerify={() => handleVerifyPulse(domain.id)}
+                                        onVerify={() => handleVerifyDomain(domain.id)}
                                         onSslCheck={() => handleSslCheck(domain.id)}
                                         onDelete={() => handleDelete(domain.id)}
                                         onCopy={(val, key) => copyToClipboard(val, key)}
@@ -269,7 +269,7 @@ export default function DomainPage() {
                         <div className="relative z-10 space-y-12">
                             <div className="text-center space-y-2">
                                 <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-[9px] font-black text-blue-400 uppercase tracking-widest mb-4">
-                                    <Zap size={10} /> Configuration Protocol
+                                    <Zap size={10} /> Setup Guide
                                 </div>
                                 <h3 className="text-3xl font-black text-white italic tracking-tighter uppercase leading-none">
                                     How to Setup Your <span className="text-blue-400">Custom Domain</span>.
@@ -281,25 +281,25 @@ export default function DomainPage() {
                                 {[
                                     {
                                         step: "01",
-                                        title: "DNS Anchor",
-                                        desc: "Point your CNAME record to cname.grafty.pro in your DNS panel (Cloudflare, GoDaddy, etc).",
+                                        title: "DNS Setup",
+                                        desc: "Point your CNAME record to the provided target in your DNS panel (Cloudflare, GoDaddy, etc).",
                                         icon: <Server size={20} className="text-blue-400" />
                                     },
                                     {
                                         step: "02",
-                                        title: "Namespace Entry",
-                                        desc: "Enter your domain above (e.g., app.yourbrand.com) and click 'Provision Domain' to initialize.",
+                                        title: "Domain Entry",
+                                        desc: "Enter your domain above (e.g., app.yourbrand.com) and click 'Add Domain' to initialize.",
                                         icon: <Plus size={20} className="text-emerald-400" />
                                     },
                                     {
                                         step: "03",
-                                        title: "Pulse Check",
-                                        desc: "Once DNS propagates, click 'Pulse Check' to verify connectivity with our global edge nodes.",
+                                        title: "DNS Verify",
+                                        desc: "Once DNS propagates, click 'Verify DNS' to check connectivity with our servers.",
                                         icon: <Activity size={20} className="text-amber-400" />
                                     },
                                     {
                                         step: "04",
-                                        title: "SSL Shield",
+                                        title: "SSL Security",
                                         desc: "Our system will automatically provision an SSL certificate. Encryption active within seconds.",
                                         icon: <ShieldCheck size={20} className="text-violet-400" />
                                     }
@@ -321,11 +321,11 @@ export default function DomainPage() {
                                         <Info size={20} />
                                     </div>
                                     <div>
-                                        <p className="text-[10px] font-black text-white uppercase tracking-widest">Crucial: Cloudflare Users</p>
-                                        <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider italic">Ensure the orange cloud (Proxy) is DISABLED in Cloudflare during the initial verification pulse.</p>
+                                        <p className="text-[10px] font-black text-white uppercase tracking-widest">Cloudflare Users</p>
+                                        <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider italic">Ensure the orange cloud (Proxy) is DISABLED in Cloudflare during the initial verification.</p>
                                     </div>
                                 </div>
-                                <button onClick={() => window.open('https://docs.grafty.pro/white-label-setup', '_blank')} className="px-8 py-4 bg-white text-slate-900 rounded-2xl font-black text-[9px] uppercase tracking-[0.3em] hover:bg-blue-400 hover:text-white transition-all whitespace-nowrap">
+                                <button onClick={() => window.open('/docs/white-label', '_blank')} className="px-8 py-4 bg-white text-slate-900 rounded-2xl font-black text-[9px] uppercase tracking-[0.3em] hover:bg-blue-400 hover:text-white transition-all whitespace-nowrap">
                                     Full Documentation
                                 </button>
                             </div>
@@ -350,7 +350,7 @@ function DomainCard({ domain, verifying, sslChecking, deleting, onVerify, onSslC
 }) {
     const [expanded, setExpanded] = useState(!domain.is_verified);
     const cnameHost = domain.domain.split(".")[0];
-    const cnameTarget = domain.target_host || "cname.grafty.pro";
+    const cnameTarget = domain.target_host || "cname.your-server.com";
 
     return (
         <div className={`bg-white border rounded-[2.5rem] overflow-hidden transition-all duration-500 shadow-sm ${
@@ -374,7 +374,7 @@ function DomainCard({ domain, verifying, sslChecking, deleting, onVerify, onSslC
                             </span>
                         </div>
                         <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest italic mt-2">
-                            Infrastructure: {domain.is_verified ? "Edge Routing Active" : "Waiting for Broadcast"}
+                            Status: {domain.is_verified ? "Active" : "Waiting for Propagation"}
                         </p>
                     </div>
                 </div>
@@ -403,7 +403,7 @@ function DomainCard({ domain, verifying, sslChecking, deleting, onVerify, onSslC
                             className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 transition-all shadow-lg active:scale-95 disabled:opacity-50"
                         >
                             {verifying ? <Loader2 size={14} className="animate-spin" /> : <Zap size={14} />}
-                            {verifying ? "Auditing" : "Pulse Check"}
+                            {verifying ? "Verifying" : "Verify DNS"}
                         </button>
                     )}
                     <button 
@@ -421,10 +421,10 @@ function DomainCard({ domain, verifying, sslChecking, deleting, onVerify, onSslC
                 <div className="p-8 border-t border-slate-50 bg-slate-50/50 animate-in slide-in-from-top-4 duration-300">
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                         {[
-                            { label: "Matrix Type", value: "CNAME" },
+                            { label: "Record Type", value: "CNAME" },
                             { label: "Host Name", value: cnameHost },
-                            { label: "Matrix Value", value: cnameTarget },
-                            { label: "TTL Pulse", value: "3600s" }
+                            { label: "Target Value", value: cnameTarget },
+                            { label: "TTL", value: "3600s" }
                         ].map(({ label, value }) => (
                             <div key={label} className="space-y-3">
                                 <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em] ml-1">{label}</label>
@@ -446,9 +446,9 @@ function DomainCard({ domain, verifying, sslChecking, deleting, onVerify, onSslC
                         <div className="mt-8 p-5 bg-amber-50 border border-amber-100 rounded-2xl flex items-start gap-4">
                             <AlertTriangle size={16} className="text-amber-500 mt-1 shrink-0" />
                             <div className="space-y-1">
-                                <p className="text-[10px] font-black text-amber-700 uppercase tracking-widest">Awaiting DNS Broadcast</p>
+                                <p className="text-[10px] font-black text-amber-700 uppercase tracking-widest">Awaiting Propagation</p>
                                 <p className="text-[10px] text-amber-600 font-medium leading-relaxed">
-                                    Configure the above CNAME record in your registrar's DNS panel. If using Cloudflare, ensure "Proxying" (Orange Cloud) is DISABLED for the initial verification pulse.
+                                    Configure the above CNAME record in your registrar's DNS panel. If using Cloudflare, ensure "Proxying" (Orange Cloud) is DISABLED for the initial verification.
                                 </p>
                             </div>
                         </div>

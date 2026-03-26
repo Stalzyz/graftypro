@@ -53,7 +53,7 @@ async function main() {
         '-az', '--delete',
         '-e', `ssh -o StrictHostKeyChecking=no -o PubkeyAuthentication=no`,
         '--exclude=node_modules', '--exclude=.next', '--exclude=.git',
-        '--exclude=temp_project', '--exclude=.DS_Store', '--exclude=.env',
+        '--exclude=temp_project', '--exclude=.DS_Store', 
         '--exclude=*.zip', '--exclude=public/uploads',
         `${LOCAL_PATH}/`,
         `${VPS_USER}@${VPS_HOST}:${REMOTE_PATH}/`

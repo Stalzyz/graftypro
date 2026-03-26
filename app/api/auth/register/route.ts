@@ -96,7 +96,13 @@ export async function POST(request: Request) {
                 }
             }
 
-            // Create Workspace with partner attribution
+            // --- STEP 0: Resolve Default Plan (Hardening the Connection) ---
+            const defaultPlan = await tx.subscriptionPlan.findFirst({
+                where: { is_active: true },
+                orderBy: { sort_order: 'asc' }
+            });
+
+            // Create Workspace with partner attribution and package linkage
             const workspace = await tx.workspace.create({
                 data: {
                     name: businessName,
@@ -105,7 +111,9 @@ export async function POST(request: Request) {
                     trial_ends_at: finalTrialEndsAt, 
                     reseller_id: partner?.reseller_id || null, // Link to partner if detected
                     referral_code: referralCode,
-                    referred_by_id: referredByWorkspaceId
+                    referred_by_id: referredByWorkspaceId,
+                    current_plan_id: defaultPlan?.id || null,
+                    plan: defaultPlan ? (["FREE", "PRO", "ENTERPRISE"].includes(defaultPlan.name.toUpperCase()) ? defaultPlan.name.toUpperCase() as any : "PRO") : "FREE"
                 }
             });
 
@@ -160,8 +168,9 @@ export async function POST(request: Request) {
             context: {
                 verification_url: verifyUrl,
                 brand_name: partner?.brand_name || "Grafty",
-                logo_url: partner?.logo_url || "https://app.grafty.pro/grafty.svg"
-            }
+                logo_url: partner?.logo_url || "/logo.png"
+            },
+            hostname: finalHost
         });
 
         console.log(`[VERIFICATION] Email sent to ${normalizedEmail}`);

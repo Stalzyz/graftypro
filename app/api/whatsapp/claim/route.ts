@@ -17,7 +17,7 @@ export async function POST(req: Request) {
     try {
         const user = await getCurrentUser(req);
         if (!user) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+            return NextResponse.json({ error: "Session expired. Please reload the page and try again." }, { status: 401 });
         }
 
         const { wabaId, accessToken } = await req.json();

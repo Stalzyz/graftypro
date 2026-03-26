@@ -14,29 +14,23 @@ export const saasRazorpay = new Razorpay({
 export const razorpay = saasRazorpay;
 
 export const PLANS = {
-    LITE: {
-        id: process.env.RAZORPAY_PLAN_LITE || "plan_lite_default",
-        name: "LITE",
+    STARTER: {
+        id: process.env.RAZORPAY_PLAN_STARTER || "plan_starter_default",
+        name: "STARTER",
         price: 999,
-        limits: { contacts: 1000, campaigns: 5, messages: 2500 }
+        limits: { contacts: 2000, campaigns: 10, messages: 5000 }
     },
     GROWTH: {
         id: process.env.RAZORPAY_PLAN_GROWTH || "plan_growth_default",
         name: "GROWTH",
         price: 2499,
-        limits: { contacts: 10000, campaigns: 25, messages: 25000 }
+        limits: { contacts: 15000, campaigns: 50, messages: 35000 }
     },
-    PRO: {
-        id: process.env.RAZORPAY_PLAN_PRO || "plan_pro_default",
-        name: "PRO",
-        price: 4999,
-        limits: { contacts: 50000, campaigns: 100, messages: 100000 }
-    },
-    SCALE: {
-        id: process.env.RAZORPAY_PLAN_SCALE || "plan_scale_default",
-        name: "SCALE",
-        price: 9999,
-        limits: { contacts: 200000, campaigns: 500, messages: 500000 }
+    ENTERPRISE: {
+        id: process.env.RAZORPAY_PLAN_ENTERPRISE || "plan_enterprise_default",
+        name: "ENTERPRISE",
+        price: 14999,
+        limits: { contacts: 500000, campaigns: 1000, messages: 1000000 }
     }
 };
 

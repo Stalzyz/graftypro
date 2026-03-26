@@ -25,13 +25,16 @@ function SocialLink({ href, icon }: { href: string; icon: React.ReactNode }) {
     );
 }
 
-export default function LandingFooter() {
+export default function LandingFooter({ branding }: { branding?: any }) {
+    const brandName = branding?.brand_name || "Grafty";
+    const isWhitelabel = !!branding;
+
     return (
         <footer className="pt-24 pb-12 bg-white border-t border-gray-100">
             <div className="max-w-7xl mx-auto px-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-16 mb-20">
                     <div className="lg:col-span-1">
-                        <Logo size={40} brandName="Grafty" variant="color" />
+                        <Logo size={40} brandName={brandName} variant="color" logoUrl={branding?.logo_url} />
                         <p className="mt-8 text-slate-500 font-medium italic leading-relaxed max-w-xs">
                             Goal-driven WhatsApp Business Platform for scalable growth. Built for serious business orchestration.
                         </p>
@@ -73,14 +76,16 @@ export default function LandingFooter() {
 
                 <div className="pt-12 border-t border-gray-100 flex flex-col md:flex-row items-center justify-between gap-8">
                     <p className="text-slate-400 text-xs font-black uppercase tracking-[4px]">
-                        &copy; {new Date().getFullYear()} Grafty Pro. Operational Integrity Guaranteed.
+                        &copy; {new Date().getFullYear()} {brandName}. All Rights Reserved.
                     </p>
-                    <div className="flex items-center gap-6">
-                        <SocialLink href="https://www.facebook.com/graftypro" icon={<Facebook size={18} />} />
-                        <SocialLink href="https://www.instagram.com/graftypro" icon={<Instagram size={18} />} />
-                        <SocialLink href="https://www.linkedin.com/company/graftypro" icon={<Linkedin size={18} />} />
-                        <SocialLink href="https://in.pinterest.com/graftypro" icon={<PinterestIcon size={18} />} />
-                    </div>
+                    {!isWhitelabel && (
+                        <div className="flex items-center gap-6">
+                            <SocialLink href="https://www.facebook.com/graftypro" icon={<Facebook size={18} />} />
+                            <SocialLink href="https://www.instagram.com/graftypro" icon={<Instagram size={18} />} />
+                            <SocialLink href="https://www.linkedin.com/company/graftypro" icon={<Linkedin size={18} />} />
+                            <SocialLink href="https://in.pinterest.com/graftypro" icon={<PinterestIcon size={18} />} />
+                        </div>
+                    )}
                 </div>
             </div>
         </footer>

@@ -110,7 +110,7 @@ export default function MarketingToolkitPage() {
                             </div>
 
                             <p className="text-sm text-slate-600 font-bold leading-relaxed mb-8 uppercase tracking-tight italic">
-                                Onboard new vendors directly into your cluster. Lifetime commission mapping active.
+                                Onboard new vendors directly into your network. Lifetime commission mapping active.
                             </p>
 
                             <div className="bg-slate-50 border border-slate-200 rounded-[2rem] p-6 space-y-4 shadow-sm">
@@ -128,7 +128,7 @@ export default function MarketingToolkitPage() {
 
                             <div className="mt-10 flex items-center justify-between border-t border-slate-100 pt-8">
                                 <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 italic">
-                                    <LinkIcon size={12} strokeWidth={3} /> Partner Security ID: <span className="text-blue-600">{referralCode}</span>
+                                    <LinkIcon size={12} strokeWidth={3} /> Partner Referral ID: <span className="text-blue-600">{referralCode}</span>
                                 </div>
                                 <div className="h-2 w-2 rounded-full bg-[#27954D] animate-pulse" />
                             </div>
@@ -151,7 +151,7 @@ export default function MarketingToolkitPage() {
                         <div>
                             <h2 className="text-2xl font-black text-slate-900 tracking-tight italic flex items-center gap-3">
                                 <ImageIcon size={24} className="text-blue-500" />
-                                BRAND <span className="text-blue-400">ARTILLERY</span>
+                                MARKETING <span className="text-blue-400">ASSETS</span>
                             </h2>
                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1 italic">Ready-to-Deploy Assets</p>
                         </div>

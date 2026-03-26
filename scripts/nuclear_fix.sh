@@ -4,7 +4,7 @@
 # This script uses the SSH_ASKPASS technique from DEPLOY_NOW.sh
 
 SERVER="root@72.61.231.187"
-REMOTE_PATH="/root/wabot_bsp"
+REMOTE_PATH="/root/grafty_bsp"
 
 # Enable SSH Pass Automation
 if [ -f "./scripts/pass.sh" ]; then
@@ -18,9 +18,13 @@ echo "------------------------------------------------"
 echo "☢️ STARTING NUCLEAR FIX FOR 502 BAD GATEWAY"
 echo "------------------------------------------------"
 
+echo "📦 Pushing latest local code to server..."
+rsync -avz --delete --exclude='.git' --exclude='node_modules' --exclude='.next' \
+    /Users/stalinkumar/Downloads/Wabot_BSP/ $SERVER:$REMOTE_PATH/
+
 # Run remote commands
 ssh $SERVER "bash -s" << 'EOF'
-    cd /root/wabot_bsp
+    cd /root/grafty_bsp
     
     echo "🛑 Stopping all containers..."
     docker compose -f docker-compose.prod.yml down --remove-orphans

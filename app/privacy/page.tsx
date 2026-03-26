@@ -3,8 +3,13 @@ import React from "react";
 import "../landing/new-grafty.css";
 import LandingNavbar from "../../components/landing-new/LandingNavbar";
 import LandingFooter from "../../components/landing-new/LandingFooter";
+import { useBranding } from "../../hooks/use-branding";
 
 export default function PrivacyPage() {
+    const { branding } = useBranding();
+    const brandName = branding?.brand_name || "Platform";
+    const supportEmail = branding?.support?.email || "support@portal.io";
+
     return (
         <main className="g-body">
             <LandingNavbar />
@@ -24,7 +29,7 @@ export default function PrivacyPage() {
                         />
                         <PrivacySection
                             title="3. Meta Cloud API Data Handling"
-                            content="Grafty acts as a data processor for the data you send and receive via the WhatsApp Cloud API. This data is subject to Meta's Privacy Policy. We ensure that API tokens and sensitive credentials are encrypted and stored securely within our infrastructure."
+                            content={`${brandName} acts as a data processor for the data you send and receive via the WhatsApp Cloud API. This data is subject to Meta's Privacy Policy. We ensure that API tokens and sensitive credentials are encrypted and stored securely within our infrastructure.`}
                         />
                         <PrivacySection
                             title="4. Data Retention & Security"
@@ -48,7 +53,7 @@ export default function PrivacyPage() {
                         />
                         <PrivacySection
                             title="9. Contact Support"
-                            content="For any privacy-related concerns or data requests, please email us at support@grafty.pro."
+                            content={`For any privacy-related concerns or data requests, please email us at ${supportEmail}.`}
                         />
                     </div>
                 </div>

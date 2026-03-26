@@ -127,13 +127,51 @@ export default function WhatsAppSettingsPage() {
         }
     };
 
+    const [isSyncing, setIsSyncing] = useState(false);
+    const [isRecovering, setIsRecovering] = useState(false);
+
+    const recoverHistory = async () => {
+        if (!confirm("This will recover all messages orphaned in 'Pending Connections' and move them to your inbox. Proceed?")) return;
+        setIsRecovering(true);
+        try {
+            const res = await fetch("/api/whatsapp/recover-history", { method: "POST" });
+            const data = await res.json();
+            if (data.success) {
+                alert(`✅ Recovery Complete!\n\nMoved:\n- ${data.moved.contacts} contacts\n- ${data.moved.conversations} conversations\n- ${data.moved.messages} messages\n\nPlease check your Live Chat inbox now!`);
+            } else {
+                alert("Recovery Error: " + (data.error || "Unknown error"));
+            }
+        } catch (e) {
+            alert("Network error during recovery.");
+        } finally {
+            setIsRecovering(false);
+        }
+    };
+
+    const syncProfile = async () => {
+        setIsSyncing(true);
+        try {
+            const res = await fetch("/api/whatsapp/profile/sync", { method: "POST" });
+            const data = await res.json();
+            if (data.success) {
+                await fetchStatus(); // Refresh the UI with new data
+            } else {
+                alert("Sync Error: " + (data.error || "Could not reach Meta"));
+            }
+        } catch (e) {
+            console.error("Sync failed", e);
+        } finally {
+            setIsSyncing(false);
+        }
+    };
+
     const fetchStatus = async () => {
         try {
             const res = await fetch("/api/whatsapp/status");
             const data = await res.json();
             if (data.workspaceId) setWorkspaceId(data.workspaceId);
 
-            if (data.status === 'CONNECTED') {
+            if (data.status === 'CONNECTED' && data.account) {
                 setStatus("CONNECTED");
                 setWabaDetails(data.account);
                 setEditForm({
@@ -307,8 +345,7 @@ export default function WhatsAppSettingsPage() {
                 </button>
                 <ManualIntegrationWizard
                     onComplete={() => {
-                        setShowManualWizard(false);
-                        fetchStatus();
+                        window.location.reload();
                     }}
                     onCancel={() => setShowManualWizard(false)}
                 />
@@ -374,7 +411,7 @@ export default function WhatsAppSettingsPage() {
                                         <Edit2 size={18} />
                                     </button>
                                 </div>
-                                <p className="text-[#042f94] font-bold text-xl mt-1">+{wabaDetails.phone_number}</p>
+                                <p className="text-[#042f94] font-bold text-xl mt-1">+{wabaDetails.phone_number?.replace(/^\+/, "")}</p>
                                 <div className="flex items-center gap-3 mt-4">
                                     <span className="text-[10px] bg-slate-50 text-slate-400 border border-slate-100 px-3 py-1.5 rounded-xl flex items-center gap-2 font-bold uppercase tracking-wider">
                                         <Globe size={14} /> {wabaDetails.timezone || "Asia/Kolkata"}
@@ -395,8 +432,30 @@ export default function WhatsAppSettingsPage() {
                                 <div className="text-[10px] text-gray-400 uppercase font-black tracking-widest mb-1">Tier & Capacity</div>
                                 <div className="text-gray-800 font-bold text-xl">{wabaDetails.rate_limit_tier || "Tier 1 (1k)"}</div>
                             </div>
-                            <button onClick={fetchStatus} className="flex items-center gap-2 px-5 py-2.5 bg-slate-50 hover:bg-slate-100 text-slate-500 rounded-2xl text-[11px] font-bold transition-all border border-slate-100">
-                                <RefreshCw size={14} /> Refresh Cloud State
+                            <button 
+                                onClick={syncProfile} 
+                                disabled={isSyncing}
+                                className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl text-[11px] font-bold transition-all border ${
+                                    isSyncing 
+                                    ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed' 
+                                    : 'bg-slate-50 hover:bg-slate-100 text-slate-500 border-slate-100'
+                                }`}
+                            >
+                                <RefreshCw size={14} className={isSyncing ? "animate-spin" : ""} /> 
+                                {isSyncing ? "Syncing with Meta..." : "Refresh Cloud State"}
+                            </button>
+                            <button 
+                                onClick={recoverHistory} 
+                                disabled={isRecovering}
+                                className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl text-[11px] font-bold transition-all border ${
+                                    isRecovering 
+                                    ? 'bg-amber-50 text-amber-300 border-amber-100 cursor-not-allowed' 
+                                    : 'bg-amber-50 hover:bg-amber-100 text-amber-600 border-amber-100'
+                                }`}
+                                title="Move messages from Pending Connections to this inbox"
+                            >
+                                <Flame size={14} className={isRecovering ? "animate-pulse" : ""} /> 
+                                {isRecovering ? "Recovering..." : "Recover History"}
                             </button>
                         </div>
                     </div>

@@ -5,6 +5,8 @@ import { WhatsAppService } from "@/lib/whatsapp/service";
 import { FlowRunner } from "@/lib/engine/flow-runner";
 import { CreditService } from "@/lib/credits/service";
 import { decrypt } from "@/lib/security/encryption";
+import { WhatsAppMediaDownloader } from "@/lib/whatsapp/media-downloader";
+import { normalizeMessage } from "@/lib/engine/message-normalizer";
 
 // --- CONFIG ---
 const REDIS_CONNECTION = {
@@ -278,6 +280,139 @@ const automationWorker = new Worker(
             const { workspaceId, contactId, messageBody } = job.data;
             console.log(`[Worker] Executing Flow for contact ${contactId}`);
             await FlowRunner.processMessage(workspaceId, contactId, messageBody);
+        }
+
+        /**
+         * ☢️ NUCLEAR WEBHOOK PROCESSOR
+         * Handles the heavy lifting of message ingestion:
+         * 1. Contact Upsert
+         * 2. Conversation Management
+         * 3. Media Downloading (Sync)
+         * 4. AI Fallback / Flow Triggering
+         */
+        if (job.name === "process-whatsapp-message") {
+            const { workspaceId, wabaId, message, contactProfile, metadata } = job.data;
+            
+            try {
+                const waba = await prisma.whatsAppAccount.findUnique({
+                    where: { id: wabaId },
+                    select: { id: true, phone_number_id: true, access_token: true, opt_out_keywords: true, opt_out_reply: true, phone_number: true }
+                });
+                if (!waba) return;
+
+                const token = decrypt(waba.access_token);
+                const phone = message.from;
+
+                // 1. Auto-Healed Contact Strategy
+                const contact = await prisma.contact.upsert({
+                    where: { workspace_id_phone: { workspace_id: workspaceId, phone } },
+                    update: { name: contactProfile?.profile?.name || undefined, updated_at: new Date() },
+                    create: { workspace_id: workspaceId, phone, name: contactProfile?.profile?.name || "Unknown", opt_in: true },
+                });
+
+                // 2. Conversation Check
+                let conversation = await prisma.conversation.findFirst({
+                    where: { contact_id: contact.id, status: "OPEN" }
+                });
+                if (!conversation) {
+                    conversation = await prisma.conversation.create({
+                        data: { workspace_id: workspaceId, contact_id: contact.id, status: "OPEN" }
+                    });
+                }
+
+                // 3. Media & Content Normalization
+                let msgContent: any = {};
+                let msgType: any = "TEXT";
+
+                if (message.text) {
+                    msgContent = { body: message.text.body };
+                    msgType = "TEXT";
+                } else if (message.image) {
+                    const localUrl = await WhatsAppMediaDownloader.downloadAndSaveMedia(message.image.id, token, workspaceId);
+                    msgContent = { media_id: message.image.id, caption: message.image.caption, link: localUrl };
+                    msgType = "IMAGE";
+                } else if (message.document) {
+                    const localUrl = await WhatsAppMediaDownloader.downloadAndSaveMedia(message.document.id, token, workspaceId);
+                    msgType = "DOCUMENT";
+                    msgContent = { media_id: message.document.id, filename: message.document.filename, link: localUrl };
+                } else if (message.audio) {
+                    const localUrl = await WhatsAppMediaDownloader.downloadAndSaveMedia(message.audio.id, token, workspaceId);
+                    msgType = "AUDIO";
+                    msgContent = { media_id: message.audio.id, link: localUrl };
+                } else if (message.video) {
+                    const localUrl = await WhatsAppMediaDownloader.downloadAndSaveMedia(message.video.id, token, workspaceId);
+                    msgType = "VIDEO";
+                    msgContent = { media_id: message.video.id, link: localUrl };
+                } else if (message.interactive) {
+                    msgType = "INTERACTIVE";
+                    msgContent = message.interactive;
+                } else if (message.button) {
+                    msgType = "INTERACTIVE";
+                    msgContent = { button_text: message.button.text, button_payload: message.button.payload };
+                }
+
+                // 4. Save to Database
+                await prisma.message.create({
+                    data: {
+                        workspace_id: workspaceId,
+                        contact_id: contact.id,
+                        conversation_id: conversation.id,
+                        meta_id: message.id,
+                        type: msgType,
+                        direction: "INBOUND",
+                        content: msgContent,
+                        status: "DELIVERED"
+                    }
+                });
+
+                // 4.5 🐛 HARD FIX: Force updating the Conversation timestamp!
+                // Without this, the chat list won't bump this conversation to the top!
+                await prisma.conversation.update({
+                    where: { id: conversation.id },
+                    data: { updated_at: new Date() }
+                });
+
+                // 5. Trigger Flow Engine
+                const normalizedMsg = normalizeMessage(message, { metadata });
+                await FlowRunner.processMessage(workspaceId, contact.id, normalizedMsg);
+
+            } catch (err: any) {
+                console.error(`[Worker ☢️] Inbound message failed for ${message.id}:`, err?.message);
+                throw err; // Allow BullMQ retry
+            }
+        }
+
+        /**
+         * ☢️ STATUS UPDATER
+         * Real-time message status updates (Sent, Delivered, Read, Failed)
+         */
+        if (job.name === "process-whatsapp-status") {
+            const { statusUpdate } = job.data;
+            const messageMetaId = statusUpdate.id;
+            const statusStr = statusUpdate.status.toUpperCase();
+            const timestamp = statusUpdate.timestamp ? new Date(parseInt(statusUpdate.timestamp) * 1000) : new Date();
+
+            let updateData: any = {};
+            if (statusStr === "FAILED" && statusUpdate.errors?.length > 0) {
+                const err = statusUpdate.errors[0];
+                updateData = { error_code: `${err.code}`, error_message: err.title || err.message, failed_at: timestamp };
+            }
+            if (statusStr === "SENT") updateData.sent_at = timestamp;
+            if (statusStr === "DELIVERED") updateData.delivered_at = timestamp;
+            if (statusStr === "READ") updateData.read_at = timestamp;
+
+            try {
+                await prisma.message.update({
+                    where: { meta_id: messageMetaId },
+                    data: { status: statusStr, ...updateData }
+                });
+            } catch (err: any) {
+                // message might not be in DB yet if status arrives very fast
+                if (err.code === 'P2025') {
+                   console.log(`[Worker] Status arrived before message ${messageMetaId} — will retry later.`);
+                   throw new Error("Message not found yet, retrying status update...");
+                }
+            }
         }
 
         if (job.name === "edu-lead-followup") {

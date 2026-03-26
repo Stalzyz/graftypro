@@ -113,11 +113,27 @@ export async function POST(req: Request) {
 
         // 2. Transactional Create
         const result = await prisma.$transaction(async (tx) => {
+            let finalPlan: 'FREE' | 'PRO' | 'ENTERPRISE' = 'FREE';
+            let currentPlanId: string | null = null;
+
+            if (plan) {
+                const planRecord = await tx.subscriptionPlan.findFirst({
+                    where: { name: { equals: plan, mode: "insensitive" } }
+                });
+                if (planRecord) {
+                    currentPlanId = planRecord.id;
+                    finalPlan = planRecord.name.toUpperCase() === 'ENTERPRISE' ? 'ENTERPRISE' : 'PRO';
+                } else if (["FREE", "PRO", "ENTERPRISE"].includes(plan.toUpperCase())) {
+                    finalPlan = plan.toUpperCase() as any;
+                }
+            }
+
             const workspace = await tx.workspace.create({
                 data: {
                     name: business_name,
                     business_name: business_name,
-                    plan: (plan || "FREE") as any,
+                    plan: finalPlan,
+                    current_plan_id: currentPlanId,
                     status: "ACTIVE",
                     trial_ends_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
                 }
@@ -166,7 +182,17 @@ export async function PATCH(req: Request) {
             });
         } else {
             const data: any = {};
-            if (plan) data.plan = plan;
+            if (plan) {
+                const planRecord = await prisma.subscriptionPlan.findFirst({
+                    where: { name: { equals: plan, mode: "insensitive" } }
+                });
+                if (planRecord) {
+                    data.current_plan_id = planRecord.id;
+                    data.plan = planRecord.name.toUpperCase() === 'ENTERPRISE' ? 'ENTERPRISE' : 'PRO';
+                } else if (["FREE", "PRO", "ENTERPRISE"].includes(plan.toUpperCase())) {
+                    data.plan = plan.toUpperCase();
+                }
+            }
             if (status) data.status = status;
 
             await prisma.workspace.updateMany({
@@ -176,15 +202,19 @@ export async function PATCH(req: Request) {
         }
 
         // Audit Log
-        // @ts-ignore
-        await prisma.adminAuditLog.create({
-            data: {
-                admin_id: session.id,
-                action: action === 'delete' ? "BULK_DELETE_VENDORS" : "BULK_UPDATE_VENDORS",
-                resource: ids.join(","),
-                details: { plan, status, action }
-            }
-        });
+        try {
+            // @ts-ignore
+            await prisma.adminAuditLog.create({
+                data: {
+                    admin_id: session.id,
+                    action: action === 'delete' ? "BULK_DELETE_VENDORS" : "BULK_UPDATE_VENDORS",
+                    resource: ids.join(","),
+                    details: { plan, status, action }
+                }
+            });
+        } catch (auditError) {
+            console.error("[Audit] Bulk update log failed:", auditError);
+        }
 
         return NextResponse.json({ success: true });
 

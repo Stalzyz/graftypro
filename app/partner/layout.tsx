@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation';
 import {
     LayoutDashboard, Users, Wallet, FileText, Settings,
     LogOut, ChevronRight, Ticket, Target,
-    Receipt, Globe, Mail, Zap, Activity, Shield, CreditCard
+    Receipt, Globe, Mail, Zap, Activity, Shield, CreditCard, Layout
 } from 'lucide-react';
 import { Logo } from "../../components/ui/Logo";
 
@@ -14,12 +14,26 @@ export default function PartnerLayout({ children }: { children: React.ReactNode 
     const pathname = usePathname();
     const [partner, setPartner] = React.useState<any>(null);
     const [loading, setLoading] = React.useState(true);
+    const [host, setHost] = React.useState<string>("");
 
     React.useEffect(() => {
-        fetch("/api/reseller/me")
-            .then(res => res.json())
-            .then(data => { setPartner(data.data); setLoading(false); })
-            .catch(() => setLoading(false));
+        if (typeof window !== 'undefined') {
+            setHost(window.location.hostname);
+        }
+
+        const fetchPartner = async () => {
+            try {
+                const res = await fetch("/api/reseller/me");
+                const json = await res.json();
+                setPartner(json.data);
+            } catch (error) {
+                console.error("Failed to fetch partner data:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchPartner();
     }, []);
 
     // Force light mode — partner dashboard is light-only
@@ -43,16 +57,16 @@ export default function PartnerLayout({ children }: { children: React.ReactNode 
             {/* Ultra-Premium Sidebar */}
             <aside className="fixed left-0 top-0 h-screen w-72 bg-white border-r border-slate-100 z-50 flex flex-col shadow-[1px_0_10px_rgba(0,0,0,0.01)]">
 
-                {/* Brand Identity */}
-                <div className="h-24 flex items-center px-8 gap-4">
-                    <div className="p-2.5 bg-slate-50 border border-slate-100 rounded-2xl shadow-sm group hover:border-[#27954D]/20 transition-all">
-                        <Logo size={24} brandName={partner?.brand_name || "Nexus"} />
-                    </div>
-                    <div>
-                        <h2 className="text-sm font-black italic tracking-tighter text-slate-900 leading-none uppercase">{partner?.brand_name || "Nexus Console"}</h2>
-                        <span className="text-[9px] font-black tracking-[0.3em] text-slate-300 uppercase mt-1 block">
-                            {isPlatform ? "Platform Nodes" : "Network Partner"}
-                        </span>
+                {/* Brand Identity — logo only, no text */}
+                <div className="h-24 flex items-center px-6">
+                    <div className="flex items-center justify-center h-14 bg-slate-50 border border-slate-100 rounded-2xl shadow-sm hover:border-[#27954D]/20 transition-all overflow-hidden p-2">
+                        <Logo
+                            size={44}
+                            showText={false}
+                            brandName={partner?.brand_name || "P"}
+                            logoUrl={partner?.logo_url}
+                            href="/partner/dashboard"
+                        />
                     </div>
                 </div>
 
@@ -88,6 +102,7 @@ export default function PartnerLayout({ children }: { children: React.ReactNode 
                         <div className="space-y-1">
                             <SectionHeader label="Settings" />
                             <NavItem href="/partner/settings" icon={<Settings size={18} />} label="Branding" pathname={pathname} />
+                            <NavItem href="/partner/settings/landing-page" icon={<Layout size={18} />} label="Homepage" pathname={pathname} />
                             <NavItem href="/partner/domain" icon={<Globe size={18} />} label="Domain & DNS" pathname={pathname} />
                             <NavItem href="/partner/email" icon={<Mail size={18} />} label="SMTP Config" pathname={pathname} />
                         </div>
@@ -153,7 +168,7 @@ export default function PartnerLayout({ children }: { children: React.ReactNode 
                 {/* Executive Topbar */}
                 <header className="h-20 bg-white/80 backdrop-blur-md border-b border-slate-100 sticky top-0 z-40 flex items-center justify-between px-10">
                     <div className="flex items-center gap-3">
-                        <div className="text-[10px] text-slate-300 font-black uppercase tracking-[0.3em] italic">Protocol</div>
+                        <div className="text-[10px] text-slate-300 font-black uppercase tracking-[0.3em] italic">Console</div>
                         <ChevronRight size={14} className="text-slate-200" />
                         <span className="text-xs font-black text-slate-900 uppercase tracking-widest italic leading-none">{pathname.split('/').pop()?.replace('-', ' ')}</span>
                     </div>
@@ -166,8 +181,8 @@ export default function PartnerLayout({ children }: { children: React.ReactNode 
                         <div className="h-6 w-px bg-slate-100" />
                         <div className="flex items-center gap-3 group cursor-pointer">
                             <div className="text-right">
-                                <p className="text-xs font-black text-slate-900 leading-none uppercase italic">{partner?.name || "Nexus Partner"}</p>
-                                <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-1 italic">{isPlatform ? "Platform Admin" : "Affiliate Node"}</p>
+                                <p className="text-xs font-black text-slate-900 leading-none uppercase italic">{partner?.name || "Partner"}</p>
+                                <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-1 italic">{isPlatform ? "Platform Admin" : "Affiliate Partner"}</p>
                             </div>
                             <div className="w-10 h-10 rounded-2xl bg-slate-900 flex items-center justify-center text-white text-xs font-black italic shadow-lg shadow-black/10 group-hover:scale-105 transition-transform">
                                 {(partner?.name || "P").charAt(0).toUpperCase()}
@@ -184,20 +199,20 @@ export default function PartnerLayout({ children }: { children: React.ReactNode 
                     <div className="flex flex-col md:flex-row justify-between items-center gap-8 max-w-7xl mx-auto">
                         <div className="flex items-center gap-4">
                             <div className="p-2 bg-white border border-slate-100 rounded-xl">
-                                <Logo size={18} brandName="Nexus" />
+                                <Logo size={18} showText={false} brandName={partner?.brand_name || "P"} logoUrl={partner?.logo_url} />
                             </div>
                             <div>
-                                <p className="text-[10px] font-black text-slate-900 uppercase tracking-widest">NEXUS PARTNER NETWORK</p>
-                                <p className="text-[9px] text-slate-300 font-bold uppercase tracking-[0.2em] mt-0.5">Automated Intelligence Protocol</p>
+                                <p className="text-[10px] font-black text-slate-900 uppercase tracking-widest">{partner?.brand_name?.toUpperCase() || "WHITELABEL"} PARTNER NETWORK</p>
+                                <p className="text-[9px] text-slate-300 font-bold uppercase tracking-[0.2em] mt-0.5">Powered by your platform</p>
                             </div>
                         </div>
                         <div className="flex gap-8">
-                            <FooterLink label="Protocol Terms" href="/terms" />
-                            <FooterLink label="Privacy Shield" href="/privacy" />
-                            <FooterLink label="Core Support" href="mailto:support@matrix.pro" />
+                            <FooterLink label="Terms of Service" href="/terms" />
+                            <FooterLink label="Privacy Policy" href="/privacy" />
+                            <FooterLink label="Support" href={`mailto:${partner?.support_email || 'support@' + host}`} />
                         </div>
                         <div className="text-[10px] font-black text-slate-300 italic uppercase">
-                            &copy; {new Date().getFullYear()} Grid Operations
+                            &copy; {new Date().getFullYear()} {partner?.brand_name || "Your Platform"}
                         </div>
                     </div>
                 </footer>

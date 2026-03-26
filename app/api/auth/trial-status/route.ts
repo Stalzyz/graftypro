@@ -15,7 +15,17 @@ export async function GET(request: Request) {
         const now = new Date();
         
         // --- Fail-Proof Security Logic ---
-        const userEmail = AuthSecurityService.normalizeEmail(user.email);
+        // Fetch full user record to acquire email (headers omit it for edge compatibility)
+        const dbUser = await prisma.user.findUnique({
+            where: { id: user.userId },
+            select: { email: true }
+        });
+
+        if (!dbUser?.email) {
+            return NextResponse.json({ error: "User email not found" }, { status: 400 });
+        }
+
+        const userEmail = AuthSecurityService.normalizeEmail(dbUser.email);
         const hasPaidPlan = !!workspace.current_plan_id || (workspace.plan && workspace.plan !== 'FREE');
         
         let trialEnd = workspace.trial_ends_at;

@@ -3,11 +3,33 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Logo } from "../../../components/ui/Logo";
-
-/**
- * ABSOLUTE DESTROYER: Side-bar Navigation Logic
- * Using emojis for absolute library stability (forensic indicators).
- */
+import { 
+  BarChart3, 
+  Users, 
+  Settings, 
+  Package, 
+  CreditCard, 
+  Mail, 
+  Bot, 
+  ShieldCheck, 
+  Globe, 
+  Layout, 
+  Palette, 
+  Truck, 
+  Zap, 
+  LogOut,
+  Search,
+  Activity,
+  UserCheck,
+  Building,
+  Lock,
+  MessageSquare,
+  FileText,
+  Clock,
+  ShieldAlert,
+  Server,
+  Facebook
+} from 'lucide-react';
 
 export default function SuperAdminLayout({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
@@ -17,77 +39,62 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
         setIsMounted(true);
     }, []);
 
-    // HYDRATION GUARD: Prevent layout-level crashes before mounting
     if (!isMounted) return <div className="flex min-h-screen bg-[#FAFAFA]"></div>;
 
     const safePath = pathname || "";
 
     return (
-        <div className="flex min-h-screen bg-[#FAFAFA]">
+        <div className="flex min-h-screen bg-[#FAFAFA] text-slate-900">
             {/* Sidebar */}
-            <aside className="w-[280px] bg-white border-r border-slate-100 flex flex-col fixed h-screen z-50 overflow-hidden">
+            <aside className="w-[280px] bg-white border-r border-slate-100 flex flex-col fixed h-screen z-50">
                 <div className="h-20 flex items-center px-8 border-b border-slate-50">
-                    <Logo size={32} variant="color" />
-                    <span className="ml-3 text-xs font-black tracking-[0.3em] text-slate-400 uppercase">Console</span>
+                    <Logo size={40} variant="color" />
                 </div>
 
-                <nav className="flex-1 px-4 py-8 space-y-1.5 overflow-y-auto custom-scrollbar">
-                    <NavLink href="/super-admin/dashboard" icon="📊" label="Dashboard" />
+                <nav className="flex-1 px-4 py-8 space-y-1 overflow-y-auto custom-scrollbar">
+                    <NavLink href="/super-admin/dashboard" icon={<BarChart3 size={18} />} label="Dashboard" />
 
                     <div className="pt-6 pb-2 px-5">
-                        <span className="text-[10px] font-bold text-slate-300 uppercase tracking-[0.2em] block">Revenue Engine</span>
+                        <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest block">Revenue</span>
                     </div>
-                    <NavLink href="/super-admin/dashboard/crm" icon="🎯" label="Sales" />
-                    <NavLink href="/super-admin/dashboard/growth" icon="⚡" label="Growth" />
-                    <NavLink href="/super-admin/dashboard/growth/leads" icon="📞" label="Tool Leads" />
-                    <NavLink href="/super-admin/dashboard/finance" icon="📈" label="Finance" />
-                    <NavLink href="/super-admin/dashboard/finance/payment" icon="💳" label="Payment Gateway" />
-                    <NavLink href="/super-admin/dashboard/finance/settings" icon="⚙️" label="HSN/GST Settings" />
-                    <NavLink href="/super-admin/dashboard/proposals" icon="🖋️" label="Proposals" />
+                    <NavLink href="/super-admin/dashboard/crm" icon={<Users size={18} />} label="Sales" />
+                    <NavLink href="/super-admin/dashboard/growth" icon={<Zap size={18} />} label="Growth" />
+                    <NavLink href="/super-admin/dashboard/finance" icon={<CreditCard size={18} />} label="Finance" />
+                    <NavLink href="/super-admin/dashboard/proposals" icon={<FileText size={18} />} label="Proposals" />
 
                     <div className="pt-6 pb-2 px-5">
-                        <span className="text-[10px] font-bold text-slate-300 uppercase tracking-[0.2em] block">Governance</span>
+                        <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest block">System</span>
                     </div>
-                    <NavLink href="/super-admin/dashboard/settings/rbac" icon="🛡️" label="Permissions" />
-                    <NavLink href="/super-admin/dashboard/platform" icon="🎛️" label="Platform Controls" />
-                    <NavLink href="/super-admin/dashboard/branding" icon="🎨" label="Branding" />
-                    <NavLink href="/super-admin/dashboard/packages" icon="📦" label="Packages" />
-                    <NavLink href="/super-admin/dashboard/theme" icon="🍱" label="Theme" />
+                    <NavLink href="/super-admin/dashboard/settings/rbac" icon={<ShieldCheck size={18} />} label="Permissions" />
+                    <NavLink href="/super-admin/dashboard/branding" icon={<Palette size={18} />} label="Branding" />
+                    <NavLink href="/super-admin/dashboard/packages" icon={<Package size={18} />} label="Packages" />
+                    <NavLink href="/super-admin/dashboard/landing-page" icon={<Globe size={18} />} label="Landing Page" />
+                     <NavLink href="/super-admin/dashboard/settings/smtp" icon={<Mail size={18} />} label="SMTP" />
+                    <NavLink href="/super-admin/dashboard/meta" icon={<Facebook size={18} />} label="Meta Onboarding" />
+                    <NavLink href="/super-admin/dashboard/infra" icon={<Server size={18} />} label="Infrastructure" />
 
                     <div className="pt-6 pb-2 px-5">
-                        <span className="text-[10px] font-bold text-slate-300 uppercase tracking-[0.2em] block">Infrastructure</span>
+                        <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest block">Management</span>
                     </div>
-                    <NavLink href="/super-admin/dashboard/content" icon="🌐" label="Content Manager" />
-                    <NavLink href="/super-admin/dashboard/landing-page" icon="🌍" label="Landing Page CMS" />
-                    <NavLink href="/super-admin/dashboard/settings/smtp" icon="📧" label="SMTP Settings" />
-                    <NavLink href="/super-admin/dashboard/settings/meta" icon="📋" label="Meta Settings" />
-                    <NavLink href="/super-admin/dashboard/settings/automation" icon="🤖" label="Automation" />
-                    <NavLink href="/super-admin/dashboard/infra" icon="🖥️" label="Infrastructure" />
+                    <NavLink href="/super-admin/dashboard/vendors" icon={<UserCheck size={18} />} label="Vendors" />
+                    <NavLink href="/super-admin/dashboard/partners" icon={<Handshake size={18} />} label="Partners" />
+                    <NavLink href="/super-admin/dashboard/white-label" icon={<Building size={18} />} label="White-label" />
 
                     <div className="pt-6 pb-2 px-5">
-                        <span className="text-[10px] font-bold text-slate-300 uppercase tracking-[0.2em] block">Entities</span>
+                        <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest block">Audit</span>
                     </div>
-                    <NavLink href="/super-admin/dashboard/vendors" icon="👥" label="Vendors" />
-                    <NavLink href="/super-admin/dashboard/partners" icon="🤝" label="Partners" />
-                    <NavLink href="/super-admin/dashboard/white-label" icon="🏢" label="White-label" />
-
-                    <div className="pt-6 pb-2 px-5">
-                        <span className="text-[10px] font-bold text-slate-300 uppercase tracking-[0.2em] block">Monitoring</span>
-                    </div>
-                    <NavLink href="/super-admin/dashboard/settings/retention" icon="⏱️" label="Logs" />
-                    <NavLink href="/super-admin/dashboard/audit" icon="🛡️" label="Audits" />
-                    <NavLink href="/super-admin/dashboard/risk" icon="⚠️" label="Security" />
-                    <NavLink href="/super-admin/dashboard/settings" icon="⚙️" label="Settings" />
+                    <NavLink href="/super-admin/dashboard/settings/retention" icon={<Clock size={18} />} label="Logs" />
+                    <NavLink href="/super-admin/dashboard/risk" icon={<ShieldAlert size={18} />} label="Security" />
+                    <NavLink href="/super-admin/dashboard/settings" icon={<Settings size={18} />} label="Settings" />
                 </nav>
 
-                <div className="p-6 border-t border-slate-50 bg-slate-50/30">
-                    <Link href="/super-admin/dashboard/account" className="flex items-center gap-4 px-4 py-3 bg-white rounded-2xl shadow-sm border border-slate-100 hover:border-slate-200 transition-all hover:shadow-md group">
-                        <div className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform">
-                            <span className="text-xs font-black text-white">SA</span>
+                <div className="p-6 border-t border-slate-50">
+                    <Link href="/super-admin/dashboard/account" className="flex items-center gap-3 px-4 py-3 bg-slate-50 rounded-xl hover:bg-slate-100 transition-all group">
+                        <div className="w-8 h-8 rounded-lg bg-slate-900 flex items-center justify-center">
+                            <span className="text-[10px] font-black text-white">SA</span>
                         </div>
                         <div className="flex-1 overflow-hidden">
-                            <div className="text-xs font-bold text-slate-900 truncate">Root Admin</div>
-                            <div className="text-[10px] font-bold text-[#27954D] uppercase tracking-wider">System Master</div>
+                            <div className="text-[11px] font-bold text-slate-900 truncate">Admin</div>
                         </div>
                         <button
                             onClick={async (e) => {
@@ -96,9 +103,9 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
                                 await fetch("/api/super-admin/auth/logout", { method: "POST" });
                                 window.location.href = "/super-admin/login";
                             }}
-                            className="text-slate-300 hover:text-rose-500 transition-colors p-2 z-10"
+                            className="text-slate-400 hover:text-rose-500 transition-colors"
                         >
-                            🚪
+                            <LogOut size={16} />
                         </button>
                     </Link>
                 </div>
@@ -106,40 +113,38 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
 
             {/* Main Content */}
             <main className="flex-1 ml-[280px]">
-                {/* Header */}
-                <header className="h-20 border-b border-slate-100 flex items-center justify-between px-12 bg-white/80 backdrop-blur-xl sticky top-0 z-40">
-                    <div className="flex items-center gap-6 w-[400px]">
-                        <div className="relative w-full group">
-                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-slate-900 transition-colors">🔍</span>
-                            <input
-                                type="text"
-                                placeholder="Universal Command Search..."
-                                className="w-full bg-slate-50 border border-transparent rounded-2xl pl-12 pr-4 py-3 text-sm text-slate-900 focus:outline-none focus:bg-white focus:border-slate-200 focus:ring-4 focus:ring-slate-50 transition-all placeholder:text-slate-500 font-medium"
-                            />
-                        </div>
+                <header className="h-20 border-b border-slate-100 flex items-center justify-between px-10 bg-white/80 backdrop-blur-md sticky top-0 z-40">
+                    <div className="flex items-center gap-4 w-[400px]">
+                        <Search size={18} className="text-slate-300" />
+                        <input
+                            type="text"
+                            placeholder="Search..."
+                            className="w-full bg-transparent border-none py-3 text-sm focus:outline-none placeholder:text-slate-400 font-medium"
+                        />
                     </div>
                     <div className="flex items-center gap-4">
-                        <div className="flex flex-col items-end mr-2">
+                        <div className="flex flex-col items-end">
                             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Environment</span>
-                            <span className="text-xs font-bold text-slate-900">PRODUCTION CLUSTER</span>
+                            <span className="text-[11px] font-bold text-slate-900 uppercase">Production</span>
                         </div>
-                        <div className="h-10 w-10 flex items-center justify-center rounded-xl bg-[#27954D]/10 border border-[#27954D]/20">
-                            <div className="h-2 w-2 rounded-full bg-[#27954D] animate-pulse" />
+                        <div className="h-8 w-8 flex items-center justify-center rounded-lg bg-green-50">
+                            <div className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
                         </div>
                     </div>
                 </header>
 
-                {safePath.startsWith('/super-admin/dashboard/landing-page/') && safePath.split('/').length > 5 ? (
-                    <div id="sa-viewport-landing">{children}</div>
-                ) : (
-                    <div className="p-12 animate-fade-in max-w-[1600px]" id="sa-viewport-main">
-                        {children}
-                    </div>
-                )}
+                <div className="p-10 animate-fade-in max-w-[1400px]">
+                    {children}
+                </div>
             </main>
         </div>
     );
 }
+
+// Fixed Handshake import issue by manually checking
+const Handshake = ({ size }: { size: number }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m11 17 2 2 6-6"/><path d="m18 14 2.5 2.5a3.37 3.37 0 0 1 0 4.75 3.37 3.37 0 0 1-4.75 0L13.5 19"/><path d="m9.9 14.2-6.4 6.4a2.2 2.2 0 0 1-3.1 0 2.2 2.2 0 0 1 0-3.1l6.4-6.4"/><path d="M12.5 12.5a2.12 2.12 0 0 1 3 3L12 19l-3-3 3.5-3.5Z"/><path d="m14 7 3 3"/><path d="M9.4 10.6 19 1l3 3-9.6 9.6"/></svg>
+);
 
 function NavLink({ href, icon, label }: { href: string; icon: React.ReactNode; label: string }) {
     const pathname = usePathname();
@@ -149,18 +154,15 @@ function NavLink({ href, icon, label }: { href: string; icon: React.ReactNode; l
     return (
         <Link
             href={href}
-            className={`flex items-center gap-4 px-5 py-3.5 rounded-2xl text-sm font-bold transition-all duration-300 relative group overflow-hidden ${isActive
-                ? "bg-slate-900 text-white shadow-xl shadow-slate-200"
-                : "text-slate-400 hover:text-slate-900 hover:bg-slate-50"
+            className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-[13px] font-semibold transition-all duration-200 ${isActive
+                ? "bg-slate-900 text-white shadow-md shadow-slate-200"
+                : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
                 }`}
         >
-            <div className={`transition-colors duration-300 ${isActive ? "text-white" : "text-slate-300 group-hover:text-slate-900"}`}>
+            <div className={`transition-colors duration-200 ${isActive ? "text-blue-400" : "text-slate-400 group-hover:text-slate-900"}`}>
                 {icon}
             </div>
             {label}
-            {isActive && (
-                <div className="absolute right-0 top-1/2 -translate-y-1/2 w-1.5 h-8 bg-[#27954D] rounded-l-full shadow-[0_0_15px_rgba(39,149,77,0.6)]" />
-            )}
         </Link>
     );
 }

@@ -1,10 +1,16 @@
 import React from 'react';
 
-export function SchemaScripts() {
+interface SchemaProps {
+  brandName?: string;
+  baseUrl?: string;
+  logoUrl?: string;
+}
+
+export function SchemaScripts({ brandName = "Platform", baseUrl = "", logoUrl = "" }: SchemaProps) {
   const softwareSchema = {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
-    "name": "Grafty",
+    "name": brandName,
     "operatingSystem": "All",
     "applicationCategory": "BusinessApplication",
     "aggregateRating": {
@@ -17,23 +23,18 @@ export function SchemaScripts() {
       "price": "49.00",
       "priceCurrency": "USD"
     },
-    "description": "Enterprise-grade WhatsApp Business Solution Provider (BSP) platform for automation, commerce, and growth."
+    "description": `Enterprise-grade WhatsApp Business Solution Provider (BSP) platform for automation, commerce, and growth by ${brandName}.`
   };
 
   const organizationSchema = {
     "@context": "https://schema.org",
     "@type": "Organization",
-    "name": "Grafty",
-    "url": "https://grafty.pro",
-    "logo": "https://grafty.pro/icon.svg",
-    "sameAs": [
-      "https://facebook.com/grafty",
-      "https://twitter.com/grafty",
-      "https://linkedin.com/company/grafty"
-    ],
+    "name": brandName,
+    "url": baseUrl,
+    "logo": logoUrl || `${baseUrl}/icon.svg`,
     "contactPoint": {
       "@type": "ContactPoint",
-      "telephone": "+91-9789359407",
+      "telephone": "",
       "contactType": "customer service"
     }
   };
@@ -55,15 +56,15 @@ export function SchemaScripts() {
         "name": "How do I get a WhatsApp green tick?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "To get a WhatsApp Green Tick (Official Business Account), you must have a verified Facebook Business Manager and exhibit a high level of brand authority and searchability. Grafty helps you with the application process."
+          "text": "To get a WhatsApp Green Tick (Official Business Account), you must have a verified Facebook Business Manager and exhibit a high level of brand authority and searchability."
         }
       },
       {
         "@type": "Question",
-        "name": "Does Grafty support automated flows?",
+        "name": "Does this platform support automated flows?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "Yes, Grafty features a comprehensive WhatsApp Flow builder that allows you to automate lead generation, feedback, and commerce directly within the chat."
+          "text": "Yes, we feature a comprehensive WhatsApp Flow builder that allows you to automate lead generation, feedback, and commerce directly within the chat."
         }
       }
     ]

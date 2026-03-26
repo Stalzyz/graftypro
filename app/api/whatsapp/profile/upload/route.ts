@@ -45,26 +45,37 @@ export async function POST(req: Request) {
         // 1. Upload to Meta Media API
         const metaFormData = new FormData();
         metaFormData.append("messaging_product", "whatsapp");
-        metaFormData.append("file", file);
+        
+        // Meta strictly requires a filename with an extension for multipart file decoding
+        const ext = file.type.split('/')[1] || 'jpeg';
+        metaFormData.append("file", file, `profile.${ext}`);
+        
         metaFormData.append("type", file.type);
 
         let mediaId;
         try {
-            const uploadRes = await axios.post(
+            const uploadRes = await fetch(
                 `https://graph.facebook.com/v20.0/${phoneNumberId}/media`,
-                metaFormData,
                 {
+                    method: 'POST',
                     headers: {
-                        "Authorization": `Bearer ${token}`,
-                        // Let axios handle multipart boundary
-                        "Content-Type": "multipart/form-data"
-                    }
+                        "Authorization": `Bearer ${token}`
+                    },
+                    body: metaFormData
                 }
             );
-            mediaId = uploadRes.data.id;
+            
+            const uploadData = await uploadRes.json();
+            
+            if (!uploadRes.ok) {
+                console.error("Meta Media Upload Error:", uploadData);
+                return NextResponse.json({ error: uploadData.error?.message || "Meta rejected the media upload request" }, { status: 422 });
+            }
+            
+            mediaId = uploadData.id;
         } catch (error: any) {
-            console.error("Meta Media Upload Error:", error.response?.data || error.message);
-            return NextResponse.json({ error: "Meta rejected the media upload request" }, { status: 422 });
+            console.error("Upload execution error:", error.message);
+            return NextResponse.json({ error: "Network error during media upload" }, { status: 500 });
         }
 
         if (!mediaId) {

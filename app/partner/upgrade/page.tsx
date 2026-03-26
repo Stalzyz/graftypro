@@ -20,8 +20,8 @@ export default function UpgradePage() {
                 <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-cyan-500/10 text-cyan-400 rounded-full text-[10px] font-black uppercase tracking-[0.2em] mb-6">
                     Partner Growth
                 </div>
-                <h1 className="text-4xl md:text-5xl font-black text-white mb-6 tracking-tight">
-                    Scale to <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500">Platform Partner</span>
+                 <h1 className="text-4xl md:text-5xl font-black text-slate-800 mb-6 tracking-tight">
+                    Scale to <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 inline-block">Platform Partner</span>
                 </h1>
                 <p className="text-zinc-500 text-lg max-w-2xl mx-auto font-medium">
                     Stop earning just commissions. Start building your own branded empire with full white-label infrastructure.
@@ -59,19 +59,44 @@ export default function UpgradePage() {
                             <Rocket className="text-zinc-800 group-hover:text-cyan-500/20 transition-colors" size={100} />
                         </div>
 
-                        <h3 className="text-2xl font-black text-white mb-4">Elite Tier Access</h3>
-                        <p className="text-zinc-400 text-sm mb-8 leading-relaxed">
-                            Unlock full autonomy. By upgrading, you unlock the Platform Engine and can start onboarding vendors directly under your own ecosystem.
+                        <h3 className="text-2xl font-black text-white mb-2">Whitelabel Partner</h3>
+                        <div className="mb-6 flex items-baseline gap-1">
+                            <span className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500">₹46,000</span>
+                            <span className="text-zinc-500 text-xs font-bold">/ month</span>
+                        </div>
+
+                        <p className="text-zinc-400 text-sm mb-6 leading-relaxed">
+                            Full autonomy structure. Deploy isolated database frames, setup custom nodes, and keep 100% of your customer revenue dashboard yields.
                         </p>
 
-                        <div className="space-y-4 mb-10">
+                        <div className="bg-zinc-900/50 border border-zinc-800 rounded-2xl p-4 mb-6 space-y-3">
+                            <div className="text-[10px] font-black text-cyan-400 uppercase tracking-widest mb-1">Fee Breakdown split</div>
+                            <div className="flex justify-between text-xs font-bold text-zinc-300">
+                                <span className="text-zinc-500">Setup & White-label DNS</span>
+                                <span>₹10,000</span>
+                            </div>
+                            <div className="flex justify-between text-xs font-bold text-zinc-300">
+                                <span className="text-zinc-500">Dedicated Cloud Node Hosting</span>
+                                <span>₹20,000</span>
+                            </div>
+                            <div className="flex justify-between text-xs font-bold text-zinc-300">
+                                <span className="text-zinc-500">Unlimited Orchestration Fee</span>
+                                <span>₹10,000</span>
+                            </div>
+                            <div className="flex justify-between text-xs font-bold text-zinc-300">
+                                <span className="text-zinc-500">24/7 Priority SLA Support</span>
+                                <span>₹6,000</span>
+                            </div>
+                        </div>
+
+                        <div className="space-y-4 mb-8">
                             {[
-                                "No Grafty Branding",
-                                "Custom Pricing Controls",
-                                "API Key Management",
-                                "Dedicated Support Line",
-                                "Vendor Analytics Pro"
-                            ].map((item, i) => (
+                                "No Grafty Network Branding",
+                                "Custom Pricing / Plan Builders",
+                                "Isolated Database Sandboxing",
+                                "Private domain SMTP Routing",
+                                "Unlimited Domain Mapping Control"
+                             ].map((item, i) => (
                                 <div key={i} className="flex items-center gap-3 text-sm font-bold text-zinc-300">
                                     <div className="w-5 h-5 bg-cyan-500/10 text-cyan-500 rounded-md flex items-center justify-center">
                                         <Check size={12} strokeWidth={3} />
@@ -86,7 +111,7 @@ export default function UpgradePage() {
                             disabled={loading}
                             className="w-full py-4 bg-white text-black font-black rounded-2xl flex items-center justify-center gap-2 hover:bg-cyan-400 transition-all active:scale-95 shadow-xl shadow-cyan-500/10"
                         >
-                            Request Access Now
+                            Request Whitelabel Access
                             <ArrowRight size={18} />
                         </button>
 

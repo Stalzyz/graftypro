@@ -20,7 +20,8 @@ export async function GET(req: Request) {
             recentCampaigns,
             totalRevenue,
             funnelStats,
-            waba
+            waba,
+            vendorWallet
         ] = await Promise.all([
             prisma.contact.count({
                 where: { workspace_id: workspaceId }
@@ -63,6 +64,9 @@ export async function GET(req: Request) {
             }),
             prisma.whatsAppAccount.findUnique({
                 where: { workspace_id: workspaceId }
+            }),
+            prisma.vendorWallet.findUnique({
+                where: { workspace_id: workspaceId }
             })
         ]);
 
@@ -75,6 +79,11 @@ export async function GET(req: Request) {
             messagesSent,
             activeFlows,
             wabaConnected: isWabaConnected,
+            wabaDetails: waba ? {
+                status: waba.status,
+                phone_number: waba.phone_number
+            } : null,
+            walletBalance: vendorWallet?.current_balance || 0,
             revenueRecovered,
             potentialRevenue,
             totalRevenue: totalRevenue._sum.total_amount || 0,

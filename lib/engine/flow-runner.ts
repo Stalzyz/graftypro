@@ -155,6 +155,13 @@ export class FlowRunner {
                 const suggestions = await AIService.suggestReply(messages);
                 if (suggestions && suggestions.length > 0) {
                     const aiReply = suggestions[0];
+                    
+                    // SAFETY FIX: Never send raw error strings to the actual WhatsApp customer!
+                    if (aiReply.includes("Error generating") || aiReply.includes("AI not configured")) {
+                        console.warn(`[FlowRunner] 🤖 AI Fallback skipped due to OpenAI error/misconfiguration.`);
+                        return;
+                    }
+
                     const p = buildTextPayload(contact.phone, aiReply);
                     if (p) {
                         await sendMessageDirect({

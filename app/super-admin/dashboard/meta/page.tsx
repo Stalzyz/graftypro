@@ -93,6 +93,12 @@ export default function MetaOnboardingPage() {
                             onChange={(v: string) => setConfig({ ...config, meta_app_id: v })}
                         />
                         <SettingInput
+                            label="Configuration ID"
+                            value={config.meta_config_id}
+                            onChange={(v: string) => setConfig({ ...config, meta_config_id: v })}
+                            description="The Onboarding Configuration ID from your Meta App setup."
+                        />
+                        <SettingInput
                             label="Meta App Secret"
                             type="password"
                             value={config.meta_app_secret}

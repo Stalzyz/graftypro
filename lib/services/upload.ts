@@ -80,14 +80,33 @@ export class ImageUploadService {
                 tenantId = "system"
             } = options;
 
-            // ABSOLUTE NUCLEAR PATH RESOLUTION
+            const safeMod = module.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+
+            // ----------------------------------------------------
+            // SYSTEM PATH RESOLUTION (Nuclear Persistence Fix)
+            // ----------------------------------------------------
             const rootDir = process.cwd();
             const publicDir = join(rootDir, "public");
-            const relativeDir = join("uploads", "vendor", tenantId.replace(/[^a-z0-9-]/gi, '_').toLowerCase(), module.replace(/[^a-z0-9]/gi, '_').toLowerCase());
-            const uploadBase = join(publicDir, relativeDir);
+            
+            // Step 1: Attempt to use 'uploads' (Persistent Volume in Docker/Prod)
+            let relativeBase = join("uploads", "vendor", tenantId.replace(/[^a-z0-9-]/gi, '_').toLowerCase(), safeMod);
+            let uploadBase = join(publicDir, relativeBase);
 
-            console.log(`[NUCLEAR UPLOAD] Root: ${rootDir}`);
-            console.log(`[NUCLEAR UPLOAD] Base: ${uploadBase}`);
+            console.log(`[NUCLEAR UPLOAD] Primary Target: ${uploadBase}`);
+
+            try {
+                // Try to create the primary directory
+                await mkdir(uploadBase, { recursive: true });
+                // Try a test write or just assume if mkdir works, we are good?
+                // Actually, on Mac, mkdir might work but writeFile might fail if the parent is locked.
+                // Let's stick to the plan: try primary, catch error, fallback.
+            } catch (err: any) {
+                console.warn(`[Upload System] Primary 'uploads' failed (likely local Mac lock): ${err.message}`);
+                relativeBase = join("uploads_old", "vendor", tenantId.replace(/[^a-z0-9-]/gi, '_').toLowerCase(), safeMod);
+                uploadBase = join(publicDir, relativeBase);
+                console.log(`[NUCLEAR UPLOAD] Fallback Target: ${uploadBase}`);
+                await mkdir(uploadBase, { recursive: true });
+            }
 
             if (file.size > maxSize) {
                 throw new Error(`File too large. Max: ${maxSize / (1024 * 1024)}MB`);
@@ -101,25 +120,32 @@ export class ImageUploadService {
             const bytes = await file.arrayBuffer();
             const buffer = Buffer.from(bytes);
 
-            // 5. Ensure directory exists with absolute path clarity
-            try {
-                await mkdir(uploadBase, { recursive: true });
-                console.log(`[Upload System] Directory confirmed: ${uploadBase}`);
-            } catch (mkdirError: any) {
-                console.error(`[Upload System] Directory creation error:`, mkdirError.message);
-            }
-
-            // 6. Generate Secure Filename with cleaned values
-            const safeMod = module.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+            // 6. Generate Secure Filename
             const uniqueFilename = `${safeMod}_${uuidv4().substring(0, 8)}_${Date.now()}${extension}`;
             const filepath = join(uploadBase, uniqueFilename);
 
             // 7. Atomic Write
             console.log(`[NUCLEAR UPLOAD] Writing file: ${uniqueFilename}`);
-            await writeFile(filepath, buffer);
+            try {
+                await writeFile(filepath, buffer);
+            } catch (writeErr: any) {
+                if (relativeBase.startsWith("uploads/")) {
+                    console.error(`[Upload System] Write to 'uploads' failed, retrying on 'uploads_old'...`);
+                    relativeBase = join("uploads_old", "vendor", tenantId.replace(/[^a-z0-9-]/gi, '_').toLowerCase(), safeMod);
+                    uploadBase = join(publicDir, relativeBase);
+                    await mkdir(uploadBase, { recursive: true });
+                    await writeFile(join(uploadBase, uniqueFilename), buffer);
+                } else {
+                    throw writeErr;
+                }
+            }
 
-            // 8. Return NUCLEAR DYNAMIC ROUTE URL (bypasses Next.js static cache)
-            const webUrl = `/api/media/local/vendor/${tenantId.replace(/[^a-z0-9-]/gi, '_').toLowerCase()}/${safeMod}/${uniqueFilename}`;
+            // 8. Return DYNAMIC ROUTE URL
+            // CRITICAL SERVER-SIDE GOTCHA: Next.js caches the `public` folder at build time. 
+            // Any file written to `public` at runtime will 404 if requested directly via static paths like `/uploads/...`.
+            // Therefore, we MUST use the dynamic API route which bypasses Next's static cache and reads via fs.readFile.
+            const urlPath = `vendor/${tenantId.replace(/[^a-z0-9-]/gi, '_').toLowerCase()}/${safeMod}/${uniqueFilename}`;
+            const webUrl = `/api/media/local/${urlPath}`;
             console.log(`[NUCLEAR UPLOAD] Success -> ${webUrl}`);
 
             return {

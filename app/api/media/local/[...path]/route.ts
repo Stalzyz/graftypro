@@ -1,5 +1,6 @@
 import { join } from "path";
-import { readFile, stat } from "fs/promises";
+import { readFile } from "fs/promises";
+import { existsSync, statSync } from "fs";
 
 export const dynamic = 'force-dynamic';
 
@@ -27,20 +28,37 @@ export async function GET(
         }
 
         const rootDir = process.cwd();
-        const uploadDir = join(rootDir, "public", "uploads");
-        const filePath = join(uploadDir, relativePath);
+        console.log(`[LocalMediaProxy] Request: ${relativePath} | CWD: ${rootDir}`);
+        
+        // NUCLEAR FIX: Check BOTH 'uploads' and 'uploads_old' to handle legacy and provenance-locked paths
+        const pathsToTry = [
+            join(rootDir, "public", "uploads", relativePath),
+            join(rootDir, "public", "uploads_old", relativePath),
+            join(rootDir, "public", relativePath), // Fallback if path already includes 'uploads/'
+        ];
 
-        // Ensure the resolved path is still inside the upload directory
-        if (!filePath.startsWith(uploadDir)) {
-            return new Response("Forbidden", { status: 403 });
+        let filePath = "";
+        let found = false;
+
+        for (const p of pathsToTry) {
+            const exists = existsSync(p);
+            console.log(`[LocalMediaProxy] Trying: ${p} -> ${exists ? 'FOUND' : 'MISSING'}`);
+            if (exists) {
+                const fileStat = statSync(p);
+                if (fileStat.isFile()) {
+                    filePath = p;
+                    found = true;
+                    break;
+                }
+            }
         }
 
-        try {
-            const fileStat = await stat(filePath);
-            if (!fileStat.isFile()) throw new Error("Not a file");
-        } catch (e) {
+        if (!found) {
+            console.error(`[LocalMediaProxy] 404 NOT FOUND: ${relativePath}`);
             return new Response("File not found", { status: 404 });
         }
+
+        console.log(`[LocalMediaProxy] Serving: ${filePath}`);
 
         const buffer = await readFile(filePath);
 
@@ -50,6 +68,7 @@ export async function GET(
         const mimeMap: Record<string, string> = {
             'jpg': 'image/jpeg', 'jpeg': 'image/jpeg', 'png': 'image/png',
             'gif': 'image/gif', 'webp': 'image/webp', 'pdf': 'application/pdf',
+            'svg': 'image/svg+xml',
             'mp4': 'video/mp4', 'csv': 'text/csv', 'mp3': 'audio/mpeg',
             'ogg': 'audio/ogg', 'aac': 'audio/aac', 'doc': 'application/msword',
             'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'

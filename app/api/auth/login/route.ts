@@ -45,8 +45,8 @@ export async function POST(request: Request) {
         }
 
         // 2.5 Security: Tenant Isolation Check
-        const host = request.headers.get("x-request-host") || request.headers.get("host") || "";
-        const systemDomain = "grafty.pro";
+        const host = request.headers.get("x-request-host") || request.headers.get("x-forwarded-host") || request.headers.get("host") || "";
+        const systemDomain = (process.env.NEXT_PUBLIC_APP_URL || "grafty.pro").replace(/https?:\/\//, "");
         
         // Resolve if we are on a partner domain
         const { BrandingService } = require("../../../../lib/branding/service");
@@ -101,15 +101,18 @@ export async function POST(request: Request) {
             role: user.role
         });
 
-        // Determine if request is truly HTTPS to avoid blocking cookies on HTTP VPS IPs
-        const isHttps = request.headers.get("x-forwarded-proto") === "https" || request.url.startsWith("https://");
+        // Detect protocol via reverse proxy header (NGINX/Caddy sets x-forwarded-proto)
+        const forwardedProto = request.headers.get("x-forwarded-proto");
+        const isHttps = forwardedProto === "https" || request.url.startsWith("https://");
 
         // 6. Set Cookie & Return
         const response = NextResponse.json({ success: true, redirect: "/dashboard" });
 
+        // CRITICAL: sameSite "none" requires secure=true or browsers reject the cookie silently.
+        // Use "lax" always — it works on both HTTP (VPS direct) and HTTPS (via NGINX/Caddy).
         const cookieConfig: any = {
             httpOnly: true,
-            secure: process.env.NODE_ENV === "production" && isHttps,
+            secure: isHttps,
             sameSite: "lax",
             path: "/",
             maxAge: 60 * 60 * 24 * 7 // 7 days

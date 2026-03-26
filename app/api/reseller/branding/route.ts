@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getResellerSession } from "@/lib/reseller/auth-helper";
+import { getAbsoluteMediaUrl } from "@/lib/utils/url";
 
 export const dynamic = 'force-dynamic';
 
@@ -21,6 +22,7 @@ export async function GET(req: Request) {
                 secondary_color: true,
                 support_email: true,
                 support_url: true,
+                support_whatsapp: true,
                 custom_domain: true,
                 smtp_config: true,
                 // @ts-ignore
@@ -32,8 +34,14 @@ export async function GET(req: Request) {
             return NextResponse.json({ error: "Not found" }, { status: 404 });
         }
 
+        const normalizedReseller = {
+            ...reseller,
+            logo_url: getAbsoluteMediaUrl(reseller.logo_url, req),
+            favicon_url: getAbsoluteMediaUrl(reseller.favicon_url, req)
+        };
+
         // Allow any partner role to READ branding
-        return NextResponse.json({ data: reseller });
+        return NextResponse.json({ data: normalizedReseller });
 
     } catch (error) {
         console.error("GET Branding Error:", error);
@@ -51,7 +59,7 @@ export async function PUT(req: Request) {
         const body = await req.json();
         const {
             brand_name, logo_url, favicon_url, primary_color, secondary_color,
-            support_email, support_url,
+            support_email, support_url, support_whatsapp,
             custom_domain, smtp_config, domain_verified,
             broadcast_banner, broadcast_link
         } = body;
@@ -65,6 +73,7 @@ export async function PUT(req: Request) {
         if (secondary_color !== undefined) updateData.secondary_color = secondary_color;
         if (support_email !== undefined) updateData.support_email = support_email;
         if (support_url !== undefined) updateData.support_url = support_url;
+        if (support_whatsapp !== undefined) updateData.support_whatsapp = support_whatsapp;
         if (broadcast_banner !== undefined) updateData.broadcast_banner = broadcast_banner;
         if (broadcast_link !== undefined) updateData.broadcast_link = broadcast_link;
         if (custom_domain !== undefined) updateData.custom_domain = custom_domain || null;

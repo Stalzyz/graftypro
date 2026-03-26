@@ -4,12 +4,12 @@ import Link from "next/link";
 import { Logo } from "../ui/Logo";
 import { Menu, X, ChevronDown, Zap, Link as LinkIcon, Calculator, BadgeCheck } from "lucide-react";
 
-export default function LandingNavbar() {
+export default function LandingNavbar({ branding }: { branding?: any }) {
     const [isOpen, setIsOpen] = useState(false);
     const [isToolsOpen, setIsToolsOpen] = useState(false);
     const [config, setConfig] = useState<any>(null);
     const [isLoggedIn, setIsLoggedIn] = useState(false);
-    const platformName = config?.platform_name || "Grafty";
+    const platformName = branding?.brand_name || config?.platform_name || "Grafty";
 
     useEffect(() => {
         fetch("/api/config/public")
@@ -39,7 +39,7 @@ export default function LandingNavbar() {
     return (
         <nav className="fixed top-0 left-0 right-0 z-[100] bg-white/90 backdrop-blur-md border-b border-gray-100">
             <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-                <Logo size={40} brandName={platformName} variant="color" />
+                <Logo size={40} brandName={platformName} variant="color" logoUrl={branding?.logo_url} />
 
                 {/* Desktop Menu */}
                 <div className="hidden lg:flex items-center gap-8">

@@ -135,7 +135,7 @@ export default function PayoutsPage() {
                     className="group bg-slate-900 text-white px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] transition-all flex items-center gap-3 shadow-xl active:scale-95 hover:bg-black"
                 >
                     <Plus size={16} className="group-hover:rotate-90 transition-transform duration-500" />
-                    Execute Withdrawal
+                    Request Payout
                 </button>
             </div>
 
@@ -148,14 +148,14 @@ export default function PayoutsPage() {
                             <Wallet size={24} />
                         </div>
                         <div>
-                            <div className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-1 italic">Available Yield</div>
+                            <div className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-1 italic">Available Balance</div>
                             <div className="text-4xl font-black text-slate-900 italic tracking-tighter uppercase tabular-nums leading-none">
                                 {formatCurrency(stats?.wallet.balance)}
 
                             </div>
                         </div>
                         <div className="flex items-center gap-2 text-[9px] font-black text-[#27954D] uppercase tracking-widest bg-emerald-50 px-3 py-1.5 rounded-full w-fit border border-emerald-100">
-                            <CheckCircle2 size={12} /> Ready for Settle
+                            <CheckCircle2 size={12} /> Ready to withdraw
                         </div>
                     </div>
                 </div>
@@ -167,13 +167,13 @@ export default function PayoutsPage() {
                             <Clock size={24} />
                         </div>
                         <div>
-                            <div className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-1 italic">Pending Transit</div>
+                            <div className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-1 italic">Pending Payouts</div>
                             <div className="text-4xl font-black text-slate-900 italic tracking-tighter uppercase tabular-nums leading-none">
                                 {stats?.wallet.pending_payouts || 0} Req
                             </div>
                         </div>
                         <div className="flex items-center gap-2 text-[9px] font-black text-blue-600 uppercase tracking-widest bg-blue-50 px-3 py-1.5 rounded-full w-fit border border-blue-100">
-                            <Activity size={12} className="animate-pulse" /> In System Matrix
+                            <Activity size={12} className="animate-pulse" /> Processing
                         </div>
                     </div>
                 </div>
@@ -185,14 +185,14 @@ export default function PayoutsPage() {
                             <TrendingUp size={24} />
                         </div>
                         <div>
-                            <div className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-1 italic">Lifetime Harvest</div>
+                            <div className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-1 italic">Total Earnings</div>
                             <div className="text-4xl font-black text-slate-900 italic tracking-tighter uppercase tabular-nums leading-none">
                                 {formatCurrency(stats?.wallet.total_earned)}
 
                             </div>
                         </div>
                         <div className="flex items-center gap-2 text-[9px] font-black text-slate-400 uppercase tracking-widest bg-slate-50 px-3 py-1.5 rounded-full w-fit border border-slate-100">
-                            <DollarSign size={12} /> Cumulative Gain
+                            <DollarSign size={12} /> Cumulative Profit
                         </div>
                     </div>
                 </div>
@@ -204,13 +204,13 @@ export default function PayoutsPage() {
                 <div className="relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
                     <div>
                         <div className="flex items-center gap-2 text-blue-400 font-black text-[9px] uppercase tracking-[0.3em] mb-6 italic">
-                            <ShieldCheck size={16} /> Settlement Protocol
+                            <ShieldCheck size={16} /> Payout Configuration
                         </div>
                         <h2 className="text-4xl font-black italic tracking-tighter mb-6 leading-none uppercase">
-                            Your Yield <br /> <span className="text-blue-400">Destination.</span>
+                            Your Income <br /> <span className="text-blue-400">Destination.</span>
                         </h2>
                         <p className="text-slate-400 font-medium text-lg leading-relaxed max-w-md">
-                            Ensure your liquidity endpoint is correctly configured. Automated payouts trigger high-speed IMPS/NEFT transfers.
+                            Ensure your payout account is correctly configured. Automated payouts are processed via IMPS/NEFT transfers.
                         </p>
                     </div>
 
@@ -226,7 +226,7 @@ export default function PayoutsPage() {
                                                 <CreditCard size={24} />
                                             </div>
                                             <div>
-                                                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">Settlement Account</p>
+                                                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">Account Number</p>
                                                 <p className="text-sm font-black italic tracking-tight">{profile?.bank_account_number || "NOT CONFIGURED"}</p>
                                             </div>
                                         </div>
@@ -251,7 +251,7 @@ export default function PayoutsPage() {
                                     onClick={() => setIsBankModalOpen(true)}
                                     className="w-full py-5 bg-blue-600 hover:bg-blue-500 text-white font-black text-[10px] uppercase tracking-[0.3em] rounded-2xl flex items-center justify-center gap-3 transition-all shadow-xl shadow-blue-600/20 active:scale-95 translate-y-2"
                                 >
-                                    Update Payment Node <ChevronRight size={18} />
+                                    Update Payment Account <ChevronRight size={18} />
                                 </button>
                             </>
                         )}
@@ -267,8 +267,8 @@ export default function PayoutsPage() {
                             <History size={20} />
                         </div>
                         <div>
-                            <h2 className="text-sm font-black text-slate-900 uppercase tracking-widest leading-none mb-1">Settlement Matrix</h2>
-                            <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest italic">Immutable transaction sequence</p>
+                            <h2 className="text-sm font-black text-slate-900 uppercase tracking-widest leading-none mb-1">Payout History</h2>
+                            <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest italic">View your past withdrawals</p>
                         </div>
                     </div>
                 </div>
@@ -277,10 +277,10 @@ export default function PayoutsPage() {
                     <table className="w-full text-left">
                         <thead className="text-[9px] font-black text-slate-300 uppercase tracking-[0.25em] border-b border-slate-50">
                             <tr>
-                                <th className="px-10 py-6">Protocol ID</th>
-                                <th className="px-10 py-6">Yield Amount</th>
-                                <th className="px-10 py-6">Matrix Status</th>
-                                <th className="px-10 py-6 text-right">Synchronization Date</th>
+                                <th className="px-10 py-6">Reference ID</th>
+                                <th className="px-10 py-6">Requested Amount</th>
+                                <th className="px-10 py-6">Payout Status</th>
+                                <th className="px-10 py-6 text-right">Requested Date</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-50">
@@ -338,8 +338,8 @@ export default function PayoutsPage() {
                     <div className="bg-white border border-slate-200 w-full max-w-xl rounded-[3.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 relative z-10">
                         <div className="px-10 py-8 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
                             <div>
-                                <h2 className="text-2xl font-black text-slate-900 tracking-tight italic uppercase leading-none mb-1">Settle Artifact</h2>
-                                <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest italic leading-none mt-1">Convert Commission to Liquidity</p>
+                                <h2 className="text-2xl font-black text-slate-900 tracking-tight italic uppercase leading-none mb-1">Request Payout</h2>
+                                <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest italic leading-none mt-1">Withdraw commission to bank</p>
                             </div>
                             <button onClick={() => setIsModalOpen(false)} className="w-10 h-10 flex items-center justify-center rounded-2xl bg-white border border-slate-100 hover:border-rose-200 hover:text-rose-500 transition-all text-slate-400 shadow-sm active:scale-90">
                                 <X size={20} />
@@ -348,7 +348,7 @@ export default function PayoutsPage() {
 
                         <form onSubmit={handleSubmit} className="p-10 space-y-8">
                             <div className="space-y-3">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] ml-1">Liquidity Quantity (₹)</label>
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] ml-1">Withdrawal Amount (₹)</label>
                                 <div className="relative group">
                                     <div className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-[#27954D] transition-colors"><DollarSign size={20} /></div>
                                     <input
@@ -362,19 +362,19 @@ export default function PayoutsPage() {
                                     />
                                 </div>
                                 <div className="flex justify-between px-2">
-                                    <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest">Available Pool</span>
+                                    <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest">Available Balance</span>
                                     <span className="text-[10px] font-black text-slate-900 italic tracking-tighter">{formatCurrency(stats?.wallet.balance)}</span>
 
                                 </div>
                             </div>
 
                             <div className="space-y-4">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] ml-1">Payout Protocol</label>
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] ml-1">Payout Method</label>
                                 <div className="grid grid-cols-1 gap-3">
                                     {[
-                                        { id: 'BANK_TRANSFER', label: 'Bank Transfer', desc: 'NEFT / RTGS / IMPS Secure Settle', icon: <Banknote size={16} /> },
-                                        { id: 'UPI', label: 'UPI Instant', desc: 'Direct Node-to-Node Transfer', icon: <Zap size={16} /> },
-                                        { id: 'RAZORPAY', label: 'Razorpay Auto', desc: 'Commercial Gateway Settlement', icon: <CreditCard size={16} /> }
+                                        { id: 'BANK_TRANSFER', label: 'Bank Transfer', desc: 'NEFT / RTGS / IMPS Transfer', icon: <Banknote size={16} /> },
+                                        { id: 'UPI', label: 'UPI Instant', desc: 'Direct UPI Account Transfer', icon: <Zap size={16} /> },
+                                        { id: 'RAZORPAY', label: 'Razorpay Auto', desc: 'Gateway Auto Settlement', icon: <CreditCard size={16} /> }
                                     ].map(method => (
                                         <button
                                             key={method.id}
@@ -404,7 +404,7 @@ export default function PayoutsPage() {
                                 type="submit"
                                 className="w-full py-6 bg-slate-900 text-white font-black text-[10px] uppercase tracking-[0.4em] rounded-[2rem] flex items-center justify-center gap-3 hover:bg-black transition-all shadow-2xl active:scale-[0.98] disabled:opacity-50"
                             >
-                                {submitting ? <Loader2 className="animate-spin" /> : <>Initiate Settle Artifact <ArrowUpRight size={20} /></>}
+                                {submitting ? <Loader2 className="animate-spin" /> : <>Request Payout <ArrowUpRight size={20} /></>}
                             </button>
                         </form>
                     </div>
@@ -417,8 +417,8 @@ export default function PayoutsPage() {
                     <div className="bg-white border border-slate-200 w-full max-w-xl rounded-[3.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 relative z-10">
                         <div className="px-10 py-8 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
                             <div>
-                                <h2 className="text-2xl font-black text-slate-900 tracking-tight italic uppercase leading-none mb-1">Payment Node</h2>
-                                <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest italic leading-none mt-1">Configure Settlement Endpoint</p>
+                                <h2 className="text-2xl font-black text-slate-900 tracking-tight italic uppercase leading-none mb-1">Bank Account</h2>
+                                <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest italic leading-none mt-1">Configure Payout Destination</p>
                             </div>
                             <button onClick={() => setIsBankModalOpen(false)} className="w-10 h-10 flex items-center justify-center rounded-2xl bg-white border border-slate-100 hover:border-rose-200 hover:text-rose-500 transition-all text-slate-400 shadow-sm">
                                 <X size={20} />
@@ -469,7 +469,7 @@ export default function PayoutsPage() {
                                 type="submit" 
                                 className="w-full py-5 bg-slate-900 text-white font-black text-[10px] uppercase tracking-[0.3em] rounded-2xl flex items-center justify-center gap-3 mt-4 hover:bg-black transition-all"
                             >
-                                {bankSaving ? <Loader2 className="animate-spin" /> : "Authorize Settlement Endpoint"}
+                                {bankSaving ? <Loader2 className="animate-spin" /> : "Save Bank Details"}
                             </button>
                         </form>
                     </div>

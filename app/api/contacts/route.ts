@@ -30,7 +30,7 @@ export async function GET(req: Request) {
         }
 
         if (segmentId && segmentId !== "all") {
-            const segment = await prisma.segment.findUnique({
+            const segment = await prisma.segment.findFirst({
                 where: { id: segmentId, workspace_id: user.workspaceId }
             });
             if (segment && segment.filters && (segment.filters as any).tags) {

@@ -1,13 +1,15 @@
 import { prisma } from "../db";
+import { getAbsoluteMediaUrl } from "../utils/url";
 
 export class BrandingService {
     /**
      * PHASE 1: BRAND RESOLVER
      * Finds the correct branding for a given workspace.
      * If workspace is linked to a reseller, return reseller branding.
-     * Else, return default platform (Grafty) branding.
+     * Else, attempt to resolve by hostname.
+     * Finally, return default platform (Grafty) branding.
      */
-    static async getBrandingForWorkspace(workspaceId?: string) {
+    static async getBrandingForWorkspace(workspaceId?: string, hostname?: string) {
         // Only try to fetch workspace specific branding if we have an ID
         if (workspaceId && workspaceId.trim() !== "") {
             try {
@@ -23,8 +25,8 @@ export class BrandingService {
                     return {
                         is_white_labeled: true,
                         brand_name: r.brand_name || r.name,
-                        logo_url: r.logo_url || null, // Allow Logo component handle default
-                        favicon_url: r.favicon_url || "/favicon.ico",
+                        logo_url: getAbsoluteMediaUrl(r.logo_url),
+                        favicon_url: getAbsoluteMediaUrl(r.favicon_url),
                         theme_mode: (r as any).theme_mode || "LIGHT",
                         colors: {
                             primary: r.primary_color || "#0F172A",
@@ -37,12 +39,25 @@ export class BrandingService {
                         },
                         support: {
                             email: r.support_email,
-                            url: r.support_url
+                            url: r.support_url,
+                            whatsapp: r.support_whatsapp
                         }
                     };
                 }
             } catch (e) {
                 console.error("Workspace Branding Fetch Error:", e);
+            }
+        }
+
+        // --- DOMAIN FALLBACK ---
+        // If we didn't find a reseller link via workspace, try the hostname
+        if (hostname) {
+            const domainBranding = await this.getBrandingByDomain(hostname);
+            if (domainBranding) {
+                return {
+                    ...domainBranding,
+                    is_white_labeled: true
+                } as any;
             }
         }
 
@@ -55,14 +70,14 @@ export class BrandingService {
             return {
                 is_white_labeled: false,
                 brand_name: config?.platform_name || "Grafty",
-                logo_url: config?.logo_url || "/grafty.svg",
-                dark_logo_url: config?.dark_logo_url || "/grafty.svg",
-                favicon_url: config?.favicon_url || "/grafty_fav.svg",
-                login_logo_url: config?.login_logo_url || config?.logo_url || "/grafty.svg",
-                dashboard_logo_url: config?.dashboard_logo_url || config?.logo_url || "/grafty.svg",
-                reseller_logo_url: config?.reseller_logo_url || config?.logo_url || "/grafty.svg",
-                partner_logo_url: config?.partner_logo_url || config?.logo_url || "/grafty.svg",
-                footer_logo_url: config?.footer_logo_url || config?.logo_url || "/grafty.svg",
+                logo_url: getAbsoluteMediaUrl(config?.logo_url || "/logo.png"),
+                dark_logo_url: getAbsoluteMediaUrl(config?.dark_logo_url || "/logo.png"),
+                favicon_url: getAbsoluteMediaUrl(config?.favicon_url || "/favicon.ico"),
+                login_logo_url: getAbsoluteMediaUrl(config?.login_logo_url || config?.logo_url || "/logo.png"),
+                dashboard_logo_url: getAbsoluteMediaUrl(config?.dashboard_logo_url || config?.logo_url || "/logo.png"),
+                reseller_logo_url: getAbsoluteMediaUrl(config?.reseller_logo_url || config?.logo_url || "/logo.png"),
+                partner_logo_url: getAbsoluteMediaUrl(config?.partner_logo_url || config?.logo_url || "/logo.png"),
+                footer_logo_url: getAbsoluteMediaUrl(config?.footer_logo_url || config?.logo_url || "/logo.png"),
                 theme_mode: config?.theme_mode || "LIGHT",
                 colors: {
                     primary: config?.primary_color || "#0F172A",
@@ -83,9 +98,9 @@ export class BrandingService {
             return {
                 is_white_labeled: false,
                 brand_name: "Grafty",
-                logo_url: "/grafty.svg",
-                dark_logo_url: "/grafty.svg",
-                favicon_url: "/grafty_fav.svg",
+                logo_url: "/logo.png",
+                dark_logo_url: "/logo.png",
+                favicon_url: "/favicon.ico",
                 theme_mode: "LIGHT",
                 colors: { primary: "#0F172A", secondary: "#3B82F6" },
                 features: { commerce: true, flows: true, drips: true, edu: true, api: true },
@@ -125,8 +140,8 @@ export class BrandingService {
                 return {
                     reseller_id: reseller.id,
                     brand_name: reseller.brand_name || reseller.name,
-                    logo_url: reseller.logo_url,
-                    favicon_url: reseller.favicon_url,
+                    logo_url: getAbsoluteMediaUrl(reseller.logo_url),
+                    favicon_url: getAbsoluteMediaUrl(reseller.favicon_url),
                     primary_color: reseller.primary_color || "#0F172A",
                     secondary_color: reseller.secondary_color || "#3B82F6",
                     colors: {
@@ -139,7 +154,8 @@ export class BrandingService {
                     },
                     support: {
                         email: reseller.support_email,
-                        url: reseller.support_url
+                        url: reseller.support_url,
+                        whatsapp: reseller.support_whatsapp
                     }
                 };
             }
@@ -166,8 +182,8 @@ export class BrandingService {
                     reseller_id: reseller.id,
                     is_white_labeled: true,
                     brand_name: reseller.brand_name || reseller.name,
-                    logo_url: reseller.logo_url,
-                    favicon_url: reseller.favicon_url,
+                    logo_url: getAbsoluteMediaUrl(reseller.logo_url),
+                    favicon_url: getAbsoluteMediaUrl(reseller.favicon_url),
                     primary_color: reseller.primary_color || "#0F172A",
                     secondary_color: reseller.secondary_color || "#3B82F6",
                     colors: {
@@ -180,7 +196,8 @@ export class BrandingService {
                     },
                     support: {
                         email: reseller.support_email || "support@" + (reseller.custom_domain || "grafty.pro"),
-                        url: reseller.support_url || null
+                        url: reseller.support_url || null,
+                        whatsapp: reseller.support_whatsapp || null
                     }
                 };
             }

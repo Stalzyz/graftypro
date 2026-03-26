@@ -26,29 +26,18 @@ export async function POST(req: Request) {
         }
 
         const result = await prisma.$transaction(async (tx) => {
-            // 1. Get Wallet with Row Lock (Monster Mode: Concurrency Protection)
-            // Explicitly lock the row for the duration of the transaction
-            const wallets = await tx.$queryRawUnsafe<any[]>(
-                `SELECT * FROM "vendor_wallets" WHERE "workspace_id" = $1 FOR UPDATE`,
-                workspaceId
-            );
-
-            const wallet = wallets[0];
-
-            if (!wallet) throw new Error("Vendor wallet not found");
-
-            const balanceBefore = Number(wallet.current_balance);
-            const balanceAfter = balanceBefore + adjustmentAmount;
-
-            // 2. Update Wallet
+            // 1 & 2. Perform Atomic Increment Update directly
             const updatedWallet = await tx.vendorWallet.update({
-                where: { id: wallet.id },
+                where: { workspace_id: workspaceId },
                 data: {
                     current_balance: { increment: adjustmentAmount },
-                    // If adding credits, increment total purchased (optional, admin choice)
                     total_purchased: adjustmentAmount > 0 ? { increment: adjustmentAmount } : undefined,
                 }
             });
+
+            const balanceAfter = Number(updatedWallet.current_balance);
+            const balanceBefore = balanceAfter - adjustmentAmount;
+            const wallet = updatedWallet;
 
             // 3. Create Ledger Entry
             const transaction = await tx.creditTransaction.create({

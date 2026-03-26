@@ -17,6 +17,7 @@ import {
     Mail,
     Tag,
     Trash2,
+    Edit2,
     UserPlus,
     Download,
 } from "lucide-react";
@@ -88,7 +89,10 @@ export default function ContactsPage() {
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const [newContact, setNewContact] = useState({ phone: "", name: "", email: "", tags: "" });
+    const [editForm, setEditForm] = useState<{ id: string, name: string, email: string, tags: string } | null>(null);
     const [newSegment, setNewSegment] = useState({ name: "", tags: "" });
+    const [showBulkTagModal, setShowBulkTagModal] = useState(false);
+    const [bulkTags, setBulkTags] = useState("");
 
     useEffect(() => { fetchData(); }, [selectedSegmentId]);
 
@@ -128,6 +132,24 @@ export default function ContactsPage() {
         if (res.ok) {
             setShowAddModal(false);
             setNewContact({ phone: "", name: "", email: "", tags: "" });
+            fetchData();
+        }
+    };
+
+    const handleUpdateContact = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!editForm) return;
+        const res = await fetch(`/api/contacts/${editForm.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                name: editForm.name,
+                email: editForm.email,
+                tags: typeof editForm.tags === "string" ? editForm.tags.split(",").map(t => t.trim()).filter(Boolean) : editForm.tags
+            })
+        });
+        if (res.ok) {
+            setEditForm(null);
             fetchData();
         }
     };
@@ -175,6 +197,29 @@ export default function ContactsPage() {
             body: JSON.stringify({ ids: selectedIds })
         });
         if (res.ok) { setSelectedIds([]); fetchData(); }
+    };
+
+    const handleDeleteSingle = async (id: string, name: string) => {
+        if (!confirm(`Are you sure you want to delete ${name}?`)) return;
+        const res = await fetch(`/api/contacts/${id}`, { method: "DELETE" });
+        if (res.ok) fetchData();
+    };
+
+    const handleBulkAddTags = async (e: React.FormEvent) => {
+        e.preventDefault();
+        const tagsArray = bulkTags.split(",").map(t => t.trim()).filter(Boolean);
+        if (!tagsArray.length) return;
+        const res = await fetch("/api/contacts/bulk-tags", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ids: selectedIds, tags: tagsArray })
+        });
+        if (res.ok) {
+            setShowBulkTagModal(false);
+            setBulkTags("");
+            setSelectedIds([]);
+            fetchData();
+        }
     };
 
     const handleCreateSegment = async (e: React.FormEvent) => {
@@ -251,13 +296,19 @@ export default function ContactsPage() {
 
                     {/* Selection panel */}
                     {selectedIds.length > 0 ? (
-                        <div className="bg-gradient-to-br from-rose-500 to-pink-600 rounded-2xl p-4 text-white">
-                            <div className="text-[10px] font-bold opacity-80 uppercase tracking-wider mb-1">Selected</div>
+                        <div className="bg-gradient-to-br from-[#042F94] to-indigo-700 rounded-2xl p-4 text-white shadow-lg shadow-indigo-200">
+                            <div className="text-[10px] font-bold opacity-80 uppercase tracking-wider mb-1">Selected Contacts</div>
                             <div className="text-3xl font-black mb-4">{selectedIds.length}</div>
-                            <button onClick={handleBulkDelete}
-                                className="w-full py-2 bg-white/20 hover:bg-white/30 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all">
-                                <Trash2 size={13} /> Delete Selected
-                            </button>
+                            <div className="space-y-2">
+                                <button onClick={() => setShowBulkTagModal(true)}
+                                    className="w-full py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all backdrop-blur-sm border border-white/10">
+                                    <Tag size={13} /> Add Tags / Segment
+                                </button>
+                                <button onClick={handleBulkDelete}
+                                    className="w-full py-2.5 bg-rose-500/80 hover:bg-rose-500 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-inner border border-rose-500/50">
+                                    <Trash2 size={13} /> Delete Selected
+                                </button>
+                            </div>
                         </div>
                     ) : (
                         <div className="bg-gradient-to-br from-[#042F94] to-indigo-700 rounded-2xl p-4 text-white">
@@ -395,9 +446,12 @@ export default function ContactsPage() {
                                         <td className="px-4 py-3.5 text-xs text-slate-400">
                                             {contact.last_active_at ? new Date(contact.last_active_at).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "Never"}
                                         </td>
-                                        <td className="px-4 py-3.5 text-right">
-                                            <button className="opacity-0 group-hover:opacity-100 w-8 h-8 flex items-center justify-center rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-500 transition-all">
-                                                <MoreHorizontal size={15} />
+                                        <td className="px-4 py-3.5 text-right flex gap-2 justify-end">
+                                            <button onClick={() => setEditForm({ id: contact.id, name: contact.name || "", email: contact.email || "", tags: contact.tags.join(", ") })} className="opacity-0 group-hover:opacity-100 w-8 h-8 flex items-center justify-center rounded-lg bg-emerald-50 hover:bg-emerald-100 text-[#27954D] transition-all" title="Edit Contact">
+                                                <Edit2 size={14} />
+                                            </button>
+                                            <button onClick={() => handleDeleteSingle(contact.id, contact.name || `+${contact.phone}`)} className="opacity-0 group-hover:opacity-100 w-8 h-8 flex items-center justify-center rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-500 transition-all" title="Delete Contact">
+                                                <Trash2 size={14} />
                                             </button>
                                         </td>
                                     </tr>
@@ -550,6 +604,72 @@ export default function ContactsPage() {
                         <button type="submit"
                             className="w-full py-3 bg-gradient-to-r from-[#27954D] to-emerald-500 text-white rounded-xl font-bold text-sm shadow-md shadow-green-200 hover:shadow-lg hover:-translate-y-0.5 transition-all mt-2">
                             Save Contact
+                        </button>
+                    </form>
+                </Modal>
+            )}
+
+            {/* ── Edit Contact Modal ── */}
+            {editForm && (
+                <Modal onClose={() => setEditForm(null)} title="Edit Contact">
+                    <form onSubmit={handleUpdateContact} className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">Name</label>
+                                <input type="text" value={editForm.name}
+                                    onChange={e => setEditForm({ ...editForm, name: e.target.value })}
+                                    placeholder="John Doe"
+                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 focus:outline-none focus:border-[#27954D] focus:ring-2 focus:ring-[#27954D]/10 transition-all" />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">Email</label>
+                                <input type="email" value={editForm.email}
+                                    onChange={e => setEditForm({ ...editForm, email: e.target.value })}
+                                    placeholder="john@example.com"
+                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 focus:outline-none focus:border-[#27954D] focus:ring-2 focus:ring-[#27954D]/10 transition-all" />
+                            </div>
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">Tags</label>
+                            <div className="relative">
+                                <Tag size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                                <input type="text" value={editForm.tags}
+                                    onChange={e => setEditForm({ ...editForm, tags: e.target.value })}
+                                    placeholder="customer, vip, nyc"
+                                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 focus:outline-none focus:border-[#27954D] focus:ring-2 focus:ring-[#27954D]/10 transition-all" />
+                            </div>
+                        </div>
+                        <button type="submit"
+                            className="w-full py-3 bg-gradient-to-r from-[#27954D] to-emerald-500 text-white rounded-xl font-bold text-sm shadow-md shadow-green-200 hover:shadow-lg hover:-translate-y-0.5 transition-all mt-2">
+                            Save Changes
+                        </button>
+                    </form>
+                </Modal>
+            )}
+
+            {/* ── Bulk Tag Modal ── */}
+            {showBulkTagModal && (
+                <Modal onClose={() => setShowBulkTagModal(false)} title="Apply Tags / Segment">
+                    <form onSubmit={handleBulkAddTags} className="space-y-4">
+                        <div className="bg-indigo-50 border border-indigo-100 p-4 rounded-xl mb-4">
+                            <p className="text-xs text-indigo-700 font-medium">
+                                You are about to apply tags to <strong>{selectedIds.length}</strong> selected contacts. This will automatically include them in matching segments.
+                            </p>
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">Enter Tags</label>
+                            <div className="relative">
+                                <Tag size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                                <input required type="text" value={bulkTags}
+                                    onChange={e => setBulkTags(e.target.value)}
+                                    placeholder="e.g. vip, newsletter, priority"
+                                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 transition-all" />
+                            </div>
+                            <p className="text-[11px] text-slate-400 mt-2">Separate multiple tags with commas.</p>
+                        </div>
+                        <button type="submit"
+                            className="w-full py-3 bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-xl font-bold text-sm shadow-md shadow-indigo-200 hover:shadow-lg hover:-translate-y-0.5 transition-all mt-2">
+                            Apply to {selectedIds.length} Contacts
                         </button>
                     </form>
                 </Modal>

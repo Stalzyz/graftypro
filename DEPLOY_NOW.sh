@@ -27,7 +27,9 @@ rsync -avz --delete -e "ssh -o StrictHostKeyChecking=no" --exclude 'node_modules
     --exclude 'temp_project' \
     --exclude 'tmp_cache' \
     --exclude '.DS_Store' \
-    --exclude '.env' \
+    --exclude 'grafty-mobile/node_modules' \
+    --exclude 'grafty-mobile/.expo' \
+    --exclude 'grafty-mobile/expo_tmp' \
     --exclude '*.zip' \
     --exclude '*.tar.gz' \
     --exclude 'public/uploads' \
@@ -61,13 +63,25 @@ ssh -o StrictHostKeyChecking=no $SERVER "bash -s" << 'EOF'
 
     # 2. Hard kill host processes on 3001 (IPv4 & IPv6 + Ghost Proxies)
     echo "🔓 Forcing closure of port 3001 sockets..."
+    
+    # NEW FIX: PM2 is actively running and fighting Docker! Kill PM2 first!
+    if command -v pm2 &> /dev/null; then
+        echo "🛑 PM2 detected. Stopping conflicting non-Docker instances..."
+        pm2 stop all || true
+        pm2 delete grafty || true
+    fi
+
     fuser -k 3001/tcp || true
     lsof -ti:3001 | xargs kill -9 || true
     # Kill any zombie docker-proxy processes
     ps aux | grep docker-proxy | grep 3001 | awk '{print $2}' | xargs kill -9 || true
     
-    # 3. Nuclear Compose Down
+    # 3. Nuclear Compose Down - and wait to ensure port is freed
     docker compose -f docker-compose.prod.yml down --remove-orphans || true
+    sleep 5
+    
+    # Check if 3001 is still bound and try killing again
+    lsof -ti:3001 | xargs kill -9 || true
     
     # 1b. Force Purge base service names
     echo "🚨 Forced Purge of named dependencies..."
@@ -83,10 +97,16 @@ ssh -o StrictHostKeyChecking=no $SERVER "bash -s" << 'EOF'
     rm -rf app/white-label/dashboard app/white-label/layout.tsx
     rm -rf app/super-admin/settings app/super-admin/branding app/super-admin/email
     
+    if [ ! -f /root/wabot_bsp/.env ]; then
+      echo "❌ FATAL: .env file missing at /root/wabot_bsp/.env"
+      exit 1
+    fi
+
     # Restart services from absolute zero
     echo "🏗️ Rebuilding & Starting Fresh Containers..."
     docker compose -f docker-compose.prod.yml build
     docker compose -f docker-compose.prod.yml up -d --force-recreate
+    sleep 5
     
     # Wait for container to be ready
     echo "⏳ Waiting 20 seconds for application to boot..."

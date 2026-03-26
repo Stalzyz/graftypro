@@ -19,16 +19,25 @@ import {
     BarChart3,
     Target,
     Star,
+    PlusCircle,
+    ShoppingBag as Storefront,
+    MessageSquare,
+    Link as LinkIcon
 } from "lucide-react";
 
+import { useUser } from "../../hooks/use-user";
+
 export default function DashboardPage() {
+    const { user } = useUser();
     const [stats, setStats] = useState<any>({
         contactsCount: 0,
         messagesSent: 0,
         activeFlows: 0,
         totalRevenue: 0,
         funnel: { sent: 0, delivered: 0, read: 0, replied: 0 },
-        recentCampaigns: []
+        recentCampaigns: [],
+        wabaDetails: null,
+        walletBalance: 0
     });
     const [loading, setLoading] = useState(true);
 
@@ -74,15 +83,40 @@ export default function DashboardPage() {
                 <div>
                     <div className="flex items-center gap-3 mb-1">
                         <h1 className="text-2xl font-black text-slate-900 tracking-tight">
-                            Welcome back 👋
+                            Welcome back, {user?.first_name || "there"} 👋
                         </h1>
-                        <span className="inline-flex items-center gap-1.5 bg-gradient-to-r from-emerald-500 to-green-600 text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow-sm shadow-green-200 animate-pulse">
+                        <span className="inline-flex items-center gap-1.5 bg-gradient-to-r from-emerald-500 to-green-600 text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow-sm shadow-green-200">
                             <Sparkles size={9} /> V4.1 LIVE
                         </span>
                     </div>
-                    <p className="text-slate-500 text-sm font-medium">Here's what's happening with your messaging today.</p>
+                    
+                    {/* WABA Connection Status Pill */}
+                    <div className="flex items-center gap-2 mt-2">
+                        {stats.wabaConnected ? (
+                            <div className="flex items-center gap-1.5 px-2 py-1 bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-md text-[10px] font-bold">
+                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_5px_rgba(16,185,129,0.5)] animate-pulse"></div>
+                                Connected: {stats.wabaDetails?.phone_number || "Active"}
+                            </div>
+                        ) : (
+                            <Link href="/dashboard/settings" className="flex items-center gap-1.5 px-2 py-1 bg-rose-50 text-rose-700 border border-rose-100 rounded-md text-[10px] font-bold hover:bg-rose-100 transition-colors">
+                                <div className="w-1.5 h-1.5 rounded-full bg-rose-500"></div>
+                                WhatsApp Not Connected — Click to setup
+                            </Link>
+                        )}
+                    </div>
                 </div>
                 <div className="flex items-center gap-3 flex-shrink-0">
+                    {/* Wallet Balance Display */}
+                    <div className="flex flex-col items-end mr-2">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Credits</span>
+                        <div className="flex items-center gap-2">
+                            <span className="text-sm font-black text-slate-800">₹{stats.walletBalance?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) ?? "0.00"}</span>
+                            <Link href="/dashboard/credits" className="text-[10px] font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 px-1.5 py-0.5 rounded transition-colors">Top Up</Link>
+                        </div>
+                    </div>
+                    
+                    <div className="h-8 w-px bg-slate-200 hidden sm:block mx-1"></div>
+
                     <Link href="/dashboard/commerce"
                         className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:border-[#27954D]/40 hover:text-[#27954D] hover:shadow-sm transition-all">
                         <ShoppingBag size={14} /> Commerce
@@ -92,6 +126,38 @@ export default function DashboardPage() {
                         <Send size={13} /> New Broadcast
                     </Link>
                 </div>
+            </div>
+
+            {/* === QUICK ACTIONS ROW === */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+                <Link href="/dashboard/contacts?add=true" className="flex flex-col p-4 bg-white border border-slate-200 rounded-2xl hover:border-blue-300 hover:shadow-md hover:-translate-y-0.5 transition-all group">
+                    <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                        <Users size={16} className="text-blue-600" />
+                    </div>
+                    <span className="text-xs font-bold text-slate-800 mb-0.5">Add Contact</span>
+                    <span className="text-[10px] font-medium text-slate-400">Import or sync users</span>
+                </Link>
+                <Link href="/dashboard/templates?create=true" className="flex flex-col p-4 bg-white border border-slate-200 rounded-2xl hover:border-purple-300 hover:shadow-md hover:-translate-y-0.5 transition-all group">
+                    <div className="w-8 h-8 rounded-lg bg-purple-50 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                        <MessageSquare size={16} className="text-purple-600" />
+                    </div>
+                    <span className="text-xs font-bold text-slate-800 mb-0.5">New Template</span>
+                    <span className="text-[10px] font-medium text-slate-400">Design a rich message</span>
+                </Link>
+                <Link href="/dashboard/chat" className="flex flex-col p-4 bg-white border border-slate-200 rounded-2xl hover:border-emerald-300 hover:shadow-md hover:-translate-y-0.5 transition-all group">
+                    <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                        <MessageCircle size={16} className="text-emerald-600" />
+                    </div>
+                    <span className="text-xs font-bold text-slate-800 mb-0.5">Live Chat</span>
+                    <span className="text-[10px] font-medium text-slate-400">Respond to customers</span>
+                </Link>
+                <Link href="/dashboard/commerce/products/new" className="flex flex-col p-4 bg-white border border-slate-200 rounded-2xl hover:border-amber-300 hover:shadow-md hover:-translate-y-0.5 transition-all group">
+                    <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                        <Storefront size={16} className="text-amber-600" />
+                    </div>
+                    <span className="text-xs font-bold text-slate-800 mb-0.5">Add Product</span>
+                    <span className="text-[10px] font-medium text-slate-400">For WhatsApp catalog</span>
+                </Link>
             </div>
 
             {/* === STAT CARDS === */}

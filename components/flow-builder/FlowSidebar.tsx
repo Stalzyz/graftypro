@@ -7,9 +7,10 @@ import {
     Truck, Layout, Clock, Hourglass, List, Calendar, ShoppingCart,
     FolderOpen, Play, Image, Video, FileText, Mic, Phone, Globe,
     ChevronDown, ChevronRight, Grip, BarChart3, Settings, Webhook, MapPin,
-    Database, Mail, Tag, UserPlus, BellRing, Timer, FileCode, BookOpen
+    Database, Mail, Tag, UserPlus, BellRing, Timer, FileCode, BookOpen, Lock
 } from "lucide-react";
 import { INDUSTRY_SCENARIOS } from "./scenarios";
+import { useUser } from "@/hooks/use-user";
 
 interface NodeGroup {
     id: string;
@@ -17,7 +18,15 @@ interface NodeGroup {
     color: string;
     bgColor: string;
     borderColor: string;
-    nodes: { type: string; label: string; description: string; icon: React.ReactNode; badge?: string; actionType?: string }[];
+    nodes: { 
+        type: string; 
+        label: string; 
+        description: string; 
+        icon: React.ReactNode; 
+        badge?: string; 
+        actionType?: string;
+        minPlan?: 'STARTER' | 'GROWTH' | 'ENTERPRISE';
+    }[];
 }
 
 const NODE_GROUPS: NodeGroup[] = [
@@ -28,9 +37,9 @@ const NODE_GROUPS: NodeGroup[] = [
         bgColor: 'bg-emerald-50',
         borderColor: 'border-emerald-200',
         nodes: [
-            { type: 'message', label: 'Text / Media', description: 'Send text, image, video, or doc', icon: <MessageSquare size={15} /> },
-            { type: 'list', label: 'Interactive List', description: 'Show a menu with up to 10 options', icon: <List size={15} /> },
-            { type: 'meta_template', label: 'Cloud Template', description: 'Send a Meta-approved boilerplate', icon: <FileCode size={15} /> },
+            { type: 'message', label: 'Text / Media', description: 'Send text, image, video, or doc', icon: <MessageSquare size={15} />, minPlan: 'STARTER' },
+            { type: 'list', label: 'Interactive List', description: 'Show a menu with up to 10 options', icon: <List size={15} />, minPlan: 'STARTER' },
+            { type: 'meta_template', label: 'Cloud Template', description: 'Send a Meta-approved boilerplate', icon: <FileCode size={15} />, minPlan: 'STARTER' },
         ]
     },
     {
@@ -40,12 +49,12 @@ const NODE_GROUPS: NodeGroup[] = [
         bgColor: 'bg-blue-50',
         borderColor: 'border-blue-200',
         nodes: [
-            { type: 'wait', label: 'Wait / Delay', description: 'Pause flow for minutes, hours, days', icon: <Hourglass size={15} /> },
-            { type: 'time_window', label: 'Time Window', description: 'Branch by business hours', icon: <Clock size={15} /> },
-            { type: 'drip', label: 'Start Drip', description: 'Enroll contact in a drip sequence', icon: <Timer size={15} /> },
-            { type: 'action', label: 'Assign Label', description: 'Tag or label a contact', icon: <Tag size={15} /> },
-            { type: 'action', label: 'Add to CRM', description: 'Push contact data to CRM', icon: <UserPlus size={15} />, badge: 'PRO', actionType: 'save_to_crm' },
-            { type: 'action', label: 'Follow-up Reminder', description: 'Schedule a reminder for an agent', icon: <BellRing size={15} /> },
+            { type: 'wait', label: 'Wait / Delay', description: 'Pause flow for minutes, hours, days', icon: <Hourglass size={15} />, minPlan: 'GROWTH' },
+            { type: 'time_window', label: 'Time Window', description: 'Branch by business hours', icon: <Clock size={15} />, minPlan: 'GROWTH' },
+            { type: 'drip', label: 'Start Drip', description: 'Enroll contact in a drip sequence', icon: <Timer size={15} />, minPlan: 'ENTERPRISE' },
+            { type: 'action', label: 'Assign Label', description: 'Tag or label a contact', icon: <Tag size={15} />, minPlan: 'STARTER' },
+            { type: 'action', label: 'Add to CRM', description: 'Push contact data to CRM', icon: <UserPlus size={15} />, badge: 'GROWTH', actionType: 'save_to_crm', minPlan: 'GROWTH' },
+            { type: 'action', label: 'Follow-up Reminder', description: 'Schedule a reminder for an agent', icon: <BellRing size={15} />, minPlan: 'GROWTH' },
         ]
     },
     {
@@ -55,11 +64,11 @@ const NODE_GROUPS: NodeGroup[] = [
         bgColor: 'bg-orange-50',
         borderColor: 'border-orange-200',
         nodes: [
-            { type: 'payment', label: 'Payment Request', description: 'Send Razorpay / Stripe link', icon: <CreditCard size={15} /> },
-            { type: 'catalog', label: 'Product Catalog', description: 'Show a product from your store', icon: <ShoppingBag size={15} /> },
-            { type: 'order_summary', label: 'Order Summary', description: 'Show pending cart summary', icon: <ShoppingCart size={15} /> },
-            { type: 'order_tracking', label: 'Order Tracking', description: 'Live tracking status update', icon: <Truck size={15} /> },
-            { type: 'appointment', label: 'Book Appointment', description: 'Show available slots', icon: <Calendar size={15} /> },
+            { type: 'payment', label: 'Payment Request', description: 'Send Razorpay / Stripe link', icon: <CreditCard size={15} />, minPlan: 'GROWTH' },
+            { type: 'catalog', label: 'Product Catalog', description: 'Show a product from your store', icon: <ShoppingBag size={15} />, minPlan: 'GROWTH' },
+            { type: 'order_summary', label: 'Order Summary', description: 'Show pending cart summary', icon: <ShoppingCart size={15} />, minPlan: 'GROWTH' },
+            { type: 'order_tracking', label: 'Order Tracking', description: 'Live tracking status update', icon: <Truck size={15} />, minPlan: 'GROWTH' },
+            { type: 'appointment', label: 'Book Appointment', description: 'Show available slots', icon: <Calendar size={15} />, minPlan: 'GROWTH' },
         ]
     },
     {
@@ -69,11 +78,11 @@ const NODE_GROUPS: NodeGroup[] = [
         bgColor: 'bg-violet-50',
         borderColor: 'border-violet-200',
         nodes: [
-            { type: 'start', label: 'Start Trigger', description: 'Entry keyword that starts this flow', icon: <Zap size={15} /> },
-            { type: 'location', label: 'LocationPin', description: 'Request or send GPS location', icon: <MapPin size={15} /> },
-            { type: 'condition', label: 'Condition (Yes/No)', description: 'Branch based on user input', icon: <GitBranch size={15} /> },
-            { type: 'meta_flow', label: 'Meta Form / Flow', description: 'Native WhatsApp form', icon: <Layout size={15} /> },
-            { type: 'end', label: 'End Flow', description: 'Terminate the conversation flow', icon: <Flag size={15} /> },
+            { type: 'start', label: 'Start Trigger', description: 'Entry keyword that starts this flow', icon: <Zap size={15} />, minPlan: 'STARTER' },
+            { type: 'location', label: 'LocationPin', description: 'Request or send GPS location', icon: <MapPin size={15} />, minPlan: 'GROWTH' },
+            { type: 'condition', label: 'Condition (Yes/No)', description: 'Branch based on user input', icon: <GitBranch size={15} />, minPlan: 'GROWTH' },
+            { type: 'meta_flow', label: 'Meta Form / Flow', description: 'Native WhatsApp form', icon: <Layout size={15} />, minPlan: 'ENTERPRISE' },
+            { type: 'end', label: 'End Flow', description: 'Terminate the conversation flow', icon: <Flag size={15} />, minPlan: 'STARTER' },
         ]
     },
     {
@@ -83,10 +92,10 @@ const NODE_GROUPS: NodeGroup[] = [
         bgColor: 'bg-slate-50',
         borderColor: 'border-slate-200',
         nodes: [
-            { type: 'action', label: 'Webhook', description: 'POST data to any external URL', icon: <Webhook size={15} />, badge: 'PRO', actionType: 'webhook' },
-            { type: 'action', label: 'API Call', description: 'Fetch data from external APIs', icon: <Globe size={15} />, badge: 'PRO' },
-            { type: 'action', label: 'Google Sheets', description: 'Append row to a spreadsheet', icon: <Database size={15} />, badge: 'PRO', actionType: 'google_sheet' },
-            { type: 'action', label: 'Send Email', description: 'Trigger an email notification', icon: <Mail size={15} />, badge: 'PRO', actionType: 'send_email' },
+            { type: 'action', label: 'Webhook', description: 'POST data to any external URL', icon: <Webhook size={15} />, badge: 'ENTERPRISE', actionType: 'webhook', minPlan: 'ENTERPRISE' },
+            { type: 'action', label: 'API Call', description: 'Fetch data from external APIs', icon: <Globe size={15} />, badge: 'ENTERPRISE', minPlan: 'ENTERPRISE' },
+            { type: 'action', label: 'Google Sheets', description: 'Append row to a spreadsheet', icon: <Database size={15} />, badge: 'ENTERPRISE', actionType: 'google_sheet', minPlan: 'ENTERPRISE' },
+            { type: 'action', label: 'Send Email', description: 'Trigger an email notification', icon: <Mail size={15} />, badge: 'ENTERPRISE', actionType: 'send_email', minPlan: 'ENTERPRISE' },
         ]
     }
 ];
@@ -116,8 +125,19 @@ export default function FlowSidebar({ onUseScenario, nodeCount = 0 }: FlowSideba
         });
     };
 
+    const { user } = useUser();
+    const currentPlan = user?.workspace?.plan?.name?.toUpperCase() || 'STARTER';
+
+    const getIsLocked = (minPlan?: string) => {
+        if (!minPlan || minPlan === 'STARTER') return false;
+        if (currentPlan === 'ENTERPRISE') return false;
+        if (currentPlan === 'GROWTH' && minPlan === 'GROWTH') return false;
+        return true;
+    };
+
     return (
         <aside className="w-72 bg-white border-r border-gray-100 flex flex-col h-full z-10 select-none">
+            {/* ... tab bar code already there ... */}
 
             {/* Tab Bar */}
             <div className="flex border-b border-gray-100 px-1 pt-2 shrink-0">
@@ -182,6 +202,7 @@ export default function FlowSidebar({ onUseScenario, nodeCount = 0 }: FlowSideba
                                             bgColor={group.bgColor}
                                             actionType={node.actionType}
                                             onDragStart={onDragStart}
+                                            locked={getIsLocked(node.minPlan)}
                                         />
                                     ))}
                                 </div>
@@ -256,20 +277,31 @@ export default function FlowSidebar({ onUseScenario, nodeCount = 0 }: FlowSideba
     );
 }
 
-function DraggableNode({ type, label, description, icon, badge, color, bgColor, actionType, onDragStart }: any) {
+function DraggableNode({ type, label, description, icon, badge, color, bgColor, actionType, onDragStart, locked = false }: any) {
     return (
         <div
-            className="flex items-center gap-2.5 px-3 py-2.5 bg-white border border-gray-100 rounded-xl cursor-grab hover:border-gray-300 hover:shadow-sm transition-all active:scale-95 active:opacity-70 group"
-            onDragStart={(event) => onDragStart(event, type, actionType)}
-            draggable
+            className={`flex items-center gap-2.5 px-3 py-2.5 bg-white border border-gray-100 rounded-xl transition-all group overflow-hidden relative ${
+                locked 
+                ? 'opacity-60 grayscale cursor-not-allowed bg-slate-50' 
+                : 'cursor-grab hover:border-gray-300 hover:shadow-sm active:scale-95 active:opacity-70'
+            }`}
+            onDragStart={(event) => !locked && onDragStart(event, type, actionType)}
+            draggable={!locked}
+            onClick={() => {
+                if (locked) {
+                    alert(`🚀 Upgrade Required\n\nThe "${label}" node requires a higher-tier plan.\n\nVisit the Billing page to unlock advanced automation!`);
+                }
+            }}
         >
-            <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${bgColor} ${color} group-hover:scale-110 transition-transform`}>
+            <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${bgColor} ${color} ${!locked && 'group-hover:scale-110 transition-transform'}`}>
                 {icon}
             </div>
             <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                    <p className="text-[11px] font-black text-gray-800 truncate">{label}</p>
-                    {badge && (
+                    <p className={`text-[11px] font-black truncate ${locked ? 'text-slate-400' : 'text-gray-800'}`}>{label}</p>
+                    {locked ? (
+                        <Lock size={10} className="text-slate-400 shrink-0" />
+                    ) : badge && (
                         <span className="text-[8px] font-black px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded-full uppercase tracking-wider shrink-0">
                             {badge}
                         </span>
@@ -277,7 +309,12 @@ function DraggableNode({ type, label, description, icon, badge, color, bgColor, 
                 </div>
                 <p className="text-[9px] text-gray-400 truncate font-medium">{description}</p>
             </div>
-            <Grip size={12} className="text-gray-300 group-hover:text-gray-400 shrink-0" />
+            {!locked && <Grip size={12} className="text-gray-300 group-hover:text-gray-400 shrink-0" />}
+            
+            {/* Lock overlay for premium nodes */}
+            {locked && (
+                <div className="absolute inset-0 bg-transparent" />
+            )}
         </div>
     );
 }

@@ -2,30 +2,46 @@
 import React, { useState, useEffect } from 'react';
 import { MessageCircle, X, Send, Sparkles } from 'lucide-react';
 
-export function WhatsAppWidget() {
+interface WhatsAppWidgetProps {
+    branding?: any;
+}
+
+export function WhatsAppWidget({ branding }: WhatsAppWidgetProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [scrolled, setScrolled] = useState(false);
     const [whatsappNumber, setWhatsappNumber] = useState('919789359407'); // Default fallback
 
     useEffect(() => {
-        // Fetch global config for WhatsApp number
-        fetch('/api/public/config')
-            .then(res => res.json())
-            .then(res => {
-                if (res.success && res.data.fab_whatsapp_number) {
-                    setWhatsappNumber(res.data.fab_whatsapp_number);
-                }
-            })
-            .catch(err => console.error("Failed to fetch FAB number", err));
+        // If branding has a support number, use it immediately
+        if (branding?.support?.whatsapp) {
+            setWhatsappNumber(branding.support.whatsapp);
+        } else {
+            // Fetch global config for WhatsApp number as fallback
+            fetch('/api/public/config')
+                .then(res => res.json())
+                .then(res => {
+                    if (res.success && res.data.fab_whatsapp_number) {
+                        setWhatsappNumber(res.data.fab_whatsapp_number);
+                    }
+                })
+                .catch(err => console.error("Failed to fetch FAB number", err));
+        }
 
         const handleScroll = () => {
             if (window.scrollY > 300) setScrolled(true);
         };
         window.addEventListener('scroll', handleScroll);
         return () => window.removeEventListener('scroll', handleScroll);
-    }, []);
+    }, [branding]);
 
     if (!scrolled) return null;
+
+    // Use dynamic branding labels
+    const brandName = branding?.brand_name || branding?.name || "Grafty";
+    const assistantLabel = `${brandName} Assistant`;
+    const promptText = branding?.is_white_labeled 
+        ? `"Hello! I'm the ${brandName} support engine. How can we help you scale your business today?"`
+        : `"Hello! I'm Grafty's automation engine. Ready to scale your business with official WhatsApp API? Ask me anything!"`;
 
     return (
         <div className="fixed bottom-8 right-8 z-[9999] flex flex-col items-end gap-4 font-sans">
@@ -47,7 +63,7 @@ export function WhatsAppWidget() {
                                 <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 border-4 border-slate-900 rounded-full animate-pulse"></div>
                             </div>
                             <div>
-                                <h3 className="font-extrabold text-lg tracking-tight">Grafty Assistant</h3>
+                                <h3 className="font-extrabold text-lg tracking-tight">{assistantLabel}</h3>
                                 <p className="text-[10px] font-black uppercase tracking-widest text-emerald-500">Online & Automated</p>
                             </div>
                         </div>
@@ -56,20 +72,21 @@ export function WhatsAppWidget() {
                     {/* Body */}
                     <div className="p-8 space-y-6">
                         <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 italic font-medium text-slate-600 text-sm leading-relaxed">
-                            "Hello! I'm Grafty's automation engine. Ready to scale your business with official WhatsApp API? Ask me anything!"
+                            {promptText}
                         </div>
                         
                         <div className="space-y-3">
                             <QuickAction label="Book a Demo" onClick={() => window.open(`https://wa.me/${whatsappNumber}?text=I want to book a demo`, '_blank')} />
-                            <QuickAction label="View Pricing" onClick={() => window.location.href = '/pricing'} />
-                            <QuickAction label="Partner Program" onClick={() => window.location.href = '/reseller-program'} />
+                            {!branding?.is_white_labeled && <QuickAction label="View Pricing" onClick={() => window.location.href = '/pricing'} />}
+                            {!branding?.is_white_labeled && <QuickAction label="Partner Program" onClick={() => window.location.href = '/reseller-program'} />}
+                            {branding?.support?.url && <QuickAction label="Help Center" onClick={() => window.open(branding.support.url, '_blank')} />}
                         </div>
                     </div>
 
                     {/* Footer */}
                     <div className="p-6 pt-0">
                         <a 
-                            href={`https://wa.me/${whatsappNumber}?text=Hello Grafty! I need help with WhatsApp API.`}
+                            href={`https://wa.me/${whatsappNumber}?text=Hello ${brandName}! I need help.`}
                             target="_blank"
                             className="w-full bg-[#25D366] hover:bg-[#20bd5a] text-white py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 transition-all shadow-xl shadow-green-200 active:scale-95"
                         >

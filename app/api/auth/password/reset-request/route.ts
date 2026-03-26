@@ -30,11 +30,12 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: "Too many reset requests. Check your email or try later." }, { status: 429 });
         }
 
-        const user = await prisma.user.findUnique({ where: { email } });
+        const host = headersList.get("x-request-host") || headersList.get("host") || "";
+        const user = await prisma.user.findFirst({ where: { email } });
 
         // Security: Always return success even if user not found (Prevent ID enumeration)
         if (user) {
-            await OTPService.sendOTP(email, "EMAIL");
+            await OTPService.sendOTP(email, "EMAIL", user.workspace_id, host);
             await AuthSecurityService.logEvent({
                 userId: user.id, email, action: "PASS_RESET", status: "SUCCESS",
                 ipAddress: ip, userAgent, details: { step: "REQUEST_SENT" }

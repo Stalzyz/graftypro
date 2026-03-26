@@ -85,7 +85,7 @@ const TESTIMONIALS = [
         role: "Founder, EduTech India",
         avatar: "RM",
         color: "from-green-500 to-emerald-600",
-        text: "We moved from manual WhatsApp replies to fully automated lead qualification. Our response time dropped from 4 hours to under 2 minutes. Grafty is the backbone of our admissions process.",
+        text: "We moved from manual WhatsApp replies to fully automated lead qualification. Our response time dropped from 4 hours to under 2 minutes. {platformName} is the backbone of our admissions process.",
         stars: 5,
     },
     {
@@ -101,7 +101,7 @@ const TESTIMONIALS = [
         role: "Digital Marketing Agency",
         avatar: "AN",
         color: "from-blue-500 to-indigo-600",
-        text: "I white-labeled Grafty for 12 of my clients. The platform partner program is a goldmine. I'm earning recurring revenue while my clients get enterprise WhatsApp automation.",
+        text: "I white-labeled {platformName} for 12 of my clients. The platform partner program is a goldmine. I'm earning recurring revenue while my clients get enterprise WhatsApp automation.",
         stars: 5,
     },
 ];
@@ -153,8 +153,8 @@ const MODULES = [
 ];
 
 const FAQS = [
-    { q: "Do I need WhatsApp API to use Grafty?", a: "Yes. Grafty works with WhatsApp Business API. Our Academy section explains how to set it up step by step — it takes about 4 minutes." },
-    { q: "How much does WhatsApp API cost?", a: "Meta charges per conversation. Costs vary by country and message type. Grafty shows exact costs before sending so there are zero surprises. Marketing messages in India cost ~₹0.88, utility ₹0.13." },
+    { q: "Do I need WhatsApp API to use {platformName}?", a: "Yes. {platformName} works with WhatsApp Business API. Our Academy section explains how to set it up step by step — it takes about 4 minutes." },
+    { q: "How much does WhatsApp API cost?", a: "Meta charges per conversation. Costs vary by country and message type. {platformName} shows exact costs before sending so there are zero surprises. Marketing messages in India cost ~₹0.88, utility ₹0.13." },
     { q: "Can I send bulk messages?", a: "Yes. Broadcast campaigns allow targeted bulk messaging with delivery tracking and performance analytics. You can segment by behavior, tags, or custom filters." },
     { q: "Can I run e-commerce on WhatsApp?", a: "Yes. You can sell products, collect payments via Razorpay, manage orders, send COD confirmations, and generate GST invoices — all inside WhatsApp." },
     { q: "Is there a free trial?", a: "Yes. Sign up and explore all modules before upgrading to a paid plan. You get a perfect 7-day free trial to start." },
@@ -190,7 +190,11 @@ function FeatureTicker() {
 }
 
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
-export default function StaticLandingPage() {
+export default function StaticLandingPage({ branding }: { branding?: any }) {
+    const platformName = branding?.brand_name || "Grafty";
+    const primaryColor = branding?.primary_color || "#27954D";
+    const domain = branding?.domain || "app.grafty.pro";
+
     const [openFaq, setOpenFaq] = useState<number | null>(null);
     const [activeTab, setActiveTab] = useState(0);
     const [isVisible, setIsVisible] = useState(false);
@@ -216,7 +220,26 @@ export default function StaticLandingPage() {
 
     return (
         <main className="g-body min-h-screen bg-white overflow-x-hidden">
-            <LandingNavbar />
+            {branding && (
+                <style dangerouslySetInnerHTML={{ __html: `
+                    :root {
+                        --primary: ${primaryColor};
+                        --primary-rgb: ${primaryColor.startsWith('#') ? primaryColor.slice(1) : primaryColor};
+                    }
+                    .bg-\\[\\#27954D\\] { background-color: ${primaryColor} !important; }
+                    .text-\\[\\#27954D\\] { color: ${primaryColor} !important; }
+                    .border-\\[\\#27954D\\] { border-color: ${primaryColor} !important; }
+                    .hover\\:bg-\\[\\#1f7a3f\\]:hover { filter: brightness(0.9); }
+                    .shadow-green-200\\/60 { shadow-color: ${primaryColor}33 !important; }
+                    .text-green-600 { color: ${primaryColor} !important; }
+                    .text-green-500 { color: ${primaryColor} !important; }
+                    .bg-green-500 { background-color: ${primaryColor} !important; }
+                    .bg-green-50 { background-color: ${primaryColor}11 !important; }
+                    .border-green-100 { border-color: ${primaryColor}22 !important; }
+                    .border-green-200 { border-color: ${primaryColor}44 !important; }
+                `}} />
+            )}
+            <LandingNavbar branding={branding} />
 
             {/* ─── STICKY BOTTOM BAR (mobile) ─── */}
             <div className={`fixed bottom-0 left-0 right-0 z-50 md:hidden transition-all duration-300 ${showStickyBar ? "translate-y-0" : "translate-y-full"}`}>
@@ -259,7 +282,7 @@ export default function StaticLandingPage() {
                     </h1>
 
                     <p className="text-xl text-slate-500 leading-relaxed max-w-2xl mx-auto mb-4">
-                        Grafty automates your WhatsApp — so every lead is captured, every customer is followed up, and every sale closes faster. <strong className="text-slate-700">Zero manual work.</strong>
+                        {platformName} automates your WhatsApp — so every lead is captured, every customer is followed up, and every sale closes faster. <strong className="text-slate-700">Zero manual work.</strong>
                     </p>
                     <p className="text-sm text-slate-400 font-medium mb-10">
                         Used by 500+ businesses across India&nbsp;·&nbsp;Powered by Meta Official API
@@ -296,7 +319,7 @@ export default function StaticLandingPage() {
                             <div className="flex items-center gap-1">
                                 {[...Array(5)].map((_, i) => <Star key={i} size={13} className="fill-amber-400 text-amber-400" />)}
                             </div>
-                            <p className="text-xs text-slate-500 font-medium">500+ businesses trust Grafty</p>
+                            <p className="text-xs text-slate-500 font-medium">500+ businesses trust {platformName}</p>
                         </div>
                     </div>
                 </div>
@@ -311,13 +334,13 @@ export default function StaticLandingPage() {
                             <div className="w-3 h-3 rounded-full bg-green-400" />
                         </div>
                         <div className="flex-1 bg-white rounded-md text-xs text-slate-400 font-medium px-3 py-1.5 text-center mx-8 border border-slate-200">
-                            app.grafty.pro/dashboard
+                            {domain}/dashboard
                         </div>
                     </div>
                     <div className="relative rounded-b-2xl overflow-hidden border border-slate-200 border-t-0 shadow-2xl shadow-slate-900/20">
                         <Image
                             src="/screens/dashboard.jpg"
-                            alt="Grafty Dashboard — Real-time WhatsApp analytics and automation"
+                            alt="{platformName} Dashboard — Real-time WhatsApp analytics and automation"
                             width={1200}
                             height={720}
                             className="w-full object-cover object-top"
@@ -349,7 +372,7 @@ export default function StaticLandingPage() {
                 <div className="max-w-7xl mx-auto">
                     <div className="text-center mb-14">
                         <span className="text-xs font-black uppercase tracking-[0.15em] text-slate-400 block mb-4">The Platform</span>
-                        <h2 className="text-4xl font-black text-slate-900">See Grafty in Action</h2>
+                        <h2 className="text-4xl font-black text-slate-900">See {platformName} in Action</h2>
                         <p className="text-slate-500 mt-4 text-lg max-w-2xl mx-auto">Real screenshots from the live platform — not mockups.</p>
                     </div>
 
@@ -393,9 +416,9 @@ export default function StaticLandingPage() {
                                 <div className="flex gap-1.5">
                                     <div className="w-2.5 h-2.5 rounded-full bg-red-400" />
                                     <div className="w-2.5 h-2.5 rounded-full bg-amber-400" />
-                                    <div className="w-2.5 h-2.5 rounded-full bg-green-400" />
+                                     <div className="w-2.5 h-2.5 rounded-full bg-green-400" />
                                 </div>
-                                <span className="text-xs text-slate-400 font-medium ml-2">app.grafty.pro</span>
+                                <span className="text-xs text-slate-400 font-medium ml-2">{domain}</span>
                             </div>
                             <Image
                                 src={PRODUCT_TABS[activeTab].image}
@@ -439,12 +462,12 @@ export default function StaticLandingPage() {
                             ))}
                         </div>
                         <p className="text-slate-600 text-lg leading-relaxed">
-                            Grafty converts WhatsApp into a <strong className="text-slate-900">structured business platform</strong> — so every message becomes an opportunity, automatically.
+                            {platformName} converts WhatsApp into a <strong className="text-slate-900">structured business platform</strong> — so every message becomes an opportunity, automatically.
                         </p>
                     </div>
 
                     <div className="bg-gradient-to-br from-green-50 to-blue-50 rounded-3xl border border-green-100 p-10">
-                        <span className="text-xs font-black uppercase tracking-[0.15em] text-green-600 block mb-6">✨ With Grafty:</span>
+                        <span className="text-xs font-black uppercase tracking-[0.15em] text-green-600 block mb-6">✨ With {platformName}:</span>
                         <div className="grid grid-cols-2 gap-3">
                             {["Leads auto-captured", "Instant bot replies", "Payments on WhatsApp", "Full customer history", "Bulk broadcasts", "Team inbox", "GST invoices auto-sent", "Real-time analytics"].map((item, i) => (
                                 <div key={i} className="flex items-center gap-3 bg-white rounded-xl px-4 py-3 border border-white shadow-sm">
@@ -463,7 +486,7 @@ export default function StaticLandingPage() {
                 <div className="max-w-7xl mx-auto">
                     <div className="text-center mb-20">
                         <span className="text-xs font-black uppercase tracking-[0.15em] text-slate-400 block mb-4">Growth Engine</span>
-                        <h2 className="text-4xl font-black text-slate-900 leading-tight">How Grafty Helps You Scale</h2>
+                        <h2 className="text-4xl font-black text-slate-900 leading-tight">How {platformName} Helps You Scale</h2>
                     </div>
                     <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
                         {[
@@ -543,9 +566,9 @@ export default function StaticLandingPage() {
             {/* ─── TESTIMONIALS ─── */}
             <section className="py-28 px-6 bg-white">
                 <div className="max-w-7xl mx-auto">
-                    <div className="text-center mb-16">
+                     <div className="text-center mb-16">
                         <span className="text-xs font-black uppercase tracking-[0.15em] text-slate-400 block mb-4">Customer Stories</span>
-                        <h2 className="text-4xl font-black text-slate-900 leading-tight">Businesses That Grew With Grafty</h2>
+                        <h2 className="text-4xl font-black text-slate-900 leading-tight">Businesses That Grew With {platformName}</h2>
                     </div>
                     <div className="grid md:grid-cols-3 gap-6">
                         {TESTIMONIALS.map((t, i) => (
@@ -611,7 +634,7 @@ export default function StaticLandingPage() {
                                 ))}
                             </div>
                             <div className="bg-gradient-to-br from-green-50 to-emerald-50 border border-green-100 rounded-xl p-5">
-                                <p className="text-green-800 text-sm font-bold">✓ Grafty shows message costs before sending. Zero hidden charges.</p>
+                                <p className="text-green-800 text-sm font-bold">✓ {platformName} shows message costs before sending. Zero hidden charges.</p>
                                 <p className="text-green-600 text-xs mt-1">India rates: Marketing ₹0.88 · Utility ₹0.13 · Service Free</p>
                             </div>
                         </div>
@@ -696,7 +719,7 @@ export default function StaticLandingPage() {
                     <div className="bg-gradient-to-br from-green-50 to-blue-50 border border-green-100 rounded-3xl p-12">
                         <span className="text-xs font-black uppercase tracking-[0.15em] text-green-600 block mb-4">For Marketers & Agencies</span>
                         <h3 className="text-3xl font-black text-slate-900 leading-tight mb-4">Become an Affiliate Partner</h3>
-                        <p className="text-slate-600 mb-8 leading-relaxed">Earn recurring commission by recommending Grafty. No technical knowledge required.</p>
+                        <p className="text-slate-600 mb-8 leading-relaxed">Earn recurring commission by recommending {platformName}. No technical knowledge required.</p>
                         <div className="flex flex-wrap gap-3 mb-8">
                             {["Recurring Commission", "Auto Wallet Credit", "Bank Withdrawal", "No Limit"].map((t, i) => (
                                 <span key={i} className="bg-white text-slate-600 text-[11px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-full border border-slate-200">{t}</span>
@@ -726,15 +749,15 @@ export default function StaticLandingPage() {
             {/* ─── FINAL CTA ─── */}
             <section className="py-28 px-6 bg-[#0F172A] relative overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-br from-green-900/20 to-blue-900/20 pointer-events-none" />
-                <div className="max-w-4xl mx-auto text-center relative z-10">
+                 <div className="max-w-4xl mx-auto text-center relative z-10">
                     <div className="inline-block bg-white/5 border border-white/10 rounded-2xl px-6 py-3 text-sm text-slate-300 font-medium mb-8">
-                        Grafty is not just a WhatsApp tool. It is scalable business infrastructure.
+                        {platformName} is not just a WhatsApp tool. It is scalable business infrastructure.
                     </div>
-                    <h2 className="text-5xl font-black text-white leading-tight mb-6">
+                     <h2 className="text-5xl font-black text-white leading-tight mb-6">
                         Ready to Automate Your<br />WhatsApp Business?
                     </h2>
                     <p className="text-slate-400 text-xl leading-relaxed mb-12 max-w-xl mx-auto">
-                        Join 500+ businesses, agencies, institutes, and ecommerce brands growing on Grafty.
+                        Join 500+ businesses, agencies, institutes, and ecommerce brands growing on {platformName}.
                     </p>
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                         <Link href="/register" className="flex items-center gap-2 bg-[#27954D] hover:bg-[#1f7a3f] text-white font-bold px-10 py-4 rounded-xl transition-all shadow-xl shadow-green-900/40 text-base">
@@ -750,7 +773,7 @@ export default function StaticLandingPage() {
                 </div>
             </section>
 
-            <LandingFooter />
+            <LandingFooter branding={branding} />
         </main>
     );
 }

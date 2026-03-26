@@ -92,11 +92,11 @@ export class EmailService {
 
         // 1. Resolve Branding & Identity
         const rSmtp = (workspace?.reseller?.smtp_config as any);
-        const brandName = workspace?.reseller?.brand_name || config.platform_name || "Grafty";
-        const logoUrl = workspace?.reseller?.logo_url || config.logo_url || "https://grafty.pro/logo.png";
+        const brandName = workspace?.reseller?.brand_name || config.platform_name || "Platform";
+        const logoUrl = workspace?.reseller?.logo_url || config.logo_url || "/logo.png";
         
         // Sender Identity: Priority to Reseller SMTP Config -> System Config -> Default
-        const fromEmail = rSmtp?.from_email || config.smtp_from_email || "no-reply@grafty.pro";
+        const fromEmail = rSmtp?.from_email || config.smtp_from_email || "no-reply@system.io";
         const fromName = rSmtp?.from_name || workspace?.reseller?.brand_name || config.smtp_from_name || brandName;
 
         // 2. Prepare HTML with Template Logic
@@ -150,25 +150,39 @@ export class EmailService {
     }
 
     /**
-     * Send a system-level email using global config (No workspace branding)
+     * Send a system-level email with optional whitelabel context.
+     * Searches for branding based on hostname or workspaceId.
      */
-    static async sendSystemEmail(options: { to: string; subject: string; templateName: string; context: any }) {
+    static async sendSystemEmail(options: { 
+        to: string; 
+        subject: string; 
+        templateName: string; 
+        context: any; 
+        hostname?: string; 
+        workspaceId?: string;
+    }) {
+        const { BrandingService } = await import("../branding/service");
+        
+        // 1. Resolve Branding for the system email
+        let branding = null;
+        if (options.workspaceId) {
+            branding = await BrandingService.getBrandingForWorkspace(options.workspaceId, options.hostname);
+        } else if (options.hostname) {
+            branding = await BrandingService.getBrandingByDomain(options.hostname);
+        }
+
         const config = await SystemConfigService.getConfig();
+        const brandName = branding?.brand_name || config.platform_name || "Platform";
+        const logoUrl = branding?.logo_url || config.logo_url || "/logo.png";
+
+        // Sender Identity: Priority to Reseller SMTP Config -> System Config -> Default
+        const fromEmail = branding?.support?.email || config.smtp_from_email || "no-reply@system.io";
+        const fromName = branding?.brand_name || config.smtp_from_name || brandName;
+
+        // 2. Resolve Configuration Secrets (SMTP etc)
         const secrets = await SystemConfigService.getDecryptedSecrets();
 
-        const brandName = config.platform_name || "Grafty";
-        const logoUrl = config.logo_url || "https://grafty.pro/logo.png";
-
-        // Robust fallback logic: prioritize DB config IF it's not empty, otherwise use ENV
-        const fromEmail = (config.smtp_from_email && config.smtp_from_email.trim() !== "")
-            ? config.smtp_from_email
-            : (process.env.SMTP_FROM_EMAIL || "no-reply@grafty.pro");
-
-        const fromName = (config.smtp_from_name && config.smtp_from_name.trim() !== "")
-            ? config.smtp_from_name
-            : (config.smtp_from_name || process.env.SMTP_FROM_NAME || brandName);
-
-        console.log(`[EmailService] Preparing system email to: ${options.to} via ${fromEmail}`);
+        console.log(`[EmailService] Preparing system email to: ${options.to} via ${fromEmail} (Branded: ${brandName})`);
 
         let contentHtml = "";
         if (options.templateName === "OTP_VERIFICATION") {
@@ -248,7 +262,7 @@ export class EmailService {
             await transporter.sendMail({
                 from: `"${config.smtp_from_name || 'System Test'}" <${config.smtp_from_email}>`,
                 to: to,
-                subject: "Grafty SMTP Test Connection",
+                subject: `${config.platform_name || "Platform"} SMTP Test Connection`,
                 text: "Success! Your SMTP configuration is working correctly.",
                 html: "<b>Success!</b> Your SMTP configuration is working correctly."
             });
@@ -302,8 +316,8 @@ export class EmailService {
         if (!reseller || !reseller.email) return;
 
         const config = await SystemConfigService.getConfig();
-        const brandName = config.platform_name || "Grafty";
-        const logoUrl = config.logo_url || "https://grafty.pro/logo.png";
+        const brandName = config.platform_name || "Platform";
+        const logoUrl = config.logo_url || "/logo.png";
         const isSuccess = options.status === 'PAID';
         
         const amountStr = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(options.amount);
@@ -387,7 +401,7 @@ export class EmailService {
 
         try {
             await transporter.sendMail({
-                from: `"${brandName} Treasury" <${process.env.SMTP_FROM_EMAIL || 'no-reply@grafty.pro'}>`,
+                from: `"${brandName} Treasury" <${process.env.SMTP_FROM_EMAIL || 'no-reply@system.io'}>`,
                 to: reseller.email,
                 subject: `[${options.status}] Payout Confirmation - ${amountStr}`,
                 html: html

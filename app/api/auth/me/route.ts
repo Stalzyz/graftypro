@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { prisma } from "../../../../lib/db";
 import { getCurrentUser, verifyToken } from "../../../../lib/auth";
 import { hash, compare } from "bcryptjs";
+import { getAbsoluteMediaUrl } from "../../../../lib/utils/url";
 
 export const dynamic = "force-dynamic";
 
@@ -35,6 +36,8 @@ export async function GET(req: Request) {
                         name: true,
                         plan: true,
                         status: true,
+                        current_plan_id: true,
+                        plan_details: true,
                         billing_gstin: true,
                         billing_address: true,
                         bank_name: true,
@@ -52,12 +55,31 @@ export async function GET(req: Request) {
             return response;
         }
 
+        // 🛡️ REFORMAT: Align Backend with UI Expectation
+        // Ensure 'plan' is the full object that Dashboard hooks expect
+        const formattedUser = {
+            ...user,
+            avatar_url: getAbsoluteMediaUrl(user.avatar_url, req),
+            workspace: {
+                ...user.workspace,
+                plan: user.workspace.plan_details || { 
+                    name: user.workspace.plan, // Fallback to enum string if relation missing
+                    module_crm: user.workspace.plan === "ENTERPRISE" || user.workspace.plan === "PRO",
+                    module_ecommerce: user.workspace.plan === "ENTERPRISE",
+                    module_academy: user.workspace.plan === "ENTERPRISE",
+                    module_drip: user.workspace.plan === "ENTERPRISE",
+                    module_integration: user.workspace.plan === "ENTERPRISE"
+                }
+            },
+            hasPassword: !!user.password_hash
+        };
+
+        // Remove the raw relation to avoid confusion
+        // @ts-ignore
+        delete formattedUser.workspace.plan_details;
 
         return NextResponse.json({
-            user: {
-                ...user,
-                hasPassword: !!user.password_hash
-            }
+            user: formattedUser
         });
 
     } catch (error) {

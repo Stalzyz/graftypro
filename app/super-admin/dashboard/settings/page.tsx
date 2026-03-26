@@ -13,7 +13,8 @@ import {
     Workflow,
     ChevronRight,
     CircleDot,
-    Palette
+    Palette,
+    Facebook
 } from "lucide-react";
 
 export default function SystemSettingsPage() {
@@ -79,6 +80,12 @@ export default function SystemSettingsPage() {
                             title="System API Keys"
                             description="Manage master API keys for global infrastructure integration."
                             onClick={() => window.location.href = '/super-admin/dashboard/settings/api-keys'}
+                        />
+                        <SettingsItem
+                            icon={<Facebook className="text-blue-600" />}
+                            title="Meta Application Master"
+                            description="Configure Meta Tech Provider App IDs and Embedded Signup tokens."
+                            onClick={() => window.location.href = '/super-admin/dashboard/meta'}
                         />
                         <SettingsItem
                             icon={<History className="text-zinc-500" />}

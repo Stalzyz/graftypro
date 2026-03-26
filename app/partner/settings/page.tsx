@@ -4,7 +4,7 @@ import {
     Layout, Palette, Shield, RefreshCw, Save,
     CheckCircle2, Globe, Eye, Loader2, Image as ImageIcon,
     Target, Monitor, Mail, HelpCircle, ArrowRight, Zap,
-    AlertTriangle, Send, Megaphone, ExternalLink
+    AlertTriangle, Send, Megaphone, ExternalLink, MessageCircle
 } from "lucide-react";
 import Link from 'next/link';
 import { SmartUploader } from "../../../components/ui/SmartUploader";
@@ -18,6 +18,7 @@ export default function BrandingPage() {
         secondary_color: "#3B82F6",
         support_email: "",
         support_url: "",
+        support_whatsapp: "",
         broadcast_banner: "",
         broadcast_link: ""
     });
@@ -39,6 +40,7 @@ export default function BrandingPage() {
                         secondary_color: data.data.secondary_color || "#3B82F6",
                         support_email: data.data.support_email || "",
                         support_url: data.data.support_url || "",
+                        support_whatsapp: data.data.support_whatsapp || "",
                         broadcast_banner: data.data.broadcast_banner || "",
                         broadcast_link: data.data.broadcast_link || ""
                     });
@@ -121,7 +123,7 @@ export default function BrandingPage() {
                                 <Palette size={22} />
                             </div>
                             <div>
-                                <h2 className="text-xs font-black text-slate-900 uppercase tracking-[0.2em]">Genesis</h2>
+                                <h2 className="text-xs font-black text-slate-900 uppercase tracking-[0.2em]">Main Identity</h2>
                                 <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest italic mt-1 leading-none">Primary Label & Visual Tone</p>
                             </div>
                         </div>
@@ -165,7 +167,7 @@ export default function BrandingPage() {
                                 <Mail size={22} />
                             </div>
                             <div>
-                                <h2 className="text-xs font-black text-slate-900 uppercase tracking-[0.2em]">Pulse Support</h2>
+                                <h2 className="text-xs font-black text-slate-900 uppercase tracking-[0.2em]">Partner Support</h2>
                                 <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest italic mt-1 leading-none">Customer Service Touchpoints</p>
                             </div>
                         </div>
@@ -184,6 +186,13 @@ export default function BrandingPage() {
                                 value={config.support_url}
                                 onChange={(v: string) => setConfig({ ...config, support_url: v.toLowerCase() })}
                                 icon={<Globe size={14} />}
+                            />
+                            <InputModule
+                                label="Support WhatsApp [FAB]"
+                                placeholder="919789359407"
+                                value={config.support_whatsapp}
+                                onChange={(v: string) => setConfig({ ...config, support_whatsapp: v.replace(/\D/g, '') })}
+                                icon={<MessageCircle size={14} />}
                             />
                         </div>
                     </section>
@@ -216,7 +225,7 @@ export default function BrandingPage() {
                             </div>
 
                             <div className="space-y-3">
-                                <label className="text-[9px] font-black text-white/40 uppercase tracking-[0.3em] ml-1">Redirect Protocol [EXTERNAL-LINK]</label>
+                                <label className="text-[9px] font-black text-white/40 uppercase tracking-[0.3em] ml-1">Redirect Link [EXTERNAL-LINK]</label>
                                 <div className="relative group/field">
                                     <div className="absolute left-6 top-1/2 -translate-y-1/2 text-white/20 group-focus-within/field:text-emerald-400 transition-colors"><ExternalLink size={16} /></div>
                                     <input
@@ -247,7 +256,7 @@ export default function BrandingPage() {
                         </div>
 
                         <div className="space-y-4 pt-10 border-t border-slate-50">
-                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em] ml-1">Protocol Favicon</label>
+                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em] ml-1">Logo Favicon</label>
                             <div className="p-4 bg-slate-50 border border-dashed border-slate-200 rounded-3xl group-hover:bg-white transition-colors">
                                 <SmartUploader
                                     label="FAVICON"

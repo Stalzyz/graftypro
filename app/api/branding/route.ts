@@ -34,7 +34,7 @@ export async function GET(req: Request) {
                 if (partnerBranding) return NextResponse.json({ success: true, data: partnerBranding });
             }
 
-            const wsBranding = await BrandingService.getBrandingForWorkspace(user.workspaceId);
+            const wsBranding = await BrandingService.getBrandingForWorkspace(user.workspaceId, host);
             if (wsBranding?.is_white_labeled) {
                 return NextResponse.json({ success: true, data: wsBranding });
             }
@@ -46,8 +46,8 @@ export async function GET(req: Request) {
             if (domainBranding) return NextResponse.json({ success: true, data: domainBranding });
         }
 
-        // 3. Fallback: System Default
-        const fallback = await BrandingService.getBrandingForWorkspace("");
+        // 3. Fallback: System Default (with host-awareness)
+        const fallback = await BrandingService.getBrandingForWorkspace("", host);
         return NextResponse.json({ success: true, data: fallback, resolvedHost: host });
 
     } catch (error: any) {

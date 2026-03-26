@@ -19,14 +19,20 @@ export function getAbsoluteMediaUrl(url: string | null | undefined, request?: Re
 
     // If it's already an absolute URL...
     if (url.startsWith("http")) {
+        // FORCE HTTPS for production security (Prevent Mixed Content)
+        let secureUrl = url;
+        if (url.startsWith("http://") && !url.includes("localhost") && !url.includes("127.0.0.1")) {
+            secureUrl = url.replace("http://", "https://");
+        }
+
         // ...but it's a localhost or internal IP that Meta can't reach, we must fix it
-        if (cleanBase && (url.includes("localhost") || url.includes("127.0.0.1") || url.includes("0.0.0.0"))) {
-            const relativePart = url.split("/").slice(3).join("/");
+        if (cleanBase && (secureUrl.includes("localhost") || secureUrl.includes("127.0.0.1") || secureUrl.includes("0.0.0.0"))) {
+            const relativePart = secureUrl.split("/").slice(3).join("/");
             const fixed = `${cleanBase}/${relativePart}`;
-            console.log(`[URL_RESOLVE] Local-to-Public: ${url} -> ${fixed}`);
+            console.log(`[URL_RESOLVE] Local-to-Public: ${secureUrl} -> ${fixed}`);
             return fixed;
         }
-        return url;
+        return secureUrl;
     }
 
     if (cleanBase) {

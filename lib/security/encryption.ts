@@ -38,8 +38,9 @@ export function encrypt(text: string): string {
         // Format: iv:tag:encrypted (Hex encoded)
         return `${iv.toString("hex")}:${tag.toString("hex")}:${encrypted}`;
     } catch (error: any) {
-        console.error("Encryption failed:", error.message);
-        throw new Error("Could not encrypt data");
+        // Redact key info from error logs
+        console.error("[Vault] Encryption failed. Check ENCRYPTION_KEY configuration.");
+        throw new Error("Vault Encryption Fault");
     }
 }
 
@@ -49,9 +50,13 @@ export function encrypt(text: string): string {
 export function decrypt(cipherText: string): string {
     if (!cipherText) return "";
 
-    // Fallback for non-encrypted legacy data
+    /**
+     * 🔥 STRICT DECRYPTION MODE
+     * Prevents "Downgrade Attacks" where plain text values could bypass the vault.
+     * All tokens MUST be encrypted in production. 
+     */
     if (!cipherText.includes(":") || cipherText.split(":").length !== 3) {
-        return cipherText;
+        throw new Error("Vault Integrity Violation: Unencrypted Data Detected.");
     }
 
     if (!ENCRYPTION_KEY) {
@@ -73,10 +78,8 @@ export function decrypt(cipherText: string): string {
 
         return decrypted;
     } catch (error: any) {
-        console.error("Decryption failed:", error.message);
-        // If decryption fails but it LOOKED like encrypted data, return original for safety 
-        // to handle cases where it might just be a string with colons
-        return cipherText;
+        console.error("[Vault] Decryption failed — integrity key may be invalid.");
+        throw new Error("Vault Decryption Fault");
     }
 }
 

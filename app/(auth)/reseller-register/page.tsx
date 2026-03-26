@@ -5,8 +5,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Loader2, Eye, EyeOff, Check, ArrowRight, ShieldCheck, PieChart, Zap, RefreshCw, AlertCircle } from "lucide-react";
 import { Logo } from "../../../components/ui/Logo";
+import { useBranding } from "../../../hooks/use-branding";
 
 export default function ResellerRegisterPage() {
+    const { branding } = useBranding();
     const router = useRouter();
     const [loading, setLoading] = useState(false);
     const [verifying, setVerifying] = useState(false);
@@ -147,7 +149,12 @@ export default function ResellerRegisterPage() {
             <div className="hidden lg:flex lg:w-1/2 bg-[#0F172A] relative flex-col justify-between p-20 overflow-hidden text-white">
                 <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-[#27954D] rounded-full blur-[200px] opacity-10 translate-x-1/2 -translate-y-1/2" />
                 <div className="relative z-10">
-                    <Logo size={48} variant="light" />
+                    <Logo 
+                        size={48} 
+                        variant="light" 
+                        brandName={branding?.brand_name || branding?.name} 
+                        logoUrl={branding?.logo_url} 
+                    />
                     <div className="mt-20">
                         <h1 className="text-6xl font-black leading-[1.05] tracking-tighter mb-10 text-white">
                             The Future of <br /> Partnership.
@@ -168,7 +175,11 @@ export default function ResellerRegisterPage() {
                         /* ── REGISTRATION FORM ── */
                         <div>
                             <div className="mb-10">
-                                <Logo size={40} brandName="Grafty" />
+                                <Logo 
+                                    size={40} 
+                                    brandName={branding?.brand_name || branding?.name} 
+                                    logoUrl={branding?.logo_url} 
+                                />
                                 <h2 className="text-4xl font-black text-slate-900 mb-2 tracking-tight mt-6">Become a Partner.</h2>
                                 <p className="text-slate-500 text-base font-medium">Free to join. Earn recurring commission.</p>
                             </div>
@@ -269,7 +280,7 @@ export default function ResellerRegisterPage() {
                         /* ── OTP VERIFY ── */
                         <div>
                             <div className="mb-10">
-                                <Logo size={40} brandName="Grafty" />
+                                <Logo size={40} brandName={branding?.brand_name || branding?.name} logoUrl={branding?.logo_url} />
                                 <h2 className="text-4xl font-black text-slate-900 mb-2 tracking-tight mt-6">Check your Inbox.</h2>
                                 <p className="text-slate-500 text-base font-medium">
                                     We've sent a 6-digit code to <span className="text-slate-900 font-black">{formData.email}</span>.

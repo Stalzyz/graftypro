@@ -36,7 +36,7 @@ export async function POST(request: Request) {
         }
 
         // 3. Generate Referral Code (e.g., GRAFTY-XXXX)
-        const referralCode = `GRFT-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+        const referralCode = `REF-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
 
         // 4. Hash Password
         const passwordHash = await AuthSecurityService.hashPassword(password);

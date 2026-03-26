@@ -146,7 +146,7 @@ function PricingPageInternal() {
                         <h2 className="g-h3 mb-12 text-center">Billing Directives.</h2>
                         <FaqSimple q="What happens if I run out of credits?" a="Your automated flows will pause instantly. We recommend setting up 'Low Balance Alerts' to recharge before depletion. Your wallet balance is visible 24/7." />
                         <FaqSimple q="Do unused credits expire?" a="Credits remain valid for 12 months from the date of recharge, provided your infrastructure subscription is active." />
-                        <FaqSimple q="Is the Meta fee separate?" a="No. Grafty credits cover BOTH the Meta conversation fee and the Grafty platform usage fee in one unified unit." />
+                        <FaqSimple q="Is the Meta fee separate?" a="Yes. Meta conversation fees are billed separately based on actual consumption. Users can either pay Meta directly connecting their own card, or recharge Grafty credits to cover charges automatically." />
                         <FaqSimple q="Can I get a refund for a recharge?" a="Per our governance policy, recharges are non-refundable as they involve immediate allocation of WABA resources. We recommend starting with a small recharge to test your flows." />
                     </div>
                 </div>

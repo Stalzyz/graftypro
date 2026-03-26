@@ -87,7 +87,10 @@ export async function POST(req: Request) {
                 cleanPhone,
                 template_name,
                 body.language || "en",
-                components
+                components,
+                workspace.id,
+                "UTILITY",
+                `API Trigger: ${template_name}`
             );
 
             return NextResponse.json({ success: true, message: "Template sent successfully" });
@@ -100,7 +103,10 @@ export async function POST(req: Request) {
                 waba.phone_number_id,
                 waba.access_token,
                 cleanPhone,
-                text
+                text,
+                workspace.id,
+                "UTILITY",
+                "API Trigger: Text Message"
             );
 
             return NextResponse.json({ success: true, message: "Message sent successfully" });

@@ -111,7 +111,11 @@ export async function GET(req: Request) {
                     token,
                     contact.phone,
                     template.name,
-                    template.language
+                    template.language,
+                    [],
+                    workspace.id,
+                    "MARKETING",
+                    "Automated Drip Sequence"
                 );
 
                 // Determine Future Run

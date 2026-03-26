@@ -14,7 +14,7 @@ export async function POST(req: Request) {
         // 1. Authenticate Application User
         const user = await getCurrentUser(req);
         if (!user) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+            return NextResponse.json({ error: "Session expired. Please reload the page and try again." }, { status: 401 });
         }
 
         const { code } = await req.json();

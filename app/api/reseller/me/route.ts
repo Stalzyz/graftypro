@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getResellerSession } from "@/lib/reseller/auth-helper";
+import { getAbsoluteMediaUrl } from "@/lib/utils/url";
 
 export const dynamic = 'force-dynamic';
 
@@ -48,7 +49,14 @@ export async function GET(req: Request) {
             return NextResponse.json({ error: "Reseller not found" }, { status: 404 });
         }
 
-        return NextResponse.json({ data: reseller });
+        // Normalize URLs
+        const normalizedReseller = {
+            ...reseller,
+            logo_url: getAbsoluteMediaUrl(reseller.logo_url, req),
+            favicon_url: getAbsoluteMediaUrl(reseller.favicon_url, req)
+        };
+
+        return NextResponse.json({ data: normalizedReseller });
 
     } catch (error) {
         console.error("Fetch Reseller Me Error:", error);

@@ -66,14 +66,14 @@ export default function PartnerDashboard() {
                 <AlertCircle size={32} />
             </div>
             <div className="text-center">
-                <h3 className="text-lg font-black text-slate-900 tracking-tight leading-none mb-2">Protocol Error</h3>
+                <h3 className="text-lg font-black text-slate-900 tracking-tight leading-none mb-2">System Error</h3>
                 <p className="text-slate-500 font-bold text-sm tracking-tight">{data._error}</p>
             </div>
             <button
                 onClick={() => { setLoading(true); fetchStats(); }}
                 className="px-8 py-3 bg-slate-900 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-black transition-all shadow-lg active:scale-95"
             >
-                Re-Initialize Console
+                Retry Loading
             </button>
         </div>
     );
@@ -91,7 +91,7 @@ export default function PartnerDashboard() {
                 <div className="space-y-1">
                     <div className="flex items-center gap-2 text-[#27954D] font-black text-[9px] uppercase tracking-[0.3em] mb-4">
                         <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]" />
-                        Network Live
+                        System Status: Online
                     </div>
                     <h1 className="text-4xl font-black text-slate-900 tracking-tighter leading-none italic uppercase">
                         Dashboard<span className="text-[#27954D]">.</span>
@@ -129,12 +129,12 @@ export default function PartnerDashboard() {
                         </div>
                         <div>
                             <h3 className="text-lg font-black text-slate-900 tracking-tight italic uppercase">
-                                {data.profile.kyc_status === 'SUBMITTED' ? 'Verification Pending Review' : 'Identity Genesis Required'}
+                                {data.profile.kyc_status === 'SUBMITTED' ? 'Verification Pending Review' : 'Business Profile Required'}
                             </h3>
                             <p className="text-sm text-slate-500 font-bold tracking-tight mt-1 max-w-md">
                                 {data.profile.kyc_status === 'SUBMITTED'
                                     ? 'Our compliance team is auditing your credentials. Access to payouts will be enabled shortly.'
-                                    : 'Establish your platform identity to unlock liquidity pools and premium commission tiers.'}
+                                    : 'Establish your business profile to unlock payouts and premium commission tiers.'}
                             </p>
                         </div>
                     </div>
@@ -152,15 +152,14 @@ export default function PartnerDashboard() {
             {/* Metric Clusters */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 <MetricCard
-                    label="Active Liquidity"
+                    label="Available Balance"
                     value={formatCurrency(data.wallet.balance)}
-
-                    sub={`${data.wallet.pending_payouts} pending settle`}
+                    sub={`${data.wallet.pending_payouts} pending payouts`}
                     icon={<Wallet size={24} />}
                     color="emerald"
                 />
                 <MetricCard
-                    label="Monthly Velocity"
+                    label="Monthly Revenue"
                     value={formatCurrency(data.wallet.this_month)}
 
                     icon={<TrendingUp size={24} />}
@@ -169,7 +168,7 @@ export default function PartnerDashboard() {
                     trendUp={data.monthly.growth_pct >= 0}
                 />
                 <MetricCard
-                    label="Network Growth"
+                    label="Partner Network"
                     value={data.gamification.current_vendors}
                     sub="Active Workspaces"
                     icon={<Users size={24} />}
@@ -178,7 +177,7 @@ export default function PartnerDashboard() {
                     trendUp={data.monthly.network_growth >= 0}
                 />
                 <MetricCard
-                    label="Daily Yield"
+                    label="Daily Earnings"
                     value={formatCurrency(data.wallet.today)}
 
                     icon={<Zap size={24} />}
@@ -218,7 +217,7 @@ export default function PartnerDashboard() {
                 {/* Performance Tier */}
                 <div className="bg-white rounded-[2.5rem] border border-slate-100 p-8 shadow-sm">
                     <div className="flex items-center justify-between mb-8">
-                        <div className="text-[10px] font-black text-slate-300 uppercase tracking-[0.25em]">Ecosystem Level</div>
+                        <div className="text-[10px] font-black text-slate-300 uppercase tracking-[0.25em]">Partner Tier</div>
                         <div className="w-10 h-10 bg-amber-50 rounded-2xl flex items-center justify-center text-amber-500 border border-amber-100 shadow-sm">
                             <Star size={20} fill="currentColor" />
                         </div>
@@ -227,7 +226,7 @@ export default function PartnerDashboard() {
                     <div className="space-y-6">
                         <div>
                             <div className="text-2xl font-black text-slate-900 tracking-tight leading-none mb-1 italic uppercase">
-                                {data.gamification.next_tier?.name || 'Grandmaster'}
+                                {data.gamification.next_tier?.name || 'Elite Partner'}
                             </div>
                             <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Next Achievement Unlock</p>
                         </div>
@@ -248,7 +247,7 @@ export default function PartnerDashboard() {
                                 </div>
                                 <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-2xl">
                                     <p className="text-[10px] text-[#27954D] font-bold leading-relaxed">
-                                        Deploy <span className="font-black underline">{data.gamification.next_tier.remaining} more nodes</span> to trigger the <span className="font-black">{data.gamification.next_tier.bonus}% yield multiplier</span>.
+                                        Deploy <span className="font-black underline">{data.gamification.next_tier.remaining} more sub-accounts</span> to trigger the <span className="font-black">{data.gamification.next_tier.bonus}% commission bonus</span>.
                                     </p>
                                 </div>
                             </div>
@@ -262,15 +261,15 @@ export default function PartnerDashboard() {
                 </div>
 
                 {/* Operations Terminal */}
-                <div className="bg-white rounded-[2.5rem] border border-slate-100 p-8 shadow-sm overflow-hidden relative group">
-                    <div className="text-[10px] font-black text-slate-300 uppercase tracking-[0.25em] mb-6">Yield Summary</div>
+                 <div className="bg-white rounded-[2.5rem] border border-slate-100 p-8 shadow-sm overflow-hidden relative group">
+                    <div className="text-[10px] font-black text-slate-300 uppercase tracking-[0.25em] mb-6">Earnings Summary</div>
                     <div className="space-y-3 relative z-10">
                         {[
-                            { label: "Pipeline Value", value: formatCurrency(data.alerts.leads_count * 2500), icon: <Target size={14} />, color: "text-blue-600", bg: "bg-blue-50", border: "border-blue-100" },
+                            { label: "Potential Revenue", value: formatCurrency(data.alerts.leads_count * 2500), icon: <Target size={14} />, color: "text-blue-600", bg: "bg-blue-50", border: "border-blue-100" },
 
-                            { label: "Lifetime Revenue", value: formatCurrency(data.wallet.total_earned), icon: <DollarSign size={14} />, color: "text-[#27954D]", bg: "bg-emerald-50", border: "border-emerald-100" },
+                            { label: "Total Earnings", value: formatCurrency(data.wallet.total_earned), icon: <DollarSign size={14} />, color: "text-[#27954D]", bg: "bg-emerald-50", border: "border-emerald-100" },
 
-                            { label: "Settlement Pool", value: formatCurrency(data.wallet.balance), icon: <History size={14} />, color: "text-slate-600", bg: "bg-slate-50", border: "border-slate-100" },
+                            { label: "Payout Balance", value: formatCurrency(data.wallet.balance), icon: <History size={14} />, color: "text-slate-600", bg: "bg-slate-50", border: "border-slate-100" },
 
                         ].map((row, i) => (
                             <div key={i} className={`flex items-center justify-between p-5 rounded-2xl border ${row.bg} ${row.border} hover:scale-[1.02] transition-transform duration-300`}>
@@ -295,12 +294,12 @@ export default function PartnerDashboard() {
                             <Activity size={20} />
                         </div>
                         <div>
-                            <h2 className="text-sm font-black text-slate-900 uppercase tracking-widest leading-none mb-1">Activity Oracle</h2>
-                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest italic">Live settlement stream</p>
+                            <h2 className="text-sm font-black text-slate-900 uppercase tracking-widest leading-none mb-1">Activity Feed</h2>
+                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1 italic">Live activity stream</p>
                         </div>
                     </div>
                     <Link href="/partner/ledger" className="group px-6 py-2.5 bg-white border border-slate-200 rounded-2xl text-[10px] font-black text-slate-900 uppercase tracking-widest hover:border-[#27954D] transition-all flex items-center gap-2 shadow-sm">
-                        View Matrix <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+                        View History <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
                     </Link>
                 </div>
 
@@ -310,7 +309,7 @@ export default function PartnerDashboard() {
                             <Clock size={40} />
                         </div>
                         <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest">No Events Found</h3>
-                        <p className="text-[10px] text-slate-300 font-bold uppercase tracking-widest mt-1">Activity will broadcast here in real-time</p>
+                        <p className="text-[10px] text-slate-300 font-bold uppercase tracking-widest mt-1">Activity will display here in real-time</p>
                     </div>
                 ) : (
                     <div className="divide-y divide-slate-50">
@@ -426,8 +425,8 @@ function KycSubmissionModal({ onClose, onSubmit }: any) {
                 {/* Header */}
                 <div className="px-10 py-8 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
                     <div>
-                        <h2 className="text-2xl font-black text-slate-900 tracking-tight italic uppercase">Identity Genesis</h2>
-                        <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-1 italic">Protocol Step {step} of 02</p>
+                        <h2 className="text-2xl font-black text-slate-900 tracking-tight italic uppercase">Business Profile</h2>
+                        <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-1 italic">Step {step} of 02</p>
                     </div>
                     <button onClick={onClose} className="w-10 h-10 flex items-center justify-center rounded-2xl bg-white border border-slate-100 hover:border-rose-200 hover:text-rose-500 transition-all text-slate-400 shadow-sm active:scale-90">
                         <X size={20} />
@@ -471,8 +470,8 @@ function KycSubmissionModal({ onClose, onSubmit }: any) {
                     ) : (
                         <div className="space-y-8">
                             <div className="text-center space-y-2">
-                                <p className="text-sm font-black text-slate-800 uppercase tracking-widest">Node Documentation</p>
-                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest italic">Upload {kycType === 'PERSONAL' ? 'Genesis Identification' : 'Certificate of Incorporation'}</p>
+                                <p className="text-sm font-black text-slate-800 uppercase tracking-widest">Business Documentation</p>
+                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest italic">Upload {kycType === 'PERSONAL' ? 'Identification' : 'Certificate'}</p>
                             </div>
 
                             <div className="relative group">
@@ -532,7 +531,7 @@ function KycSubmissionModal({ onClose, onSubmit }: any) {
                                 <div className="absolute top-0 right-0 w-24 h-24 bg-white/5 blur-3xl rounded-full" />
                                 <ShieldCheck size={24} className="text-[#27954D] relative z-10" />
                                 <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.1em] leading-relaxed relative z-10">
-                                    Encrypted end-to-end. AI will analyze this document for authenticity before final protocol commit.
+                                    Encrypted end-to-end. AI will analyze this document for authenticity before final submission.
                                 </p>
                             </div>
                         </div>

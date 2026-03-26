@@ -145,7 +145,11 @@ export default function PlatformAgreementPage() {
             {/* Minimal Header */}
             <header className="h-20 bg-white border-b border-slate-100 px-8 flex items-center justify-between sticky top-0 z-50">
                 <div className="flex items-center gap-3">
-                    <Logo size={24} brandName="GRAFTY" />
+                    <Logo 
+                        size={24} 
+                        brandName={reseller?.brand_name || "GRAFTY"} 
+                        logoUrl={reseller?.logo_url} 
+                    />
                     <div className="h-6 w-px bg-slate-100 mx-2" />
                     <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Platform Onboarding Protocol</span>
                 </div>
@@ -172,7 +176,7 @@ export default function PlatformAgreementPage() {
                     {step === 1 && (
                         <div className="p-10 lg:p-16">
                             <div className="mb-10 text-center">
-                                <h1 className="text-4xl font-black text-slate-900 italic tracking-tighter uppercase mb-4">Grafty Platform Partner Agreement</h1>
+                                <h1 className="text-4xl font-black text-slate-900 italic tracking-tighter uppercase mb-4">{reseller?.brand_name || "Grafty"} Platform Partner Agreement</h1>
                                 <p className="text-slate-500 font-medium">Please review the setup fees and operational protocols before signing.</p>
                             </div>
 
@@ -439,7 +443,7 @@ function AgreementContent() {
         <div className="space-y-6">
             <section>
                 <h3 className="font-black text-slate-900 uppercase mb-2">1. PLATFORM SCOPE & LICENSE</h3>
-                <p>Grafty Grant provides the Platform Partner a non-exclusive, non-transferable license to utilize the White-label Interactive Commerce Engine. This includes the deployment of sub-vendor dashboards, automated billing pipelines, and custom DNS tunneling protocols.</p>
+                <p>{reseller?.brand_name || "Grafty"} Grant provides the Platform Partner a non-exclusive, non-transferable license to utilize the White-label Interactive Commerce Engine. This includes the deployment of sub-vendor dashboards, automated billing pipelines, and custom DNS tunneling protocols.</p>
             </section>
             <section>
                 <h3 className="font-black text-slate-900 uppercase mb-2">2. MASTER ESCROW SYSTEM (W2R LOGIC)</h3>

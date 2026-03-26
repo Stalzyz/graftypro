@@ -193,16 +193,28 @@ function SharedInboxContent() {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const searchInputRef = useRef<HTMLInputElement>(null);
 
-    const scrollToBottom = () => {
+    const scrollToBottom = (force = false) => {
         if (messagesContainerRef.current) {
-            messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+            const el = messagesContainerRef.current;
+            // 150px threshold allows a little leeway while reading to still auto-scroll
+            const isNearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 150;
+            if (force || isNearBottom) {
+                el.scrollTop = el.scrollHeight;
+            }
         }
     };
 
+    // Auto-scroll on new messages ONLY if already near the bottom
     useEffect(() => {
-        const timer = setTimeout(scrollToBottom, 100);
+        const timer = setTimeout(() => scrollToBottom(false), 100);
         return () => clearTimeout(timer);
-    }, [messages, selectedId]);
+    }, [messages]);
+
+    // Force scroll when opening a completely new conversation
+    useEffect(() => {
+        const timer = setTimeout(() => scrollToBottom(true), 100);
+        return () => clearTimeout(timer);
+    }, [selectedId]);
 
     useEffect(() => {
         fetchConversations();
@@ -920,6 +932,31 @@ function SharedInboxContent() {
                                                                     <img src={proxyMediaLink(link)} onClick={() => setZoomedImage(proxyMediaLink(link))} className="w-full h-auto max-h-80 object-cover cursor-zoom-in hover:opacity-90 transition-opacity" alt="Media" onError={(e) => { (e.target as HTMLImageElement).src = `https://placehold.co/400x300/f8fafc/64748b?text=Media+Not+Found` }} />
                                                                     <div className="absolute top-1 left-1 bg-black/50 text-white text-[7px] font-bold px-1 rounded uppercase tracking-tighter shadow-sm">{contentType}</div>
                                                                 </div>
+                                                            )}
+
+                                                            {contentType === 'VIDEO' && link && (
+                                                                <div className="mb-2 -mx-4 -mt-3 overflow-hidden bg-black relative group/media rounded-t-2xl">
+                                                                    <video src={proxyMediaLink(link)} controls className="w-full h-auto max-h-80 object-contain" />
+                                                                    <div className="absolute top-1 left-1 bg-black/50 text-white text-[7px] font-bold px-1 rounded uppercase tracking-tighter shadow-sm">VIDEO</div>
+                                                                </div>
+                                                            )}
+
+                                                            {contentType === 'AUDIO' && link && (
+                                                                <div className="mb-2 p-2 bg-slate-50/10 rounded-xl relative">
+                                                                    <audio src={proxyMediaLink(link)} controls className="w-full h-10" />
+                                                                </div>
+                                                            )}
+
+                                                            {contentType === 'DOCUMENT' && link && (
+                                                                <a href={proxyMediaLink(link)} target="_blank" rel="noreferrer" className={`mb-2 p-3 flex items-center gap-3 rounded-xl border transition-colors group/doc relative overflow-hidden ${isOutbound ? 'bg-black/10 border-white/20 hover:bg-black/20 text-white' : 'bg-slate-50 hover:bg-indigo-50 border-slate-200'}`}>
+                                                                    <div className={`p-2 rounded-lg shadow-sm transition-colors ${isOutbound ? 'bg-white/20' : 'bg-white group-hover/doc:text-indigo-600'}`}>
+                                                                        <FileText size={20} />
+                                                                    </div>
+                                                                    <div className="flex-1 min-w-0">
+                                                                        <div className="text-[12px] font-black tracking-tight truncate">{content.filename || content.document?.filename || "Document"}</div>
+                                                                        <div className={`text-[10px] font-bold uppercase tracking-tighter mt-0.5 transition-colors ${isOutbound ? 'text-white/60' : 'text-slate-400 group-hover/doc:text-indigo-400'}`}>Click to download</div>
+                                                                    </div>
+                                                                </a>
                                                             )}
 
                                                             {contentType === 'CAROUSEL' && (

@@ -119,7 +119,7 @@ export default function FinanceDashboard() {
                         <FileText size={20} />
                     </button>
 
-                    <Link href="/super-admin/billing" className="px-6 py-4 bg-amber-500 border border-amber-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] flex items-center gap-2 hover:bg-amber-600 transition-all shadow-lg">
+                    <Link href="/super-admin/dashboard/packages" className="px-6 py-4 bg-amber-500 border border-amber-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] flex items-center gap-2 hover:bg-amber-600 transition-all shadow-lg">
                         <CreditCard size={14} /> Subscription Plans
                     </Link>
                     

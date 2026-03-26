@@ -49,7 +49,10 @@ export async function POST(req: Request) {
             waba.phone_number_id,
             token,
             order.contact.phone,
-            message
+            message,
+            order.store.workspace_id,
+            "UTILITY",
+            "Commerce Recovery Message"
         );
 
         // 3. Mark as recover sent (optional: could add a field to CommerceOrder)

@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { ImageUploadService, UploadModule } from "../../../../lib/services/upload";
-import { getCurrentUser } from "../../../../lib/auth";
 
 export const dynamic = 'force-dynamic';
 
@@ -8,82 +7,154 @@ export async function GET() {
     return NextResponse.json({ message: "Upload endpoint ready. Use POST to upload files." });
 }
 
+/**
+ * UNIVERSAL UPLOAD ENDPOINT
+ * 
+ * Supports ALL user types: Vendors, Partners/Resellers, Super Admins.
+ * Auth priority: 
+ *   1. x-user-id header (injected by middleware for vendors)
+ *   2. admin_token cookie (Super Admin)
+ *   3. partner_token cookie (Reseller/Partner)
+ *   4. token cookie (Vendor — fallback if middleware didn't inject header)
+ */
 export async function POST(req: Request) {
     let stage = "AUTH_INIT";
     try {
-        const headersObj = Object.fromEntries(req.headers.entries());
-        console.log(`[API Upload] Start POST request. Headers:`, {
-            "x-user-id": headersObj["x-user-id"],
-            "x-workspace-id": headersObj["x-workspace-id"],
-            "content-type": headersObj["content-type"]
-        });
-
-        // 1. Auth Guard
         stage = "AUTH_CHECK";
-        const user = await getCurrentUser(req);
-        if (!user) {
-            console.error(`[API Upload] Unauthorized access attempt - No user found in request context`);
-            return NextResponse.json({ error: "Unauthorized. Please log in again." }, { status: 401 });
-        }
-        console.log(`[API Upload] User context established: User=${user.userId}, Workspace=${user.workspaceId}`);
 
-        // 2. Body Parsing
+        let userId = "";
+        let workspaceId = "";
+
+        // ── Path 1: Middleware-injected headers (most common — vendors) ──
+        const headerUserId = req.headers.get("x-user-id");
+        const headerWorkspaceId = req.headers.get("x-workspace-id");
+        if (headerUserId && headerWorkspaceId) {
+            userId = headerUserId;
+            workspaceId = headerWorkspaceId;
+        }
+
+        // ── Path 2: Direct cookie auth (Super Admin, Partner, Vendor fallback) ──
+        if (!userId) {
+            const { cookies } = await import("next/headers");
+            const cookieStore = cookies();
+
+            // Try admin_token (Super Admin)
+            const adminToken = cookieStore.get("admin_token")?.value;
+            console.log(`[Upload-Auth] Checking admin_token: ${adminToken ? "Present" : "Missing"}`);
+            if (adminToken) {
+                const { verifyAdminToken } = await import("../../../../lib/admin-auth");
+                const adminPayload = await verifyAdminToken(adminToken);
+                console.log(`[Upload-Auth] admin_token verify: ${adminPayload ? "SUCCESS (" + adminPayload.role + ")" : "FAIL"}`);
+                if (adminPayload) {
+                    userId = adminPayload.id;
+                    workspaceId = "admin_root";
+                }
+            }
+
+            // Try partner_token (Reseller/Partner)
+            if (!userId) {
+                const partnerToken = cookieStore.get("partner_token")?.value;
+                console.log(`[Upload-Auth] Checking partner_token: ${partnerToken ? "Present" : "Missing"}`);
+                if (partnerToken) {
+                    const { verifyToken } = await import("../../../../lib/auth");
+                    const payload = await verifyToken(partnerToken);
+                    console.log(`[Upload-Auth] partner_token verify: ${payload ? "SUCCESS" : "FAIL"}`);
+                    if (payload?.userId) {
+                        userId = payload.userId;
+                        workspaceId = "partner_root";
+                    }
+                }
+            }
+
+            // Try vendor token cookie
+            if (!userId) {
+                const vendorToken = cookieStore.get("token")?.value;
+                console.log(`[Upload-Auth] Checking vendor token: ${vendorToken ? "Present" : "Missing"}`);
+                if (vendorToken) {
+                    const { verifyToken } = await import("../../../../lib/auth");
+                    const payload = await verifyToken(vendorToken);
+                    console.log(`[Upload-Auth] vendor token verify: ${payload ? "SUCCESS" : "FAIL"}`);
+                    if (payload?.userId) {
+                        userId = payload.userId;
+                        workspaceId = payload.workspaceId;
+                    }
+                }
+            }
+
+            // Try Authorization header (Bearer token)
+            if (!userId) {
+                const authHeader = req.headers.get("Authorization");
+                const token = authHeader?.startsWith("Bearer ") ? authHeader.split(" ")[1] : null;
+                if (token) {
+                    const { verifyToken } = await import("../../../../lib/auth");
+                    const payload = await verifyToken(token);
+                    if (payload?.userId) {
+                        userId = payload.userId;
+                        workspaceId = payload.workspaceId;
+                    }
+                }
+            }
+        }
+
+        // Final auth gate
+        if (!userId) {
+            return NextResponse.json(
+                { error: "Unauthorized. Please log in and try again." },
+                { status: 401 }
+            );
+        }
+
+        console.log(`[Upload] Authenticated user: ${userId}, workspace: ${workspaceId}`);
+
+        // ── Parse Form Data ──
         stage = "BODY_PARSING";
         let formData: FormData;
         try {
             formData = await req.formData();
         } catch (e: any) {
-            console.error(`[API Upload] FormData parsing failed at stage ${stage}:`, e);
-            return NextResponse.json({
-                error: "Failed to parse form data. The request might be malformed or too large.",
-                details: e.message
-            }, { status: 400 });
+            return NextResponse.json(
+                { error: "Failed to parse form data. File may be too large." },
+                { status: 400 }
+            );
         }
 
         const file = formData.get("file");
         const module = (formData.get("module") as UploadModule) || "general";
 
-        // Hybrid check for File objects (instanceof can sometimes fail in certain Node environments)
-        const isFile = file && typeof (file as any).arrayBuffer === 'function' && typeof (file as any).name === 'string';
+        const isFile =
+            file &&
+            typeof (file as any).arrayBuffer === "function" &&
+            typeof (file as any).name === "string";
 
         if (!isFile) {
-            console.error(`[API Upload] Validation failed: Field 'file' is missing or not a valid File object. Received:`, typeof file);
-            return NextResponse.json({ error: "No valid file provided in the 'file' field" }, { status: 400 });
+            return NextResponse.json(
+                { error: "No valid file provided in the 'file' field." },
+                { status: 400 }
+            );
         }
 
-        const validFile = file as File;
-        console.log(`[API Upload] Processing file: ${validFile.name}, Size: ${validFile.size}, Module: ${module}`);
-
-        // 3. Service-Layer Upload
+        // ── Upload ──
         stage = "SERVICE_UPLOAD";
-        try {
-            const result = await ImageUploadService.uploadImage(validFile, {
-                module: module,
-                tenantId: user.workspaceId,
-                maxSize: 50 * 1024 * 1024
-            });
+        const result = await ImageUploadService.uploadImage(file as File, {
+            module,
+            tenantId: workspaceId,
+            maxSize: 50 * 1024 * 1024,
+        });
 
-            return NextResponse.json({
-                success: true,
-                url: result.url,
-                filename: result.filename,
-                originalName: result.originalName,
-                mime: result.mimeType,
-                size: result.size
-            });
-
-        } catch (error: any) {
-            console.error(`[API Upload] Service layer error (stage: ${stage}):`, error.message);
-            return NextResponse.json({ error: error.message }, { status: 422 });
-        }
+        return NextResponse.json({
+            success: true,
+            url: result.url,
+            filename: result.filename,
+            originalName: result.originalName,
+            mime: result.mimeType,
+            size: result.size,
+        });
 
     } catch (error: any) {
-        console.error(`[API Upload] CRITICAL EXCEPTION at stage ${stage}:`, error);
-        return NextResponse.json({
-            error: "Internal Server Error during upload processing",
-            stage: stage,
-            message: error.message,
-            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
-        }, { status: 500 });
+        console.error(`[Upload] CRITICAL ERROR at stage ${stage}:`, error);
+        return NextResponse.json(
+            { error: "Internal Server Error during upload.", message: error.message },
+            { status: 500 }
+        );
     }
 }

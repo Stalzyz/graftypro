@@ -1,8 +1,11 @@
 import { MetadataRoute } from 'next';
+import { headers } from 'next/headers';
 import { SystemConfigService } from '../lib/services/system-config-service';
 
 export default async function robots(): Promise<MetadataRoute.Robots> {
-  let sitemapUrl = 'https://grafty.pro/sitemap.xml';
+  const headerList = headers();
+  const host = headerList.get("x-request-host") || headerList.get("host") || "";
+  let sitemapUrl = host ? `https://${host}/sitemap.xml` : 'https://grafty.pro/sitemap.xml';
   
   try {
     const config = await SystemConfigService.getConfig() as any;

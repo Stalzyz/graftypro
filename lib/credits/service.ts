@@ -507,57 +507,27 @@ export class CreditService {
     }
 
     /**
-     * Legacy deductCredits for backward compatibility
+     * Legacy deductCredits - now aliased to deductCreditsAtomic for safety.
+     * In production, we MUST never use unlocked deductions.
      */
     static async deductCredits(tx: any, workspaceId: string, amount: number, messageId: string, description: string) {
-        // Get wallet with row lock
-        const wallet = await tx.vendorWallet.findUnique({
-            where: { workspace_id: workspaceId }
-        });
-
-        if (!wallet || Number(wallet.current_balance) < amount) {
-            throw new Error("Insufficient credit balance");
+        // Redirection to the atomic version to ensure security. 
+        // Note: 'tx' is ignored because deductCreditsAtomic manages its own transaction internally with serializable isolation.
+        const result = await this.deductCreditsAtomic(
+            workspaceId, 
+            amount, 
+            messageId, 
+            null, 
+            'SERVICE', 
+            'IN', 
+            description
+        );
+        
+        if (!result.success) {
+            throw new Error(`Deduction failed: ${result.error}`);
         }
-
-        if (wallet.is_frozen) {
-            throw new Error(`Wallet is frozen: ${wallet.freeze_reason || "Review required"}`);
-        }
-
-        const balanceBefore = Number(wallet.current_balance);
-        const balanceAfter = balanceBefore - amount;
-
-        // Update Wallet
-        await tx.vendorWallet.update({
-            where: { id: wallet.id },
-            data: {
-                current_balance: { decrement: amount },
-                total_used: { increment: amount }
-            }
-        });
-
-        // Create Ledger Entry
-        await tx.creditTransaction.create({
-            data: {
-                workspace_id: workspaceId,
-                wallet_id: wallet.id,
-                type: 'DEDUCTION',
-                amount: -amount,
-                balance_before: balanceBefore,
-                balance_after: balanceAfter,
-                related_message_id: messageId,
-                description: description
-            }
-        });
-
-        // Reseller Hook
-        try {
-            const { ResellerService } = require("@/lib/reseller/service");
-            await ResellerService.processUsageCommission(tx, workspaceId, amount, messageId);
-        } catch (hookError) {
-            console.error("Reseller Usage Hook Error:", hookError);
-        }
-
-        return { balanceAfter };
+        
+        return { balanceAfter: result.balance_after };
     }
 
     /**

@@ -1,10 +1,13 @@
 import { MetadataRoute } from 'next';
+import { headers } from 'next/headers';
 import { SOLUTIONS_DATA } from './solutions/solutions-data';
 import { COMPARISON_DATA } from './compare/comparison-data';
 import { ACADEMY_ARTICLES } from './academy/academy-data';
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = 'https://grafty.pro';
+  const headerList = headers();
+  const host = headerList.get("x-request-host") || headerList.get("host") || "grafty.pro";
+  const baseUrl = `https://${host}`;
 
   // Core Pages
   const routes = [

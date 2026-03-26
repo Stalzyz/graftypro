@@ -4,8 +4,10 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Mail, Lock, ArrowRight, Loader2, AlertCircle } from 'lucide-react';
 import { Logo } from "../../../components/ui/Logo";
+import { useBranding } from "../../../hooks/use-branding";
 
 export default function PartnerLoginPage() {
+    const { branding } = useBranding();
     const router = useRouter();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -39,12 +41,22 @@ export default function PartnerLoginPage() {
         <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
             <div className="w-full max-w-md space-y-8">
                 {/* Logo */}
-                <div className="flex flex-col items-center">
-                    <div className="mb-6">
-                        <Logo size={50} brandName="Grafty" />
+                <div className="flex flex-col items-center gap-4">
+                    <Logo
+                        size={64}
+                        showText={false}
+                        brandName={branding?.brand_name || branding?.name || "P"}
+                        logoUrl={branding?.logo_url}
+                        href="/"
+                    />
+                    <div className="text-center">
+                        <h1 className="text-3xl font-black text-slate-900 tracking-tighter leading-none uppercase italic">
+                            Partner Access<span className="text-[#27954D]">.</span>
+                        </h1>
+                        <p className="text-slate-400 font-bold text-sm tracking-tight italic mt-2">
+                            Sign in to your partner dashboard
+                        </p>
                     </div>
-                    <h1 className="text-3xl font-black tracking-tighter text-slate-900 uppercase">Partner Access</h1>
-                    <p className="text-slate-400 font-bold text-[10px] uppercase tracking-[0.2em] mt-2">Partner Network Infrastructure</p>
                 </div>
 
                 {/* Card */}
@@ -89,7 +101,7 @@ export default function PartnerLoginPage() {
                             type="submit" disabled={loading}
                             className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-[#27954D] transition-all shadow-lg active:scale-95 disabled:opacity-50"
                         >
-                            {loading ? <Loader2 size={18} className="animate-spin" /> : <>Enter Console <ArrowRight size={18} /></>}
+                            {loading ? <Loader2 size={18} className="animate-spin" /> : <>Sign In <ArrowRight size={18} /></>}
                         </button>
                     </form>
                 </div>

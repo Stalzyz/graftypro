@@ -145,6 +145,29 @@ export default function UserProfilePage() {
                             <PenSquare size={14} /> Identity Details
                         </h3>
 
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">First Name</label>
+                                <input
+                                    type="text"
+                                    value={profile.first_name || ""}
+                                    onChange={e => setProfile({ ...profile, first_name: e.target.value })}
+                                    className="w-full bg-slate-50 border-transparent focus:bg-white focus:border-slate-200 rounded-2xl px-5 py-3.5 text-sm font-bold text-slate-800 outline-none transition-all shadow-inner"
+                                    placeholder="Enter your first name"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Last Name</label>
+                                <input
+                                    type="text"
+                                    value={profile.last_name || ""}
+                                    onChange={e => setProfile({ ...profile, last_name: e.target.value })}
+                                    className="w-full bg-slate-50 border-transparent focus:bg-white focus:border-slate-200 rounded-2xl px-5 py-3.5 text-sm font-bold text-slate-800 outline-none transition-all shadow-inner"
+                                    placeholder="Enter your last name"
+                                />
+                            </div>
+                        </div>
+
                         <div className="space-y-2">
                             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Company / Brand Name</label>
                             <input

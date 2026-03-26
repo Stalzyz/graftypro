@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2, Eye, EyeOff, Check, ArrowRight, Star } from "lucide-react";
 import { Logo } from "../../../components/ui/Logo";
 import { useBranding } from "../../../hooks/use-branding";
@@ -10,6 +10,8 @@ import { useBranding } from "../../../hooks/use-branding";
 export default function RegisterPage() {
     const { branding } = useBranding();
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const refCode = searchParams.get("ref") || ""; // Referral code from partner link
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const [success, setSuccess] = useState(false);
@@ -53,7 +55,8 @@ export default function RegisterPage() {
                     confirmPassword: formData.password,
                     mobile: formData.mobile,
                     businessName: formData.team || "My Organization",
-                    location: "India"
+                    location: "India",
+                    referral: refCode || formData.referral || undefined, // Pass ?ref= from URL
                 })
             });
 
@@ -69,7 +72,7 @@ export default function RegisterPage() {
                         email: formData.email,
                         phone: formData.mobile,
                         customData: {
-                            content_name: 'Grafty User Signup',
+                            content_name: 'User Signup',
                             status: 'success'
                         }
                     })
@@ -114,12 +117,15 @@ export default function RegisterPage() {
                     <div className="flex items-center gap-3 mb-10">
                         <Logo 
                             variant="light" 
-                            size={40} 
-                            showText={true} 
-                            brandName={branding?.brand_name || branding?.name || "Grafty"} 
+                            size={64} 
+                            showText={false}
+                            brandName={branding?.brand_name || branding?.name || "P"} 
                             logoUrl={branding?.logo_url}
                             href="/" 
                         />
+                        <span className="text-white font-black text-2xl tracking-tight">
+                            {branding?.brand_name || branding?.name || ""}
+                        </span>
                     </div>
                     <h1 className="text-4xl xl:text-5xl font-extrabold leading-[1.15] tracking-tight mb-8">
                         Turn conversations <br /> into <span className="text-[#4ade80]">revenue</span>.
@@ -141,7 +147,7 @@ export default function RegisterPage() {
                         {[1, 2, 3, 4, 5].map(i => <Star key={i} size={16} fill="currentColor" />)}
                     </div>
                     <p className="text-slate-200 text-xl leading-relaxed font-medium mb-4">
-                        "Grafty transformed how we handle customer queries. Response times dropped by 80% and sales doubled in just one month."
+                        &ldquo;{branding?.brand_name || branding?.name || "This platform"} transformed how we handle customer queries. Response times dropped by 80% and sales doubled in just one month.&rdquo;
                     </p>
                     <div className="flex items-center gap-4">
                         <div className="w-10 h-10 rounded-full bg-indigo-500 flex items-center justify-center font-bold text-white">SK</div>
@@ -156,20 +162,23 @@ export default function RegisterPage() {
             {/* RIGHT SIDE */}
             <div className="w-full lg:w-1/2 flex flex-col justify-center overflow-y-auto h-screen bg-[#FAFAFA]">
                 {/* Mobile Logo */}
-                <div className="lg:hidden p-6 pb-0">
+                <div className="lg:hidden p-6 pb-0 flex items-center gap-3">
                     <Logo 
-                        size={40} 
-                        showText={true} 
-                        brandName={branding?.brand_name || branding?.name || "Grafty"} 
+                        size={52} 
+                        showText={false}
+                        brandName={branding?.brand_name || branding?.name || "P"} 
                         logoUrl={branding?.logo_url}
                         href="/" 
                     />
+                    <span className="text-slate-900 font-black text-xl tracking-tight">
+                        {branding?.brand_name || branding?.name || ""}
+                    </span>
                 </div>
 
                 <div className="w-full max-w-[520px] mx-auto p-6 sm:p-10 lg:p-12 my-auto">
                     <div className="mb-10 text-center lg:text-left">
                         <h2 className="text-3xl font-bold text-slate-900 mb-2">Create your free account</h2>
-                        <p className="text-slate-500 text-base">Get started with your {branding?.brand_name || branding?.name || "Grafty"} trial.</p>
+                        <p className="text-slate-500 text-base">Get started with {branding?.brand_name || branding?.name || "your platform"} today.</p>
                     </div>
 
                     <div className="grid grid-cols-1 gap-4 mb-8">

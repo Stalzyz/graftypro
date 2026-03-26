@@ -20,10 +20,11 @@ interface PlanDetail {
     crm_access: boolean;
     flow_builder_access: boolean;
     drip_campaign_access: boolean;
+    original_monthly_price?: number;
 }
 
 export default function BillingPage() {
-    const [currentPlan, setCurrentPlan] = useState<string>("LITE");
+    const [currentPlan, setCurrentPlan] = useState<string>("STARTER");
     const [availablePlans, setAvailablePlans] = useState<PlanDetail[]>([]);
     const [loading, setLoading] = useState(true);
     const [upgrading, setUpgrading] = useState(false);
@@ -74,8 +75,21 @@ export default function BillingPage() {
                 return;
             }
 
+            // Diagnostic: If key is missing, fetch it from system (or use a sensible fallback)
+            let rzpKey = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
+            if (!rzpKey) {
+                // Try fetching from public config if not in env
+                const configRes = await fetch("/api/super-admin/finance/payment/public-key");
+                const configData = await configRes.json();
+                rzpKey = configData.key_id;
+            }
+
+            if (!rzpKey) {
+                throw new Error("Payment Gateway not configured. Please contact support.");
+            }
+
             const options = {
-                "key": process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+                "key": rzpKey,
                 "subscription_id": data.subscriptionId,
                 "name": "Grafty",
                 "description": `Upgrade to ${planName}`,
@@ -158,11 +172,11 @@ export default function BillingPage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                {/* Fallback to PRIME STARTER if no plans exist or during load failures */}
+                {/* Fallback to STARTER if no plans exist or during load failures */}
                 {availablePlans.length === 0 && (
-                    <div className="relative flex flex-col rounded-3xl border-2 p-8 transition-all duration-300 border-slate-100 bg-white">
+                    <div className="relative flex flex-col rounded-3xl border-2 p-8 transition-all duration-300 border-slate-100 bg-white shadow-lg">
                         <div className="mb-6">
-                            <p className="text-[10px] font-black uppercase tracking-[4px] text-slate-500 mb-4">LITE</p>
+                            <p className="text-[10px] font-black uppercase tracking-[4px] text-slate-500 mb-4">STARTER</p>
                             <div className="flex items-baseline gap-1 mb-2">
                                 <span className="text-2xl font-bold text-slate-900">₹</span>
                                 <span className="text-5xl font-black tracking-tighter text-slate-900 leading-none">999</span>
@@ -174,10 +188,10 @@ export default function BillingPage() {
                         <ul className="space-y-3 mb-10 flex-grow pt-4">
                             <li className="flex gap-3 items-start text-sm font-semibold text-slate-700 leading-tight">
                                 <div className="w-5 h-5 rounded-full bg-[#27954D]/10 flex items-center justify-center flex-shrink-0 mt-0.5"><Check size={12} className="text-[#27954D]" strokeWidth={3} /></div>
-                                <span>1,000 Contacts</span>
+                                <span>2,000 Contacts</span>
                             </li>
                         </ul>
-                        <button disabled className="mt-auto w-full bg-slate-50 text-slate-300 font-black py-4 rounded-2xl uppercase tracking-widest text-xs cursor-not-allowed border border-slate-100">
+                        <button disabled className="mt-auto w-full bg-[#27954D]/10 text-[#27954D] font-black py-4 rounded-2xl uppercase tracking-widest text-xs border border-[#27954D]/20">
                             Current Infrastructure
                         </button>
                     </div>
@@ -208,21 +222,33 @@ export default function BillingPage() {
                                 <p className="text-[10px] font-black uppercase tracking-[4px] text-slate-500 mb-4">
                                     {plan.name.split('(')[0].trim()}
                                 </p>
+
+                                {/* MSRP / Strike Price */}
+                                {plan.original_monthly_price && Number(plan.original_monthly_price) > Number(plan.price) && (
+                                    <div className="mb-1">
+                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">MSRP:</span>
+                                        <span className="text-sm text-slate-400 line-through font-bold ml-1">
+                                            ₹{Number(plan.original_monthly_price).toLocaleString("en-IN")}/mo
+                                        </span>
+                                    </div>
+                                )}
+
                                 <div className="flex items-baseline gap-1 mb-2">
                                     <span className="text-2xl font-bold text-slate-900">₹</span>
                                     <span className="text-5xl font-black tracking-tighter text-slate-900 leading-none">
                                         {Number(plan.price).toLocaleString("en-IN")}
                                     </span>
-                                    <span className="text-slate-400 font-bold uppercase text-[10px] tracking-widest">/{plan.billing_cycle === 'MONTHLY' ? 'mo' : 'yr'}</span>
+                                    <span className="text-slate-400 font-bold uppercase text-[10px] tracking-widest">/{plan.billing_cycle === 'YEARLY' ? 'yr' : 'mo'}</span>
                                 </div>
 
-                                <p className="text-[11px] font-bold text-slate-400 mb-4">+ Additional charges apply for messages</p>
-                                
-                                {(plan as any).original_monthly_price && Number((plan as any).original_monthly_price) > Number(plan.price) && (
-                                    <p className="text-sm text-slate-400 line-through font-medium mb-4">
-                                        ₹{Number((plan as any).original_monthly_price).toLocaleString("en-IN")}/mo
-                                    </p>
+                                {/* Savings Badge */}
+                                {plan.original_monthly_price && Number(plan.original_monthly_price) > Number(plan.price) && (
+                                    <div className="inline-flex items-center gap-1 bg-green-50 text-green-700 text-[10px] font-black px-2.5 py-1 rounded-full border border-green-100 mb-4">
+                                        You Save ₹{(Number(plan.original_monthly_price) - Number(plan.price)).toLocaleString("en-IN")}/mo
+                                    </div>
                                 )}
+
+                                <p className="text-[11px] font-bold text-slate-400 mb-4">+ Additional charges apply for messages</p>
                                 
                                 <p className="text-sm text-slate-600 font-medium h-10 line-clamp-2 mt-4 border-t border-slate-100 pt-4">
                                     {plan.description || 'Full Module Access'}
@@ -268,7 +294,7 @@ export default function BillingPage() {
                                 >
                                     {upgrading ? "Loading..." : (
                                         <>
-                                            {trialStatus?.trial_expired || trialStatus?.status === 'paid' ? "Upgrade Plan" : "Start 7-Day Trial"}
+                                            {isCurrent ? "Active Plan" : "Upgrade Plan"}
                                             <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
                                         </>
                                     )}
@@ -278,37 +304,39 @@ export default function BillingPage() {
                     );
                 })}
 
-                {/* Enterprise Custom Hook */}
-                <div className="bg-slate-900 text-white p-12 rounded-[50px] flex flex-col justify-between group overflow-hidden relative border-4 border-slate-800 shadow-2xl">
-                    <div className="absolute top-0 right-0 p-12 opacity-10 group-hover:scale-150 transition-transform duration-1000">
-                        <Shield size={120} strokeWidth={1} />
-                    </div>
-                    <div className="relative z-10">
-                        <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center mb-8">
-                            <Sparkles className="text-yellow-400 fill-yellow-400" size={24} />
+                {/* Enterprise Custom Hook (Dynamic / Contact fallback) */}
+                {!availablePlans.some(p => p.name.toUpperCase().includes("ENTERPRISE")) && (
+                    <div className="bg-slate-900 text-white p-12 rounded-[50px] flex flex-col justify-between group overflow-hidden relative border-4 border-slate-800 shadow-2xl">
+                        <div className="absolute top-0 right-0 p-12 opacity-10 group-hover:scale-150 transition-transform duration-1000">
+                            <Shield size={120} strokeWidth={1} />
                         </div>
-                        <h3 className="font-black text-3xl mb-4 tracking-tight">Enterprise Build</h3>
-                        <p className="text-slate-400 text-sm font-medium leading-relaxed mb-8">Dedicated infrastructure, custom throughput limits, and 24/7 technical escort.</p>
+                        <div className="relative z-10">
+                            <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center mb-8">
+                                <Sparkles className="text-yellow-400 fill-yellow-400" size={24} />
+                            </div>
+                            <h3 className="font-black text-3xl mb-4 tracking-tight">Enterprise Build</h3>
+                            <p className="text-slate-400 text-sm font-medium leading-relaxed mb-8">Dedicated infrastructure, custom throughput limits, and 24/7 technical escort.</p>
 
-                        <div className="space-y-4 mb-12">
-                            <div className="flex items-center gap-3 text-xs font-bold text-slate-300">
-                                <div className="w-5 h-5 rounded-full bg-white/5 flex items-center justify-center text-white"><Check size={10} /></div>
-                                Custom SLA Agreements
-                            </div>
-                            <div className="flex items-center gap-3 text-xs font-bold text-slate-300">
-                                <div className="w-5 h-5 rounded-full bg-white/5 flex items-center justify-center text-white"><Check size={10} /></div>
-                                Dedicated Node Instance
-                            </div>
-                            <div className="flex items-center gap-3 text-xs font-bold text-slate-300">
-                                <div className="w-5 h-5 rounded-full bg-white/5 flex items-center justify-center text-white"><Check size={10} /></div>
-                                On-Premise Deployment
+                            <div className="space-y-4 mb-12">
+                                <div className="flex items-center gap-3 text-xs font-bold text-slate-300">
+                                    <div className="w-5 h-5 rounded-full bg-white/5 flex items-center justify-center text-white"><Check size={10} /></div>
+                                    Custom SLA Agreements
+                                </div>
+                                <div className="flex items-center gap-3 text-xs font-bold text-slate-300">
+                                    <div className="w-5 h-5 rounded-full bg-white/5 flex items-center justify-center text-white"><Check size={10} /></div>
+                                    Dedicated Node Instance
+                                </div>
+                                <div className="flex items-center gap-3 text-xs font-bold text-slate-300">
+                                    <div className="w-5 h-5 rounded-full bg-white/5 flex items-center justify-center text-white"><Check size={10} /></div>
+                                    On-Premise Deployment
+                                </div>
                             </div>
                         </div>
+                        <button className="relative z-10 w-full bg-white text-slate-900 px-6 py-5 rounded-3xl font-black text-xs uppercase tracking-widest hover:bg-slate-100 transition-all flex items-center justify-center gap-3">
+                            Engage Sales Team <Zap size={14} className="fill-slate-900" />
+                        </button>
                     </div>
-                    <button className="relative z-10 w-full bg-white text-slate-900 px-6 py-5 rounded-3xl font-black text-xs uppercase tracking-widest hover:bg-slate-100 transition-all flex items-center justify-center gap-3">
-                        Engage Sales Team <Zap size={14} className="fill-slate-900" />
-                    </button>
-                </div>
+                )}
             </div>
 
             {/* Support Notice */}
