@@ -408,18 +408,20 @@ export default function FlowPropertiesPanel({ selectedNode, onChange, onClose, o
                 </div>
 
                 {selectedNode.type === 'start' && (
-                    <div className="pt-2">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Trigger Keyword</label>
-                        <input
-                            type="text"
-                            value={content}
-                            onChange={(e) => handleUpdate("content", e.target.value)}
-                            className="w-full border border-gray-300 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-blue-500"
-                            placeholder="e.g. MENU, HELLO, START"
-                        />
-                        <p className="text-[10px] text-gray-500 mt-1 leading-tight">
-                            The exact text a user must send to start this flow.
-                        </p>
+                    <div className="pt-2 space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Trigger Keyword (Live)</label>
+                            <input
+                                type="text"
+                                value={content}
+                                onChange={(e) => handleUpdate("content", e.target.value.toUpperCase())}
+                                className="w-full border border-gray-300 rounded-lg p-2 text-sm font-black outline-none focus:ring-2 focus:ring-blue-500 bg-blue-50/30"
+                                placeholder="e.g. MENU, START, HI"
+                            />
+                            <p className="text-[10px] text-blue-600 mt-1.5 font-medium leading-tight">
+                                💡 This is the EXACT word the customer sends to start this flow. 
+                            </p>
+                        </div>
                     </div>
                 )}
 

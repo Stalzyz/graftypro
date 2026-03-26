@@ -228,7 +228,14 @@ export async function middleware(request: NextRequest) {
         path.endsWith(".jpg") ||
         path.endsWith(".jpeg") ||
         path.endsWith(".pdf") ||
-        path.endsWith(".webp");
+        path.endsWith(".webp") ||
+        path.endsWith(".mp4") ||
+        path.endsWith(".mov") ||
+        path.endsWith(".3gp") ||
+        path.endsWith(".mp3") ||
+        path.endsWith(".ogg") ||
+        path.endsWith(".aac") ||
+        path.endsWith(".m4a");
 
     if (isPublicPath) {
         return NextResponse.next({ request: { headers: requestHeaders } });

@@ -59,8 +59,8 @@ const DEFAULT_NODES: Node[] = [
     {
         id: 'start-1',
         type: 'start',
-        position: { x: 250, y: 80 },
-        data: { label: 'HELLO', text: 'Type the keyword that starts this flow' },
+        position: { x: 250, y: 150 },
+        data: { label: 'Welcome Trigger', text: 'START' },
     },
 ];
 
@@ -321,8 +321,9 @@ export default function FlowBuilder({ initialData }: { initialData?: any }) {
 
         try {
             const startNode = nodes.find(n => n.type === 'start');
-            const keyword = startNode?.data?.label || 'HELLO';
-
+            // 🎯 FIX: Prioritize data.text (Trigger Keyword) over data.label (Internal Name)
+            const keyword = startNode?.data?.text || startNode?.data?.label || 'HELLO';
+            
             const payload = { nodes, edges, name: flowName, trigger_keyword: keyword, status };
             const url = initialData?.id ? `/api/flows/${initialData.id}` : '/api/flows';
             const method = initialData?.id ? 'PUT' : 'POST';

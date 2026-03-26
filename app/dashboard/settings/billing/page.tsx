@@ -200,12 +200,16 @@ export default function BillingPage() {
                 {availablePlans.map((plan) => {
                     const isCurrent = currentPlan === plan.name;
                     const isPopular = (plan as any).is_featured || plan.name.includes("GROWTH");
+                    const originalPrice = Number(plan.original_monthly_price || 0);
+                    const currentPrice = Number(plan.price);
+                    const savings = originalPrice > currentPrice ? originalPrice - currentPrice : 0;
 
                     return (
-                        <div key={plan.id} className={`relative flex flex-col rounded-3xl border-2 p-8 transition-all duration-300 hover:shadow-2xl ${isCurrent || isPopular ? 'border-[#27954D] bg-white ' + (isPopular ? 'ring-8 ring-[#27954D]/5 shadow-xl scale-105 z-10' : 'shadow-lg scale-[1.02]') : 'border-slate-100 bg-white'}`}>
+                        <div key={plan.id} className={`relative flex flex-col rounded-[2rem] border-2 p-8 transition-all duration-300 hover:shadow-2xl ${isCurrent || isPopular ? 'border-[#27954D] bg-white ' + (isPopular ? 'ring-8 ring-[#27954D]/5 shadow-xl scale-105 z-10' : 'shadow-lg scale-[1.02]') : 'border-slate-100 bg-white hover:border-slate-200'}`}>
                             {isPopular && !isCurrent && (
                                 <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                                    <span className="inline-flex items-center gap-1.5 bg-[#27954D] text-white text-[10px] font-black uppercase tracking-widest px-4 py-1.5 rounded-full shadow-lg">
+                                    <span className="inline-flex items-center gap-1.5 text-white text-[10px] font-black uppercase tracking-widest px-4 py-1.5 rounded-full shadow-lg"
+                                        style={{ background: "linear-gradient(135deg, #27954D 0%, #042F94 100%)" }}>
                                         <Star size={10} fill="currentColor" /> {(plan as any).badge_text || "Best Value"}
                                     </span>
                                 </div>
@@ -213,49 +217,55 @@ export default function BillingPage() {
                             {isCurrent && (
                                 <div className="absolute -top-4 left-1/2 -translate-x-1/2">
                                     <span className="inline-flex items-center gap-1.5 bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest px-4 py-1.5 rounded-full shadow-lg">
-                                        <Check size={10} /> Active Plan
+                                        <Check size={10} strokeWidth={3} /> Active Plan
                                     </span>
                                 </div>
                             )}
 
                             <div className="mb-6">
-                                <p className="text-[10px] font-black uppercase tracking-[4px] text-slate-500 mb-4">
+                                <p className="text-[10px] font-black uppercase tracking-[4px] text-slate-400 mb-5">
                                     {plan.name.split('(')[0].trim()}
                                 </p>
 
                                 {/* MSRP / Strike Price */}
-                                {plan.original_monthly_price && Number(plan.original_monthly_price) > Number(plan.price) && (
+                                {originalPrice > 0 && (
                                     <div className="mb-1">
-                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">MSRP:</span>
+                                        <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">MSRP:</span>
                                         <span className="text-sm text-slate-400 line-through font-bold ml-1">
-                                            ₹{Number(plan.original_monthly_price).toLocaleString("en-IN")}/mo
+                                            ₹{originalPrice.toLocaleString("en-IN")}/mo
                                         </span>
                                     </div>
+                                )}
+
+                                {originalPrice > 0 && (
+                                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Selling Price</p>
                                 )}
 
                                 <div className="flex items-baseline gap-1 mb-2">
                                     <span className="text-2xl font-bold text-slate-900">₹</span>
                                     <span className="text-5xl font-black tracking-tighter text-slate-900 leading-none">
-                                        {Number(plan.price).toLocaleString("en-IN")}
+                                        {currentPrice.toLocaleString("en-IN")}
                                     </span>
                                     <span className="text-slate-400 font-bold uppercase text-[10px] tracking-widest">/{plan.billing_cycle === 'YEARLY' ? 'yr' : 'mo'}</span>
                                 </div>
 
                                 {/* Savings Badge */}
-                                {plan.original_monthly_price && Number(plan.original_monthly_price) > Number(plan.price) && (
-                                    <div className="inline-flex items-center gap-1 bg-green-50 text-green-700 text-[10px] font-black px-2.5 py-1 rounded-full border border-green-100 mb-4">
-                                        You Save ₹{(Number(plan.original_monthly_price) - Number(plan.price)).toLocaleString("en-IN")}/mo
+                                {savings > 0 && (
+                                    <div className="inline-flex items-center gap-1 bg-green-50 text-green-700 text-[10px] font-black px-2.5 py-1 rounded-full border border-green-100 mb-4 w-fit">
+                                        You Save ₹{savings.toLocaleString("en-IN")}/mo
                                     </div>
                                 )}
 
-                                <p className="text-[11px] font-bold text-slate-400 mb-4">+ Additional charges apply for messages</p>
+                                <p className="text-[11px] font-semibold text-slate-400 mb-5">
+                                    + Additional charges apply for messages
+                                </p>
                                 
-                                <p className="text-sm text-slate-600 font-medium h-10 line-clamp-2 mt-4 border-t border-slate-100 pt-4">
+                                <p className="text-sm text-slate-600 font-medium h-10 line-clamp-2 mt-4 border-t border-slate-100 pt-5">
                                     {plan.description || 'Full Module Access'}
                                 </p>
                             </div>
 
-                            <ul className="space-y-3 mb-10 flex-grow pt-4">
+                            <ul className="space-y-4 mb-10 flex-grow pt-4">
                                 <li className="flex gap-3 items-start text-sm font-semibold text-slate-700 leading-tight">
                                     <div className="w-5 h-5 rounded-full bg-[#27954D]/10 flex items-center justify-center flex-shrink-0 mt-0.5"><Check size={12} className="text-[#27954D]" strokeWidth={3} /></div>
                                     <span>{plan.max_contacts.toLocaleString()} Contacts</span>
@@ -283,18 +293,19 @@ export default function BillingPage() {
                             </ul>
 
                             {isCurrent ? (
-                                <button disabled className="mt-auto w-full bg-[#27954D]/10 text-[#27954D] py-4 rounded-2xl font-bold flex items-center justify-center gap-2 border border-[#27954D]/20">
-                                    <Check size={16} strokeWidth={3} /> Active Plan
-                                </button>
+                                <div className="mt-auto w-full bg-slate-900 text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg">
+                                    <Check size={16} strokeWidth={3} /> Active Node Infrastructure
+                                </div>
                             ) : (
                                 <button
                                     onClick={() => handleUpgrade(plan.name)}
                                     disabled={upgrading}
-                                    className={`mt-auto w-full flex justify-center items-center gap-2 py-4 rounded-2xl font-bold text-sm transition-all group ${isPopular ? "bg-gradient-to-r from-[#27954D] to-[#042F94] text-white shadow-lg hover:shadow-xl hover:scale-[1.02]" : "border-2 border-slate-200 text-slate-700 hover:border-[#27954D] hover:text-[#27954D] hover:bg-slate-50"}`}
+                                    className={`mt-auto w-full flex justify-center items-center gap-2 py-4 rounded-2xl font-bold text-sm transition-all group ${isPopular ? "text-white shadow-lg hover:shadow-xl hover:scale-[1.02]" : "border-2 border-slate-200 text-slate-700 hover:border-[#27954D] hover:text-[#27954D] hover:bg-slate-50"}`}
+                                    style={isPopular ? { background: "linear-gradient(135deg, #27954D 0%, #042F94 100%)" } : {}}
                                 >
-                                    {upgrading ? "Loading..." : (
+                                    {upgrading ? "Provisioning..." : (
                                         <>
-                                            {isCurrent ? "Active Plan" : "Upgrade Plan"}
+                                            Upgrade Subscription
                                             <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
                                         </>
                                     )}

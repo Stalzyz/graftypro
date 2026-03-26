@@ -7,13 +7,13 @@ services:
     environment:
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
-      POSTGRES_DB: grafty_bsp
+      POSTGRES_DB: wabot_bsp
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U user -d grafty_bsp"]
+      test: ["CMD-SHELL", "pg_isready -U user -d wabot_bsp"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -43,7 +43,7 @@ services:
     ports:
       - "3001:3000"
     environment:
-      - DATABASE_URL=postgresql://user:password@postgres:5432/grafty_bsp?schema=public
+      - DATABASE_URL=postgresql://user:password@postgres:5432/wabot_bsp?schema=public
       - REDIS_URL=redis://redis:6379
       - NODE_ENV=production
     depends_on:
@@ -60,7 +60,7 @@ services:
     env_file:
       - .env
     environment:
-      - DATABASE_URL=postgresql://user:password@postgres:5432/grafty_bsp?schema=public
+      - DATABASE_URL=postgresql://user:password@postgres:5432/wabot_bsp?schema=public
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - NODE_ENV=production
@@ -68,6 +68,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    volumes:
+      - ./public/uploads:/app/public/uploads
     networks:
       - grafty_net
 

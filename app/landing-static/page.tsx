@@ -20,7 +20,7 @@ import "../landing/new-grafty.css";
 
 const TICKER_ITEMS = [
     "🚀 Flow Builder — Build no-code WhatsApp bots",
-    "📢 Broadcast Campaigns — Send to 10K+ contacts",
+    "📢 Bulk WhatsApp Messages — Send to 10K+ contacts",
     "💬 Live Chat Inbox — Multi-agent team support",
     "🛒 E-commerce — Sell directly on WhatsApp",
     "🤖 AI Automation — Smart drip sequences",
@@ -70,12 +70,12 @@ const PRODUCT_TABS = [
     },
     {
         id: "campaign",
-        label: "Delivery Intel",
+        label: "Bulk Messages",
         icon: <TrendingUp size={16} />,
         image: "/screens/campaign.jpg",
-        title: "Smart delivery monitoring",
-        desc: "Track template performance, monitor delivery rates, detect failures before they affect your Meta account.",
-        tags: ["Delivery Rate", "Failure Detection", "Health Score", "Template Monitor"],
+        title: "Bulk WhatsApp Message Intelligence",
+        desc: "Track template performance for bulk campaigns, monitor delivery rates, and detect failures before they affect your Meta account.",
+        tags: ["Bulk Sending", "Delivery Rate", "Failure Detection", "Health Score"],
     },
 ];
 
@@ -121,10 +121,10 @@ const MODULES = [
         tags: ["Lead Flows", "No Code", "20+ Nodes", "Payments"],
     },
     {
-        title: "Broadcast Campaigns", icon: <Send size={22} className="text-blue-600" />,
-        desc: "Send targeted campaigns to segmented audiences with cost preview before sending.",
+        title: "Bulk WhatsApp Messages", icon: <Send size={22} className="text-blue-600" />,
+        desc: "Send bulk WhatsApp messages to targeted segments with high delivery rates and cost transparency.",
         bg: "bg-blue-50", border: "border-blue-100",
-        tags: ["Segments", "Cost Preview", "Delivery Tracking"],
+        tags: ["Bulk Sending", "Segments", "Cost Preview", "Analytics"],
     },
     {
         title: "Drip Sequences", icon: <Clock size={22} className="text-violet-600" />,
@@ -155,7 +155,7 @@ const MODULES = [
 const FAQS = [
     { q: "Do I need WhatsApp API to use {platformName}?", a: "Yes. {platformName} works with WhatsApp Business API. Our Academy section explains how to set it up step by step — it takes about 4 minutes." },
     { q: "How much does WhatsApp API cost?", a: "Meta charges per conversation. Costs vary by country and message type. {platformName} shows exact costs before sending so there are zero surprises. Marketing messages in India cost ~₹0.88, utility ₹0.13." },
-    { q: "Can I send bulk messages?", a: "Yes. Broadcast campaigns allow targeted bulk messaging with delivery tracking and performance analytics. You can segment by behavior, tags, or custom filters." },
+    { q: "Can I send bulk WhatsApp messages?", a: "Yes. Our platform is built for bulk WhatsApp messages. Send to 10k+ contacts with real-time delivery tracking and performance analytics. You can segment by behavior, tags, or custom filters." },
     { q: "Can I run e-commerce on WhatsApp?", a: "Yes. You can sell products, collect payments via Razorpay, manage orders, send COD confirmations, and generate GST invoices — all inside WhatsApp." },
     { q: "Is there a free trial?", a: "Yes. Sign up and explore all modules before upgrading to a paid plan. You get a perfect 7-day free trial to start." },
     { q: "What prerequisites does WhatsApp API need?", a: "Meta Business Manager account, business verification documents, a dedicated phone number, and a business email. GST registration and a business website are recommended for faster approval." },
@@ -269,11 +269,11 @@ export default function StaticLandingPage({ branding }: { branding?: any }) {
 
                     {/* Headline */}
                     <h1 className="text-5xl md:text-7xl font-black text-slate-900 leading-[1.05] tracking-tight mb-6 max-w-5xl mx-auto">
-                        Stop Losing Customers<br />
-                        to{" "}
+                        Official Bulk WhatsApp<br />
+                        Messages &{" "}
                         <span className="relative inline-block">
                             <span className="bg-gradient-to-r from-[#27954D] via-[#0EA5E9] to-[#042F94] bg-clip-text text-transparent">
-                                Slow Replies
+                                Automation
                             </span>
                             <svg className="absolute -bottom-2 left-0 w-full" viewBox="0 0 300 12" fill="none">
                                 <path d="M2 8 Q75 2 150 8 Q225 14 298 8" stroke="#27954D" strokeWidth="3" strokeLinecap="round" fill="none" opacity="0.4" />

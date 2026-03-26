@@ -1,7 +1,7 @@
 import axios from "axios";
 import { normalizePhone } from "../utils/phone";
 
-const META_API_VERSION = "v20.0";
+const META_API_VERSION = "v21.0";
 const BASE_URL = `https://graph.facebook.com/${META_API_VERSION}`;
 
 interface SendMessagePayload {
@@ -636,39 +636,55 @@ export class WhatsAppService {
      */
     static async uploadMediaFromBuffer(buffer: Buffer, contentType: string, fileName: string, phoneId: string, accessToken: string): Promise<string | null> {
         try {
-            let mediaType = 'document';
+            // WHATSAPP API SPEC: Supported values are: audio, document, image, video.
+            // Using full MIME types in this field is a common source of 131053.
+            let mediaType = 'document'; // default fallback
             if (contentType.startsWith('image/')) mediaType = 'image';
             else if (contentType.startsWith('video/')) mediaType = 'video';
             else if (contentType.startsWith('audio/')) mediaType = 'audio';
 
-            console.log(`[WA_MEDIA_SYNC] Uploading binary as ${mediaType} (${contentType}, size: ${buffer.length} bytes)...`);
+            console.log(`[WA_MEDIA_SYNC] 🚀 Binary Upload: ${fileName} | Meta-Type: ${mediaType} | Buffer-Type: ${contentType}`);
             
-            // Build the multi-part request using native Node 20 globals
             const formData = new FormData();
-            // Using Uint8Array(buffer) to satisfy most Blob implementations
-            const blob = new Blob([new Uint8Array(buffer)], { type: contentType });
-            formData.append('file', blob, fileName);
+            
+            // 🎯 CRITICAL: Meta's multipart parser is sensitive to field order.
+            // 'messaging_product' should ALWAYS be the first field.
             formData.append('messaging_product', 'whatsapp');
+            
+            const blob = new Blob([new Uint8Array(buffer)], { type: contentType });
+            // Add the file blob with the original filename
+            formData.append('file', blob, fileName);
+            
+            // Add the category type
             formData.append('type', mediaType);
 
-            const uploadUrl = `${BASE_URL}/${phoneId}/media`;
-            const response = await axios.post(uploadUrl, formData, {
+            const uploadUrl = `https://graph.facebook.com/v21.0/${phoneId}/media`;
+            const response = await fetch(uploadUrl, {
+                method: 'POST',
+                body: formData,
                 headers: {
                     'Authorization': `Bearer ${accessToken}`
-                },
-                maxContentLength: Infinity,
-                maxBodyLength: Infinity
+                }
             });
 
-            if (response.data && response.data.id) {
-                console.log(`[WA_MEDIA_SYNC] SUCCESS: media_id is ${response.data.id}`);
-                return response.data.id;
+            const data = await response.json() as any;
+
+            if (data && data.id) {
+                console.log(`[WA_MEDIA_SYNC] ✅ SUCCESS: media_id=${data.id}`);
+                return data.id as string;
             }
 
-            console.error("[WA_MEDIA_SYNC] No ID in response:", response.data);
+            // SPEC COMPLIANT LOGGING: Capture error_subcode and details
+            console.error("[WA_MEDIA_SYNC] ❌ Meta Rejection Detail:", {
+                status: response.status,
+                error: data.error?.message || "Unknown error",
+                code: data.error?.code,
+                subcode: data.error?.error_subcode,
+                details: data.error?.error_data?.details
+            });
             return null;
         } catch (error: any) {
-            console.error("[WA_MEDIA_SYNC] Upload Error:", error.response?.data || error.message);
+            console.error("[WA_MEDIA_SYNC] ❌ Meta Upload Crash:", error.message);
             return null;
         }
     }

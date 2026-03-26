@@ -61,10 +61,10 @@ export async function generateMetadata(): Promise<Metadata> {
 
     return {
         title: {
-            default: `${brandName} | Official WhatsApp Business Solution Provider (BSP)`,
-            template: `%s | ${brandName}`
+            default: `${brandName} | Official Bulk WhatsApp Messages & Automation Platform (BSP)`,
+            template: `%s | ${brandName} · Bulk WhatsApp Messages`
         },
-        description: branding ? `Whitelabel BSP workspace for ${brandName}.` : "Enterprise WhatsApp Marketing Platform. Official Meta BSP infrastructure.",
+        description: branding ? `Whitelabel Bulk WhatsApp Messaging workspace for ${brandName}.` : "Official Meta BSP Infrastructure for Bulk WhatsApp Messages & Automation. Send 10k+ messages with high delivery rates.",
         icons: {
             icon: [{ url: versionedFavicon, type: faviconType }],
             shortcut: [versionedFavicon],

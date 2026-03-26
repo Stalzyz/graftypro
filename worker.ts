@@ -4,9 +4,10 @@ import { prisma } from "@/lib/db";
 import { WhatsAppService } from "@/lib/whatsapp/service";
 import { FlowRunner } from "@/lib/engine/flow-runner";
 import { CreditService } from "@/lib/credits/service";
-import { decrypt } from "@/lib/security/encryption";
+import { decrypt, maskToken } from "@/lib/security/encryption";
 import { WhatsAppMediaDownloader } from "@/lib/whatsapp/media-downloader";
 import { normalizeMessage } from "@/lib/engine/message-normalizer";
+import { PRIORITY_HIGH, PRIORITY_LOW } from "@/lib/queue";
 
 // --- CONFIG ---
 const REDIS_CONNECTION = {
@@ -51,31 +52,87 @@ const REDIS_CONNECTION = {
 })();
 
 // ---------------------------------------------------------
-// 1. META API WORKER (Dedicated Outbound Layer)
+// 1. META API WORKER (Prioritized Outbound Layer)
 // ---------------------------------------------------------
 const metaApiWorker = new Worker(
     "meta-api-queue",
     async (job) => {
         const { type, payload } = job.data;
-        
-        if (type === "SEND_TEMPLATE") {
-            const { phoneNumberId, accessToken, to, templateName } = payload;
-            return await WhatsAppService.sendTemplate(
-                phoneNumberId,
-                accessToken,
-                to,
-                templateName
-            );
+        console.log(`[MetaAPIWorker] 📡 Processing ${type} for ${payload.to} (Priority: ${job.opts.priority || 'DEFAULT'})`);
+
+        const { phoneNumberId, accessToken, to } = payload;
+
+        try {
+            const workspaceId = payload.workspaceId;
+            const campaignId = payload.campaignId;
+            const category = type === "SEND_TEMPLATE" ? "MARKETING" : "SERVICE";
+
+            let result;
+            switch (type) {
+                case "SEND_TEMPLATE":
+                    result = await WhatsAppService.sendTemplate(
+                        phoneNumberId,
+                        accessToken,
+                        to,
+                        payload.templateName,
+                        payload.langCode || "en_US",
+                        payload.components || [],
+                        workspaceId,
+                        category
+                    );
+                    break;
+                case "SEND_TEXT":
+                    result = await WhatsAppService.sendText(
+                        phoneNumberId,
+                        accessToken,
+                        to,
+                        payload.body,
+                        workspaceId,
+                        category
+                    );
+                    break;
+                case "SEND_MEDIA":
+                    const mediaType = payload.mediaType;
+                    if (mediaType === "IMAGE") result = await WhatsAppService.sendImage(phoneNumberId, accessToken, to, payload.url, payload.caption, workspaceId, category);
+                    else if (mediaType === "VIDEO") result = await WhatsAppService.sendVideo(phoneNumberId, accessToken, to, payload.url, payload.caption, workspaceId, category);
+                    else if (mediaType === "DOCUMENT") result = await WhatsAppService.sendDocument(phoneNumberId, accessToken, to, payload.url, payload.filename, workspaceId, category);
+                    else if (mediaType === "AUDIO") result = await WhatsAppService.sendVoice(phoneNumberId, accessToken, to, payload.url, workspaceId, category);
+                    break;
+                case "SEND_INTERACTIVE":
+                case "SEND_GENERIC":
+                    // Use the generic sendMessage for complex structures (Flows, Buttons, etc.)
+                    result = await WhatsAppService.sendMessage(phoneNumberId, accessToken, payload, workspaceId, category);
+                    break;
+                case "START_FLOW":
+                    result = await FlowRunner.startFlow(workspaceId, payload.contactId, payload.flowId);
+                    break;
+                default:
+                    console.warn(`[MetaAPIWorker] Unknown job type: ${type}`);
+            }
+
+            // 📈 Real-time Progress Tracking
+            if (campaignId && result) {
+                await prisma.campaignStats.update({
+                    where: { campaign_id: campaignId },
+                    data: { sent: { increment: 1 } }
+                }).catch(e => console.error(`[MetaAPIWorker] Failed to update stats for ${campaignId}`, e.message));
+            }
+
+            return result;
+        } catch (err: any) {
+            console.error(`[MetaAPIWorker] ❌ Failed to process ${type}:`, err.response?.data || err.message);
+            throw err; // Trigger BullMQ retry
         }
     },
     { 
         connection: REDIS_CONNECTION,
-        limiter: { max: 80, duration: 1000 } // Global Throttling for Meta API
+        limiter: { max: 80, duration: 1000 }, // Global Throttling for Meta API
+        concurrency: 20
     }
 );
 
 // ---------------------------------------------------------
-// 2. CAMPAIGN WORKER (Bulk Processing)
+// 2. CAMPAIGN DISPATCHER (The Unroller)
 // ---------------------------------------------------------
 const campaignWorker = new Worker(
     "campaign-queue",
@@ -83,16 +140,21 @@ const campaignWorker = new Worker(
         const { campaignId, workspaceId, segmentId, targetStatus, course } = job.data;
         const { metaApiQueue } = await import("@/lib/queue");
 
-        console.log(`[Worker] Dispatching Campaign: ${campaignId}`);
+        console.log(`[CampaignWorker] 🚀 Unrolling Campaign: ${campaignId}`);
 
         try {
-            const campaign = await prisma.campaign.findUnique({ where: { id: campaignId } });
-            if (!campaign) return;
-
-            const waba = await prisma.whatsAppAccount.findUnique({
-                where: { workspace_id: campaign.workspace_id }
+            const campaign = await prisma.campaign.findUnique({ 
+                where: { id: campaignId },
+                include: { workspace: { include: { waba: true } } }
             });
-            if (!waba) return;
+            
+            if (!campaign || !campaign.workspace?.waba) {
+                console.error(`[CampaignWorker] Campaign or WABA not found for ID: ${campaignId}`);
+                return;
+            }
+
+            const waba = campaign.workspace.waba;
+            const decryptedToken = decrypt(waba.access_token);
 
             // Fetch Audience
             let recipients: { phone: string, name: string, id: string }[] = [];
@@ -118,10 +180,12 @@ const campaignWorker = new Worker(
                         contacts = await prisma.contact.findMany({ where: { workspace_id: workspaceId, blocked: false } });
                     }
                 } else {
-                    contacts = await prisma.contact.findMany({ where: { workspace_id: workspaceId, blocked: false } });
+                    contacts = await prisma.contact.findMany({ where: { workspace_id: workspaceId, blocked: false, opt_in: true } });
                 }
                 recipients = contacts.map(c => ({ phone: c.phone, name: c.name || "Customer", id: c.id }));
             }
+
+            console.log(`[CampaignWorker] Audience fetched. Size: ${recipients.length}`);
 
             // Update stats to PROCESSING
             await prisma.campaign.update({
@@ -134,32 +198,47 @@ const campaignWorker = new Worker(
                 }
             });
 
-            // Dispatch to Meta Queue
-            for (const person of recipients) {
-                try {
-                    if (campaign.template_name) {
-                        const countryCode = person.phone.replace(/[^0-9]/g, "").substring(0, 2) || "91";
-                        const cost = await CreditService.getMessageCost("MARKETING", countryCode, workspaceId);
-
-                        await prisma.$transaction(async (tx) => {
-                            await CreditService.deductCredits(tx, workspaceId, cost, `CAMPAIGN-${campaignId}-${person.id}-${Date.now()}`, `Bulk: ${campaign.name}`);
-                        });
-
-                        await metaApiQueue!.add("send-template", {
-                            type: "SEND_TEMPLATE",
+            // 🎯 MONSTER OPTIMIZATION: Dispatch with Bulk Add
+            const batchSize = 100;
+            for (let i = 0; i < recipients.length; i += batchSize) {
+                const batch = recipients.slice(i, i + batchSize);
+                
+                const jobs = batch.map(person => {
+                    const countryCode = person.phone.replace(/[^0-9]/g, "").substring(0, 2) || "91";
+                    
+                    // Construct individual job
+                    return {
+                        name: campaign.flow_id ? "start-flow" : "send-template",
+                        data: {
+                            type: campaign.flow_id ? "START_FLOW" : "SEND_TEMPLATE",
                             payload: {
+                                campaignId,
+                                workspaceId,
+                                contactId: person.id,
+                                flowId: campaign.flow_id,
                                 phoneNumberId: waba.phone_number_id,
-                                accessToken: decrypt(waba.access_token),
+                                accessToken: decryptedToken,
                                 to: person.phone,
-                                templateName: campaign.template_name
+                                templateName: campaign.template_name,
+                                // Variables mapping (Expert Logic)
+                                components: campaign.template_name ? [{
+                                    type: "body",
+                                    parameters: [{ type: "text", text: person.name || "Customer" }]
+                                }] : []
                             }
-                        });
-                    } else if (campaign.flow_id) {
-                        await FlowRunner.startFlow(workspaceId, person.id, campaign.flow_id);
-                    }
-                } catch (e) {
-                    console.error(`[Campaign Worker] Failed to dispatch for ${person.phone}`, e);
-                }
+                        },
+                        opts: { 
+                            priority: PRIORITY_LOW, 
+                            jobId: `CAMP-${campaignId}-${person.id}` // Deduplication per campaign
+                        }
+                    };
+                });
+
+                await metaApiQueue!.addBulk(jobs);
+                console.log(`[CampaignWorker] Dispatched batch ${i / batchSize + 1} (${batch.length} jobs)`);
+                
+                // Update progress in job
+                await job.updateProgress((i / recipients.length) * 100);
             }
 
             await prisma.campaign.update({
@@ -167,8 +246,11 @@ const campaignWorker = new Worker(
                 data: { status: "COMPLETED" }
             });
 
-        } catch (error) {
-            console.error(`[Campaign Worker] Fatal Error`, error);
+            console.log(`[CampaignWorker] ✅ Unrolling complete for Campaign: ${campaignId}`);
+
+        } catch (error: any) {
+            console.error(`[CampaignWorker] ❌ Fatal Error during unrolling:`, error.message);
+            throw error;
         }
     },
     { connection: REDIS_CONNECTION }

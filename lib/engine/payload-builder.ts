@@ -463,7 +463,7 @@ export function buildNodePayload(
 
     const contentType: string = data.contentType ||
         (mediaUrl?.match(/\.(jpg|jpeg|png|webp)/i) ? 'IMAGE' :
-            mediaUrl?.match(/\.(mp4|mov|avi)/i) ? 'VIDEO' :
+            mediaUrl?.match(/\.(mp4|mov|3gp|avi)/i) ? 'VIDEO' :
                 mediaUrl?.match(/\.(pdf|doc|docx)/i) ? 'DOCUMENT' :
                     mediaUrl?.match(/\.(ogg|opus|mp3)/i) ? 'VOICE' : 'TEXT');
 

@@ -22,6 +22,9 @@ const REDIS_CONNECTION = getRedisConfig();
 
 console.log("🔌 [Queue] Redis Config:", typeof REDIS_CONNECTION === 'string' ? REDIS_CONNECTION : JSON.stringify(REDIS_CONNECTION));
 
+export const PRIORITY_HIGH = 1; // Instant/Flows
+export const PRIORITY_LOW = 10; // Broadcasts/Marketing
+
 /**
  * Lazy Queue Initializer
  * Prevents connection attempts during Next.js build phase
@@ -35,9 +38,10 @@ const createQueue = (name: string) => {
     return new Queue(name, {
         connection: typeof REDIS_CONNECTION === 'string' ? REDIS_CONNECTION : REDIS_CONNECTION as any,
         defaultJobOptions: {
-            attempts: 3,
-            backoff: { type: "exponential", delay: 1000 },
-            removeOnComplete: true,
+            attempts: 5, // Increased for stability
+            backoff: { type: "exponential", delay: 2000 },
+            removeOnComplete: { count: 100 }, // Keep small history
+            removeOnFail: { count: 1000 }, // Keep failures for debugging
         },
     });
 };
@@ -46,3 +50,4 @@ export const campaignQueue = createQueue("campaign-queue");
 export const automationQueue = createQueue("automation-queue");
 export const dripDispatchQueue = createQueue("drip-dispatch-queue");
 export const metaApiQueue = createQueue("meta-api-queue");
+export const flowMessageQueue = createQueue("flow-message-queue");

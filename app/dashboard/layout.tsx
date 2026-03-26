@@ -193,7 +193,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 {/* Content Area */}
                 <div className="flex-1 flex flex-col lg:ml-[280px]">
                     <TrialBanner />
-                    <main className={`flex-1 ${pathname.startsWith('/dashboard/chat') ? 'p-0 h-screen w-full fixed left-0 lg:left-[280px] lg:w-[calc(100vw-280px)] top-0 z-[100] bg-white overflow-hidden' : 'p-8 lg:p-12 max-w-7xl'}`}>
+                    <main className={`flex-1 ${pathname.startsWith('/dashboard/chat') ? 'p-0 h-screen w-full fixed left-0 lg:left-[280px] lg:w-[calc(100vw-280px)] top-0 z-[100] bg-white overflow-hidden' : 'p-8 lg:p-12 max-w-[1600px]'}`}>
                         {children}
                     </main>
 

@@ -800,8 +800,17 @@ function SharedInboxContent() {
                                                     content = { body: String(rawContent) };
                                                 }
 
-                                                // Monster Media Discovery (Resilient & Aggressive)
+                                                // 🚀 MONSTER PHASE 3: Prioritize Persistent Metadata
+                                                // @ts-ignore
+                                                const persistentUrl = msg.media_url || "";
+                                                // @ts-ignore
+                                                const persistentMime = msg.mime_type || "";
+                                                // @ts-ignore
+                                                const persistentName = msg.file_name || "";
+
+                                                // Monster Media Discovery (Legacy Fallback)
                                                 const findMediaLink = (obj: any, depth = 0): string => {
+                                                    if (persistentUrl) return persistentUrl;
                                                     if (!obj || depth > 15) return "";
                                                     
                                                     // 1. Prioritize numeric media_id (Always proxy-first)
@@ -845,20 +854,16 @@ function SharedInboxContent() {
                                                     const urlMatch = str.match(/https?:\/\/[^\s"']+(\.jpg|\.jpeg|\.png|\.gif|\.webp|\.mp4|\.pdf)/i);
                                                     if (urlMatch) return urlMatch[0];
 
-                                                    // 5. String Search
-                                                    if (typeof obj === 'string') {
-                                                        let url = obj.trim();
-                                                        if (url.includes('wa_media_')) return `/api/whatsapp/media/${url.split('/').pop()}`;
-                                                        if (url.startsWith('http') || url.startsWith('/') || url.startsWith('data:image')) return url;
-                                                    }
-
                                                     return "";
                                                 };
 
-                                                const link = findMediaLink(content);
+                                                const link = persistentUrl || findMediaLink(content);
                                                 const proxyMediaLink = (url: string) => {
                                                     if (!url) return "";
                                                     
+                                                    // Handle persistent local paths (e.g., /uploads/...)
+                                                    if (url.startsWith('/uploads/')) return url;
+
                                                     // Handle wa_media_ filenames directly via proxy
                                                     if (url.includes('wa_media_')) {
                                                         const filename = url.split('/').pop();
@@ -876,19 +881,19 @@ function SharedInboxContent() {
                                                     }
                                                     return url;
                                                 };
-                                                if (process.env.NODE_ENV === 'development') {
-                                                    console.log(`[MSG ${msg.id}] type=${type} link=${link}`, content);
-                                                }
-                                                const isImage = (url: string) => /\.(jpg|jpeg|png|gif|webp|heic|avif|bmp|tiff)(\?.*)?$/i.test(url) || url.includes('fbcdn.net') || url.includes('pps.whatsapp.net') || url.includes('cloudinary') || url.includes('img') || url.includes('uploads') || url.includes('/api/whatsapp/media/') || url.includes('/api/media/local/') || content.image || type === 'IMAGE';
-                                                const isVideo = (url: string) => /\.(mp4|webm|mov|3gp)(\?.*)?$/i.test(url) || url.includes('/api/whatsapp/media/') && type === 'VIDEO' || url.includes('/api/media/local/') && type === 'VIDEO' || content.video || type === 'VIDEO';
-                                                const isDoc = (url: string) => /\.(pdf|doc|docx|xls|xlsx|txt|ppt|pptx)(\?.*)?$/i.test(url) || url.includes('/api/whatsapp/media/') && type === 'DOCUMENT' || url.includes('/api/media/local/') && type === 'DOCUMENT' || content.document || type === 'DOCUMENT';
-                                                const isAudio = (url: string) => /\.(mp3|ogg|wav|m4a|weba|opus|aac)(\?.*)?$/i.test(url) || url.includes('/api/whatsapp/media/') && type === 'AUDIO' || url.includes('/api/media/local/') && type === 'AUDIO' || content.audio || type === 'AUDIO';
+
+                                                const isImage = (url: string) => persistentMime.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp|heic|avif|bmp|tiff)(\?.*)?$/i.test(url) || url.includes('fbcdn.net') || url.includes('pps.whatsapp.net') || url.includes('cloudinary') || type === 'IMAGE';
+                                                const isVideo = (url: string) => persistentMime.startsWith('video/') || /\.(mp4|webm|mov|3gp)(\?.*)?$/i.test(url) || type === 'VIDEO';
+                                                const isDoc = (url: string) => persistentMime.includes('pdf') || persistentMime.includes('document') || persistentMime.includes('application/') || /\.(pdf|doc|docx|xls|xlsx|txt|ppt|pptx)(\?.*)?$/i.test(url) || type === 'DOCUMENT';
+                                                const isAudio = (url: string) => persistentMime.startsWith('audio/') || /\.(mp3|ogg|wav|m4a|weba|opus|aac)(\?.*)?$/i.test(url) || type === 'AUDIO';
 
                                                 const isCarousel = content.interactiveType === 'carousel' || content.type === 'carousel' || content.action?.cards || content.raw?.interactive?.action?.cards;
                                                 const isProduct = type === 'PRODUCT' || type === 'INTERACTIVE' && (content.interactiveType?.includes('product') || content.raw?.interactive?.type?.includes('product')) || content.catalog_id;
 
                                                 let contentType = isCarousel ? 'CAROUSEL' : isProduct ? 'PRODUCT' : isImage(link) ? 'IMAGE' : isVideo(link) ? 'VIDEO' : isDoc(link) ? 'DOCUMENT' : isAudio(link) ? 'AUDIO' : (content.contentType?.toUpperCase() || '');
                                                 if (!contentType && link) contentType = 'IMAGE';
+
+                                                const finalMediaUrl = proxyMediaLink(link);
 
                                                 return (
                                                     <div className={`max-w-[75%] relative flex flex-col ${isOutbound ? 'items-end' : 'items-start'}`}>
@@ -929,32 +934,32 @@ function SharedInboxContent() {
                                                             {/* Media Rendering */}
                                                             {contentType === 'IMAGE' && link && (
                                                                 <div className="mb-2 -mx-4 -mt-3 overflow-hidden bg-slate-100 relative group/media">
-                                                                    <img src={proxyMediaLink(link)} onClick={() => setZoomedImage(proxyMediaLink(link))} className="w-full h-auto max-h-80 object-cover cursor-zoom-in hover:opacity-90 transition-opacity" alt="Media" onError={(e) => { (e.target as HTMLImageElement).src = `https://placehold.co/400x300/f8fafc/64748b?text=Media+Not+Found` }} />
+                                                                    <img src={finalMediaUrl} onClick={() => setZoomedImage(finalMediaUrl)} className="w-full h-auto max-h-80 object-cover cursor-zoom-in hover:opacity-90 transition-opacity" alt="Media" onError={(e) => { (e.target as HTMLImageElement).src = `https://placehold.co/400x300/f8fafc/64748b?text=Media+Not+Found` }} />
                                                                     <div className="absolute top-1 left-1 bg-black/50 text-white text-[7px] font-bold px-1 rounded uppercase tracking-tighter shadow-sm">{contentType}</div>
                                                                 </div>
                                                             )}
 
                                                             {contentType === 'VIDEO' && link && (
                                                                 <div className="mb-2 -mx-4 -mt-3 overflow-hidden bg-black relative group/media rounded-t-2xl">
-                                                                    <video src={proxyMediaLink(link)} controls className="w-full h-auto max-h-80 object-contain" />
+                                                                    <video src={finalMediaUrl} controls className="w-full h-auto max-h-80 object-contain" />
                                                                     <div className="absolute top-1 left-1 bg-black/50 text-white text-[7px] font-bold px-1 rounded uppercase tracking-tighter shadow-sm">VIDEO</div>
                                                                 </div>
                                                             )}
 
                                                             {contentType === 'AUDIO' && link && (
                                                                 <div className="mb-2 p-2 bg-slate-50/10 rounded-xl relative">
-                                                                    <audio src={proxyMediaLink(link)} controls className="w-full h-10" />
+                                                                    <audio src={finalMediaUrl} controls className="w-full h-10" />
                                                                 </div>
                                                             )}
 
                                                             {contentType === 'DOCUMENT' && link && (
-                                                                <a href={proxyMediaLink(link)} target="_blank" rel="noreferrer" className={`mb-2 p-3 flex items-center gap-3 rounded-xl border transition-colors group/doc relative overflow-hidden ${isOutbound ? 'bg-black/10 border-white/20 hover:bg-black/20 text-white' : 'bg-slate-50 hover:bg-indigo-50 border-slate-200'}`}>
+                                                                <a href={finalMediaUrl} target="_blank" rel="noreferrer" className={`mb-2 p-3 flex items-center gap-3 rounded-xl border transition-colors group/doc relative overflow-hidden ${isOutbound ? 'bg-black/10 border-white/20 hover:bg-black/20 text-white' : 'bg-slate-50 hover:bg-indigo-50 border-slate-200'}`}>
                                                                     <div className={`p-2 rounded-lg shadow-sm transition-colors ${isOutbound ? 'bg-white/20' : 'bg-white group-hover/doc:text-indigo-600'}`}>
                                                                         <FileText size={20} />
                                                                     </div>
                                                                     <div className="flex-1 min-w-0">
-                                                                        <div className="text-[12px] font-black tracking-tight truncate">{content.filename || content.document?.filename || "Document"}</div>
-                                                                        <div className={`text-[10px] font-bold uppercase tracking-tighter mt-0.5 transition-colors ${isOutbound ? 'text-white/60' : 'text-slate-400 group-hover/doc:text-indigo-400'}`}>Click to download</div>
+                                                                        <div className="text-[12px] font-black tracking-tight truncate">{persistentName || content.filename || content.document?.filename || "Document"}</div>
+                                                                        <div className={`text-[10px] font-bold uppercase tracking-tighter mt-0.5 transition-colors ${isOutbound ? 'text-white/60' : 'text-slate-400 group-hover/doc:text-indigo-400'}`}>Click to View</div>
                                                                     </div>
                                                                 </a>
                                                             )}
@@ -1014,6 +1019,32 @@ function SharedInboxContent() {
                                                                             </div>
                                                                         ))}
                                                                     </div>
+                                                                </div>
+                                                            )}
+
+                                                            {type === 'CONTACTS' && (content.contacts || []).length > 0 && (
+                                                                <div className={`p-3 rounded-xl mb-3 border min-w-[220px] shadow-sm transition-all hover:shadow-md ${isOutbound ? 'bg-white/10 border-white/20' : 'bg-slate-50 border-slate-200'}`}>
+                                                                    {(content.contacts || []).map((c: any, ci: number) => (
+                                                                        <div key={ci} className="space-y-3">
+                                                                            <div className="flex items-center gap-3">
+                                                                                <div className={`p-2.5 rounded-full shadow-inner ${isOutbound ? 'bg-white/20 text-white' : 'bg-indigo-600 text-white'}`}>
+                                                                                    <User size={18} />
+                                                                                </div>
+                                                                                <div className="flex-1 min-w-0">
+                                                                                    <div className={`text-[13px] font-black truncate ${isOutbound ? 'text-white' : 'text-slate-900'}`}>{c.name}</div>
+                                                                                    <div className={`text-[10px] font-bold opacity-70 ${isOutbound ? 'text-white' : 'text-slate-500'}`}>{c.phone}</div>
+                                                                                </div>
+                                                                            </div>
+                                                                            <div className="flex gap-2 pt-1">
+                                                                                <button 
+                                                                                    onClick={() => { setReplyText(`Hi ${c.name}, `); document.getElementById('chat-composer')?.focus(); }}
+                                                                                    className={`flex-1 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all active:scale-95 flex items-center justify-center gap-1.5 ${isOutbound ? 'bg-white/20 hover:bg-white/30 text-white' : 'bg-white border border-slate-200 text-indigo-600 hover:bg-indigo-50 shadow-sm'}`}
+                                                                                >
+                                                                                    <MessageSquare size={12} /> Chat
+                                                                                </button>
+                                                                            </div>
+                                                                        </div>
+                                                                    ))}
                                                                 </div>
                                                             )}
 

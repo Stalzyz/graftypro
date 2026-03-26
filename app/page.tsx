@@ -18,8 +18,8 @@ export async function generateMetadata() {
     const branding = getTenantBranding();
 
     const brandName = isWhitelabel && branding ? (branding as any).brand_name : "Grafty";
-    const defaultTitle = `${brandName} | WhatsApp Business Marketing & Automation Platform`;
-    const defaultDesc = `The ultimate official WhatsApp Business API platform. Build flows, automate customer support, and scale retail sales on WhatsApp with ${brandName}.`;
+    const defaultTitle = `${brandName} | Official Bulk WhatsApp Messages & Automation Platform`;
+    const defaultDesc = `Send bulk WhatsApp messages, automate flows, and scale your business with the official Meta BSP platform. High delivery rates, no-code flow builder, and real-time analytics for ${brandName}.`;
 
     const seo = (page as any)?.seo_config || {};
     return {

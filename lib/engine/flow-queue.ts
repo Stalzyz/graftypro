@@ -101,23 +101,35 @@ export interface QueuedMessage {
 
 /**
  * Enqueues a validated payload for sending.
- * Falls back to immediate send if Redis/BullMQ is unavailable.
  */
 export async function enqueueMessage(msg: QueuedMessage): Promise<void> {
+    const { metaApiQueue, PRIORITY_HIGH } = await import('../queue');
     const phone = msg.payload.to;
 
     // Dedup check
     if (isDuplicate(phone, msg.payload)) return;
 
-    const queue = getQueue();
-    if (queue) {
-        await queue.add('send-message', msg, {
-            jobId: `${msg.sessionId}:${msg.nodeId}:${messageHash(phone, msg.payload)}`,
+    if (metaApiQueue) {
+        const type = msg.payload.template?.name ? 'SEND_TEMPLATE' : 
+                     (msg.payload.interactive ? 'SEND_INTERACTIVE' : 'SEND_TEXT');
+
+        await metaApiQueue.add('flow-message', {
+            type,
+            payload: {
+                workspaceId: msg.workspaceId,
+                contactId: msg.contactId,
+                phoneNumberId: msg.phoneNumberId,
+                accessToken: msg.accessToken,
+                to: phone,
+                ...msg.payload 
+            }
+        }, {
+            priority: PRIORITY_HIGH,
+            jobId: `FLOW-${msg.sessionId}-${msg.nodeId}-${messageHash(phone, msg.payload)}`
         });
-        console.log(`[FlowQueue] 📤 Queued message for ${phone} (node: ${msg.nodeId})`);
+        console.log(`[FlowQueue] 🚀 Bridged to Unified Meta Queue for ${phone} (Priority: HIGH)`);
     } else {
-        // Fallback: send immediately (no queue available)
-        console.warn('[FlowQueue] ⚠️ Queue unavailable, sending directly');
+        console.warn('[FlowQueue] ⚠️ Global queue unavailable, falling back to direct send');
         await sendMessageDirect(msg);
     }
 }

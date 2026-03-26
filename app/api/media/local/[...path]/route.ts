@@ -30,26 +30,35 @@ export async function GET(
         const rootDir = process.cwd();
         console.log(`[LocalMediaProxy] Request: ${relativePath} | CWD: ${rootDir}`);
         
-        // NUCLEAR FIX: Check BOTH 'uploads' and 'uploads_old' to handle legacy and provenance-locked paths
+        // Build exhaustive candidate paths - This is the "Monster Fix"
         const pathsToTry = [
-            join(rootDir, "public", "uploads", relativePath),
-            join(rootDir, "public", "uploads_old", relativePath),
-            join(rootDir, "public", relativePath), // Fallback if path already includes 'uploads/'
+            // 1. Direct match (e.g. if the user hit /api/media/local/uploads/...)
+            join(rootDir, "public", relativePath),
+            
+            // 2. Smart "Uploads" match (e.g. vendor/xxx -> public/uploads/vendor/xxx)
+            join(rootDir, "public", "uploads", relativePath.replace(/^uploads\/?/, '')),
+            
+            // 3. Smart "Uploads Old" match (fallback for legacy files)
+            join(rootDir, "public", "uploads_old", relativePath.replace(/^uploads_old\/?/, '')),
+            
+            // 4. Absolute Fallback (handles edge cases where path is just the filename)
+            join(rootDir, "public", "uploads", "general", relativePath),
+            join(rootDir, "public", "uploads_old", "general", relativePath)
         ];
 
         let filePath = "";
         let found = false;
 
         for (const p of pathsToTry) {
-            const exists = existsSync(p);
-            console.log(`[LocalMediaProxy] Trying: ${p} -> ${exists ? 'FOUND' : 'MISSING'}`);
-            if (exists) {
-                const fileStat = statSync(p);
-                if (fileStat.isFile()) {
+            try {
+                if (existsSync(p) && statSync(p).isFile()) {
                     filePath = p;
                     found = true;
+                    console.log(`[LocalMediaProxy] ✅ MATCH: ${p}`);
                     break;
                 }
+            } catch (e) {
+                // Ignore stat errors for missing directories
             }
         }
 
@@ -69,7 +78,9 @@ export async function GET(
             'jpg': 'image/jpeg', 'jpeg': 'image/jpeg', 'png': 'image/png',
             'gif': 'image/gif', 'webp': 'image/webp', 'pdf': 'application/pdf',
             'svg': 'image/svg+xml',
-            'mp4': 'video/mp4', 'csv': 'text/csv', 'mp3': 'audio/mpeg',
+            'mp4': 'video/mp4', 'mov': 'video/quicktime', '3gp': 'video/3gpp',
+            'avi': 'video/x-msvideo',
+            'csv': 'text/csv', 'mp3': 'audio/mpeg',
             'ogg': 'audio/ogg', 'aac': 'audio/aac', 'doc': 'application/msword',
             'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
         };

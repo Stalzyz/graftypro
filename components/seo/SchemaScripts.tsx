@@ -23,7 +23,19 @@ export function SchemaScripts({ brandName = "Platform", baseUrl = "", logoUrl = 
       "price": "49.00",
       "priceCurrency": "USD"
     },
-    "description": `Enterprise-grade WhatsApp Business Solution Provider (BSP) platform for automation, commerce, and growth by ${brandName}.`
+    "description": `Official WhatsApp Business Solution Provider (BSP) for bulk WhatsApp messages, automation, and retail growth by ${brandName}.`
+  };
+
+  const serviceSchema = {
+    "@context": "https://schema.org",
+    "@type": "Service",
+    "serviceType": "Bulk WhatsApp Messaging",
+    "provider": {
+      "@type": "LocalBusiness",
+      "name": brandName
+    },
+    "areaServed": "Worldwide",
+    "description": `Reliable bulk WhatsApp message service with high delivery rates, official API access, and automated flow builder.`
   };
 
   const organizationSchema = {
@@ -45,18 +57,18 @@ export function SchemaScripts({ brandName = "Platform", baseUrl = "", logoUrl = 
     "mainEntity": [
       {
         "@type": "Question",
-        "name": "What is a WhatsApp BSP?",
+        "name": "How to send bulk WhatsApp messages?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "A WhatsApp Business Solution Provider (BSP) is a third-party service provider with expertise on the WhatsApp Business Platform. They help businesses connect with their customers on WhatsApp at scale."
+          "text": `To send bulk WhatsApp messages with ${brandName}, you need an official WhatsApp Business API account. Our platform allows you to upload contacts and send 10k+ messages with a single click while maintaining high delivery rates and Meta compliance.`
         }
       },
       {
         "@type": "Question",
-        "name": "How do I get a WhatsApp green tick?",
+        "name": "What is the official WhatsApp Business API?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "To get a WhatsApp Green Tick (Official Business Account), you must have a verified Facebook Business Manager and exhibit a high level of brand authority and searchability."
+          "text": "The official WhatsApp Business API (WABA) is a scalable communication channel provided by Meta for medium and large businesses to interact with customers globally."
         }
       },
       {
@@ -75,6 +87,10 @@ export function SchemaScripts({ brandName = "Platform", baseUrl = "", logoUrl = 
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareSchema) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(serviceSchema) }}
       />
       <script
         type="application/ld+json"

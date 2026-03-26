@@ -910,6 +910,8 @@ enum MessageType {
   AUDIO
   VIDEO
   DOCUMENT
+  CONTACTS
+  ORDER
   UNKNOWN
 }
 
@@ -931,6 +933,14 @@ model Message {
   content      Json     // The body/text/media url: { body: "Hello" } or { link: "..." }
   status       String   @default("SENT") // PENDING, SENT, DELIVERED, READ, FAILED
   
+  // --- PRODUCTION MEDIA METADATA ---
+  media_url    String?  @db.Text
+  mime_type    String?
+  file_name    String?
+  file_size    Int?
+  caption      String?  @db.Text
+  // ---------------------------------
+
   // --- Delivery Intelligence Enhancements ---
   error_code   String?  // Meta error code (e.g. 131026)
   error_message String? // Human-readable translated message
