@@ -27,10 +27,8 @@ export default function NewTemplatePage() {
         e.preventDefault();
         setLoading(true);
 
-        // Sanitize name: lowercase, underscores only for internal use mostly, 
-        // but Meta allows spaces in UI, usually mapped to snake_case. 
-        // We will enforce snake_case for the API name.
-        const apiName = formData.name.toLowerCase().replace(/\s+/g, '_');
+        // Sanitize name for API to be absolutely sure
+        const apiName = formData.name.toLowerCase().replace(/[^a-z0-9_]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
 
         try {
             const res = await fetch("/api/templates", {
@@ -76,7 +74,12 @@ export default function NewTemplatePage() {
                             required
                             placeholder="e.g. welcome_offer_v1"
                             value={formData.name}
-                            onChange={e => setFormData({ ...formData, name: e.target.value })}
+                            onChange={e => {
+                                let val = e.target.value.toLowerCase();
+                                val = val.replace(/[\s-]/g, '_'); // space/hyphen to underscore
+                                val = val.replace(/[^a-z0-9_]/g, ''); // strip invalid chars
+                                setFormData({ ...formData, name: val });
+                            }}
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
                         />
                         <p className="text-xs text-gray-500 mt-1">

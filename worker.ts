@@ -111,17 +111,67 @@ const metaApiWorker = new Worker(
             }
 
             // 📈 Real-time Progress Tracking
-            if (campaignId && result) {
-                await prisma.campaignStats.update({
-                    where: { campaign_id: campaignId },
-                    data: { sent: { increment: 1 } }
-                }).catch(e => console.error(`[MetaAPIWorker] Failed to update stats for ${campaignId}`, e.message));
+            if (result && result.messages && result.messages.length > 0) {
+                const metaMessageId = result.messages[0].id;
+                
+                // 1. Resolve conversation context
+                let conversation = await prisma.conversation.findFirst({
+                    where: { contact_id: payload.contactId, status: "OPEN" }
+                });
+                
+                if (!conversation) {
+                    conversation = await prisma.conversation.create({
+                        data: { workspace_id: workspaceId, contact_id: payload.contactId, status: "OPEN" }
+                    });
+                }
+                
+                // 2. Persist the outbound dispatch
+                await prisma.message.create({
+                    data: {
+                        workspace_id: workspaceId,
+                        contact_id: payload.contactId,
+                        conversation_id: conversation.id,
+                        meta_id: metaMessageId,
+                        type: type === "SEND_TEMPLATE" ? "TEMPLATE" : 
+                              type === "SEND_INTERACTIVE" ? "INTERACTIVE" : "TEXT",
+                        direction: "OUTBOUND",
+                        status: "SENT",
+                        sent_at: new Date(),
+                        content: {
+                            campaign_id: campaignId,
+                            template_name: payload.templateName,
+                            body: payload.body || "Media/Template Message"
+                        },
+                        template_name: payload.templateName,
+                        conversation_category: category,
+                    }
+                }).catch(e => console.error(`[MetaAPIWorker] Failed to save message record:`, e.message));
+
+                // 3. Mark successful send
+                if (campaignId) {
+                    await prisma.campaignStats.update({
+                        where: { campaign_id: campaignId },
+                        data: { sent: { increment: 1 } }
+                    }).catch(e => console.error(`[MetaAPIWorker] Failed to update stats for ${campaignId}`, e.message));
+                }
             }
 
             return result;
         } catch (err: any) {
             console.error(`[MetaAPIWorker] ❌ Failed to process ${type}:`, err.response?.data || err.message);
-            throw err; // Trigger BullMQ retry
+            
+            // Check for unrecoverable broadcast errors
+            if (payload.campaignId) {
+                const isFatal = err.message?.includes("BILLING_ERROR") || err.response?.status === 400 || err.response?.status === 404;
+                if (isFatal) {
+                    await prisma.campaignStats.update({
+                        where: { campaign_id: payload.campaignId },
+                        data: { failed: { increment: 1 } }
+                    }).catch(e => null);
+                    return; // Gracefully complete job to prevent infinite retries locking the queue
+                }
+            }
+            throw err; // Trigger BullMQ retry for transient network logic
         }
     },
     { 
@@ -484,14 +534,38 @@ const automationWorker = new Worker(
             if (statusStr === "READ") updateData.read_at = timestamp;
 
             try {
-                await prisma.message.update({
+                // Determine existence first to prevent aggressive throw locks
+                const existingMsg = await prisma.message.findUnique({
                     where: { meta_id: messageMetaId },
-                    data: { status: statusStr, ...updateData }
+                    select: { id: true, content: true }
                 });
+
+                if (existingMsg) {
+                    await prisma.message.update({
+                        where: { id: existingMsg.id },
+                        data: { status: statusStr, ...updateData }
+                    });
+
+                    // 📈 Campaign Analytics Synchronization
+                    const content = existingMsg.content as any;
+                    if (content && content.campaign_id) {
+                         const cmpId = content.campaign_id;
+                         if (statusStr === "DELIVERED") {
+                             await prisma.campaignStats.update({ where: { campaign_id: cmpId }, data: { delivered: { increment: 1 } } }).catch(e => null);
+                         } else if (statusStr === "READ") {
+                             await prisma.campaignStats.update({ where: { campaign_id: cmpId }, data: { read: { increment: 1 } } }).catch(e => null);
+                         } else if (statusStr === "FAILED") {
+                             await prisma.campaignStats.update({ where: { campaign_id: cmpId }, data: { failed: { increment: 1 } } }).catch(e => null);
+                         }
+                    }
+                } else {
+                    console.log(`[Worker] Status arrived but message not yet in DB ${messageMetaId} — throwing to retry.`);
+                    throw new Error("P2025");
+                }
             } catch (err: any) {
                 // message might not be in DB yet if status arrives very fast
-                if (err.code === 'P2025') {
-                   console.log(`[Worker] Status arrived before message ${messageMetaId} — will retry later.`);
+                if (err.code === 'P2025' || err.message === 'P2025') {
+                   console.log(`[Worker] Retrying status update...`);
                    throw new Error("Message not found yet, retrying status update...");
                 }
             }

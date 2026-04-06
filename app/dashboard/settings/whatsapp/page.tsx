@@ -371,6 +371,40 @@ export default function WhatsAppSettingsPage() {
 
             {status === "CONNECTED" && wabaDetails ? (
                 <div className="space-y-6">
+                    {/* Health & Error Banner */}
+                    {wabaDetails.health_status && wabaDetails.health_status !== "HEALTHY" && wabaDetails.last_error && (
+                        <div className="bg-red-50 border border-red-200 rounded-[2.5rem] p-8 text-red-800 flex flex-col md:flex-row items-center md:items-start gap-6 shadow-sm relative overflow-hidden animate-fade-in group">
+                            <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity pointer-events-none">
+                                <AlertTriangle size={120} />
+                            </div>
+                            <div className="w-16 h-16 bg-white rounded-3xl flex items-center justify-center shrink-0 border border-red-100 shadow-inner z-10">
+                                <AlertTriangle size={32} className="text-red-500" />
+                            </div>
+                            <div className="z-10 text-center md:text-left pt-1">
+                                <h3 className="font-extrabold text-red-900 text-xl tracking-tight">Connectivity Issue Detected</h3>
+                                <p className="text-sm mt-2 max-w-2xl leading-relaxed font-medium">
+                                    <strong className="text-red-900 block mb-1">Meta Reported:</strong>
+                                    {wabaDetails.last_error}
+                                </p>
+                                
+                                {wabaDetails.last_error.toLowerCase().includes("token") ? (
+                                    <div className="mt-5">
+                                        <button 
+                                            onClick={launchWhatsAppSignup} 
+                                            className="px-6 py-2.5 bg-red-600 text-white rounded-xl text-xs font-bold shadow-lg shadow-red-500/30 hover:bg-red-700 active:scale-95 transition-all uppercase tracking-wider"
+                                        >
+                                            Re-Authenticate with Meta
+                                        </button>
+                                        <p className="text-[11px] font-bold text-red-400 mt-3 mix-blend-multiply">Your OAuth permissions may have expired or been revoked.</p>
+                                    </div>
+                                ) : (
+                                    <div className="mt-5 text-[11px] font-bold text-red-500 uppercase tracking-widest bg-red-100/50 inline-block px-4 py-2 rounded-lg">
+                                        Check your Meta Business Manager Dashboard First
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
                     {/* Hero Status Card */}
                     <div className="bg-gradient-to-br from-[#27954D]/5 to-white border border-[#27954D]/10 rounded-[3rem] p-10 flex flex-col md:flex-row items-center justify-between gap-8 shadow-sm relative overflow-hidden">
                         <div className="flex items-center gap-8 z-10">

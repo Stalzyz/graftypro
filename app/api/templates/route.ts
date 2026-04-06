@@ -92,7 +92,8 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
         }
 
-        const apiName = name.toLowerCase().replace(/\s+/g, '_');
+        // Strict Meta compliant formatting: lowercase, a-z, 0-9, and underscores ONLY
+        const apiName = name.toLowerCase().replace(/[^a-z0-9_]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
 
         const existing = await prisma.template.findFirst({
             where: {
