@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
     Plus,
     Send,
@@ -14,7 +14,12 @@ import {
     ArrowRight,
     Zap,
     TrendingUp,
-    CheckCircle
+    CheckCircle,
+    Image as ImageIcon,
+    Variable,
+    Info,
+    AlertTriangle,
+    ChevronDown
 } from "lucide-react";
 
 export default function CampaignsPage() {
@@ -29,14 +34,24 @@ export default function CampaignsPage() {
     const [name, setName] = useState("");
     const [targetType, setTargetType] = useState<"TEMPLATE" | "FLOW">("TEMPLATE");
     const [templateName, setTemplateName] = useState("");
+    const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
     const [flowId, setFlowId] = useState("");
     const [segmentId, setSegmentId] = useState("");
     const [scheduledAt, setScheduledAt] = useState("");
+    const [headerMediaUrl, setHeaderMediaUrl] = useState("");
+    const [variableMapping, setVariableMapping] = useState<Record<string, string>>({});
     const [sending, setSending] = useState(false);
 
-    useEffect(() => {
-        fetchData();
-    }, []);
+    useEffect(() => { fetchData(); }, []);
+
+    // When a template is selected, auto-detect its variables and header type
+    const handleTemplateSelect = useCallback((tName: string) => {
+        setTemplateName(tName);
+        const tmpl = templates.find((t: any) => t.name === tName);
+        setSelectedTemplate(tmpl || null);
+        setVariableMapping({});
+        setHeaderMediaUrl("");
+    }, [templates]);
 
     const fetchData = async () => {
         try {
@@ -47,19 +62,18 @@ export default function CampaignsPage() {
                 fetch("/api/flows")
             ]);
 
-            const cData = await cRes.json();
-            const sData = await sRes.json();
-            const tData = await tRes.json();
-            const fData = await fRes.json();
+            const [cData, sData, tData, fData] = await Promise.all([
+                cRes.json(), sRes.json(), tRes.json(), fRes.json()
+            ]);
 
             if (cData.data) setCampaigns(cData.data);
             if (sData.data) setSegments(sData.data);
             if (tData.data) setTemplates(tData.data);
             if (fData.data) setFlows(fData.data.filter((f: any) => f.status === 'PUBLISHED'));
-
-            setLoading(false);
         } catch (e) {
             console.error(e);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -75,7 +89,9 @@ export default function CampaignsPage() {
                     templateName: targetType === 'TEMPLATE' ? templateName : null,
                     flowId: targetType === 'FLOW' ? flowId : null,
                     segmentId: segmentId || null,
-                    scheduledAt: scheduledAt || null
+                    scheduledAt: scheduledAt || null,
+                    variableMapping: targetType === 'TEMPLATE' ? variableMapping : {},
+                    headerMediaUrl: targetType === 'TEMPLATE' ? (headerMediaUrl || null) : null
                 })
             });
 
@@ -94,12 +110,9 @@ export default function CampaignsPage() {
     };
 
     const resetForm = () => {
-        setName("");
-        setTargetType("TEMPLATE");
-        setTemplateName("");
-        setFlowId("");
-        setSegmentId("");
-        setScheduledAt("");
+        setName(""); setTargetType("TEMPLATE"); setTemplateName("");
+        setSelectedTemplate(null); setFlowId(""); setSegmentId("");
+        setScheduledAt(""); setHeaderMediaUrl(""); setVariableMapping({});
     };
 
     const getStatusBadge = (status: string) => {
@@ -111,6 +124,30 @@ export default function CampaignsPage() {
         }
     };
 
+    // Parse detected variables/header from selected template's components
+    const detectedVars: number[] = [];
+    let hasHeader = false;
+    let headerFormat = "";
+    if (selectedTemplate && Array.isArray(selectedTemplate.components)) {
+        for (const comp of selectedTemplate.components) {
+            if (comp.type === "HEADER") { hasHeader = true; headerFormat = comp.format; }
+            if (comp.type === "BODY" && comp.text) {
+                const matches = comp.text.match(/{{([0-9]+)}}/g) || [];
+                matches.forEach((m: string) => {
+                    const n = parseInt(m.replace(/{{|}}/g, ""));
+                    if (!detectedVars.includes(n)) detectedVars.push(n);
+                });
+            }
+        }
+        detectedVars.sort((a, b) => a - b);
+    }
+
+    const CONTACT_FIELDS = [
+        { value: "name", label: "Contact Name" },
+        { value: "phone", label: "Phone Number" },
+        { value: "email", label: "Email" },
+    ];
+
     return (
         <div className="space-y-6 animate-fade-in">
             {/* Header */}
@@ -119,44 +156,17 @@ export default function CampaignsPage() {
                     <h1 className="text-xl font-bold text-gray-800">Campaigns</h1>
                     <p className="text-gray-500 text-sm">Create and monitor your broadcast campaigns.</p>
                 </div>
-                <button
-                    onClick={() => setShowModal(true)}
-                    className="btn-primary"
-                >
+                <button onClick={() => setShowModal(true)} className="btn-primary">
                     <Plus size={18} /> New Campaign
                 </button>
             </div>
 
             {/* Stats Overview */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
-                <MiniStat
-                    label="Total Campaigns"
-                    value={campaigns.length}
-                    icon={<Send size={18} />}
-                    color="text-[#042f94]"
-                    bg="bg-[#27954D]/10"
-                />
-                <MiniStat
-                    label="Sent Today"
-                    value={campaigns.reduce((acc, c) => acc + (c.stats?.sent || 0), 0).toLocaleString()}
-                    icon={<TrendingUp size={18} />}
-                    color="text-blue-600"
-                    bg="bg-blue-50"
-                />
-                <MiniStat
-                    label="Active Flows"
-                    value={campaigns.filter(c => c.status === 'PROCESSING').length}
-                    icon={<Zap size={18} />}
-                    color="text-amber-600"
-                    bg="bg-amber-50"
-                />
-                <MiniStat
-                    label="Success Rate"
-                    value="98.2%"
-                    icon={<CheckCircle size={18} />}
-                    color="text-green-600"
-                    bg="bg-green-50"
-                />
+                <MiniStat label="Total Campaigns" value={campaigns.length} icon={<Send size={18} />} color="text-[#042f94]" bg="bg-[#27954D]/10" />
+                <MiniStat label="Sent Total" value={campaigns.reduce((acc, c) => acc + (c.stats?.sent || 0), 0).toLocaleString()} icon={<TrendingUp size={18} />} color="text-blue-600" bg="bg-blue-50" />
+                <MiniStat label="Active" value={campaigns.filter(c => c.status === 'PROCESSING').length} icon={<Zap size={18} />} color="text-amber-600" bg="bg-amber-50" />
+                <MiniStat label="Success Rate" value="98.2%" icon={<CheckCircle size={18} />} color="text-green-600" bg="bg-green-50" />
             </div>
 
             {/* Campaign List */}
@@ -215,17 +225,12 @@ export default function CampaignsPage() {
                                                 <span className="text-[#27954D] font-bold">{Math.round(((c.stats?.sent || 0) / (c.stats?.total || 1)) * 100)}%</span>
                                             </div>
                                             <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                                                <div
-                                                    className="h-full bg-[#27954D] transition-all duration-500 rounded-full"
-                                                    style={{ width: `${Math.round(((c.stats?.sent || 0) / (c.stats?.total || 1)) * 100)}%` }}
-                                                ></div>
+                                                <div className="h-full bg-[#27954D] transition-all duration-500 rounded-full" style={{ width: `${Math.round(((c.stats?.sent || 0) / (c.stats?.total || 1)) * 100)}%` }}></div>
                                             </div>
                                         </div>
                                     </td>
                                     <td className="px-6 py-4">
-                                        <span className={`badge ${getStatusBadge(c.status)}`}>
-                                            {c.status}
-                                        </span>
+                                        <span className={`badge ${getStatusBadge(c.status)}`}>{c.status}</span>
                                     </td>
                                     <td className="px-6 py-4 text-right">
                                         <button className="p-2 text-gray-400 hover:text-[#27954D] hover:bg-white rounded-lg transition-all opacity-0 group-hover:opacity-100">
@@ -242,132 +247,163 @@ export default function CampaignsPage() {
             {/* --- New Campaign Modal --- */}
             {showModal && (
                 <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-[2rem] w-full max-w-2xl shadow-2xl animate-fade-in overflow-hidden">
-                        <div className="p-6 border-b border-gray-100 flex justify-between items-center">
+                    <div className="bg-white rounded-[2rem] w-full max-w-2xl shadow-2xl animate-fade-in overflow-hidden max-h-[90vh] flex flex-col">
+                        <div className="p-6 border-b border-gray-100 flex justify-between items-center shrink-0">
                             <div>
                                 <h3 className="text-xl font-bold text-gray-800">Create Campaign</h3>
                                 <p className="text-sm text-gray-500">Launch a new broadcast to your audience.</p>
                             </div>
-                            <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-gray-600 p-2">
-                                <X size={24} />
-                            </button>
+                            <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-gray-600 p-2"><X size={24} /></button>
                         </div>
 
-                        <form onSubmit={handleCreate} className="p-8 space-y-8">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                <div className="space-y-5">
-                                    <div>
-                                        <label className="block text-xs font-semibold text-gray-600 mb-1.5">Campaign Name</label>
-                                        <input
-                                            required
-                                            type="text"
-                                            value={name}
-                                            onChange={e => setName(e.target.value)}
-                                            placeholder="e.g. Summer Promo"
-                                            className="input"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-semibold text-gray-600 mb-1.5">Target Audience</label>
-                                        <select
-                                            value={segmentId}
-                                            onChange={e => setSegmentId(e.target.value)}
-                                            className="input appearance-none"
-                                        >
-                                            <option value="">All Contacts</option>
-                                            {segments.map(s => (
-                                                <option key={s.id} value={s.id}>{s.name}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-semibold text-gray-600 mb-1.5">Schedule Launch</label>
-                                        <div className="relative">
-                                            <Clock className="absolute left-3 top-3 text-gray-400" size={16} />
-                                            <input
-                                                type="datetime-local"
-                                                value={scheduledAt}
-                                                onChange={e => setScheduledAt(e.target.value)}
-                                                className="input pl-10"
-                                            />
-                                        </div>
-                                    </div>
+                        <form onSubmit={handleCreate} className="p-8 space-y-6 overflow-y-auto">
+                            {/* Row 1: Name + Audience */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label className="block text-xs font-semibold text-gray-600 mb-1.5">Campaign Name</label>
+                                    <input required type="text" value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Summer Promo" className="input" />
                                 </div>
-
-                                <div className="space-y-4 bg-gray-50 p-6 rounded-2xl border border-gray-100">
-                                    <div className="flex gap-1 p-1 bg-white border border-gray-200 rounded-xl mb-4">
-                                        <button
-                                            type="button"
-                                            onClick={() => setTargetType("TEMPLATE")}
-                                            className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${targetType === "TEMPLATE" ? "bg-[#27954D] text-white" : "text-gray-400 hover:bg-gray-50"}`}
-                                        >
-                                            Template
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => setTargetType("FLOW")}
-                                            className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${targetType === "FLOW" ? "bg-[#27954D] text-white" : "text-gray-400 hover:bg-gray-50"}`}
-                                        >
-                                            Flow
-                                        </button>
-                                    </div>
-
-                                    {targetType === 'TEMPLATE' ? (
-                                        <div className="space-y-3">
-                                            <label className="block text-xs font-semibold text-gray-600">Select Template</label>
-                                            <select
-                                                required
-                                                value={templateName}
-                                                onChange={e => setTemplateName(e.target.value)}
-                                                className="input bg-white"
-                                            >
-                                                <option value="">Choose a template</option>
-                                                {templates.map(t => (
-                                                    <option key={t.id} value={t.name}>{t.name}</option>
-                                                ))}
-                                            </select>
-                                            <div className="p-3 bg-blue-50 rounded-xl text-[10px] text-blue-700 font-medium border border-blue-100">
-                                                Only approved WhatsApp templates will be shown here.
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        <div className="space-y-3">
-                                            <label className="block text-xs font-semibold text-gray-600">Select Flow</label>
-                                            <select
-                                                required
-                                                value={flowId}
-                                                onChange={e => setFlowId(e.target.value)}
-                                                className="input bg-white"
-                                            >
-                                                <option value="">Choose a flow</option>
-                                                {flows.map(f => (
-                                                    <option key={f.id} value={f.id}>{f.name}</option>
-                                                ))}
-                                            </select>
-                                            <div className="p-3 bg-amber-50 rounded-xl text-[10px] text-amber-700 font-medium border border-amber-100 flex gap-2 items-start">
-                                                <Zap size={14} className="shrink-0" />
-                                                Visual flows allow for multi-step automated journeys.
-                                            </div>
-                                        </div>
-                                    )}
+                                <div>
+                                    <label className="block text-xs font-semibold text-gray-600 mb-1.5">Target Audience</label>
+                                    <select value={segmentId} onChange={e => setSegmentId(e.target.value)} className="input appearance-none">
+                                        <option value="">All Contacts</option>
+                                        {segments.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                    </select>
                                 </div>
                             </div>
 
-                            <div className="pt-4 flex gap-4">
-                                <button
-                                    type="button"
-                                    onClick={() => setShowModal(false)}
-                                    className="btn-secondary flex-1 py-4"
-                                >
-                                    Discard
-                                </button>
-                                <button
-                                    disabled={sending}
-                                    type="submit"
-                                    className="btn-primary flex-[2] py-4 shadow-xl shadow-green-100"
-                                >
-                                    {sending ? 'Launching...' : 'Launch Campaign'}
-                                    <ArrowRight size={18} />
+                            {/* Row 2: Type Switcher */}
+                            <div className="space-y-4 bg-gray-50 p-6 rounded-2xl border border-gray-100">
+                                <div className="flex gap-1 p-1 bg-white border border-gray-200 rounded-xl mb-4">
+                                    <button type="button" onClick={() => setTargetType("TEMPLATE")} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${targetType === "TEMPLATE" ? "bg-[#27954D] text-white" : "text-gray-400 hover:bg-gray-50"}`}>
+                                        <LayoutTemplate size={12} className="inline mr-1" />Template
+                                    </button>
+                                    <button type="button" onClick={() => setTargetType("FLOW")} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${targetType === "FLOW" ? "bg-[#27954D] text-white" : "text-gray-400 hover:bg-gray-50"}`}>
+                                        <GitBranch size={12} className="inline mr-1" />Flow
+                                    </button>
+                                </div>
+
+                                {targetType === 'TEMPLATE' ? (
+                                    <div className="space-y-4">
+                                        <div>
+                                            <label className="block text-xs font-semibold text-gray-600 mb-1.5">Select Approved Template</label>
+                                            <select required value={templateName} onChange={e => handleTemplateSelect(e.target.value)} className="input bg-white">
+                                                <option value="">Choose a template...</option>
+                                                {templates.filter((t: any) => t.status === 'APPROVED').map((t: any) => (
+                                                    <option key={t.id} value={t.name}>{t.name}</option>
+                                                ))}
+                                            </select>
+                                            {templates.filter((t: any) => t.status === 'APPROVED').length === 0 && (
+                                                <p className="text-[10px] text-amber-600 mt-1 flex items-center gap-1">
+                                                    <AlertTriangle size={10} /> No approved templates yet. Submit a template first.
+                                                </p>
+                                            )}
+                                        </div>
+
+                                        {/* Header Media Override */}
+                                        {selectedTemplate && hasHeader && ['IMAGE', 'VIDEO', 'DOCUMENT'].includes(headerFormat) && (
+                                            <div>
+                                                <label className="block text-xs font-semibold text-gray-600 mb-1.5 flex items-center gap-1">
+                                                    <ImageIcon size={12} className="text-blue-500" />
+                                                    Custom Header {headerFormat} URL
+                                                    <span className="text-gray-400 font-normal">(optional override)</span>
+                                                </label>
+                                                <input
+                                                    type="url"
+                                                    value={headerMediaUrl}
+                                                    onChange={e => setHeaderMediaUrl(e.target.value)}
+                                                    placeholder={`https://yoursite.com/promo.${headerFormat === 'IMAGE' ? 'jpg' : headerFormat === 'VIDEO' ? 'mp4' : 'pdf'}`}
+                                                    className="input bg-white text-sm"
+                                                />
+                                                <p className="text-[10px] text-gray-400 mt-1">Must be a publicly accessible HTTPS URL.</p>
+                                            </div>
+                                        )}
+
+                                        {/* Dynamic Variable Mapping */}
+                                        {selectedTemplate && detectedVars.length > 0 && (
+                                            <div>
+                                                <label className="block text-xs font-semibold text-gray-600 mb-2 flex items-center gap-1.5">
+                                                    <Variable size={12} className="text-[#27954D]" />
+                                                    Map Template Variables
+                                                </label>
+                                                <div className="space-y-2">
+                                                    {detectedVars.map(varNum => (
+                                                        <div key={varNum} className="flex items-center gap-3 bg-white border border-gray-200 rounded-xl p-3">
+                                                            <span className="text-xs font-bold text-[#042f94] bg-blue-50 px-2 py-1 rounded-lg shrink-0">
+                                                                {`{{${varNum}}}`}
+                                                            </span>
+                                                            <ChevronDown size={14} className="text-gray-400 shrink-0" />
+                                                            <div className="flex flex-1 gap-2">
+                                                                <select
+                                                                    value={variableMapping[String(varNum)]?.startsWith("static:") ? "__static__" : (variableMapping[String(varNum)] || "")}
+                                                                    onChange={e => {
+                                                                        const val = e.target.value;
+                                                                        if (val === "__static__") {
+                                                                            setVariableMapping(prev => ({ ...prev, [String(varNum)]: "static:" }));
+                                                                        } else {
+                                                                            setVariableMapping(prev => ({ ...prev, [String(varNum)]: val }));
+                                                                        }
+                                                                    }}
+                                                                    className="input bg-white flex-1 text-xs"
+                                                                >
+                                                                    <option value="">— select source —</option>
+                                                                    {CONTACT_FIELDS.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
+                                                                    <option value="__static__">Static Text...</option>
+                                                                </select>
+                                                                {variableMapping[String(varNum)]?.startsWith("static:") && (
+                                                                    <input
+                                                                        type="text"
+                                                                        placeholder="Enter static value"
+                                                                        value={variableMapping[String(varNum)].replace("static:", "")}
+                                                                        onChange={e => setVariableMapping(prev => ({ ...prev, [String(varNum)]: `static:${e.target.value}` }))}
+                                                                        className="input bg-white flex-1 text-xs"
+                                                                    />
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                                <p className="text-[10px] text-gray-400 mt-2 flex items-center gap-1">
+                                                    <Info size={10} /> Unmapped variables will default to "Customer".
+                                                </p>
+                                            </div>
+                                        )}
+
+                                        {selectedTemplate && detectedVars.length === 0 && !hasHeader && (
+                                            <div className="p-3 bg-green-50 rounded-xl text-[10px] text-green-700 font-medium border border-green-100">
+                                                ✅ This template has no variables or media — it will be sent as-is.
+                                            </div>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div className="space-y-3">
+                                        <label className="block text-xs font-semibold text-gray-600">Select Published Flow</label>
+                                        <select required value={flowId} onChange={e => setFlowId(e.target.value)} className="input bg-white">
+                                            <option value="">Choose a flow...</option>
+                                            {flows.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+                                        </select>
+                                        <div className="p-3 bg-amber-50 rounded-xl text-[10px] text-amber-700 font-medium border border-amber-100 flex gap-2 items-start">
+                                            <AlertTriangle size={14} className="shrink-0 mt-0.5" />
+                                            <span>Note: Meta restricts outbound flows. Flows are triggered via template button clicks. Use a template for initial outreach.</span>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Row 3: Schedule */}
+                            <div>
+                                <label className="block text-xs font-semibold text-gray-600 mb-1.5">Schedule Launch (optional)</label>
+                                <div className="relative">
+                                    <Clock className="absolute left-3 top-3 text-gray-400" size={16} />
+                                    <input type="datetime-local" value={scheduledAt} onChange={e => setScheduledAt(e.target.value)} className="input pl-10" />
+                                </div>
+                            </div>
+
+                            {/* Actions */}
+                            <div className="flex gap-4 pt-2">
+                                <button type="button" onClick={() => setShowModal(false)} className="btn-secondary flex-1 py-4">Discard</button>
+                                <button disabled={sending} type="submit" className="btn-primary flex-[2] py-4 shadow-xl shadow-green-100">
+                                    {sending ? 'Launching...' : 'Launch Campaign'} <ArrowRight size={18} />
                                 </button>
                             </div>
                         </form>
@@ -381,9 +417,7 @@ export default function CampaignsPage() {
 function MiniStat({ label, value, icon, color, bg }: any) {
     return (
         <div className="soft-card p-5 flex items-center gap-4">
-            <div className={`p-3 rounded-2xl ${bg} ${color}`}>
-                {icon}
-            </div>
+            <div className={`p-3 rounded-2xl ${bg} ${color}`}>{icon}</div>
             <div>
                 <div className="text-2xl font-bold text-gray-800 tracking-tight">{value}</div>
                 <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">{label}</div>

@@ -4,47 +4,71 @@ import axios from "axios";
 const META_API_VERSION = "v20.0";
 const BASE_URL = `https://graph.facebook.com/${META_API_VERSION}`;
 
+/**
+ * MetaTemplateService
+ * Orchestrates template submission, status tracking, and synchronization with Meta.
+ */
 export class MetaTemplateService {
 
     /**
-     * Submit a template to Meta's Business API
+     * Submit a message template to Meta's Business API
      */
     static async submitTemplate(
         wabaId: string,
         accessToken: string,
-        template: any // The Prisma Template object
+        template: any // The Prisma Template object with include: { variables: true }
     ) {
         try {
             const url = `${BASE_URL}/${wabaId}/message_templates`;
 
-            // Transform our DB structure to Meta's API payload
+            // Transform our DB structure to Meta's strict API payload
             const payload = {
                 name: template.name,
-                category: template.category,
+                category: template.category, // UTILITY, MARKETING, AUTHENTICATION
                 language: template.language,
-                components: template.components.map((c: any) => {
+                components: template.components.map((c: any, index: number) => {
                     const component: any = { type: c.type };
 
                     if (c.type === 'HEADER') {
                         component.format = c.format; // TEXT, IMAGE, VIDEO, DOCUMENT
+                        
                         if (c.format === 'TEXT') {
                             component.text = c.text;
-                            // Add samples if variables exist in header
+                            // Check for variables in header
+                            const headerVars = template.variables?.filter((v: any) => v.component_index === index) || [];
+                            if (headerVars.length > 0) {
+                                component.example = {
+                                    header_text: [headerVars.map((v: any) => v.sample_value)]
+                                };
+                            }
                         }
+
                         if (['IMAGE', 'VIDEO', 'DOCUMENT'].includes(c.format)) {
-                            // For media headers, Meta requires a 'example' file handle or link during submission
-                            const mediaUrl = c.media_url || "https://grafty.pro/placeholder_media.png";
+                            /**
+                             * CRITICAL: Meta requires a valid, publicly accessible URI for the header example.
+                             * Error (#100) often stems from invalid or non-absolute URLs.
+                             */
+                            let mediaUrl = c.media_url || "https://grafty.pro/public/placeholder_media.png";
+                            
+                            // Ensure absolute URI
+                            if (!mediaUrl.startsWith('http')) {
+                                mediaUrl = `https://${new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://grafty.pro').host}${mediaUrl.startsWith('/') ? '' : '/'}${mediaUrl}`;
+                            }
+
                             component.example = { header_url: [mediaUrl] };
                         }
                     }
 
                     if (c.type === 'BODY') {
                         component.text = c.text;
-                        // Map variables to samples
-                        const bodyVars = template.variables?.filter((v: any) => v.component_index === 0) || [];
+                        // Map variables to samples (Meta expects [[sample1, sample2]])
+                        const bodyVars = template.variables
+                            ?.filter((v: any) => v.component_index === index)
+                            ?.sort((a: any, b: any) => a.param_index - b.param_index) || [];
+                        
                         if (bodyVars.length > 0) {
                             component.example = {
-                                body_text: [bodyVars.map((v: any) => v.sample_value)]
+                                body_text: [bodyVars.map((v: any) => v.sample_value || "Example")]
                             };
                         }
                     }
@@ -61,7 +85,10 @@ export class MetaTemplateService {
                             };
                             if (b.type === 'URL') {
                                 btn.url = b.url;
-                                // Handle dynamic URLs if variables exist in URL
+                                // Handle dynamic URLs if variables exist
+                                if (b.url.includes('{{1}}')) {
+                                    btn.example = ["https://grafty.pro/track/123"];
+                                }
                             }
                             if (b.type === 'PHONE_NUMBER') {
                                 btn.phone_number = b.phone_number;
@@ -87,14 +114,24 @@ export class MetaTemplateService {
             };
 
         } catch (error: any) {
-            console.error("Meta Template Submission Error:", error.response?.data || error.message);
+            console.error("Meta Template Submission Error (Trace):", JSON.stringify(error.response?.data || error.message, null, 2));
             
             const metaError = error.response?.data?.error;
-            let errorMessage = metaError?.message || "Meta API Rejected Submission";
+            const detailedError = metaError?.error_user_msg || metaError?.error_user_title || metaError?.message || "Meta API Rejected Submission";
+            let errorMessage = detailedError;
 
-            // Specific check for misconfigured WABA ID (Business ID used instead of WABA ID)
-            if (errorMessage.includes("Unsupported post request") || errorMessage.includes("does not exist")) {
-                errorMessage = `Meta Error: ${errorMessage}. (TIP: Ensure you are using the 'WhatsApp Business Account ID' and not your 'Business Manager ID')`;
+            // Map cryptic Meta errors to actionable user feedback
+            if (errorMessage.includes("valid URI") || metaError?.error_subcode === 2388041 || errorMessage.includes("header_url")) {
+                errorMessage = "ACTION REQUIRED: The Media URL (Image/Video/Document) in your template Header must be a valid, publicly accessible link starting with 'https://'. Please check the URL and try again.";
+            } else if (errorMessage.includes("Unsupported post request") || errorMessage.includes("does not exist")) {
+                errorMessage = "CONFIGURATION ERROR: Please verify that you have connected the correct 'WhatsApp Business Account ID' (WABA ID) and not your Business Manager ID.";
+            } else if (errorMessage.includes("example") || errorMessage.includes("body_text") || errorMessage.includes("header_text")) {
+                errorMessage = "ACTION REQUIRED: You have added variables (e.g., {{1}}) to your template, but failed to provide proper sample values. Edit the template and add samples.";
+            } else if (errorMessage.includes("name") && errorMessage.includes("already exists")) {
+                errorMessage = "ACTION REQUIRED: A template with this exact name already exists in your WhatsApp account. Please choose a different, unique name.";
+            } else if (metaError?.code === 100) {
+                // Catch-all for other param validations
+                errorMessage = `META VALIDATION FAILED: ${detailedError}. Please double-check your template parameters.`;
             }
 
             throw new Error(errorMessage);

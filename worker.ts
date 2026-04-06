@@ -218,7 +218,7 @@ const campaignWorker = new Worker(
                         ...(course ? { course_interested: course } : {})
                     }
                 });
-                recipients = leads.map(l => ({ phone: l.whatsapp_number, name: l.student_name, id: l.id }));
+                recipients = leads.map(l => ({ ...l, phone: l.whatsapp_number, name: l.student_name }));
             } else {
                 let contacts: any[] = [];
                 if (segmentId) {
@@ -232,7 +232,7 @@ const campaignWorker = new Worker(
                 } else {
                     contacts = await prisma.contact.findMany({ where: { workspace_id: workspaceId, blocked: false, opt_in: true } });
                 }
-                recipients = contacts.map(c => ({ phone: c.phone, name: c.name || "Customer", id: c.id }));
+                recipients = contacts.map(c => ({ ...c }));
             }
 
             console.log(`[CampaignWorker] Audience fetched. Size: ${recipients.length}`);
@@ -256,25 +256,60 @@ const campaignWorker = new Worker(
                 const jobs = batch.map(person => {
                     const countryCode = person.phone.replace(/[^0-9]/g, "").substring(0, 2) || "91";
                     
+                    // 🎯 DYNAMIC MAPPING ENGINE
+                    const campaignAny = campaign as any;
+                    const variableMapping = (campaignAny.variable_mapping as Record<string, string>) || {};
+                    const bodyParams = Object.entries(variableMapping)
+                        .sort(([a], [b]) => parseInt(a) - parseInt(b))
+                        .map(([index, source]) => {
+                            let value = "Customer";
+                            if (source.startsWith("static:")) {
+                                value = source.replace("static:", "");
+                            } else {
+                                // @ts-ignore
+                                value = person[source] || person.name || "Customer";
+                            }
+                            return { type: "text", text: String(value) };
+                        });
+
+                    const components: any[] = [];
+                    
+                    // Add Header if override exists
+                    if (campaignAny.header_media_url) {
+                        const isImage = campaignAny.header_media_url.match(/\.(jpg|jpeg|png|webp)$/i);
+                        components.push({
+                            type: "header",
+                            parameters: [
+                                {
+                                    type: isImage ? "image" : "video",
+                                    [isImage ? "image" : "video"]: { link: campaignAny.header_media_url }
+                                }
+                            ]
+                        });
+                    }
+
+                    // Add Body Variables
+                    if (bodyParams.length > 0) {
+                        components.push({
+                            type: "body",
+                            parameters: bodyParams
+                        });
+                    }
+
                     // Construct individual job
                     return {
-                        name: campaign.flow_id ? "start-flow" : "send-template",
+                        name: "send-template",
                         data: {
-                            type: campaign.flow_id ? "START_FLOW" : "SEND_TEMPLATE",
+                            type: "SEND_TEMPLATE",
                             payload: {
                                 campaignId,
                                 workspaceId,
                                 contactId: person.id,
-                                flowId: campaign.flow_id,
                                 phoneNumberId: waba.phone_number_id,
                                 accessToken: decryptedToken,
                                 to: person.phone,
                                 templateName: campaign.template_name,
-                                // Variables mapping (Expert Logic)
-                                components: campaign.template_name ? [{
-                                    type: "body",
-                                    parameters: [{ type: "text", text: person.name || "Customer" }]
-                                }] : []
+                                components
                             }
                         },
                         opts: { 

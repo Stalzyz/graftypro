@@ -11,7 +11,7 @@ export async function POST(req: Request) {
         const user = await getCurrentUser(req);
         if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-        const { name, templateName, flowId, segmentId, scheduledAt } = await req.json();
+        const { name, templateName, flowId, segmentId, scheduledAt, variableMapping, headerMediaUrl } = await req.json();
 
         // 1. Create Campaign Record
         const campaign = await prisma.campaign.create({
@@ -23,6 +23,10 @@ export async function POST(req: Request) {
                 filters: { segment_id: segmentId },
                 status: "PROCESSING",
                 scheduled_at: scheduledAt ? new Date(scheduledAt) : null,
+                ...({
+                    variable_mapping: variableMapping || {},
+                    header_media_url: headerMediaUrl || null,
+                } as any),
             },
         });
 

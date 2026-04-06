@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ArrowLeft, Save, Send, Trash2, Plus, Image as ImageIcon, Link as LinkIcon, Phone, AlertCircle, RefreshCw } from "lucide-react";
+import { ArrowLeft, Save, Send, Trash2, Plus, Image as ImageIcon, FileText, PlayCircle, Link as LinkIcon, Phone, AlertCircle, RefreshCw } from "lucide-react";
 import { SmartUploader } from "../../../../components/ui/SmartUploader";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -147,8 +147,9 @@ export default function TemplateEditor({ params }: { params: { id: string } }) {
             components.push({ type: 'BUTTONS', buttons: buttons });
         }
 
+        const bodyIndex = headerType !== 'NONE' ? 1 : 0;
         const variableData = variables.map(v => ({
-            component_index: 0,
+            component_index: bodyIndex,
             param_index: parseInt(v),
             sample_value: samples[v] || `Sample ${v}`
         }));
@@ -333,7 +334,9 @@ export default function TemplateEditor({ params }: { params: { id: string } }) {
                             >
                                 <option value="NONE">No Header</option>
                                 <option value="TEXT">Text Header</option>
-                                <option value="IMAGE">Image Header</option>
+                                <option value="IMAGE">Image Header (JPG/PNG)</option>
+                                <option value="VIDEO">Video Header (MP4)</option>
+                                <option value="DOCUMENT">Document Header (PDF)</option>
                             </select>
                         </div>
 
@@ -356,7 +359,36 @@ export default function TemplateEditor({ params }: { params: { id: string } }) {
                             <SmartUploader
                                 label="Header Image"
                                 module="templates"
-                                defaultValue={headerText} // re-using headerText for storage of image URL
+                                fileType="image"
+                                accept="image/jpeg, image/png, image/webp"
+                                description="PNG, JPG, WebP (Max 5MB)"
+                                defaultValue={headerText} // re-using headerText for storage of media URL
+                                onUploadSuccess={(url: string) => setHeaderText(url)}
+                            />
+                        )}
+
+                        {headerType === 'VIDEO' && (
+                            <SmartUploader
+                                label="Header Video"
+                                module="templates"
+                                fileType="video"
+                                accept="video/mp4"
+                                maxSizeMB={16}
+                                description="MP4 only (Max 16MB) - Upload locally"
+                                defaultValue={headerText}
+                                onUploadSuccess={(url: string) => setHeaderText(url)}
+                            />
+                        )}
+
+                        {headerType === 'DOCUMENT' && (
+                            <SmartUploader
+                                label="Header Document"
+                                module="templates"
+                                fileType="document"
+                                accept="application/pdf"
+                                maxSizeMB={100}
+                                description="PDF only (Max 100MB) - Upload locally"
+                                defaultValue={headerText}
                                 onUploadSuccess={(url: string) => setHeaderText(url)}
                             />
                         )}
@@ -521,6 +553,8 @@ export default function TemplateEditor({ params }: { params: { id: string } }) {
                         <div className="p-3 space-y-1">
                             <div className="bg-white rounded-xl rounded-tl-none shadow-sm border border-black/5 overflow-hidden">
                                 {headerType === 'IMAGE' && <div className="aspect-[16/9] bg-gray-200 flex items-center justify-center text-gray-400"><ImageIcon size={32} /></div>}
+                                {headerType === 'VIDEO' && <div className="aspect-[16/9] bg-gray-800 flex items-center justify-center text-white relative"><PlayCircle size={40} className="opacity-70" /></div>}
+                                {headerType === 'DOCUMENT' && <div className="h-20 bg-blue-50 border-b border-blue-100 flex items-center gap-3 px-4 text-blue-500"><FileText size={24} /><div className="flex-1 min-w-0"><div className="text-xs font-bold truncate">Attachment.pdf</div><div className="text-[9px] uppercase tracking-wider opacity-60">1.2 MB • DOCUMENT</div></div></div>}
                                 <div className="p-3">
                                     {headerType === 'TEXT' && headerText && <div className="font-bold text-gray-900 text-sm mb-1">{headerText}</div>}
                                     <div className="text-xs text-gray-800 leading-relaxed break-words" dangerouslySetInnerHTML={{ __html: getPreviewBody() || '<span class="text-gray-300 italic">No content...</span>' }} />
