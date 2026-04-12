@@ -33,10 +33,19 @@ export async function GET(req: Request) {
             const segment = await prisma.segment.findFirst({
                 where: { id: segmentId, workspace_id: user.workspaceId }
             });
-            if (segment && segment.filters && (segment.filters as any).tags) {
-                whereClause.tags = {
-                    hasSome: (segment.filters as any).tags
-                };
+            if (segment && segment.filters) {
+                const filters = segment.filters as any;
+                if (filters.tags && Array.isArray(filters.tags) && filters.tags.length > 0) {
+                    // Bug #9 Fix: Only apply filter if tags array is non-empty
+                    whereClause.tags = { hasSome: filters.tags };
+                } else {
+                    // Bug #9 Fix: Non-tag filters (or empty tags) must not return all contacts.
+                    // Return empty result by using an impossible condition.
+                    whereClause.id = { in: [] };
+                }
+            } else {
+                // Segment not found — return empty result, not all contacts
+                whereClause.id = { in: [] };
             }
         }
 
@@ -100,6 +109,7 @@ export async function POST(req: Request) {
                 email,
                 tags: tags || [],
                 attributes: attributes || {},
+                opt_in: true, // Bug #3 Fix: manually added contacts must be opted-in or broadcasts find 0 recipients
             },
         });
 

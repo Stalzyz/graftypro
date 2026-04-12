@@ -198,9 +198,17 @@ export async function GET(request: Request) {
                 `;
             }
 
+            // Bug #7 Fix: Look up the default plan and link it, exactly as the email
+            // register route does. Without this, Google OAuth users have current_plan_id=null
+            // and always hit the 100-credit trial cap.
+            const defaultPlanRow: any[] = await prisma.$queryRaw`
+                SELECT id FROM subscription_plans WHERE is_active = true ORDER BY sort_order ASC LIMIT 1
+            `;
+            const defaultPlanId: string | null = defaultPlanRow.length > 0 ? defaultPlanRow[0].id : null;
+
             // Create workspace
             await prisma.$executeRaw`
-                INSERT INTO workspaces (id, name, business_name, status, timezone, trial_ends_at, reseller_id, created_at, updated_at)
+                INSERT INTO workspaces (id, name, business_name, status, timezone, trial_ends_at, reseller_id, current_plan_id, created_at, updated_at)
                 VALUES (
                     ${wsId},
                     ${firstName ? `${firstName}'s Workspace` : "My Workspace"},
@@ -209,6 +217,7 @@ export async function GET(request: Request) {
                     'Asia/Kolkata',
                     ${finalTrialEnd},
                     ${resellerId},
+                    ${defaultPlanId},
                     ${now},
                     ${now}
                 )

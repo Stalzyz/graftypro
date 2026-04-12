@@ -26,12 +26,32 @@ export async function POST(req: Request) {
         }
 
         const result = await prisma.$transaction(async (tx) => {
-            // 1 & 2. Perform Atomic Increment Update directly
-            const updatedWallet = await tx.vendorWallet.update({
+            // ── Bug #1 Fix: Use upsert so wallet is auto-created if it doesn't exist yet.
+            // ── Bug #12 Fix: Pre-fetch balance to enforce a zero-floor on deductions.
+
+            // Pre-flight: check current balance before deducting
+            if (adjustmentAmount < 0) {
+                const existing = await tx.vendorWallet.findUnique({
+                    where: { workspace_id: workspaceId },
+                    select: { current_balance: true }
+                });
+                const currentBalance = Number(existing?.current_balance || 0);
+                if (currentBalance + adjustmentAmount < 0) {
+                    throw new Error(`Deduction of ${Math.abs(adjustmentAmount)} would exceed the current balance of ${currentBalance}. Floor is ₹0.`);
+                }
+            }
+
+            const updatedWallet = await tx.vendorWallet.upsert({
                 where: { workspace_id: workspaceId },
-                data: {
+                update: {
                     current_balance: { increment: adjustmentAmount },
                     total_purchased: adjustmentAmount > 0 ? { increment: adjustmentAmount } : undefined,
+                },
+                create: {
+                    workspace_id: workspaceId,
+                    current_balance: Math.max(0, adjustmentAmount),
+                    total_purchased: adjustmentAmount > 0 ? adjustmentAmount : 0,
+                    total_used: 0,
                 }
             });
 

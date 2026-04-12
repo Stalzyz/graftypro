@@ -29,7 +29,10 @@ export async function GET(req: Request) {
         const challenge = searchParams.get("hub.challenge");
         const VERIFY_TOKEN = process.env.META_WEBHOOK_VERIFY_TOKEN || "grafty_secure_token";
 
-        if (mode === "subscribe") {
+        // Bug #6 Fix: verify token MUST match before returning the challenge.
+        // Previously any token was accepted, allowing anyone to register their own
+        // Meta app against Grafty's webhook and receive all vendor message data.
+        if (mode === "subscribe" && token === VERIFY_TOKEN) {
             return new Response(challenge || "", { status: 200, headers: { "Content-Type": "text/plain" } });
         }
         return new Response("Forbidden", { status: 403 });

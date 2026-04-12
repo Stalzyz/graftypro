@@ -75,7 +75,7 @@ const metaApiWorker = new Worker(
                         accessToken,
                         to,
                         payload.templateName,
-                        payload.langCode || "en_US",
+                        payload.langCode || "en", // Bug #5 Fix: unified fallback — WhatsApp service defaults to "en", not "en_US"
                         payload.components || [],
                         workspaceId,
                         category
@@ -237,6 +237,44 @@ const campaignWorker = new Worker(
 
             console.log(`[CampaignWorker] Audience fetched. Size: ${recipients.length}`);
 
+            // ☢️ NUCLEAR MEDIA HARDENING
+            // If the campaign has a header media URL, and it's local, we upload it to Meta ONCE
+            // for the entire campaign to get a media_id.
+            let preUploadedMediaId: string | null = null;
+            const campaignAny = campaign as any;
+
+            if (campaignAny.header_media_url) {
+                console.log(`[CampaignWorker] ☢️ Checking Header Media for Nuclear Hardening: ${campaignAny.header_media_url}`);
+                
+                const isLocal = campaignAny.header_media_url.includes("/api/media/local") || !campaignAny.header_media_url.startsWith("http");
+                
+                if (isLocal) {
+                    try {
+                        let finalUrl = campaignAny.header_media_url;
+                        if (!finalUrl.startsWith("http")) {
+                            // Resolve internal path to a full local proxy URL
+                            const host = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+                            finalUrl = `${host}${finalUrl.startsWith("/") ? "" : "/"}${finalUrl}`;
+                        }
+
+                        console.log(`[CampaignWorker] 🚀 Performing ONE-TIME Nuclear Upload to Meta: ${finalUrl}`);
+                        preUploadedMediaId = await WhatsAppService.uploadMediaFromUrl(
+                            finalUrl,
+                            waba.phone_number_id,
+                            decryptedToken
+                        );
+                        
+                        if (preUploadedMediaId) {
+                            console.log(`[CampaignWorker] ✅ Nuclear Hardening Success! Using media_id: ${preUploadedMediaId}`);
+                        } else {
+                            console.warn(`[CampaignWorker] ⚠️ Nuclear Upload failed, falling back to URL-based linkage.`);
+                        }
+                    } catch (err: any) {
+                        console.error(`[CampaignWorker] ❌ Nuclear Hardening technical failure:`, err.message);
+                    }
+                }
+            }
+
             // Update stats to PROCESSING
             await prisma.campaign.update({
                 where: { id: campaignId },
@@ -277,15 +315,31 @@ const campaignWorker = new Worker(
                     // Add Header if override exists
                     if (campaignAny.header_media_url) {
                         const isImage = campaignAny.header_media_url.match(/\.(jpg|jpeg|png|webp)$/i);
-                        components.push({
-                            type: "header",
-                            parameters: [
-                                {
-                                    type: isImage ? "image" : "video",
-                                    [isImage ? "image" : "video"]: { link: campaignAny.header_media_url }
-                                }
-                            ]
-                        });
+                        const mediaType = isImage ? "image" : "video"; // Fallback to video/document if not image
+                        
+                        if (preUploadedMediaId) {
+                            // ✅ Uses the HARDENED media_id
+                            components.push({
+                                type: "header",
+                                parameters: [
+                                    {
+                                        type: mediaType,
+                                        [mediaType]: { id: preUploadedMediaId }
+                                    }
+                                ]
+                            });
+                        } else {
+                            // ⚠️ Fallback to the link (standard Meta fetch)
+                            components.push({
+                                type: "header",
+                                parameters: [
+                                    {
+                                        type: mediaType,
+                                        [mediaType]: { link: campaignAny.header_media_url }
+                                    }
+                                ]
+                            });
+                        }
                     }
 
                     // Add Body Variables
@@ -367,20 +421,15 @@ const dripDispatchWorker = new Worker(
                 if (step.template_id) {
                     const template = await prisma.template.findUnique({ where: { id: step.template_id } });
                     if (template) {
-                        const countryCode = enrollment.contact.phone.replace(/[^0-9]/g, "").substring(0, 2) || "91";
-                        const cost = await CreditService.getMessageCost("UTILITY", countryCode, enrollment.contact.workspace_id);
-                        
-                        await prisma.$transaction(async (tx) => {
-                            await CreditService.deductCredits(tx, enrollment.contact.workspace_id, cost, `DRIP-${enrollment.id}-${step.id}`, `Drip Step`);
-                        });
-
                         await metaApiQueue!.add("drip-send", {
                             type: "SEND_TEMPLATE",
                             payload: {
                                 phoneNumberId: enrollment.contact.workspace.waba.phone_number_id,
                                 accessToken: decrypt(enrollment.contact.workspace.waba.access_token),
                                 to: enrollment.contact.phone,
-                                templateName: template.name
+                                templateName: template.name,
+                                workspaceId: enrollment.contact.workspace_id,
+                                contactId: enrollment.contact.id
                             }
                         });
                     }
@@ -447,6 +496,50 @@ const automationWorker = new Worker(
             const { workspaceId, contactId, messageBody } = job.data;
             console.log(`[Worker] Executing Flow for contact ${contactId}`);
             await FlowRunner.processMessage(workspaceId, contactId, messageBody);
+        }
+
+        /**
+         * 🛒 NATIVE META CART ORDER PROCESSOR
+         * Converts WhatsApp native cart orders into CommerceOrder records
+         * and auto-generates payment links.
+         */
+        if (job.name === "process-meta-cart-order") {
+            const { workspaceId, contactId, orderPayload } = job.data;
+            console.log(`[Worker] 🛒 Processing native WhatsApp cart order for contact ${contactId}`);
+            
+            try {
+                const { CatalogEngine } = await import("@/lib/commerce/catalog-engine");
+                const { PaymentEngine } = await import("@/lib/commerce/payment-engine");
+
+                // 1. Create order from Meta cart
+                const order = await CatalogEngine.processMetaCartOrder(workspaceId, contactId, orderPayload);
+                console.log(`[Worker] ✅ Cart order created: ${order.order_number}`);
+
+                // 2. Auto-generate and send payment link
+                const paymentResult = await PaymentEngine.createAndSendPaymentLink(order.id);
+                console.log(`[Worker] 💳 Payment link sent via ${paymentResult.gateway}: ${paymentResult.paymentUrl}`);
+            } catch (err: any) {
+                console.error(`[Worker] ❌ Cart order processing failed:`, err.message);
+                throw err; // Allow BullMQ retry
+            }
+        }
+
+        /**
+         * 💳 SEND PAYMENT LINK
+         * Generates a payment link for an existing order and sends it to the customer.
+         */
+        if (job.name === "send-payment-link") {
+            const { orderId } = job.data;
+            console.log(`[Worker] 💳 Generating payment link for order: ${orderId}`);
+            
+            try {
+                const { PaymentEngine } = await import("@/lib/commerce/payment-engine");
+                const result = await PaymentEngine.createAndSendPaymentLink(orderId);
+                console.log(`[Worker] ✅ Payment link sent via ${result.gateway}`);
+            } catch (err: any) {
+                console.error(`[Worker] ❌ Payment link failed:`, err.message);
+                throw err;
+            }
         }
 
         /**
@@ -606,11 +699,6 @@ const automationWorker = new Worker(
             }
         }
 
-        if (job.name === "edu-lead-followup") {
-            const { EduAutomation } = require("@/lib/edu/automation");
-            await EduAutomation.handleFollowup(job.data);
-        }
-
         if (job.name === "edu-lead-reminder") {
             const { EduAutomation } = require("@/lib/edu/automation");
             await EduAutomation.handleReminder(job.data);
@@ -619,4 +707,30 @@ const automationWorker = new Worker(
     { connection: REDIS_CONNECTION }
 );
 
-console.log("🚀 Enterprise Workers (Drip Pulse + Meta API + Campaign Dispatch + Audit) Active");
+/**
+ * ☢️ KNOWLEDGE INGESTION WORKER
+ * Offloads heavy document processing (PDF parsing, OCR, Embeddings)
+ * to prevent web process locking and bundle-missing issues.
+ */
+const knowledgeWorker = new Worker(
+    "knowledge-queue",
+    async (job) => {
+        const { sourceId } = job.data;
+        console.log(`[KnowledgeWorker] 🧠 Ingesting Source: ${sourceId}`);
+        
+        try {
+            const { KnowledgeEngine } = await import("@/lib/ai/knowledge-engine");
+            const result = await KnowledgeEngine.ingest(sourceId);
+            console.log(`[KnowledgeWorker] ✅ Ingestion Complete for ${sourceId}:`, result);
+        } catch (err: any) {
+            console.error(`[KnowledgeWorker] ❌ Ingestion Failed for ${sourceId}:`, err.message);
+            throw err; // Trigger BullMQ retry
+        }
+    },
+    { 
+        connection: REDIS_CONNECTION,
+        concurrency: 5 // Process up to 5 documents in parallel
+    }
+);
+
+console.log("🚀 Enterprise Workers (Drip Pulse + Meta API + Campaign Dispatch + Knowledge) Active");

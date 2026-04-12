@@ -236,6 +236,16 @@ export class CreditService {
         description: string
     ) {
         return await prisma.$transaction(async (tx) => {
+            // 0. Zero-Cost Quick Pass
+            if (amount <= 0) {
+                return {
+                    success: true,
+                    balance_after: 0,
+                    transaction_id: "free_msg_" + Date.now(),
+                    margin: 0
+                };
+            }
+
             // 1. Row-level lock using raw SQL
             await tx.$executeRaw`
         SELECT * FROM vendor_wallets 
@@ -261,13 +271,25 @@ export class CreditService {
                 };
             }
 
-            // 3. Get wallet
-            const wallet = await tx.vendorWallet.findUnique({
+            // 3. Get wallet — Bug #2 Fix: auto-create if it doesn't exist yet.
+            // Previously this threw a hard "Wallet not found" error which silently
+            // blocked all messaging for vendors whose wallet was never created
+            // (e.g. Google OAuth sign-ups before the Bug #7 fix, or super-admin
+            // created accounts that bypassed the normal registration flow).
+            let wallet = await tx.vendorWallet.findUnique({
                 where: { workspace_id: workspaceId }
             });
 
             if (!wallet) {
-                throw new Error('Wallet not found');
+                console.warn(`[CreditService] ⚠️ Wallet missing for workspace ${workspaceId} — auto-creating with zero balance.`);
+                wallet = await tx.vendorWallet.create({
+                    data: {
+                        workspace_id: workspaceId,
+                        current_balance: 0,
+                        total_purchased: 0,
+                        total_used: 0,
+                    }
+                });
             }
 
             if (wallet.is_frozen) {
@@ -288,7 +310,17 @@ export class CreditService {
             }
 
             // 3.6 Trial Limit Enforcement (100 credits max for unsubscribed users without GST)
-            const hasSubscription = !!workspace.current_plan_id;
+            // Bug #2 Fix: also verify the plan FK actually resolves to a real active plan.
+            // A non-null current_plan_id pointing to a deleted plan (orphaned FK after seed
+            // re-runs) was incorrectly counted as "subscribed" — now we do a real lookup.
+            let hasSubscription = false;
+            if (workspace.current_plan_id) {
+                const planExists = await tx.subscriptionPlan.findFirst({
+                    where: { id: workspace.current_plan_id, is_active: true },
+                    select: { id: true }
+                });
+                hasSubscription = !!planExists;
+            }
             const hasGST = wallet.gst_registered;
             if (!hasSubscription && !hasGST) {
                 const totalUsed = Number(wallet.total_used);
@@ -409,16 +441,29 @@ export class CreditService {
             this.triggerFraudAlert(wallet.workspace_id, velocity, "DAILY_VELOCITY_EXCEEDED");
         }
 
-        // 3. Auto-Recharge Logic
+        // 3. Auto-Recharge Logic (Tokenized Card)
         if (wallet.auto_recharge_enabled && balanceAfter < Number(wallet.auto_recharge_threshold)) {
             if (wallet.razorpay_customer_id && wallet.razorpay_token_id) {
                 console.log(`[Auto Recharge] Triggering recharge for ${wallet.workspace_id} (Balance: ${balanceAfter})`);
-                // Offload to background worker or process here
                 this.triggerAutoRecharge(wallet.workspace_id, Number(wallet.auto_recharge_amount));
             }
         }
 
-        // 4. Standard Low Balance Alert (if not auto-recharged)
+        // 4. SMART TOPUP ALERT (WhatsApp + Payment Link)
+        if (balanceAfter < 500) {
+            try {
+                const { SmartAlertService } = await import("./smart-alert");
+                // Run in background to not block the main transaction response too much
+                // (Though deductCreditsAtomic is usually called from internal services)
+                SmartAlertService.triggerSmartAlert(wallet.workspace_id, balanceAfter).catch(err => {
+                    console.error("[CreditService] Smart Alert trigger failed:", err);
+                });
+            } catch (err) {
+                console.error("[CreditService] Failed to load SmartAlertService:", err);
+            }
+        }
+
+        // 5. Fallback Legacy Low Balance Alert (Email)
         if (balanceAfter < 500 && !wallet.auto_recharge_enabled) {
             this.triggerLowBalanceAlert(wallet.workspace_id, balanceAfter, wallet.billing_email);
         }
@@ -530,11 +575,10 @@ export class CreditService {
         return { balanceAfter: result.balance_after };
     }
 
-    /**
-     * Get message cost for a specific category and country
-     */
     static async getMessageCost(category: string, countryCode: string, workspaceId?: string) {
-        // 1. Check for DIRECT billing model (Zero-Markup Hybrid)
+        // 1. Check for Free Flow (SERVICE) or DIRECT billing model
+        if (category === 'SERVICE') return 0; // Flows are always free
+
         if (workspaceId) {
             const waba = await prisma.whatsAppAccount.findUnique({
                 where: { workspace_id: workspaceId },
@@ -542,7 +586,7 @@ export class CreditService {
             });
 
             if ((waba as any)?.billing_model === 'DIRECT') {
-                return this.PLATFORM_FEE;
+                return 0; // Direct billed users don't pay anything to Grafty
             }
         }
 
@@ -715,6 +759,55 @@ export class CreditService {
     /**
      * Seed default pricing
      */
+    /**
+     * Deduct credits for an Addon activation
+     */
+    static async deductCreditsForAddon(
+        tx: any,
+        workspaceId: string,
+        amount: number,
+        addonName: string,
+        description: string
+    ) {
+        // 1. Get wallet (with row-level lock)
+        const wallet = await tx.vendorWallet.findUnique({
+            where: { workspace_id: workspaceId }
+        });
+
+        if (!wallet) throw new Error('Wallet not found for this workspace.');
+        
+        const currentBalance = Number(wallet.current_balance);
+
+        if (currentBalance < amount) {
+            throw new Error(`Insufficient credits to activate ${addonName}. Required: ${amount}, Available: ${currentBalance}`);
+        }
+
+        // 2. Update balance
+        const balanceAfter = currentBalance - amount;
+        await tx.vendorWallet.update({
+            where: { id: wallet.id },
+            data: {
+                current_balance: { decrement: amount },
+                total_used: { increment: amount }
+            }
+        });
+
+        // 3. Create Transaction Ledger Entry
+        return await tx.creditTransaction.create({
+            data: {
+                workspace_id: workspaceId,
+                wallet_id: wallet.id,
+                type: 'ADDON_PURCHASE',
+                amount: -amount,
+                balance_before: currentBalance,
+                balance_after: balanceAfter,
+                description: description || `Activated Addon: ${addonName}`,
+                status: 'COMPLETED',
+                initiated_by: 'SYSTEM'
+            }
+        });
+    }
+
     static async seedDefaultPricing() {
         const defaultPricing = [
             { category: "MARKETING", country: "India", code: "91", meta: 0.72, plat: 0.10, res: 0.10 },

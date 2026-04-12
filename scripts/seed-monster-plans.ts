@@ -10,9 +10,9 @@ async function main() {
         {
             name: "STARTER",
             description: "Essential WhatsApp Automation for small teams.",
-            monthly_price: 1999.00,
+            monthly_price: 999.00,
             original_monthly_price: 2999.00,
-            yearly_price: 19990.00,
+            yearly_price: 9990.00,
             original_yearly_price: 29990.00,
             credits: 100,
             currency: "INR",
@@ -56,9 +56,9 @@ async function main() {
         {
             name: "GROWTH",
             description: "Scale your sales with E-Commerce, CRM and full automation.",
-            monthly_price: 3999.00,
+            monthly_price: 2999.00,
             original_monthly_price: 5999.00,
-            yearly_price: 39990.00,
+            yearly_price: 29990.00,
             original_yearly_price: 59990.00,
             credits: 300,
             currency: "INR",
@@ -158,23 +158,32 @@ async function main() {
         }
     ];
 
-    // Clear only the old public plans (preserve reseller-specific plans)
-    console.log("🧹 Clearing old default plans...");
-    await prisma.subscriptionPlan.deleteMany({
-        where: { reseller_id: null }
-    });
+    // Bug #10 Fix: NEVER delete and re-create plans — that orphans every vendor's
+    // current_plan_id foreign key. Use upsert keyed on name so IDs stay stable
+    // across every re-deploy. Only fields that need updating are touched.
+    console.log("🔄 Upserting plans (IDs preserved for existing vendors)...");
 
     for (const plan of plans) {
-        console.log(`⏳ Creating plan: ${plan.name} @ ₹${plan.monthly_price}/mo...`);
-        await prisma.subscriptionPlan.create({
-            data: plan as any
+        console.log(`⏳ Upserting plan: ${plan.name} @ ₹${plan.monthly_price}/mo...`);
+        const existing = await prisma.subscriptionPlan.findFirst({
+            where: { name: plan.name, reseller_id: null }
         });
-        console.log(`✅ ${plan.name} created.`);
+
+        if (existing) {
+            await prisma.subscriptionPlan.update({
+                where: { id: existing.id },
+                data: plan as any
+            });
+            console.log(`✅ ${plan.name} updated (ID preserved: ${existing.id})`);
+        } else {
+            await prisma.subscriptionPlan.create({ data: plan as any });
+            console.log(`✅ ${plan.name} created.`);
+        }
     }
 
     console.log("\n✨ Official 3-Plan Pricing Seeded Successfully!");
-    console.log("   → STARTER:    ₹1,999/mo");
-    console.log("   → GROWTH:     ₹3,999/mo  [Best Value ⭐]");
+    console.log("   → STARTER:     ₹999/mo");
+    console.log("   → GROWTH:     ₹2,999/mo  [Best Value ⭐]");
     console.log("   → ENTERPRISE: ₹14,999/mo");
 }
 

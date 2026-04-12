@@ -74,6 +74,7 @@ function Avatar({ name }: { name: string }) {
 export default function ContactsPage() {
     const [contacts, setContacts] = useState<Contact[]>([]);
     const [segments, setSegments] = useState<Segment[]>([]);
+    const [totalContacts, setTotalContacts] = useState(0); // Bug #11 Fix: track API total, not page count
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
     const [selectedSegmentId, setSelectedSegmentId] = useState<string>("all");
@@ -106,6 +107,7 @@ export default function ContactsPage() {
             const contactsData = await contactsRes.json();
             const segmentsData = await segmentsRes.json();
             if (contactsData.data) setContacts(contactsData.data);
+            if (contactsData.meta?.total !== undefined) setTotalContacts(contactsData.meta.total); // Bug #11 Fix
             if (segmentsData.data) setSegments(segmentsData.data);
         } catch (error) {
             console.error(error);
@@ -313,7 +315,7 @@ export default function ContactsPage() {
                     ) : (
                         <div className="bg-gradient-to-br from-[#042F94] to-indigo-700 rounded-2xl p-4 text-white">
                             <div className="text-[10px] font-bold opacity-70 uppercase tracking-wider mb-1">Total Contacts</div>
-                            <div className="text-3xl font-black mb-1">{contacts.length}</div>
+                            <div className="text-3xl font-black mb-1">{totalContacts.toLocaleString()}</div>{/* Bug #11 Fix: API total not page slice */}
                             <div className="text-[11px] text-white/60">Across all segments</div>
                         </div>
                     )}
