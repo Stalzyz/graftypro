@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { INTEGRATIONS_DATA } from '../integrations-data';
 import { USE_CASES_DATA } from '../use-cases-data';
-import { SOLUTIONS_DATA } from '../solutions-data';
+import { SOLUTIONS_DATA } from '../solutions/solutions-data';
 
 export async function GET() {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://grafty.pro';
