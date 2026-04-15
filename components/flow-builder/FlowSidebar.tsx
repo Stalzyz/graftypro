@@ -81,7 +81,7 @@ const NODE_GROUPS: NodeGroup[] = [
             { type: 'start', label: 'Start Trigger', description: 'Entry keyword that starts this flow', icon: <Zap size={15} />, minPlan: 'STARTER' },
             { type: 'location', label: 'LocationPin', description: 'Request or send GPS location', icon: <MapPin size={15} />, minPlan: 'GROWTH' },
             { type: 'condition', label: 'Condition (Yes/No)', description: 'Branch based on user input', icon: <GitBranch size={15} />, minPlan: 'GROWTH' },
-            { type: 'meta_flow', label: 'Meta Form / Flow', description: 'Native WhatsApp form', icon: <Layout size={15} />, minPlan: 'ENTERPRISE' },
+            { type: 'meta_flow', label: 'Meta Form / Flow', description: 'Native WhatsApp form', icon: <Layout size={15} />, minPlan: 'STARTER' },
             { type: 'end', label: 'End Flow', description: 'Terminate the conversation flow', icon: <Flag size={15} />, minPlan: 'STARTER' },
         ]
     },
@@ -92,7 +92,7 @@ const NODE_GROUPS: NodeGroup[] = [
         bgColor: 'bg-slate-50',
         borderColor: 'border-slate-200',
         nodes: [
-            { type: 'action', label: 'Webhook', description: 'POST data to any external URL', icon: <Webhook size={15} />, badge: 'ENTERPRISE', actionType: 'webhook', minPlan: 'ENTERPRISE' },
+            { type: 'external_webhook', label: 'CRM Bridge', description: 'Real-time sync to HubSpot, Salesforce, etc', icon: <Webhook size={15} />, badge: 'ENTERPRISE', minPlan: 'ENTERPRISE' },
             { type: 'action', label: 'API Call', description: 'Fetch data from external APIs', icon: <Globe size={15} />, badge: 'ENTERPRISE', minPlan: 'ENTERPRISE' },
             { type: 'action', label: 'Google Sheets', description: 'Append row to a spreadsheet', icon: <Database size={15} />, badge: 'ENTERPRISE', actionType: 'google_sheet', minPlan: 'ENTERPRISE' },
             { type: 'action', label: 'Send Email', description: 'Trigger an email notification', icon: <Mail size={15} />, badge: 'ENTERPRISE', actionType: 'send_email', minPlan: 'ENTERPRISE' },
@@ -128,7 +128,12 @@ export default function FlowSidebar({ onUseScenario, nodeCount = 0 }: FlowSideba
     const { user } = useUser();
     const currentPlan = user?.workspace?.plan?.name?.toUpperCase() || 'STARTER';
 
-    const getIsLocked = (minPlan?: string) => {
+    const getIsLocked = (type: string, minPlan?: string) => {
+        if (type === 'meta_flow') {
+            const hasAddon = user?.workspace?.addons?.includes('META_FLOW_INTERACTIVE');
+            if (hasAddon) return false;
+        }
+        
         if (!minPlan || minPlan === 'STARTER') return false;
         if (currentPlan === 'ENTERPRISE') return false;
         if (currentPlan === 'GROWTH' && minPlan === 'GROWTH') return false;
@@ -202,7 +207,7 @@ export default function FlowSidebar({ onUseScenario, nodeCount = 0 }: FlowSideba
                                             bgColor={group.bgColor}
                                             actionType={node.actionType}
                                             onDragStart={onDragStart}
-                                            locked={getIsLocked(node.minPlan)}
+                                            locked={getIsLocked(node.type, node.minPlan)}
                                         />
                                     ))}
                                 </div>

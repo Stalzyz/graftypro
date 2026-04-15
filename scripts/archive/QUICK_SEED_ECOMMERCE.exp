@@ -1,0 +1,24 @@
+#!/usr/bin/expect -f
+set VPS_PASS "Photoshop09@"
+set VPS_HOST "root@72.61.231.187"
+set REMOTE_PATH "/root/wabot_bsp"
+set LOCAL_PATH "/Users/stalinkumar/Downloads/Grafty_Bsp"
+set timeout 600
+
+spawn rsync -avz --no-perms -e "ssh -o StrictHostKeyChecking=no" "$LOCAL_PATH/scripts/seed-ecommerce.ts" $VPS_HOST:$REMOTE_PATH/scripts/
+expect {
+    "assword:" {
+        send "$VPS_PASS\r"
+        exp_continue
+    }
+    eof { }
+}
+
+spawn ssh -o StrictHostKeyChecking=no $VPS_HOST "cd $REMOTE_PATH && docker compose -f docker-compose.prod.yml cp scripts/seed-ecommerce.ts web:/app/scripts/seed-ecommerce.ts && docker compose -f docker-compose.prod.yml exec web npx tsx scripts/seed-ecommerce.ts"
+expect {
+    "assword:" {
+        send "$VPS_PASS\r"
+        exp_continue
+    }
+    eof { }
+}

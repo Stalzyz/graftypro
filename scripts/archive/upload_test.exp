@@ -1,0 +1,11 @@
+#!/usr/bin/expect -f
+set timeout 300
+set ip "72.61.231.187"
+set user "root"
+set password "Photoshop09@"
+set file "/Users/stalinkumar/Downloads/Grafty_Bsp/public/deploy_test.txt"
+
+spawn scp -o StrictHostKeyChecking=no $file $user@$ip:/root/grafty_bsp/public/deploy_test.txt
+expect "password:"
+send "$password\r"
+expect eof

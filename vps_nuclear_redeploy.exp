@@ -1,0 +1,42 @@
+#!/usr/bin/expect -f
+set SERVER    "root@72.61.231.187"
+set PASS      "Photoshop09@"
+set REMOTE    "/root/grafty_bsp"
+set timeout   300
+
+puts "\n🚀 \[1/5\] Removing stale artifacts on VPS..."
+spawn ssh -o StrictHostKeyChecking=no $SERVER "rm -f /var/www/wabot/code_patch.zip && rm -rf $REMOTE/.next && rm -f $REMOTE/code_patch.zip"
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}
+
+puts "\n🚀 \[2/5\] Uploading fresh code_patch.zip..."
+spawn scp -o StrictHostKeyChecking=no code_patch.zip $SERVER:$REMOTE/code_patch.zip
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}
+
+puts "\n🚀 \[3/5\] Unzipping at $REMOTE..."
+spawn ssh -o StrictHostKeyChecking=no $SERVER "cd $REMOTE && unzip -o code_patch.zip && rm code_patch.zip"
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}
+
+puts "\n🚀 \[4/5\] VERIFYING host file BEFORE build..."
+spawn ssh -o StrictHostKeyChecking=no $SERVER "grep 'tracking-tight' $REMOTE/app/dashboard/templates/\\\[id\\\]/page.tsx"
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}
+
+puts "\n🚀 \[5/5\] Nuclear Rebuild (No Cache)..."
+spawn ssh -o StrictHostKeyChecking=no $SERVER "cd $REMOTE && docker compose -f docker-compose.prod.yml build --no-cache web && docker compose -f docker-compose.prod.yml up -d --force-recreate"
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}
+
+puts "\n✅ NUCLEAR DEPLOY FINISHED"

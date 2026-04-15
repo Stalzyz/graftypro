@@ -1,0 +1,248 @@
+spawn ssh -o StrictHostKeyChecking=no root@72.61.231.187 docker logs --since 30m grafty_bsp-web-1
+Could not stat /Users/stalinkumar/.ssh: Operation not permitted
+Failed to add the host to the list of known hosts (/Users/stalinkumar/.ssh/known_hosts).
+root@72.61.231.187's password: 
+
+> grafty-bsp@0.1.0 start
+> next start
+
+   ▲ Next.js 14.1.0
+   - Local:        http://localhost:3000
+
+ ✓ Ready in 2.5s
+[AUTH DEBUG] No headers found, checking Authorization header. Raw header value: null
+[AUTH DEBUG] No valid auth headers found, returning null. Request URL: https://localhost:3000/api/crm/follow-ups/due
+[AUTH DEBUG] No headers found, checking Authorization header. Raw header value: null
+[AUTH DEBUG] No valid auth headers found, returning null. Request URL: https://localhost:3000/api/notifications/messages
+[AUTH DEBUG] No headers found, checking Authorization header. Raw header value: null
+[AUTH DEBUG] No valid auth headers found, returning null. Request URL: https://localhost:3000/api/crm/follow-ups/due
+[AUTH DEBUG] No headers found, checking Authorization header. Raw header value: null
+[AUTH DEBUG] No valid auth headers found, returning null. Request URL: https://localhost:3000/api/notifications/messages
+[AUTH DEBUG] No headers found, checking Authorization header. Raw header value: null
+[AUTH DEBUG] No valid auth headers found, returning null. Request URL: https://localhost:3000/api/crm/follow-ups/due
+[AUTH DEBUG] No headers found, checking Authorization header. Raw header value: null
+[AUTH DEBUG] No valid auth headers found, returning null. Request URL: https://localhost:3000/api/notifications/messages
+[AUTH DEBUG] No headers found, checking Authorization header. Raw header value: null
+[AUTH DEBUG] No valid auth headers found, returning null. Request URL: https://localhost:3000/api/crm/follow-ups/due
+[AUTH DEBUG] No headers found, checking Authorization header. Raw header value: null
+[AUTH DEBUG] No valid auth headers found, returning null. Request URL: https://localhost:3000/api/notifications/messages
+[AUTH DEBUG] No headers found, checking Authorization header. Raw header value: null
+[AUTH DEBUG] No valid auth headers found, returning null. Request URL: https://localhost:3000/api/crm/follow-ups/due
+[AUTH DEBUG] No headers found, checking Authorization header. Raw header value: null
+[AUTH DEBUG] No valid auth headers found, returning null. Request URL: https://localhost:3000/api/notifications/messages
+[AUTH DEBUG] No headers found, checking Authorization header. Raw header value: null
+[AUTH DEBUG] No valid auth headers found, returning null. Request URL: https://localhost:3000/api/billing/status
+[AUTH DEBUG] No headers found, checking Authorization header. Raw header value: null
+[AUTH DEBUG] No valid auth headers found, returning null. Request URL: https://localhost:3000/api/auth/trial-status
+[AUTH DEBUG] No headers found, checking Authorization header. Raw header value: null
+[AUTH DEBUG] No valid auth headers found, returning null. Request URL: https://localhost:3000/api/auth/trial-status
+[AUTH DEBUG] No headers found, checking Authorization header. Raw header value: null
+[AUTH DEBUG] No valid auth headers found, returning null. Request URL: https://localhost:3000/api/branding
+ð Branding Resolver Host: 
+[AUTH DEBUG] No headers found, checking Authorization header. Raw header value: null
+[AUTH DEBUG] No valid auth headers found, returning null. Request URL: https://localhost:3000/api/auth/trial-status
+[AUTH DEBUG] No headers found, checking Authorization header. Raw header value: null
+[AUTH DEBUG] No valid auth headers found, returning null. Request URL: https://localhost:3000/api/crm/follow-ups/due
+[AUTH DEBUG] No headers found, checking Authorization header. Raw header value: null
+[AUTH DEBUG] No valid auth headers found, returning null. Request URL: https://localhost:3000/api/branding
+ð Branding Resolver Host: 
+[URL_RESOLVE] Env-based: /grafty_brand.svg -> https://grafty.pro/grafty_brand.svg
+[URL_RESOLVE] Env-based: /grafty_brand.svg -> https://grafty.pro/grafty_brand.svg
+[URL_RESOLVE] Env-based: /favicon.ico -> https://grafty.pro/favicon.ico
+[URL_RESOLVE] Env-based: /grafty_brand.svg -> https://grafty.pro/grafty_brand.svg
+[URL_RESOLVE] Env-based: /grafty_brand.svg -> https://grafty.pro/grafty_brand.svg
+[URL_RESOLVE] Env-based: /grafty_brand.svg -> https://grafty.pro/grafty_brand.svg
+[URL_RESOLVE] Env-based: /grafty_brand.svg -> https://grafty.pro/grafty_brand.svg
+[URL_RESOLVE] Env-based: /grafty_brand.svg -> https://grafty.pro/grafty_brand.svg
+[URL_RESOLVE] Env-based: /grafty_brand.svg -> https://grafty.pro/grafty_brand.svg
+[URL_RESOLVE] Env-based: /grafty_brand.svg -> https://grafty.pro/grafty_brand.svg
+[URL_RESOLVE] Env-based: /favicon.ico -> https://grafty.pro/favicon.ico
+[URL_RESOLVE] Env-based: /grafty_brand.svg -> https://grafty.pro/grafty_brand.svg
+[URL_RESOLVE] Env-based: /grafty_brand.svg -> https://grafty.pro/grafty_brand.svg
+[URL_RESOLVE] Env-based: /grafty_brand.svg -> https://grafty.pro/grafty_brand.svg
+[URL_RESOLVE] Env-based: /grafty_brand.svg -> https://grafty.pro/grafty_brand.svg
+[URL_RESOLVE] Env-based: /grafty_brand.svg -> https://grafty.pro/grafty_brand.svg
+[AUTH DEBUG] No headers found, checking Authorization header. Raw header value: null
+[AUTH DEBUG] No valid auth headers found, returning null. Request URL: https://localhost:3000/api/notifications/messages
+[AUTH DEBUG] No headers found, checking Authorization header. Raw header value: null
+[AUTH DEBUG] No valid auth headers found, returning null. Request URL: https://localhost:3000/api/branding
+ð Branding Resolver Host: 
+[URL_RESOLVE] Env-based: /grafty_brand.svg -> https://grafty.pro/grafty_brand.svg
+[URL_RESOLVE] Env-based: /grafty_brand.svg -> https://grafty.pro/grafty_brand.svg
+[URL_RESOLVE] Env-based: /favicon.ico -> https://grafty.pro/favicon.ico
+[URL_RESOLVE] Env-based: /grafty_brand.svg -> https://grafty.pro/grafty_brand.svg
+[URL_RESOLVE] Env-based: /grafty_brand.svg -> https://grafty.pro/grafty_brand.svg
+[URL_RESOLVE] Env-based: /grafty_brand.svg -> https://grafty.pro/grafty_brand.svg
+[URL_RESOLVE] Env-based: /grafty_brand.svg -> https://grafty.pro/grafty_brand.svg
+[URL_RESOLVE] Env-based: /grafty_brand.svg -> https://grafty.pro/grafty_brand.svg
+[AUTH DEBUG] No headers found, checking Authorization header. Raw header value: null
+[AUTH DEBUG] No valid auth headers found, returning null. Request URL: https://localhost:3000/api/whatsapp/status
+[AUTH DEBUG] No headers found, checking Authorization header. Raw header value: null
+[AUTH DEBUG] No valid auth headers found, returning null. Request URL: https://localhost:3000/api/whatsapp/config
+[AUTH DEBUG] No headers found, checking Authorization header. Raw header value: null
+[AUTH DEBUG] No valid auth headers found, returning null. Request URL: https://localhost:3000/api/whatsapp/manual-setup
+[AUTH DEBUG] No headers found, checking Authorization header. Raw header value: null
+[AUTH DEBUG] No valid auth headers found, returning null. Request URL: https://localhost:3000/api/branding
+ð Branding Resolver Host: 
+[URL_RESOLVE] Env-based: /grafty_brand.svg -> https://grafty.pro/grafty_brand.svg
+[URL_RESOLVE] Env-based: /grafty_brand.svg -> https://grafty.pro/grafty_brand.svg
+[URL_RESOLVE] Env-based: /favicon.ico -> https://grafty.pro/favicon.ico
+[URL_RESOLVE] Env-based: /grafty_brand.svg -> https://grafty.pro/grafty_brand.svg
+[URL_RESOLVE] Env-based: /grafty_brand.svg -> https://grafty.pro/grafty_brand.svg
+[URL_RESOLVE] Env-based: /grafty_brand.svg -> https://grafty.pro/grafty_brand.svg
+[URL_RESOLVE] Env-based: /grafty_brand.svg -> https://grafty.pro/grafty_brand.svg
+[URL_RESOLVE] Env-based: /grafty_brand.svg -> https://grafty.pro/grafty_brand.svg
+[AUTH DEBUG] No headers found, checking Authorization header. Raw header value: null
+[AUTH DEBUG] No valid auth headers found, returning null. Request URL: https://localhost:3000/api/branding
+ð Branding Resolver Host: 
+[URL_RESOLVE] Env-based: /grafty_brand.svg -> https://grafty.pro/grafty_brand.svg
+[URL_RESOLVE] Env-based: /grafty_brand.svg -> https://grafty.pro/grafty_brand.svg
+[URL_RESOLVE] Env-based: /favicon.ico -> https://grafty.pro/favicon.ico
+[URL_RESOLVE] Env-based: /grafty_brand.svg -> https://grafty.pro/grafty_brand.svg
+[URL_RESOLVE] Env-based: /grafty_brand.svg -> https://grafty.pro/grafty_brand.svg
+[URL_RESOLVE] Env-based: /grafty_brand.svg -> https://grafty.pro/grafty_brand.svg
+[URL_RESOLVE] Env-based: /grafty_brand.svg -> https://grafty.pro/grafty_brand.svg
+[URL_RESOLVE] Env-based: /grafty_brand.svg -> https://grafty.pro/grafty_brand.svg
+[Google OAuth] Restored domain from state: https://grafty.pro
+[Google OAuth] Exchanging code for tokens...
+[Google OAuth] Got profile for: greeksgraphic@gmail.com
+[Google OAuth] Creating new user: greeksgraphic@gmail.com
+[Google OAuth] Created user: 4179399b-0d2d-44fc-ad79-f1be83712dff workspace: 814d3727-67fc-496a-a6c3-1d36ce05eca7
+[Google OAuth] ✅ Setting cookie directly → dashboard
+[AUTH DEBUG] No headers found, checking Authorization header. Raw header value: null
+[AUTH DEBUG] No valid auth headers found, returning null. Request URL: https://localhost:3000/api/auth/trial-status
+[AUTH DEBUG] No headers found, checking Authorization header. Raw header value: null
+[AUTH DEBUG] No valid auth headers found, returning null. Request URL: https://localhost:3000/api/dashboard/stats
+[AUTH DEBUG] No headers found, checking Authorization header. Raw header value: null
+[AUTH DEBUG] No valid auth headers found, returning null. Request URL: https://localhost:3000/api/crm/follow-ups/due
+[AUTH DEBUG] No headers found, checking Authorization header. Raw header value: null
+[AUTH DEBUG] No valid auth headers found, returning null. Request URL: https://localhost:3000/api/branding
+ð Branding Resolver Host: 
+[URL_RESOLVE] Env-based: /grafty_brand.svg -> https://grafty.pro/grafty_brand.svg
+[URL_RESOLVE] Env-based: /grafty_brand.svg -> https://grafty.pro/grafty_brand.svg
+[URL_RESOLVE] Env-based: /favicon.ico -> https://grafty.pro/favicon.ico
+[URL_RESOLVE] Env-based: /grafty_brand.svg -> https://grafty.pro/grafty_brand.svg
+[ManualSetup] ❌ AUTH FAILURE. Trace: {
+  userId: null,
+  wsId: null,
+  role: null,
+  host: 'grafty.pro',
+  referer: 'https://grafty.pro/dashboard/settings/whatsapp',
+  cookiePresent: true
+}
+[URL_RESOLVE] Env-based: /grafty_brand.svg -> https://grafty.pro/grafty_brand.svg
+[URL_RESOLVE] Env-based: /grafty_brand.svg -> https://grafty.pro/grafty_brand.svg
+[URL_RESOLVE] Env-based: /grafty_brand.svg -> https://grafty.pro/grafty_brand.svg
+[URL_RESOLVE] Env-based: /grafty_brand.svg -> https://grafty.pro/grafty_brand.svg
+[AUTH DEBUG] No headers found, checking Authorization header. Raw header value: null
+[AUTH DEBUG] No valid auth headers found, returning null. Request URL: https://localhost:3000/api/auth/trial-status
+[AUTH DEBUG] No headers found, checking Authorization header. Raw header value: null
+[AUTH DEBUG] No valid auth headers found, returning null. Request URL: https://localhost:3000/api/branding
+ð Branding Resolver Host: 
+[URL_RESOLVE] Env-based: /grafty_brand.svg -> https://grafty.pro/grafty_brand.svg
+[URL_RESOLVE] Env-based: /grafty_brand.svg -> https://grafty.pro/grafty_brand.svg
+[URL_RESOLVE] Env-based: /favicon.ico -> https://grafty.pro/favicon.ico
+[URL_RESOLVE] Env-based: /grafty_brand.svg -> https://grafty.pro/grafty_brand.svg
+[URL_RESOLVE] Env-based: /grafty_brand.svg -> https://grafty.pro/grafty_brand.svg
+[URL_RESOLVE] Env-based: /grafty_brand.svg -> https://grafty.pro/grafty_brand.svg
+[URL_RESOLVE] Env-based: /grafty_brand.svg -> https://grafty.pro/grafty_brand.svg
+[URL_RESOLVE] Env-based: /grafty_brand.svg -> https://grafty.pro/grafty_brand.svg
+[AUTH DEBUG] No headers found, checking Authorization header. Raw header value: null
+[AUTH DEBUG] No valid auth headers found, returning null. Request URL: https://localhost:3000/api/notifications/messages
+[AUTH DEBUG] No headers found, checking Authorization header. Raw header value: null
+[AUTH DEBUG] No valid auth headers found, returning null. Request URL: https://localhost:3000/api/branding
+ð Branding Resolver Host: 
+[URL_RESOLVE] Env-based: /grafty_brand.svg -> https://grafty.pro/grafty_brand.svg
+[URL_RESOLVE] Env-based: /grafty_brand.svg -> https://grafty.pro/grafty_brand.svg
+[URL_RESOLVE] Env-based: /favicon.ico -> https://grafty.pro/favicon.ico
+[URL_RESOLVE] Env-based: /grafty_brand.svg -> https://grafty.pro/grafty_brand.svg
+[URL_RESOLVE] Env-based: /grafty_brand.svg -> https://grafty.pro/grafty_brand.svg
+[URL_RESOLVE] Env-based: /grafty_brand.svg -> https://grafty.pro/grafty_brand.svg
+[URL_RESOLVE] Env-based: /grafty_brand.svg -> https://grafty.pro/grafty_brand.svg
+[URL_RESOLVE] Env-based: /grafty_brand.svg -> https://grafty.pro/grafty_brand.svg
+[AUTH DEBUG] No headers found, checking Authorization header. Raw header value: null
+[AUTH DEBUG] No valid auth headers found, returning null. Request URL: https://localhost:3000/api/crm/follow-ups/due
+[AUTH DEBUG] No headers found, checking Authorization header. Raw header value: null
+[AUTH DEBUG] No valid auth headers found, returning null. Request URL: https://localhost:3000/api/notifications/messages
+[AUTH DEBUG] No headers found, checking Authorization header. Raw header value: null
+[AUTH DEBUG] No valid auth headers found, returning null. Request URL: https://localhost:3000/api/whatsapp/status
+[AUTH DEBUG] No headers found, checking Authorization header. Raw header value: null
+[AUTH DEBUG] No valid auth headers found, returning null. Request URL: https://localhost:3000/api/whatsapp/config
+[AUTH DEBUG] No headers found, checking Authorization header. Raw header value: null
+[AUTH DEBUG] No valid auth headers found, returning null. Request URL: https://localhost:3000/api/whatsapp/manual-setup
+[ManualSetup] ❌ AUTH FAILURE. Trace: {
+  userId: null,
+  wsId: null,
+  role: null,
+  host: 'grafty.pro',
+  referer: 'https://grafty.pro/dashboard/settings/whatsapp',
+  cookiePresent: true
+[AUTH DEBUG] No headers found, checking Authorization header. Raw header value: null
+[AUTH DEBUG] No valid auth headers found, returning null. Request URL: https://localhost:3000/api/crm/follow-ups/due
+[AUTH DEBUG] No headers found, checking Authorization header. Raw header value: null
+[AUTH DEBUG] No valid auth headers found, returning null. Request URL: https://localhost:3000/api/notifications/messages
+[AUTH DEBUG] No headers found, checking Authorization header. Raw header value: null
+[AUTH DEBUG] No valid auth headers found, returning null. Request URL: https://localhost:3000/api/crm/follow-ups/due
+[AUTH DEBUG] No headers found, checking Authorization header. Raw header value: null
+[AUTH DEBUG] No valid auth headers found, returning null. Request URL: https://localhost:3000/api/notifications/messages
+[AUTH DEBUG] No headers found, checking Authorization header. Raw header value: null
+[AUTH DEBUG] No valid auth headers found, returning null. Request URL: https://localhost:3000/api/crm/follow-ups/due
+[AUTH DEBUG] No headers found, checking Authorization header. Raw header value: null
+[AUTH DEBUG] No valid auth headers found, returning null. Request URL: https://localhost:3000/api/notifications/messages
+[AUTH DEBUG] No headers found, checking Authorization header. Raw header value: null
+[AUTH DEBUG] No valid auth headers found, returning null. Request URL: https://localhost:3000/api/whatsapp/manual-setup
+[AUTH DEBUG] No headers found, checking Authorization header. Raw header value: null
+[AUTH DEBUG] No valid auth headers found, returning null. Request URL: https://localhost:3000/api/whatsapp/manual-setup
+[AUTH DEBUG] No headers found, checking Authorization header. Raw header value: null
+[AUTH DEBUG] No valid auth headers found, returning null. Request URL: https://localhost:3000/api/crm/follow-ups/due
+[AUTH DEBUG] No headers found, checking Authorization header. Raw header value: null
+[AUTH DEBUG] No valid auth headers found, returning null. Request URL: https://localhost:3000/api/notifications/messages
+[AUTH DEBUG] No headers found, checking Authorization header. Raw header value: null
+[AUTH DEBUG] No valid auth headers found, returning null. Request URL: https://localhost:3000/api/crm/follow-ups/due
+[AUTH DEBUG] No headers found, checking Authorization header. Raw header value: null
+[AUTH DEBUG] No valid auth headers found, returning null. Request URL: https://localhost:3000/api/notifications/messages
+[AUTH DEBUG] No headers found, checking Authorization header. Raw header value: null
+[AUTH DEBUG] No valid auth headers found, returning null. Request URL: https://localhost:3000/api/crm/follow-ups/due
+[AUTH DEBUG] No headers found, checking Authorization header. Raw header value: null
+[AUTH DEBUG] No valid auth headers found, returning null. Request URL: https://localhost:3000/api/notifications/messages
+[AUTH DEBUG] No headers found, checking Authorization header. Raw header value: null
+[AUTH DEBUG] No valid auth headers found, returning null. Request URL: https://localhost:3000/api/crm/follow-ups/due
+[AUTH DEBUG] No headers found, checking Authorization header. Raw header value: null
+[AUTH DEBUG] No valid auth headers found, returning null. Request URL: https://localhost:3000/api/notifications/messages
+[AUTH DEBUG] No headers found, checking Authorization header. Raw header value: null
+[AUTH DEBUG] No valid auth headers found, returning null. Request URL: https://localhost:3000/api/crm/follow-ups/due
+[AUTH DEBUG] No headers found, checking Authorization header. Raw header value: null
+[AUTH DEBUG] No valid auth headers found, returning null. Request URL: https://localhost:3000/api/notifications/messages
+[AUTH DEBUG] No headers found, checking Authorization header. Raw header value: null
+[AUTH DEBUG] No valid auth headers found, returning null. Request URL: https://localhost:3000/api/crm/follow-ups/due
+[AUTH DEBUG] No headers found, checking Authorization header. Raw header value: null
+[AUTH DEBUG] No valid auth headers found, returning null. Request URL: https://localhost:3000/api/notifications/messages
+[AUTH DEBUG] No headers found, checking Authorization header. Raw header value: null
+[AUTH DEBUG] No valid auth headers found, returning null. Request URL: https://localhost:3000/api/crm/follow-ups/due
+[AUTH DEBUG] No headers found, checking Authorization header. Raw header value: null
+[AUTH DEBUG] No valid auth headers found, returning null. Request URL: https://localhost:3000/api/notifications/messages
+[AUTH DEBUG] No headers found, checking Authorization header. Raw header value: null
+[AUTH DEBUG] No valid auth headers found, returning null. Request URL: https://localhost:3000/api/crm/follow-ups/due
+[AUTH DEBUG] No headers found, checking Authorization header. Raw header value: null
+[AUTH DEBUG] No valid auth headers found, returning null. Request URL: https://localhost:3000/api/notifications/messages
+[AUTH DEBUG] No headers found, checking Authorization header. Raw header value: null
+[AUTH DEBUG] No valid auth headers found, returning null. Request URL: https://localhost:3000/api/crm/follow-ups/due
+[AUTH DEBUG] No headers found, checking Authorization header. Raw header value: null
+[AUTH DEBUG] No valid auth headers found, returning null. Request URL: https://localhost:3000/api/notifications/messages
+}
+[ManualSetup] ❌ AUTH FAILURE. Trace: {
+  userId: null,
+  wsId: null,
+  role: null,
+  host: 'grafty.pro',
+  referer: 'https://grafty.pro/dashboard/settings/whatsapp',
+  cookiePresent: true
+}
+[ManualSetup] ❌ AUTH FAILURE. Trace: {
+  userId: null,
+  wsId: null,
+  role: null,
+  host: 'grafty.pro',
+  referer: 'https://grafty.pro/dashboard/settings/whatsapp',
+  cookiePresent: true
+}

@@ -22,6 +22,7 @@ export interface User {
             module_drip: boolean;
             module_integration: boolean;
         } | null;
+        addons: string[];
     };
 }
 

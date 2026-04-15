@@ -1,0 +1,23 @@
+#!/usr/bin/expect -f
+set SERVER    "root@72.61.231.187"
+set PASS      "Photoshop09@"
+set REMOTE_OLD "/root/grafty_bsp"
+set REMOTE_NEW "/var/www/wabot"
+set timeout   1200
+
+puts "\n🚀 \[1/2\] Syncing code from /var/www/wabot to /root/grafty_bsp..."
+spawn ssh -o StrictHostKeyChecking=no $SERVER "cp -r $REMOTE_NEW/* $REMOTE_OLD/ 2>/dev/null || true"
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}
+
+puts "\n🛠️ \[2/2\] Rebuilding Docker Containers at /root/grafty_bsp..."
+# Note: Using the same prod compose file the user had in their script
+spawn ssh -o StrictHostKeyChecking=no $SERVER "cd $REMOTE_OLD && docker compose -f docker-compose.prod.yml up -d --build"
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}
+
+puts "\n✅ DEPLOYMENT FINISHED ON THE CORRECT DOCKER PROJECT!"

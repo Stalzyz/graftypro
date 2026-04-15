@@ -472,7 +472,7 @@ export default function PackagesPage() {
                         <Toggle label="CRM" sub="Contacts, Deals & Pipelines" enabled={form.module_crm} icon={<User size={16} />} onChange={() => set({ module_crm: !form.module_crm, crm_access: !form.module_crm } as any)} />
                         <Toggle label="Ecommerce" sub="Products, Orders & Cart" enabled={form.module_ecommerce} icon={<ShoppingCart size={16} />} onChange={() => set({ module_ecommerce: !form.module_ecommerce } as any)} />
                         <Toggle label="Academy" sub="Courses, Leads & Admissions" enabled={form.module_academy} icon={<BookOpen size={16} />} onChange={() => set({ module_academy: !form.module_academy } as any)} />
-                        <Toggle label="API Access" sub="External integrations & webhooks" enabled={form.module_integration} icon={<Zap size={16} />} onChange={() => set({ module_integration: !form.module_integration } as any)} />
+                        <Toggle label="CRM Bridge / API" sub="Real-time Webhooks & CRM Sync" enabled={form.module_integration} icon={<Zap size={16} />} onChange={() => set({ module_integration: !form.module_integration } as any)} />
                         <Toggle label="Drip Messages" sub="Scheduled message sequences" enabled={form.module_drip} icon={<Mail size={16} />} onChange={() => set({ module_drip: !form.module_drip } as any)} />
                       </div>
                     </div>
@@ -484,7 +484,7 @@ export default function PackagesPage() {
                         <Toggle label="Automations" sub="Trigger-based auto responses" enabled={form.flow_automation_access} icon={<Workflow size={16} />} onChange={() => set({ flow_automation_access: !form.flow_automation_access })} />
                         <Toggle label="Logic & Conditions" sub="If/Else branching nodes" enabled={form.flow_logic_access} icon={<GitBranch size={16} />} onChange={() => set({ flow_logic_access: !form.flow_logic_access })} />
                         <Toggle label="Commerce Nodes" sub="Product cards in flows" enabled={form.flow_commerce_access} icon={<ShoppingCart size={16} />} onChange={() => set({ flow_commerce_access: !form.flow_commerce_access })} />
-                        <Toggle label="API Nodes" sub="Webhook & HTTP nodes" enabled={form.flow_integration_access} icon={<Cpu size={16} />} onChange={() => set({ flow_integration_access: !form.flow_integration_access })} />
+                        <Toggle label="CRM Bridge Nodes" sub="External Webhook & CRM Sync Nodes" enabled={form.flow_integration_access} icon={<Cpu size={16} />} onChange={() => set({ flow_integration_access: !form.flow_integration_access })} />
                       </div>
                     </div>
                   </motion.div>

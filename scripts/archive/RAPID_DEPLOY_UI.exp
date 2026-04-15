@@ -1,0 +1,58 @@
+#!/usr/bin/expect -f
+# ============================================================
+# ⚡ RAPID DEPLOY UI — Fast UI Sync & Build
+# ============================================================
+# Syncs changes and builds USING CACHE for maximum speed.
+# Ideal for UI/CSS fixes.
+# ============================================================
+
+set VPS_PASS "Photoshop09@"
+set VPS_HOST "root@72.61.231.187"
+set REMOTE_PATH "/root/wabot_bsp"
+set LOCAL_PATH "/Users/stalinkumar/Downloads/Grafty_Bsp"
+set timeout 600
+
+# ─── STEP 1: Sync changed files ───────────────────────────────
+puts "\n📡 Syncing UI changes to VPS..."
+
+spawn rsync -avz --no-perms --no-owner --no-group \
+    --exclude "node_modules" \
+    --exclude ".next" \
+    --exclude ".git" \
+    --exclude ".DS_Store" \
+    --exclude "public/uploads" \
+    -e "ssh -o StrictHostKeyChecking=no" \
+    "$LOCAL_PATH/" $VPS_HOST:$REMOTE_PATH/
+
+expect {
+    "assword:" {
+        send "$VPS_PASS\r"
+        exp_continue
+    }
+    eof { puts "✅ Files synced." }
+}
+
+# ─── STEP 2: Remote Speed Build ───────────────────────────────
+puts "\n🏗️ Building UI changes (using cache)..."
+
+spawn ssh -o StrictHostKeyChecking=no $VPS_HOST \
+"cd $REMOTE_PATH && \
+echo '🏗️ Building Next.js App...' && \
+docker compose -f docker-compose.prod.yml build && \
+echo '🚀 Restarting Services...' && \
+docker compose -f docker-compose.prod.yml up -d && \
+echo '✅ RAPID DEPLOY COMPLETE'"
+
+expect {
+    "assword:" {
+        send "$VPS_PASS\r"
+        exp_continue
+    }
+    "RAPID DEPLOY COMPLETE" {
+        puts "\n🎉 SUCCESS! The UI fix should be live in a moment."
+        exp_continue
+    }
+    eof {
+        puts "\n✅ Done."
+    }
+}

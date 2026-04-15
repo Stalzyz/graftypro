@@ -1,0 +1,10 @@
+#!/usr/bin/expect -f
+set SERVER    "root@72.61.231.187"
+set PASS      "Photoshop09@"
+set REMOTE    "/var/www/wabot"
+set timeout   600
+spawn ssh -o StrictHostKeyChecking=no $SERVER "cd $REMOTE && cat docker-compose.yml && docker compose up -d --build"
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}

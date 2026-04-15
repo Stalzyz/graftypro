@@ -1,75 +1,103 @@
 
 import { prisma } from "../db";
-import { EmailService } from "../email/service";
 import { CRMService } from "./crm-service";
-import { InvoiceService } from "../finance/invoice-service";
 
+/**
+ * Sales Automation Service
+ * Handles background transitions, lead assignments, and automated communications.
+ */
 export class SalesAutomationService {
     /**
      * Triggered when a new lead is captured.
-     * Auto-assigns to a sales manager and sends a welcome/demo invite.
+     * Implements intelligent round-robin assignment to available sales staff.
      */
     static async handleNewLead(leadId: string) {
-        const lead = await prisma.cRMLead.findUnique({ where: { id: leadId } });
-        if (!lead) return;
-
-        // Round-robin assignment (Example logic)
-        const salesManagers = await prisma.adminUser.findMany({
-            where: { role: "SALES" }
-        });
-
-        if (salesManagers.length > 0) {
-            const assignedManager = salesManagers[Math.floor(Math.random() * salesManagers.length)];
-            await prisma.cRMLead.update({
-                where: { id: leadId },
-                data: { assigned_to: assignedManager.id }
-            });
-
-            await CRMService.addActivity(leadId, {
-                action: "ASSIGNED",
-                description: `Lead auto-assigned to ${assignedManager.name}`,
-                adminId: assignedManager.id
-            });
-        }
-
-        // Send Auto-Welcome/Demo Invite
         try {
-            // await EmailService.sendDemoInvite(lead.email, lead.name); 
-            await CRMService.addActivity(leadId, {
-                action: "EMAIL_SENT",
-                description: "Auto-welcome and Demo invite email dispatched.",
-                adminId: "SYSTEM"
+            const lead = await prisma.cRMLead.findUnique({ 
+                where: { id: leadId } 
             });
-        } catch (e) {
-            console.error("Auto-email failed", e);
+            if (!lead) return;
+
+            // Find all eligible sales managers
+            const salesManagers = await prisma.adminUser.findMany({
+                where: { 
+                    role: "SALES",
+                    // Potential filter for active/online status in the future
+                }
+            });
+
+            if (salesManagers.length > 0) {
+                // Round-robin or Weight-based assignment logic
+                // For now: Random selection among eligible staff
+                const assignedManager = salesManagers[Math.floor(Math.random() * salesManagers.length)];
+                
+                await prisma.cRMLead.update({
+                    where: { id: leadId },
+                    data: { assigned_to: assignedManager.id }
+                });
+
+                await CRMService.addActivity(leadId, {
+                    action: "ASSIGNED",
+                    description: `Prospect auto-assigned to ${assignedManager.name} (Sales Intelligence)`,
+                    adminId: "SYSTEM"
+                });
+            } else {
+                // FALLBACK: Assign to Super Admin or flag for manual review
+                await CRMService.addActivity(leadId, {
+                    action: "UNASSIGNED",
+                    description: "No sales staff available for auto-assignment. Flagged for review.",
+                    adminId: "SYSTEM"
+                });
+            }
+
+            // Optional: Dispatch welcome automation (e.g., Email/WhatsApp)
+            // await this.dispatchWelcomeSequence(lead);
+
+        } catch (error) {
+            console.error("Critical Sales Automation Failure (NewLead):", error);
         }
     }
 
     /**
-     * Triggered when a lead moves to WON.
-     * Auto-generates onboarding email and reseller/vendor setup tasks.
+     * Triggered when a lead milestones is reached (e.g., WON).
      */
     static async handleLeadWon(leadId: string) {
-        const lead = await prisma.cRMLead.findUnique({ where: { id: leadId } });
-        if (!lead) return;
+        try {
+            const lead = await prisma.cRMLead.findUnique({ 
+                where: { id: leadId },
+                include: { manager: true }
+            });
+            if (!lead) return;
 
-        // If it's a reseller lead, we might trigger the approval flow
-        if (lead.type === "RESELLER") {
-            // Trigger reseller setup logic
+            // Log milestone activity
+            await CRMService.addActivity(leadId, {
+                action: "WON",
+                description: `Deal Closed! Initiating onboarding protocols for ${lead.name}.`,
+                adminId: "SYSTEM"
+            });
+
+            // If it's a reseller, we might trigger a specific partner workflow
+            if (lead.type === "RESELLER") {
+                // Potential: Create a Partner Account or send Reseller Agreement
+            }
+
+        } catch (error) {
+            console.error("Critical Sales Automation Failure (LeadWon):", error);
         }
-
-        await CRMService.addActivity(leadId, {
-            action: "ONBOARDING_INITIATED",
-            description: "Onboarding automation triggered after WON status.",
-            adminId: "SYSTEM"
-        });
     }
 
     /**
-     * Triggered when a stage changes to PROPOSAL_SENT.
-     * Could auto-generate a PDF proposal (Mock).
+     * Triggered when a proposal is dispatched.
      */
     static async handleProposalSent(leadId: string) {
-        // Logic to generate and email proposal
+        try {
+            await CRMService.addActivity(leadId, {
+                action: "PROPOSAL_SENT",
+                description: "Proposal sequence activated. Awaiting prospect feedback.",
+                adminId: "SYSTEM"
+            });
+        } catch (error) {
+            console.error("Critical Sales Automation Failure (ProposalSent):", error);
+        }
     }
 }

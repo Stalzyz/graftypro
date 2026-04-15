@@ -22,9 +22,41 @@ export default function RegisterPage() {
         firstName: "", lastName: "", email: "", password: "", mobile: "", team: "", referral: ""
     });
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-        setFormData({ ...formData, [e.target.name]: e.target.value });
+    const [passwordRequirements, setPasswordRequirements] = useState({
+        length: false,
+        upper: false,
+        lower: false,
+        number: false,
+        special: false
+    });
+
+    const checkPassword = (pass: string) => {
+        setPasswordRequirements({
+            length: pass.length >= 10,
+            upper: /[A-Z]/.test(pass),
+            lower: /[a-z]/.test(pass),
+            number: /\d/.test(pass),
+            special: /[@$!%*?&]/.test(pass)
+        });
     };
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+        const { name, value } = e.target;
+        setFormData({ ...formData, [name]: value });
+        if (name === "password") checkPassword(value);
+    };
+
+    useEffect(() => {
+        // Resolve referral from cookie if not in URL
+        if (!refCode) {
+            const cookies = document.cookie.split(';');
+            const resRef = cookies.find(c => c.trim().startsWith('res_referral_code='));
+            if (resRef) {
+                const code = resRef.split('=')[1];
+                setFormData(prev => ({ ...prev, referral: code }));
+            }
+        }
+    }, [refCode]);
 
     const handleRegister = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -37,8 +69,9 @@ export default function RegisterPage() {
             return;
         }
 
-        if (formData.password.length < 8) {
-            setError("Password must be at least 8 characters");
+        const isPassStrong = Object.values(passwordRequirements).every(v => v);
+        if (!isPassStrong) {
+            setError("Password does not meet the security requirements.");
             setLoading(false);
             return;
         }
@@ -212,14 +245,60 @@ export default function RegisterPage() {
                             <input name="email" type="email" required className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-slate-900 text-sm focus:outline-none focus:border-[#25D366] focus:ring-4 focus:ring-[#25D366]/10 transition-all" placeholder="name@company.com" value={formData.email} onChange={handleChange} />
                         </div>
 
-                        <div className="space-y-1.5">
+                        <div className="space-y-3">
                             <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider ml-1">Password</label>
                             <div className="relative">
-                                <input name="password" type={showPassword ? "text" : "password"} required className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 pr-11 text-slate-900 text-sm focus:outline-none focus:border-[#25D366] focus:ring-4 focus:ring-[#25D366]/10 transition-all" placeholder="Min. 8 characters" value={formData.password} onChange={handleChange} />
+                                <input 
+                                    name="password" 
+                                    type={showPassword ? "text" : "password"} 
+                                    required 
+                                    className={`w-full bg-white border ${formData.password && !Object.values(passwordRequirements).every(v => v) ? 'border-amber-200' : 'border-slate-200'} rounded-xl px-4 py-3 pr-11 text-slate-900 text-sm focus:outline-none focus:border-[#25D366] focus:ring-4 focus:ring-[#25D366]/10 transition-all`} 
+                                    placeholder="Nuclear Password" 
+                                    value={formData.password} 
+                                    onChange={handleChange} 
+                                />
                                 <button type="button" className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600" onClick={() => setShowPassword(!showPassword)}>
                                     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                                 </button>
                             </div>
+
+                            {/* Password Strength Meter */}
+                            {formData.password && (
+                                <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                                    <div className="flex gap-1 h-1.5 px-0.5">
+                                        {[1, 2, 3, 4, 5].map((level) => {
+                                            const activeCount = Object.values(passwordRequirements).filter(Boolean).length;
+                                            const isActive = level <= activeCount;
+                                            const colors = ['bg-red-500', 'bg-orange-500', 'bg-amber-500', 'bg-blue-500', 'bg-[#25D366]'];
+                                            return (
+                                                <div 
+                                                    key={level} 
+                                                    className={`h-full flex-1 rounded-full transition-all duration-500 ${isActive ? colors[activeCount - 1] : 'bg-slate-100'}`}
+                                                />
+                                            );
+                                        })}
+                                    </div>
+                                    
+                                    <div className="grid grid-cols-2 gap-y-2 gap-x-4 bg-slate-50/50 p-4 rounded-2xl border border-slate-100">
+                                        {[
+                                            { key: 'length', label: '10+ Characters' },
+                                            { key: 'upper', label: 'Uppercase' },
+                                            { key: 'lower', label: 'Lowercase' },
+                                            { key: 'number', label: 'Number' },
+                                            { key: 'special', label: 'Special Symbol' }
+                                        ].map((req) => (
+                                            <div key={req.key} className="flex items-center gap-2">
+                                                <div className={`w-3.5 h-3.5 rounded-full flex items-center justify-center transition-all ${passwordRequirements[req.key as keyof typeof passwordRequirements] ? 'bg-[#25D366]' : 'bg-slate-200'}`}>
+                                                    {passwordRequirements[req.key as keyof typeof passwordRequirements] && <Check size={10} className="text-white" strokeWidth={4} />}
+                                                </div>
+                                                <span className={`text-[10px] font-black uppercase tracking-tight transition-colors ${passwordRequirements[req.key as keyof typeof passwordRequirements] ? 'text-slate-900' : 'text-slate-400'}`}>
+                                                    {req.label}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         <div className="space-y-1.5">

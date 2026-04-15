@@ -31,6 +31,12 @@ import {
     ImageCarouselV2
 } from "./cms-blocks/CMSBlocks_V2";
 
+import {
+    NeuralKnowledgeShowcase,
+    OmniHubSynergy,
+    AutopilotDrive
+} from "./cms-blocks/CMSBlocks_V3";
+
 const COMPONENTS: Record<string, React.FC<any>> = {
     HERO: LandingHero,
     FEATURES: FeatureGrid,
@@ -59,6 +65,11 @@ const COMPONENTS: Record<string, React.FC<any>> = {
     LOGO_WALL_V2: LogoWallV2,
     INTERACTIVE_CARD_V2: InteractiveCardV2,
     IMAGE_CAROUSEL_V2: ImageCarouselV2,
+
+    // Flagship V3 Blocks
+    NEURAL_KNOWLEDGE_V3: NeuralKnowledgeShowcase,
+    OMNI_HUB_V3: OmniHubSynergy,
+    AUTOPILOT_V3: AutopilotDrive,
 
     CUSTOM_HTML: ({ content }: { content: any }) => (
         <section dangerouslySetInnerHTML={{ __html: content.html }} />

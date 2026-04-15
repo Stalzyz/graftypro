@@ -24,9 +24,12 @@ export class SystemConfigService {
         const nonUpdatableFields = ['id', 'created_at', 'updated_at', 'error'];
         nonUpdatableFields.forEach(field => delete encryptedData[field]);
 
-        // Auto-trim Meta fields to prevent invisible character errors
-        const metaFields = ['meta_app_id', 'meta_config_id', 'meta_business_id', 'meta_waba_id', 'meta_phone_id', 'meta_onboarding_mode'];
-        metaFields.forEach(field => {
+        // Auto-trim configuration fields to prevent invisible character errors (EBADNAME)
+        const trimFields = [
+            'meta_app_id', 'meta_config_id', 'meta_business_id', 'meta_waba_id', 'meta_phone_id', 'meta_onboarding_mode',
+            'smtp_host', 'smtp_user', 'smtp_from_email'
+        ];
+        trimFields.forEach(field => {
             if (typeof encryptedData[field] === 'string') {
                 encryptedData[field] = encryptedData[field].trim();
             }

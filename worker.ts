@@ -8,6 +8,7 @@ import { decrypt, maskToken } from "@/lib/security/encryption";
 import { WhatsAppMediaDownloader } from "@/lib/whatsapp/media-downloader";
 import { normalizeMessage } from "@/lib/engine/message-normalizer";
 import { PRIORITY_HIGH, PRIORITY_LOW } from "@/lib/queue";
+import { CampaignStatusCache, RateLimiter } from "@/lib/redis-status";
 
 // --- CONFIG ---
 const REDIS_CONNECTION = {
@@ -58,14 +59,72 @@ const metaApiWorker = new Worker(
     "meta-api-queue",
     async (job) => {
         const { type, payload } = job.data;
-        console.log(`[MetaAPIWorker] 📡 Processing ${type} for ${payload.to} (Priority: ${job.opts.priority || 'DEFAULT'})`);
+        
+        // ☢️ NUCLEAR PHONE NORMALIZATION
+        let toRaw = payload.to || payload.phone || "";
+        let to = toRaw.replace(/\D/g, ""); 
+        if (to.length === 10) to = "91" + to; // Auto-fix missing country code for India
+        if (to.length === 12 && to.startsWith("0")) to = to.substring(1); // Fix 0-prefixing
 
-        const { phoneNumberId, accessToken, to } = payload;
+        console.log(`[MetaAPIWorker] 📡 Processing ${type} for ${to} (Priority: ${job.opts.priority || 'DEFAULT'})`);
+
+        const { phoneNumberId, accessToken } = payload;
 
         try {
             const workspaceId = payload.workspaceId;
             const campaignId = payload.campaignId;
             const category = type === "SEND_TEMPLATE" ? "MARKETING" : "SERVICE";
+
+            // 🛑 ☢️ BSP-GRADE PAUSE / CANCEL INTERCEPTOR (Redis-Backed)
+            if (campaignId) {
+                const cachedStatus = await CampaignStatusCache.get(campaignId);
+                
+                // If not in cache, fetch once and populate
+                const currentStatus = cachedStatus || (await prisma.campaign.findUnique({
+                    where: { id: campaignId },
+                    select: { status: true }
+                }))?.status;
+
+                if (currentStatus === "PAUSED") {
+                    console.log(`[MetaAPIWorker] ⏸️ Campaign ${campaignId} paused. Yielding job.`);
+                    await job.moveToDelayed(Date.now() + 15000, job.token); // Retry in 15s instead of 30s
+                    return;
+                }
+                if (currentStatus === "CANCELLED") {
+                    console.log(`[MetaAPIWorker] 🛑 Campaign ${campaignId} cancelled. Dropping job.`);
+                    return;
+                }
+                
+                // Keep cache warm
+                if (!cachedStatus && currentStatus) {
+                    await CampaignStatusCache.set(campaignId, currentStatus);
+                }
+            }
+
+                // 🚦 RATE LIMITER (Throttling) - Compliance Tier Check
+                const throttleKey = `ratelimit:waba:${phoneNumberId}`;
+                const isAllowed = await RateLimiter.isAllowed(throttleKey, 80, 1); // 80 msgs per second (Safe start)
+                if (!isAllowed) {
+                    console.warn(`[MetaAPIWorker] 🚦 Rate limit hit for ${phoneNumberId}. Backing off...`);
+                    await job.moveToDelayed(Date.now() + 2000, job.token);
+                    return;
+                }
+
+                // 😵 CONTACT FATIGUE (Frequency Capping)
+                // Skip marketing messages if contact recently received one
+                if (category === "MARKETING") {
+                    const fatigued = await CampaignStatusCache.isFatigued(payload.contactId);
+                    if (fatigued) {
+                        console.log(`[MetaAPIWorker] 😵 Contact ${payload.contactId} is fatigued. Skipping to protect engagement.`);
+                        if (campaignId) {
+                            await prisma.campaignStats.update({
+                                where: { campaign_id: campaignId },
+                                data: { failed: { increment: 1 } }
+                            }).catch(e => null);
+                        }
+                        return; // Drop job silently (skipping)
+                    }
+                }
 
             let result;
             switch (type) {
@@ -75,7 +134,7 @@ const metaApiWorker = new Worker(
                         accessToken,
                         to,
                         payload.templateName,
-                        payload.langCode || "en", // Bug #5 Fix: unified fallback — WhatsApp service defaults to "en", not "en_US"
+                        payload.langCode || "en_US", // Final fallback
                         payload.components || [],
                         workspaceId,
                         category
@@ -113,6 +172,7 @@ const metaApiWorker = new Worker(
             // 📈 Real-time Progress Tracking
             if (result && result.messages && result.messages.length > 0) {
                 const metaMessageId = result.messages[0].id;
+                console.log(`[MetaAPIWorker] ✅ SEND_TEMPLATE to: ${to} → Meta ID: ${metaMessageId}`);
                 
                 // 1. Resolve conversation context
                 let conversation = await prisma.conversation.findFirst({
@@ -125,8 +185,8 @@ const metaApiWorker = new Worker(
                     });
                 }
                 
-                // 2. Persist the outbound dispatch
-                await prisma.message.create({
+                // 2. ☢️ NUCLEAR FIX: Persist with campaign_id as a proper DB column (not inside JSON)
+                await (prisma as any).message.create({
                     data: {
                         workspace_id: workspaceId,
                         contact_id: payload.contactId,
@@ -137,22 +197,41 @@ const metaApiWorker = new Worker(
                         direction: "OUTBOUND",
                         status: "SENT",
                         sent_at: new Date(),
+                        campaign_id: campaignId || null,
                         content: {
-                            campaign_id: campaignId,
                             template_name: payload.templateName,
-                            body: payload.body || "Media/Template Message"
+                            body: payload.body || "Template Message"
                         },
                         template_name: payload.templateName,
                         conversation_category: category,
                     }
-                }).catch(e => console.error(`[MetaAPIWorker] Failed to save message record:`, e.message));
+                }).catch((e: any) => console.error(`[MetaAPIWorker] Failed to save message record:`, e.message));
 
-                // 3. Mark successful send
+                // 😵 Track Fatigue for marketing messages
+                if (category === "MARKETING") {
+                    await CampaignStatusCache.trackFatigue(payload.contactId);
+                }
+
+                // 3. Atomic stats + completion check
                 if (campaignId) {
                     await prisma.campaignStats.update({
                         where: { campaign_id: campaignId },
                         data: { sent: { increment: 1 } }
-                    }).catch(e => console.error(`[MetaAPIWorker] Failed to update stats for ${campaignId}`, e.message));
+                    }).catch(e => null);
+
+                    // ☢️ ATOMIC COMPLETION: Check if all campaign jobs are now drained
+                    const stats = await prisma.campaignStats.findUnique({ where: { campaign_id: campaignId } });
+                    const campaign = await prisma.campaign.findUnique({ where: { id: campaignId }, select: { status: true } });
+                    if (stats && campaign && campaign.status === "PROCESSING") {
+                        const processed = (stats.sent || 0) + (stats.failed || 0);
+                        if (stats.total > 0 && processed >= stats.total) {
+                            await prisma.campaign.update({
+                                where: { id: campaignId },
+                                data: { status: "COMPLETED" }
+                            }).catch(e => null);
+                            console.log(`[MetaAPIWorker] 🏁 Campaign ${campaignId} marked COMPLETED (${processed}/${stats.total})`);
+                        }
+                    }
                 }
             }
 
@@ -162,16 +241,56 @@ const metaApiWorker = new Worker(
             
             // Check for unrecoverable broadcast errors
             if (payload.campaignId) {
-                const isFatal = err.message?.includes("BILLING_ERROR") || err.response?.status === 400 || err.response?.status === 404;
+                const responseData = err.response?.data?.error;
+                const metaErrorCode = responseData?.code || err.response?.status;
+                const metaErrorMessage = responseData?.message || err.message;
+                
+                // ☢️ BSP ERROR CLASSIFICATION
+                const isTemplateError = metaErrorMessage?.includes("Translation does not exist") || metaErrorCode === 132001;
+                const isFatal = isTemplateError 
+                    || err.message?.includes("BILLING_ERROR") 
+                    || err.response?.status === 400 
+                    || err.response?.status === 404
+                    || err.response?.status === 401;
+                
                 if (isFatal) {
+                    const isBillingError = metaErrorCode === 131031 || metaErrorCode === 131999 || err.response?.status === 402;
+                    
+                    console.error(`[MetaAPIWorker] 🔴 FATAL ERROR for Campaign ${payload.campaignId}: [${metaErrorCode}] ${metaErrorMessage}`);
+                    
+                    if (isTemplateError) {
+                        console.warn(`[MetaAPIWorker] 💡 PRO-TIP: Meta India templates require 'en_US'. Your template '${payload.templateName}' might be mislabeled as 'en'.`);
+                    }
+
+                    if (isBillingError) {
+                        console.warn(`[MetaAPIWorker] 💳 ☢️ PRO-TIP: This looks like a Meta Billing/Payment issue. Please check your Payment Method in WhatsApp Business Manager!`);
+                    }
+
+                    // Update failed stats
                     await prisma.campaignStats.update({
                         where: { campaign_id: payload.campaignId },
                         data: { failed: { increment: 1 } }
                     }).catch(e => null);
-                    return; // Gracefully complete job to prevent infinite retries locking the queue
+                    
+                    // ☢️ NUCLEAR FIX: Do NOT write invalid FK conversation_id.
+                    // Just log the failure - stats are already tracked above.
+                    console.error(`[MetaAPIWorker] 🔴 Fatal broadcast failure for campaign ${payload.campaignId}: [${metaErrorCode}] ${metaErrorMessage}`);
+
+                    // Check completion after fatal failure
+                    const updatedStats = await prisma.campaignStats.findUnique({ where: { campaign_id: payload.campaignId } });
+                    if (updatedStats) {
+                        const processed = (updatedStats.sent || 0) + (updatedStats.failed || 0);
+                        if (updatedStats.total > 0 && processed >= updatedStats.total) {
+                            await prisma.campaign.update({
+                                where: { id: payload.campaignId },
+                                data: { status: "COMPLETED" }
+                            }).catch(e => null);
+                        }
+                    }
+                    return; // Gracefully complete job - no infinite retry
                 }
             }
-            throw err; // Trigger BullMQ retry for transient network logic
+            throw err; // Trigger BullMQ retry for transient network errors
         }
     },
     { 
@@ -203,6 +322,28 @@ const campaignWorker = new Worker(
                 return;
             }
 
+            // ☢️ NUCLEAR FIX: Look up template language AFTER campaign is confirmed to exist
+            const templateRecord = await prisma.template.findFirst({
+                where: {
+                    workspace_id: campaign.workspace_id,
+                    name: (campaign as any).template_name
+                },
+                select: { language: true, name: true, status: true }
+            });
+            
+            if (!templateRecord) {
+                console.error(`[CampaignWorker] ❌ Template '${(campaign as any).template_name}' not found in workspace. Aborting campaign.`);
+                await prisma.campaign.update({ where: { id: campaignId }, data: { status: "COMPLETED" } });
+                return;
+            }
+            if (templateRecord.status !== 'APPROVED') {
+                console.error(`[CampaignWorker] ❌ Template '${templateRecord.name}' is NOT APPROVED (status: ${templateRecord.status}). Aborting.`);
+                await prisma.campaign.update({ where: { id: campaignId }, data: { status: "COMPLETED" } });
+                return;
+            }
+            const resolvedLangCode = templateRecord.language || "en_US";
+            console.log(`[CampaignWorker] ✅ Template '${templateRecord.name}' resolved, language: ${resolvedLangCode}`);
+
             const waba = campaign.workspace.waba;
             const decryptedToken = decrypt(waba.access_token);
 
@@ -220,19 +361,37 @@ const campaignWorker = new Worker(
                 });
                 recipients = leads.map(l => ({ ...l, phone: l.whatsapp_number, name: l.student_name }));
             } else {
-                let contacts: any[] = [];
+                // Precision BSP Audience Unroller
+                const allContacts = await prisma.contact.findMany({ where: { workspace_id: workspaceId, blocked: false } });
+                const optInContacts = allContacts.filter(c => (c as any).opt_in === true);
+                
+                if (allContacts.length > optInContacts.length) {
+                    console.log(`[CampaignWorker] 🛡️ Skipping ${allContacts.length - optInContacts.length} contacts due to missing Opt-In (BSP Compliance).`);
+                }
+
                 if (segmentId) {
                     const segment = await prisma.segment.findUnique({ where: { id: segmentId } });
                     if (segment) {
                         const { CommerceSegmentation } = await import("@/lib/commerce/segmentation");
-                        contacts = await CommerceSegmentation.getSegmentContacts(workspaceId, segment.filters);
-                    } else {
-                        contacts = await prisma.contact.findMany({ where: { workspace_id: workspaceId, blocked: false } });
+                        const segmentTargetIds = (await CommerceSegmentation.getSegmentContacts(workspaceId, segment.filters)).map(c => c.id);
+                        recipients = optInContacts.filter(c => segmentTargetIds.includes(c.id)).map(c => ({ ...c }));
+                    }
+                } else if ((campaign.filters as any)?.retarget_campaign_id) {
+                    const { CommerceSegmentation } = await import("@/lib/commerce/segmentation");
+                    const retargetTargetIds = (await CommerceSegmentation.getSegmentContacts(workspaceId, campaign.filters)).map(c => c.id);
+                    recipients = optInContacts.filter(c => retargetTargetIds.includes(c.id)).map(c => ({ ...c }));
+                } else if ((campaign.filters as any)?.segment_id) {
+                    const storedSegmentId = (campaign.filters as any).segment_id;
+                    const segment = await prisma.segment.findUnique({ where: { id: storedSegmentId } });
+                    if (segment) {
+                        const { CommerceSegmentation } = await import("@/lib/commerce/segmentation");
+                        const segmentTargetIds = (await CommerceSegmentation.getSegmentContacts(workspaceId, segment.filters)).map(c => c.id);
+                        recipients = optInContacts.filter(c => segmentTargetIds.includes(c.id)).map(c => ({ ...c }));
                     }
                 } else {
-                    contacts = await prisma.contact.findMany({ where: { workspace_id: workspaceId, blocked: false, opt_in: true } });
+                    // Send to all Opted-In contacts
+                    recipients = optInContacts.map(c => ({ ...c }));
                 }
-                recipients = contacts.map(c => ({ ...c }));
             }
 
             console.log(`[CampaignWorker] Audience fetched. Size: ${recipients.length}`);
@@ -275,6 +434,24 @@ const campaignWorker = new Worker(
                 }
             }
 
+            // Fallback for empty segment / no audience
+            if (recipients.length === 0) {
+                console.log(`[CampaignWorker] ⚡ Fast-completing Campaign ${campaignId} with 0 recipients.`);
+                await prisma.campaign.update({
+                    where: { id: campaignId },
+                    data: {
+                        status: "COMPLETED",
+                        stats: {
+                            upsert: { create: { total: 0, sent: 0, failed: 0 }, update: { total: 0 } }
+                        }
+                    }
+                });
+                return;
+            }
+
+            // ☢️ NUCLEAR STATUS INITIALIZATION (Redis Sync)
+            await CampaignStatusCache.set(campaignId, "PROCESSING");
+
             // Update stats to PROCESSING
             await prisma.campaign.update({
                 where: { id: campaignId },
@@ -301,7 +478,9 @@ const campaignWorker = new Worker(
                         .sort(([a], [b]) => parseInt(a) - parseInt(b))
                         .map(([index, source]) => {
                             let value = "Customer";
+                             // @ts-ignore
                             if (source.startsWith("static:")) {
+                                 // @ts-ignore
                                 value = source.replace("static:", "");
                             } else {
                                 // @ts-ignore
@@ -363,6 +542,7 @@ const campaignWorker = new Worker(
                                 accessToken: decryptedToken,
                                 to: person.phone,
                                 templateName: campaign.template_name,
+                                langCode: resolvedLangCode, // Real Root Cause Fix: use actual template language from DB
                                 components
                             }
                         },
@@ -379,13 +559,9 @@ const campaignWorker = new Worker(
                 // Update progress in job
                 await job.updateProgress((i / recipients.length) * 100);
             }
-
-            await prisma.campaign.update({
-                where: { id: campaignId },
-                data: { status: "COMPLETED" }
-            });
-
-            console.log(`[CampaignWorker] ✅ Unrolling complete for Campaign: ${campaignId}`);
+            
+            // Notice: The campaign status is marked as COMPLETED by the MetaAPI worker dynamically
+            console.log(`[CampaignWorker] ✅ Unrolling complete for Campaign: ${campaignId}. Status remains PROCESSING until queue clears.`);
 
         } catch (error: any) {
             console.error(`[CampaignWorker] ❌ Fatal Error during unrolling:`, error.message);
@@ -543,12 +719,7 @@ const automationWorker = new Worker(
         }
 
         /**
-         * ☢️ NUCLEAR WEBHOOK PROCESSOR
-         * Handles the heavy lifting of message ingestion:
-         * 1. Contact Upsert
-         * 2. Conversation Management
-         * 3. Media Downloading (Sync)
-         * 4. AI Fallback / Flow Triggering
+         * ☢️ NUCLEAR WEBHOOK PROCESSOR (Legacy / Fallback)
          */
         if (job.name === "process-whatsapp-message") {
             const { workspaceId, wabaId, message, contactProfile, metadata } = job.data;
@@ -626,7 +797,6 @@ const automationWorker = new Worker(
                 });
 
                 // 4.5 🐛 HARD FIX: Force updating the Conversation timestamp!
-                // Without this, the chat list won't bump this conversation to the top!
                 await prisma.conversation.update({
                     where: { id: conversation.id },
                     data: { updated_at: new Date() }
@@ -642,10 +812,6 @@ const automationWorker = new Worker(
             }
         }
 
-        /**
-         * ☢️ STATUS UPDATER
-         * Real-time message status updates (Sent, Delivered, Read, Failed)
-         */
         if (job.name === "process-whatsapp-status") {
             const { statusUpdate } = job.data;
             const messageMetaId = statusUpdate.id;
@@ -662,28 +828,28 @@ const automationWorker = new Worker(
             if (statusStr === "READ") updateData.read_at = timestamp;
 
             try {
-                // Determine existence first to prevent aggressive throw locks
-                const existingMsg = await prisma.message.findUnique({
+                // ☢️ NUCLEAR FIX: Select campaign_id as real DB column (not from JSON)
+                const existingMsg = await (prisma as any).message.findUnique({
                     where: { meta_id: messageMetaId },
-                    select: { id: true, content: true }
+                    select: { id: true, campaign_id: true }
                 });
 
                 if (existingMsg) {
-                    await prisma.message.update({
+                    await (prisma as any).message.update({
                         where: { id: existingMsg.id },
                         data: { status: statusStr, ...updateData }
                     });
 
-                    // 📈 Campaign Analytics Synchronization
-                    const content = existingMsg.content as any;
-                    if (content && content.campaign_id) {
-                         const cmpId = content.campaign_id;
+                    // 📈 Campaign Analytics Synchronization (real column)
+                    const cmpId = existingMsg.campaign_id;
+                    if (cmpId) {
                          if (statusStr === "DELIVERED") {
                              await prisma.campaignStats.update({ where: { campaign_id: cmpId }, data: { delivered: { increment: 1 } } }).catch(e => null);
                          } else if (statusStr === "READ") {
                              await prisma.campaignStats.update({ where: { campaign_id: cmpId }, data: { read: { increment: 1 } } }).catch(e => null);
                          } else if (statusStr === "FAILED") {
-                             await prisma.campaignStats.update({ where: { campaign_id: cmpId }, data: { failed: { increment: 1 } } }).catch(e => null);
+                             // Atomic Truth Bridging: move from sent to failed
+                             await prisma.campaignStats.update({ where: { campaign_id: cmpId }, data: { failed: { increment: 1 }, sent: { decrement: 1 } } }).catch(e => null);
                          }
                     }
                 } else {

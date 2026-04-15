@@ -62,7 +62,7 @@ export default function UpgradePage() {
                         <h3 className="text-2xl font-black text-white mb-2">Whitelabel Partner</h3>
                         <div className="mb-6 flex items-baseline gap-1">
                             <span className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500">₹46,000</span>
-                            <span className="text-zinc-500 text-xs font-bold">/ month</span>
+                            <span className="text-zinc-500 text-xs font-bold">one time</span>
                         </div>
 
                         <p className="text-zinc-400 text-sm mb-6 leading-relaxed">
@@ -70,21 +70,21 @@ export default function UpgradePage() {
                         </p>
 
                         <div className="bg-zinc-900/50 border border-zinc-800 rounded-2xl p-4 mb-6 space-y-3">
-                            <div className="text-[10px] font-black text-cyan-400 uppercase tracking-widest mb-1">Fee Breakdown split</div>
+                            <div className="text-[10px] font-black text-cyan-400 uppercase tracking-widest mb-1">Fee Breakdown</div>
                             <div className="flex justify-between text-xs font-bold text-zinc-300">
                                 <span className="text-zinc-500">Setup & White-label DNS</span>
                                 <span>₹10,000</span>
                             </div>
                             <div className="flex justify-between text-xs font-bold text-zinc-300">
-                                <span className="text-zinc-500">Dedicated Cloud Node Hosting</span>
+                                <span className="text-zinc-500">Dedicated Cloud Node Setup</span>
                                 <span>₹20,000</span>
                             </div>
                             <div className="flex justify-between text-xs font-bold text-zinc-300">
-                                <span className="text-zinc-500">Unlimited Orchestration Fee</span>
+                                <span className="text-zinc-500">Lifetime Orchestration Fee</span>
                                 <span>₹10,000</span>
                             </div>
                             <div className="flex justify-between text-xs font-bold text-zinc-300">
-                                <span className="text-zinc-500">24/7 Priority SLA Support</span>
+                                <span className="text-zinc-500">Lifetime SLA Support</span>
                                 <span>₹6,000</span>
                             </div>
                         </div>

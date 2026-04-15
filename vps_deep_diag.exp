@@ -1,0 +1,22 @@
+#!/usr/bin/expect -f
+set SERVER    "root@72.61.231.187"
+set PASS      "Photoshop09@"
+set timeout   60
+puts "\n🔍 \[1/3\] Checking Nginx config for grafty.pro..."
+spawn ssh -o StrictHostKeyChecking=no $SERVER "cat /etc/nginx/sites-enabled/* | grep -A 20 'grafty.pro'"
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}
+puts "\n🔍 \[2/3\] Checking for ANY other running apps on port 3001..."
+spawn ssh -o StrictHostKeyChecking=no $SERVER "lsof -i :3001"
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}
+puts "\n🔍 \[3/3\] Checking for ANY other Docker containers..."
+spawn ssh -o StrictHostKeyChecking=no $SERVER "docker ps -a"
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}

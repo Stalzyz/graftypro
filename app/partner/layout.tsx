@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation';
 import {
     LayoutDashboard, Users, Wallet, FileText, Settings,
     LogOut, ChevronRight, Ticket, Target,
-    Receipt, Globe, Mail, Zap, Activity, Shield, CreditCard, Layout
+    Receipt, Globe, Mail, Zap, Activity, Shield, CreditCard, Layout, Puzzle
 } from 'lucide-react';
 import { Logo } from "../../components/ui/Logo";
 
@@ -62,8 +62,8 @@ export default function PartnerLayout({ children }: { children: React.ReactNode 
                     <div className="flex items-center justify-center h-14 bg-slate-50 border border-slate-100 rounded-2xl shadow-sm hover:border-[#27954D]/20 transition-all overflow-hidden p-2">
                         <Logo
                             size={44}
-                            showText={false}
-                            brandName={partner?.brand_name || "P"}
+                            showText={true}
+                            brandName={partner?.brand_name?.trim() || "Grafty"}
                             logoUrl={partner?.logo_url}
                             href="/partner/dashboard"
                         />
@@ -119,6 +119,7 @@ export default function PartnerLayout({ children }: { children: React.ReactNode 
                     {isPlatform && (
                         <div className="space-y-1 mt-0">
                             <NavItem href="/partner/settings/billing" icon={<CreditCard size={18} />} label="Payment Gateway" pathname={pathname} />
+                            <NavItem href="/dashboard/addons" icon={<Puzzle size={18} />} label="Addons Store" pathname={pathname} />
                         </div>
                     )}
                 </nav>
@@ -128,7 +129,7 @@ export default function PartnerLayout({ children }: { children: React.ReactNode 
                     {!isPlatform && (
                         <button
                             onClick={() => window.location.href = '/partner/upgrade'}
-                            className="w-full py-4 bg-slate-900 text-white rounded-2xl text-[9px] font-black uppercase tracking-[0.25em] hover:bg-black transition-all flex items-center justify-center gap-3 shadow-xl active:scale-95 group"
+                            className="w-full py-4 bg-[#27954D] text-white rounded-2xl text-[9px] font-black uppercase tracking-[0.25em] hover:bg-[#1e7a3d] transition-all flex items-center justify-center gap-3 shadow-xl shadow-emerald-100 active:scale-95 group"
                         >
                             <Shield size={14} className="group-hover:text-emerald-400 transition-colors" />
                             Upgrade to Platform
@@ -138,10 +139,10 @@ export default function PartnerLayout({ children }: { children: React.ReactNode 
                     <div className="flex items-center justify-between px-2">
                         <div className="flex items-center gap-3">
                             <div className="w-8 h-8 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-800 font-black text-[10px] shadow-sm italic">
-                                {partner?.name?.charAt(0) || "P"}
+                                {partner?.brand_name?.charAt(0) || "G"}
                             </div>
                             <div>
-                                <p className="text-[10px] font-black text-slate-900 leading-none uppercase italic truncate max-w-[100px]">{partner?.name?.split(' ')[0] || "Partner"}</p>
+                                <p className="text-[10px] font-black text-slate-900 leading-none uppercase italic truncate max-w-[100px]">{partner?.brand_name?.trim() || "Grafty"}</p>
                                 <div className="flex items-center gap-1 mt-1">
                                     <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
                                     <span className="text-[8px] font-black text-slate-300 uppercase tracking-widest leading-none">V 4.0.2 LIVE</span>

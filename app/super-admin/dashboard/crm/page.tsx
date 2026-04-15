@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { safeToLocaleString, formatCurrency, ensureNumber } from "../../../../lib/utils/number-format";
 import "../../../../lib/polyfills/safe-number";
+import AddLeadModal from "./AddLeadModal";
 
 const STAGES = [
     { id: "LEAD_CAPTURED", label: "Lead Captured", color: "bg-blue-500", border: "border-blue-100" },
@@ -27,6 +28,7 @@ export default function CRMSalesWarRoom() {
     const [loading, setLoading] = useState(true);
     const [view, setView] = useState<"KANBAN" | "LIST" | "ANALYTICS">("KANBAN");
     const [selectedLead, setSelectedLead] = useState<any>(null);
+    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
     useEffect(() => {
         fetchData();
@@ -106,7 +108,10 @@ export default function CRMSalesWarRoom() {
                         Intelligence
                     </button>
                     <div className="w-px h-8 bg-slate-200 mx-2 hidden md:block" />
-                    <button className="px-8 py-4 bg-[#27954D] text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] flex items-center gap-2 hover:bg-[#042f94] transition-all shadow-xl shadow-green-100 active:scale-95">
+                    <button 
+                        onClick={() => setIsAddModalOpen(true)}
+                        className="px-8 py-4 bg-[#27954D] text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] flex items-center gap-2 hover:bg-[#042f94] transition-all shadow-xl shadow-green-100 active:scale-95"
+                    >
                         <Plus size={14} /> Capture Lead
                     </button>
                 </div>
@@ -160,11 +165,26 @@ export default function CRMSalesWarRoom() {
                             </div>
 
                             <div className="flex-1 bg-slate-50/50 rounded-[40px] p-4 space-y-4 border border-slate-100/50 overflow-y-auto custom-scrollbar">
-                                {(Array.isArray(leads) ? leads : []).filter(l => l?.stage === stage.id).map((lead) => (
-                                    <LeadCard key={lead.id} lead={lead} onClick={() => setSelectedLead(lead)} onMove={(s: string) => handleUpdateStage(lead.id, s)} />
-                                ))}
+                                {((Array.isArray(leads) ? leads : []).filter(l => l?.stage === stage.id).length > 0) ? (
+                                    (Array.isArray(leads) ? leads : []).filter(l => l?.stage === stage.id).map((lead) => (
+                                        <LeadCard key={lead.id} lead={lead} onClick={() => setSelectedLead(lead)} onMove={(s: string) => handleUpdateStage(lead.id, s)} />
+                                    ))
+                                ) : (
+                                    <div className="py-20 flex flex-col items-center justify-center text-center space-y-4 opacity-40">
+                                        <div className="w-16 h-16 rounded-full bg-slate-200 flex items-center justify-center">
+                                            <Target size={24} className="text-slate-400" />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Pipeline Empty</p>
+                                            <p className="text-[9px] font-bold text-slate-400">No prospects in this stage</p>
+                                        </div>
+                                    </div>
+                                )}
 
-                                <button className="w-full py-6 border-2 border-dashed border-slate-200 rounded-[32px] text-slate-400 hover:border-slate-400 hover:text-slate-600 transition-all flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-widest bg-white/50">
+                                <button 
+                                    onClick={() => setIsAddModalOpen(true)}
+                                    className="w-full py-6 border-2 border-dashed border-slate-200 rounded-[32px] text-slate-400 hover:border-slate-400 hover:text-slate-600 transition-all flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-widest bg-white/50"
+                                >
                                     <Plus size={12} /> Add Prospect
                                 </button>
                             </div>
@@ -226,7 +246,65 @@ export default function CRMSalesWarRoom() {
                 </div>
             )}
 
-            {/* Lead Detail Sidebar Overlay */}
+            {view === "ANALYTICS" && (
+                <div className="space-y-10 animate-fade-in">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+                        <div className="bg-white p-10 rounded-[48px] border border-slate-100 shadow-sm space-y-8">
+                            <div className="flex items-center justify-between">
+                                <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Revenue Forecast Model</h3>
+                                <Zap className="text-amber-500" size={20} />
+                            </div>
+                            <div className="h-64 flex items-end gap-2 px-4">
+                                {STAGES.slice(0, -1).map((s, i) => {
+                                    const stageLeads = leads.filter(l => l.stage === s.id);
+                                    const value = stageLeads.reduce((sum, l) => sum + Number(l.deal_value || 0), 0);
+                                    const height = Math.min(100, (value / (stats?.pipeline?.total_active_value || 1)) * 100);
+                                    return (
+                                        <div key={s.id} className="flex-1 flex flex-col items-center gap-4 group">
+                                            <div className="relative w-full bg-slate-50 rounded-t-2xl min-h-[4px] transition-all overflow-hidden">
+                                                <div 
+                                                    className={`absolute bottom-0 left-0 right-0 ${s.color} opacity-80 group-hover:opacity-100 transition-all`}
+                                                    style={{ height: `${height}%` }}
+                                                />
+                                            </div>
+                                            <span className="text-[8px] font-black text-slate-400 rotate-45 origin-left whitespace-nowrap mt-2">{s.label}</span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        <div className="bg-slate-900 p-10 rounded-[48px] text-white space-y-8 shadow-2xl relative overflow-hidden">
+                            <div className="absolute top-0 right-0 p-12 opacity-10">
+                                <Trophy size={120} />
+                            </div>
+                            <div className="relative z-10 space-y-6">
+                                <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest">Sales Targets</h3>
+                                <div className="space-y-8">
+                                    {stats?.targets?.slice(0, 3).map((t: any) => (
+                                        <div key={t.id} className="space-y-3">
+                                            <div className="flex justify-between items-end">
+                                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t.type} Progress</span>
+                                                <span className="text-xl font-black">{Math.round((t.current_value / (t.target_value || 1)) * 100)}%</span>
+                                            </div>
+                                            <div className="h-3 bg-white/10 rounded-full overflow-hidden">
+                                                <div 
+                                                    className="h-full bg-blue-500 shadow-[0_0_20px_rgba(59,130,246,0.5)] transition-all duration-1000"
+                                                    style={{ width: `${Math.min(100, (t.current_value / (t.target_value || 1)) * 100)}%` }}
+                                                />
+                                            </div>
+                                            <div className="flex justify-between text-[9px] font-bold text-slate-500">
+                                                <span>{formatCurrency(t.current_value)}</span>
+                                                <span>Target: {formatCurrency(t.target_value)}</span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
             {selectedLead && (
                 <div className="fixed inset-0 z-[100] flex justify-end">
                     <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setSelectedLead(null)} />
@@ -246,6 +324,16 @@ export default function CRMSalesWarRoom() {
                         />
                     </div>
                 </div>
+            )}
+            {/* Add Lead Modal Overlay */}
+            {isAddModalOpen && (
+                <AddLeadModal 
+                    onClose={() => setIsAddModalOpen(false)} 
+                    onSuccess={() => {
+                        setIsAddModalOpen(false);
+                        fetchData();
+                    }} 
+                />
             )}
         </div>
     );

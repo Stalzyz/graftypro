@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "../../../lib/db";
 import { getCurrentUser } from "../../../lib/auth";
+import { triggerWelcomeEmail } from "@/lib/email/automations";
 
 export const dynamic = "force-dynamic";
 
@@ -87,6 +88,13 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: "Phone number is required" }, { status: 400 });
         }
 
+        // Check if this is a NEW contact before upsert (for automation gating)
+        const existingContact = await prisma.contact.findUnique({
+            where: { workspace_id_phone: { workspace_id: user.workspaceId, phone } },
+            select: { id: true }
+        });
+        const isNewContact = !existingContact;
+
         // Upsert by Phone
         const contact = await prisma.contact.upsert({
             where: {
@@ -109,9 +117,19 @@ export async function POST(req: Request) {
                 email,
                 tags: tags || [],
                 attributes: attributes || {},
-                opt_in: true, // Bug #3 Fix: manually added contacts must be opted-in or broadcasts find 0 recipients
+                opt_in: true,
             },
         });
+
+        // 🛰️ AUTOMATION: Royal Welcome
+        // Fire-and-forget — never blocks the API response
+        if (isNewContact && (email || contact.email)) {
+            triggerWelcomeEmail({
+                workspaceId: user.workspaceId,
+                contactEmail: email || contact.email,
+                contactName: name || contact.name || undefined,
+            }).catch(e => console.error("[WELCOME-AUTO]:", e));
+        }
 
         return NextResponse.json(contact);
 

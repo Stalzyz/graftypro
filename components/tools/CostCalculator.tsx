@@ -40,13 +40,15 @@ export default function CostCalculator() {
   useEffect(() => {
     if (phone.length >= 10) {
         const timer = setTimeout(() => {
-            fetch('/api/tools/lead-capture', {
+            fetch('/api/leads/capture', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    phone: phone.replace(/\D/g, ''),
-                    tool: 'COST_CALCULATOR',
-                    metadata: { region, volumes }
+                    whatsapp_number: phone.replace(/\D/g, ''),
+                    source: 'COST_CALCULATOR',
+                    business_name: 'Cost Calculator',
+                    goal: 'ROI Analysis',
+                    revenue_range: region // Using region as a proxy for revenue range if needed, or just omit
                 })
             }).catch(() => {});
         }, 2000);

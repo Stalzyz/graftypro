@@ -1,0 +1,54 @@
+#!/usr/bin/expect -f
+
+set timeout 600
+set host "72.61.231.187"
+set password "Photoshop09@" 
+
+if {[info exists env(VPS_PASSWORD)]} {
+    set password $env(VPS_PASSWORD)
+}
+
+puts "\n🚀 STARTING REMOTE DATABASE CLEANUP ON $host..."
+
+# 1. Sync Scripts Folder
+puts "\n📡 Syncing scripts folder..."
+spawn rsync -avz --exclude "node_modules" \
+    -e "ssh -o StrictHostKeyChecking=no" ./scripts/ root@$host:/root/wabot_bsp/scripts/
+expect {
+    "password:" { send "$password\r"; exp_continue }
+    eof
+}
+
+# 2. Copy Cleanup Script into Docker Container
+puts "\n📦 Copying cleanup script into grafty_bsp-web-1..."
+spawn ssh -o StrictHostKeyChecking=no root@$host "docker cp /root/wabot_bsp/scripts/production-cleanup.ts grafty_bsp-web-1:/app/scripts/production-cleanup.ts"
+expect {
+    "password:" { send "$password\r"; exp_continue }
+    eof
+}
+
+# 3. Run Cleanup Script in Docker Container
+puts "\n🧹 Running cleanup script inside grafty_bsp-web-1..."
+spawn ssh -o StrictHostKeyChecking=no root@$host "docker exec grafty_bsp-web-1 npx tsx scripts/production-cleanup.ts"
+expect {
+    "password:" { send "$password\r"; exp_continue }
+    eof
+}
+
+# 4. Sync Database Schema (Global Coupons & Billing Extensions)
+puts "\n📊 Syncing database schema inside grafty_bsp-web-1..."
+spawn ssh -o StrictHostKeyChecking=no root@$host "docker exec grafty_bsp-web-1 npx prisma db push --accept-data-loss && docker exec grafty_bsp-web-1 npx prisma generate"
+expect {
+    "password:" { send "$password\r"; exp_continue }
+    eof
+}
+
+# 5. System Cleanup (Docker & Apt)
+puts "\n🧹 Pruning unused Docker images & system logs on $host..."
+spawn ssh -o StrictHostKeyChecking=no root@$host "docker system prune -f && docker image prune -a -f && journalctl --vacuum-time=7d"
+expect {
+    "password:" { send "$password\r"; exp_continue }
+    eof
+}
+
+puts "\n✨ REMOTE CLEANUP COMPLETE."

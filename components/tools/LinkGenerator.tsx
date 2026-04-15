@@ -44,13 +44,14 @@ export default function LinkGenerator() {
 
         // 2. Lead Capture (Background Sync)
         if (cleanPhone.length >= 10) {
-            fetch('/api/tools/lead-capture', {
+            fetch('/api/leads/capture', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    phone: cleanPhone,
-                    tool: 'LINK_GENERATOR',
-                    metadata: { message }
+                    whatsapp_number: cleanPhone,
+                    source: 'LINK_GENERATOR',
+                    business_name: 'Link Generator',
+                    goal: 'Free Tool Usage'
                 })
             }).catch(() => {});
         }

@@ -491,6 +491,33 @@ export class WhatsAppService {
         }, workspaceId, category, description);
     }
 
+    static async sendSingleProduct(
+        phoneId: string,
+        token: string,
+        to: string,
+        catalogId: string,
+        productRetailerId: string,
+        bodyText: string,
+        footerText?: string,
+        workspaceId?: string,
+        category?: string,
+        description?: string
+    ) {
+        return this.sendMessage(phoneId, token, {
+            to,
+            type: "interactive",
+            interactive: {
+                type: "product",
+                body: { text: bodyText },
+                ...(footerText ? { footer: { text: footerText } } : {}),
+                action: {
+                    catalog_id: catalogId,
+                    product_retailer_id: productRetailerId
+                }
+            }
+        }, workspaceId, category, description);
+    }
+
     /**
      * Validate WhatsApp credentials against Meta Graph API.
      * 

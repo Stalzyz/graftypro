@@ -43,11 +43,15 @@ export async function GET(req: Request) {
                         bank_name: true,
                         account_number: true,
                         ifsc_code: true,
-                        timezone: true
+                        timezone: true,
+                        addons: {
+                            where: { status: "ACTIVE" },
+                            include: { addon: true }
+                        }
                     }
                 }
             }
-        });
+        }) as any;
 
         if (!user) {
             const response = NextResponse.json({ error: "User not found" }, { status: 401 });
@@ -62,6 +66,7 @@ export async function GET(req: Request) {
             avatar_url: getAbsoluteMediaUrl(user.avatar_url, req),
             workspace: {
                 ...user.workspace,
+                // @ts-ignore
                 plan: user.workspace.plan_details || { 
                     name: user.workspace.plan, // Fallback to enum string if relation missing
                     module_crm: user.workspace.plan === "ENTERPRISE" || user.workspace.plan === "PRO",
@@ -69,7 +74,8 @@ export async function GET(req: Request) {
                     module_academy: user.workspace.plan === "ENTERPRISE",
                     module_drip: user.workspace.plan === "ENTERPRISE",
                     module_integration: user.workspace.plan === "ENTERPRISE"
-                }
+                },
+                addons: user.workspace.addons.map((wa: any) => wa.addon.name)
             },
             hasPassword: !!user.password_hash
         };
@@ -117,6 +123,14 @@ export async function POST(req: Request) {
                 if (!isValid) {
                     return NextResponse.json({ error: "Incorrect current password" }, { status: 400 });
                 }
+            }
+
+            // --- STEP 1: Nuclear-Grade Password Validation ---
+            const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{10,}$/;
+            if (!passwordRegex.test(new_password)) {
+                return NextResponse.json({ 
+                    error: "Password must be at least 10 characters long and include uppercase, lowercase, a number, and a special character (@$!%*?&)." 
+                }, { status: 400 });
             }
 
             // Hash new password

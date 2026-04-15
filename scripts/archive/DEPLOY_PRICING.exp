@@ -1,0 +1,26 @@
+#!/usr/bin/expect -f
+
+set timeout 300
+set host "72.61.231.187"
+set password "Photoshop09@"
+
+puts "\n📤 Uploading Dynamic Pricing Page..."
+spawn rsync -avz \
+    -e "ssh -o StrictHostKeyChecking=no" \
+    /Users/stalinkumar/Downloads/Grafty_Bsp/app/pricing/page.tsx \
+    root@$host:/root/wabot_bsp/app/pricing/page.tsx
+expect {
+    "password:" { send "$password\r"; exp_continue }
+    eof
+}
+
+puts "\n🔄 Rebuilding web container..."
+spawn ssh -o StrictHostKeyChecking=no root@$host \
+    "cd /root/wabot_bsp && docker compose -f docker-compose.prod.yml up -d --build web && echo PRICING_DEPLOYED"
+expect {
+    "password:" { send "$password\r"; exp_continue }
+    "PRICING_DEPLOYED" { puts "\n✅ Dynamic Pricing deployed successfully!" }
+    eof
+}
+
+puts "\nGo test your pricing page at https://grafty.pro/pricing"

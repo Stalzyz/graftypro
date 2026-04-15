@@ -3,7 +3,7 @@ import { defineConfig, devices } from '@playwright/test';
 export default defineConfig({
     testDir: './scenarios',
     /* Maximum time one test can run for. */
-    timeout: 60 * 1000,
+    timeout: 180 * 60 * 1000, // 3-hour buffer for cinematic recordings
     expect: {
         timeout: 10000
     },
@@ -17,7 +17,7 @@ export default defineConfig({
         /* Maximum time each action such as `click()` can take. Defaults to 0 (no limit). */
         actionTimeout: 0,
         /* Base URL to use in actions like `await page.goto('/')`. */
-        baseURL: 'http://72.61.231.187:3001', // Running against the live staging instance
+        baseURL: 'http://localhost:3000', // Default to local dev server for recording
 
         /* Global recording config: Ensure high-quality 1080p recording */
         video: {

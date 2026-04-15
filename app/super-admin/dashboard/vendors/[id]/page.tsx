@@ -40,6 +40,8 @@ export default function VendorDetailPage({ params }: { params: { id: string } })
     // Modules state
     const [modules, setModules] = useState<Record<string, boolean>>({});
     const [moduleSaving, setModuleSaving] = useState<string | null>(null);
+    const [addons, setAddons] = useState<any[]>([]);
+    const [addonSaving, setAddonSaving] = useState<string | null>(null);
 
     // Subscription state
     const [subscription, setSubscription] = useState<any>(null);
@@ -80,6 +82,12 @@ export default function VendorDetailPage({ params }: { params: { id: string } })
         const data = await res.json();
         if (data.modules) setModules(data.modules);
     }, [params.id]);
+    
+    const fetchAddons = useCallback(async () => {
+        const res = await fetch(`/api/super-admin/vendors/${params.id}/addons`);
+        const data = await res.json();
+        if (data.addons) setAddons(data.addons);
+    }, [params.id]);
 
     const fetchSubscription = useCallback(async () => {
         const res = await fetch(`/api/super-admin/vendors/${params.id}/subscription`);
@@ -98,8 +106,9 @@ export default function VendorDetailPage({ params }: { params: { id: string } })
     useEffect(() => {
         fetchVendor();
         fetchModules();
+        fetchAddons();
         fetchSubscription();
-    }, [fetchVendor, fetchModules, fetchSubscription]);
+    }, [fetchVendor, fetchModules, fetchAddons, fetchSubscription]);
 
     useEffect(() => {
         if (activeTab === "audit") fetchAudit();
@@ -141,6 +150,26 @@ export default function VendorDetailPage({ params }: { params: { id: string } })
             }
         } catch { showToast("Network error", "error"); }
         finally { setModuleSaving(null); }
+    };
+    
+    const handleAddonToggle = async (addonId: string, currentStatus: string) => {
+        const newStatus = currentStatus === "ACTIVE" ? "DEACTIVATE" : "ACTIVATE";
+        setAddonSaving(addonId);
+        try {
+            const res = await fetch(`/api/super-admin/vendors/${params.id}/addons`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ addonId, action: newStatus })
+            });
+            if (res.ok) {
+                showToast(`Addon ${newStatus === "ACTIVATE" ? "provisioned" : "revoked"} successfully`);
+                fetchAddons();
+            } else {
+                const err = await res.json();
+                showToast(err.error || "Toggle failed", "error");
+            }
+        } catch { showToast("Network error", "error"); }
+        finally { setAddonSaving(null); }
     };
 
     const handleSubscriptionAction = async () => {
@@ -486,6 +515,58 @@ export default function VendorDetailPage({ params }: { params: { id: string } })
                                 </div>
                             );
                         })}
+                    </div>
+
+                    {/* Marketplace Addons (Admin Override) */}
+                    <div className="mt-12 border-t border-slate-50 pt-10">
+                        <div className="flex items-center justify-between mb-8">
+                            <div>
+                                <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">
+                                    <Package size={18} className="text-[#042f94]" /> Marketplace Addons (Admin Override)
+                                </h3>
+                                <p className="text-xs text-slate-400 mt-1">Manual provision or revoke Marketplace features (Bypasses credits)</p>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {addons.length === 0 ? (
+                                <div className="col-span-full py-10 text-center bg-slate-50 rounded-3xl border border-dashed border-slate-200">
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">No Addons Found In Marketplace</p>
+                                </div>
+                            ) : addons.map(addon => {
+                                const isActive = addon.status === "ACTIVE";
+                                const isSaving = addonSaving === addon.id;
+                                return (
+                                    <div key={addon.id} 
+                                        className={`flex items-center justify-between p-5 rounded-2xl border transition-all ${isActive ? "bg-emerald-50 border-emerald-100" : "bg-slate-50 border-slate-100 opacity-60"}`}>
+                                        <div className="flex items-center gap-3">
+                                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isActive ? "bg-emerald-100 text-emerald-600" : "bg-slate-100 text-slate-400"}`}>
+                                                <Zap size={18} />
+                                            </div>
+                                            <div>
+                                                <div className="text-sm font-bold text-slate-800">{addon.title}</div>
+                                                <div className={`text-[10px] font-black uppercase tracking-widest ${isActive ? "text-emerald-600" : "text-slate-400"}`}>
+                                                    {isActive ? "ACTIVE" : "INACTIVE"}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <button 
+                                            onClick={() => handleAddonToggle(addon.id, addon.status)}
+                                            disabled={isSaving}
+                                            className="transition-all disabled:opacity-50"
+                                        >
+                                            {isSaving ? (
+                                                <RefreshCw size={24} className="animate-spin text-slate-400" />
+                                            ) : isActive ? (
+                                                <ToggleRight size={32} className="text-emerald-500" />
+                                            ) : (
+                                                <ToggleLeft size={32} className="text-slate-300" />
+                                            )}
+                                        </button>
+                                    </div>
+                                );
+                            })}
+                        </div>
                     </div>
                 </div>
             )}

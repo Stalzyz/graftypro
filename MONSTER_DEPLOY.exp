@@ -70,9 +70,11 @@ docker compose -f docker-compose.prod.yml exec -T web sh -c \"echo 'y' | npx pri
 echo '🛠️ Generating Prisma Client...' && \
 docker compose -f docker-compose.prod.yml exec web npx prisma generate && \
 echo '🌱 Seeding Super Admin...' && \
-docker compose -f docker-compose.prod.yml exec web npx tsx scripts/seed-admin.ts && \
+docker compose -f docker-compose.prod.yml exec web npx tsx scripts/reset-admin.ts && \
 echo '🌱 Seeding Monster Pricing Plans...' && \
 docker compose -f docker-compose.prod.yml exec web npx tsx scripts/seed-monster-plans.ts && \
+echo '🌱 Seeding Addons Marketplace...' && \
+docker compose -f docker-compose.prod.yml exec web npx tsx scripts/seed-addons.ts && \
 echo '✅ DEPLOY COMPLETE'"
 
 expect {

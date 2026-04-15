@@ -14,7 +14,7 @@ export default function PricingCalculators() {
     const totalMessagingCost = messages * avgChargePerMsg;
 
     // Platform Fee in INR (Converted from $49 roughly)
-    const platformFee = 3999;
+    const platformFee = 2999;
     const totalEstimated = platformFee + totalMessagingCost;
 
     // Recharge GST Logic

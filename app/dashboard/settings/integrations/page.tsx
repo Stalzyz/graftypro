@@ -1,20 +1,72 @@
 "use client";
 
-import { Calendar, Check, Mail, Globe, Settings as SettingsIcon, AlertCircle, ShoppingBag } from "lucide-react";
-import { useState, useEffect } from "react";
+import { Calendar, Check, Mail, Globe, Settings as SettingsIcon, AlertCircle, ShoppingBag, Video, Loader2 } from "lucide-react";
+import { useState, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
+import { toast } from "react-hot-toast";
 
 export default function IntegrationsPage() {
+    return (
+        <Suspense fallback={
+            <div className="flex items-center justify-center p-20">
+                <Loader2 className="animate-spin text-indigo-600" size={32} />
+            </div>
+        }>
+            <IntegrationsContent />
+        </Suspense>
+    );
+}
+
+function IntegrationsContent() {
     const [integrations, setIntegrations] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [manualLink, setManualLink] = useState("");
+    const [savingLink, setSavingLink] = useState(false);
+    const searchParams = useSearchParams();
 
     useEffect(() => {
-        fetch("/api/settings/integrations")
-            .then(res => res.json())
-            .then(data => {
-                setIntegrations(data.data || []);
-                setLoading(false);
+        const fetchInitialData = async () => {
+            const status = searchParams.get("status");
+            if (status === "integration_success") {
+                toast.success("Google Calendar connected successfully! 🗓️");
+                window.history.replaceState({}, '', window.location.pathname);
+            }
+
+            // Fetch Integrations
+            const intRes = await fetch("/api/settings/integrations");
+            const intData = await intRes.json();
+            setIntegrations(intData.data || []);
+
+            // Fetch Manual Link
+            const mlRes = await fetch("/api/settings/workspace/meet-link");
+            const mlData = await mlRes.json();
+            if (mlData.success) setManualLink(mlData.link || "");
+
+            setLoading(false);
+        };
+
+        fetchInitialData();
+    }, [searchParams]);
+
+    const handleSaveManualLink = async () => {
+        setSavingLink(true);
+        try {
+            const res = await fetch("/api/settings/workspace/meet-link", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ link: manualLink })
             });
-    }, []);
+            if (res.ok) {
+                toast.success("Manual meeting link saved!");
+            } else {
+                toast.error("Failed to save link");
+            }
+        } catch (e) {
+            toast.error("Error saving link");
+        } finally {
+            setSavingLink(false);
+        }
+    };
 
     const isConnected = (type: string) => integrations.some(i => i.type === type && i.is_active);
 
@@ -47,10 +99,10 @@ export default function IntegrationsPage() {
                         Sync your appointment bookings directly to your Google Calendar in real-time.
                     </p>
                     <button
-                        onClick={() => window.location.href = '/api/auth/google?scope=calendar'}
+                        onClick={() => window.location.href = `/api/auth/google?scope=calendar&integration=true`}
                         className={`w-full mt-6 py-2.5 rounded-xl text-sm font-black transition-all ${isConnected('GOOGLE_CALENDAR')
                             ? 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                            : 'btn-primary shadow-lg'
+                            : 'btn-primary shadow-lg shadow-emerald-100'
                             }`}>
                         {isConnected('GOOGLE_CALENDAR') ? 'Manage Connection' : 'Connect Calendar'}
                     </button>
@@ -129,6 +181,45 @@ export default function IntegrationsPage() {
                         className="w-full mt-6 py-2.5 rounded-xl text-sm font-black btn-primary shadow-lg">
                         Explore Zaps
                     </button>
+                </div>
+            </div>
+
+            {/* Manual Meeting Link Fallback */}
+            <div className="soft-card p-8 border-2 border-gray-100 bg-white shadow-sm">
+                <div className="flex items-center gap-4 mb-6">
+                    <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center">
+                        <Video size={24} />
+                    </div>
+                    <div>
+                        <h3 className="text-xl font-black text-gray-800 tracking-tight">Personal Meeting Room</h3>
+                        <p className="text-sm text-gray-500 font-medium">Set a permanent fallback link (Meet, Zoom, or Jitsi) for your workspace.</p>
+                    </div>
+                </div>
+
+                <div className="flex flex-col md:flex-row gap-4">
+                    <div className="relative flex-1 group">
+                        <Globe className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-indigo-600 transition-colors" size={18} />
+                        <input
+                            type="text"
+                            placeholder="https://meet.google.com/your-personal-id"
+                            value={manualLink}
+                            onChange={(e) => setManualLink(e.target.value)}
+                            className="w-full bg-gray-50 border-2 border-transparent focus:border-indigo-500/20 focus:bg-white rounded-xl pl-12 pr-4 py-3 text-sm font-bold text-gray-700 outline-none transition-all"
+                        />
+                    </div>
+                    <button
+                        onClick={handleSaveManualLink}
+                        disabled={savingLink}
+                        className="bg-indigo-600 hover:bg-black text-white px-8 py-3 rounded-xl text-sm font-black transition-all shadow-lg shadow-indigo-100 disabled:opacity-50 whitespace-nowrap"
+                    >
+                        {savingLink ? "Saving..." : "Save Link"}
+                    </button>
+                </div>
+
+                <div className="mt-4 p-4 bg-indigo-50/50 rounded-xl border border-indigo-100/50">
+                    <p className="text-[11px] text-indigo-900 leading-relaxed font-semibold">
+                        💡 <span className="text-indigo-700">Pro Tip:</span> If you don't connect Google Calendar using the card above, we will use this link for every "Start Video Meet" request in the Live Chat.
+                    </p>
                 </div>
             </div>
 

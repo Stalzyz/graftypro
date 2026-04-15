@@ -1,0 +1,26 @@
+#!/usr/bin/expect -f
+
+set timeout 300
+set host "72.61.231.187"
+set password "Photoshop09@"
+
+puts "\n📤 Uploading middleware fix..."
+spawn rsync -avz \
+    -e "ssh -o StrictHostKeyChecking=no" \
+    /Users/stalinkumar/Downloads/Grafty_Bsp/middleware.ts \
+    root@$host:/root/wabot_bsp/middleware.ts
+expect {
+    "password:" { send "$password\r"; exp_continue }
+    eof
+}
+
+puts "\n🔄 Rebuilding web container fast..."
+spawn ssh -o StrictHostKeyChecking=no root@$host \
+    "cd /root/wabot_bsp && docker compose -f docker-compose.prod.yml up -d --build web && echo FIX_DEPLOYED"
+expect {
+    "password:" { send "$password\r"; exp_continue }
+    "FIX_DEPLOYED" { puts "\n✅ Fix deployed successfully!" }
+    eof
+}
+
+puts "\nGo test your manual WhatsApp connection!"

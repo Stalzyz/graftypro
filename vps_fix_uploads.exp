@@ -1,0 +1,11 @@
+#!/usr/bin/expect -f
+set SERVER    "root@72.61.231.187"
+set PASS      "Photoshop09@"
+set REMOTE    "/root/grafty_bsp"
+set timeout   60
+puts "\n🚀 \[1/1\] Enforcing full 777 permissions on host-level upload directory..."
+spawn ssh -o StrictHostKeyChecking=no $SERVER "mkdir -p $REMOTE/public/uploads && chmod -R 777 $REMOTE/public/uploads && ls -la $REMOTE/public/uploads"
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}

@@ -16,17 +16,27 @@ export class MetaTemplateService {
     static async submitTemplate(
         wabaId: string,
         accessToken: string,
-        template: any // The Prisma Template object with include: { variables: true }
+        template: any, // The Prisma Template object with include: { variables: true }
+        mediaHandle?: string // OPTIONAL: Provided if media was pre-uploaded via Resumable Upload
     ) {
         try {
             const url = `${BASE_URL}/${wabaId}/message_templates`;
+
+            const components = Array.isArray(template.components) ? template.components : [];
+            const variables = Array.isArray(template.variables) ? template.variables : [];
+
+            // Meta requires components in a specific order: HEADER, BODY, FOOTER, BUTTONS
+            const typeOrder: { [key: string]: number } = { 'HEADER': 1, 'BODY': 2, 'FOOTER': 3, 'BUTTONS': 4 };
+            const sortedComponents = [...components].sort((a, b) => {
+                return (typeOrder[a.type] || 99) - (typeOrder[b.type] || 99);
+            });
 
             // Transform our DB structure to Meta's strict API payload
             const payload = {
                 name: template.name,
                 category: template.category, // UTILITY, MARKETING, AUTHENTICATION
                 language: template.language,
-                components: template.components.map((c: any, index: number) => {
+                components: sortedComponents.map((c: any) => {
                     const component: any = { type: c.type };
 
                     if (c.type === 'HEADER') {
@@ -34,41 +44,45 @@ export class MetaTemplateService {
                         
                         if (c.format === 'TEXT') {
                             component.text = c.text;
-                            // Check for variables in header
-                            const headerVars = template.variables?.filter((v: any) => v.component_index === index) || [];
-                            if (headerVars.length > 0) {
-                                component.example = {
-                                    header_text: [headerVars.map((v: any) => v.sample_value)]
-                                };
-                            }
                         }
-
-                        if (['IMAGE', 'VIDEO', 'DOCUMENT'].includes(c.format)) {
-                            /**
-                             * CRITICAL: Meta requires a valid, publicly accessible URI for the header example.
-                             * Error (#100) often stems from invalid or non-absolute URLs.
-                             */
-                            let mediaUrl = c.media_url || "https://grafty.pro/public/placeholder_media.png";
-                            
-                            // Ensure absolute URI
-                            if (!mediaUrl.startsWith('http')) {
-                                mediaUrl = `https://${new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://grafty.pro').host}${mediaUrl.startsWith('/') ? '' : '/'}${mediaUrl}`;
-                            }
-
-                            component.example = { header_url: [mediaUrl] };
+                        
+                        // Add samples if variables are present
+                        const headerVars = variables.filter((v: any) => v.component_index === 0);
+                        if (headerVars.length > 0 && c.format === 'TEXT') {
+                            component.example = {
+                                header_text: [headerVars[0].sample_value || "Sample"]
+                            };
+                        } else if (['IMAGE', 'VIDEO', 'DOCUMENT'].includes(c.format)) {
+                             // --- NUCLEAR FIX: Priority to mediaHandle (Resumable Upload) ---
+                             if (mediaHandle) {
+                                 console.log(`[NUCLEAR_UPLOAD_META] Using header_handle: ${mediaHandle}`);
+                                 component.example = {
+                                     header_handle: [mediaHandle]
+                                 };
+                             } else {
+                                 // Fallback to URL method
+                                 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://grafty.pro";
+                                 let finalUrl = c.media_url || "https://grafty.pro/placeholder.png";
+                                 if (finalUrl.startsWith('/')) {
+                                     finalUrl = `${APP_URL}${finalUrl}`;
+                                 }
+                                 console.log(`[NUCLEAR_UPLOAD_META] Falling back to header_url: ${finalUrl}`);
+                                 component.example = {
+                                    header_url: [finalUrl]
+                                 };
+                             }
                         }
                     }
 
                     if (c.type === 'BODY') {
                         component.text = c.text;
-                        // Map variables to samples (Meta expects [[sample1, sample2]])
-                        const bodyVars = template.variables
-                            ?.filter((v: any) => v.component_index === index)
-                            ?.sort((a: any, b: any) => a.param_index - b.param_index) || [];
+                        const bodyVars = variables
+                            .filter((v: any) => v.component_index === (components.some((cp: any) => cp.type === 'HEADER') ? 1 : 0))
+                            .sort((a: any, b: any) => a.param_index - b.param_index);
                         
                         if (bodyVars.length > 0) {
                             component.example = {
-                                body_text: [bodyVars.map((v: any) => v.sample_value || "Example")]
+                                body_text: [bodyVars.map((v: any) => v.sample_value || "Sample")]
                             };
                         }
                     }
@@ -78,20 +92,14 @@ export class MetaTemplateService {
                     }
 
                     if (c.type === 'BUTTONS') {
-                        component.buttons = c.buttons.map((b: any) => {
-                            const btn: any = {
-                                type: b.type,
-                                text: b.text
-                            };
-                            if (b.type === 'URL') {
-                                btn.url = b.url;
-                                // Handle dynamic URLs if variables exist
-                                if (b.url.includes('{{1}}')) {
-                                    btn.example = ["https://grafty.pro/track/123"];
-                                }
-                            }
-                            if (b.type === 'PHONE_NUMBER') {
-                                btn.phone_number = b.phone_number;
+                        component.buttons = c.buttons.map((btn: any) => {
+                            if (btn.type === 'URL' && btn.url.includes('{{1}}')) {
+                                return {
+                                    type: 'URL',
+                                    text: btn.text,
+                                    url: btn.url,
+                                    example: [btn.sample_value || "https://grafty.pro"]
+                                };
                             }
                             return btn;
                         });
@@ -100,6 +108,8 @@ export class MetaTemplateService {
                     return component;
                 })
             };
+
+            console.log("Submitting Meta Template Payload:", JSON.stringify(payload, null, 2));
 
             const response = await axios.post(url, payload, {
                 headers: {
@@ -134,7 +144,58 @@ export class MetaTemplateService {
                 errorMessage = `META VALIDATION FAILED: ${detailedError}. Please double-check your template parameters.`;
             }
 
+            console.error("Submission Failure Error:", errorMessage);
             throw new Error(errorMessage);
+        }
+    }
+
+    /**
+     * NUCLEAR FIX: Resumable Upload to Meta
+     * Pushes file binary directly to Meta to get a handle, bypassing crawlers.
+     */
+    static async uploadMediaToMeta(
+        appId: string,
+        accessToken: string,
+        fileBuffer: Buffer,
+        mimeType: string,
+        fileName: string
+    ): Promise<string> {
+        try {
+            console.log(`[NUCLEAR_UPLOAD_META] Initializing session for: ${fileName} (${mimeType}, ${fileBuffer.length} bytes)`);
+
+            // Phase 1: Initialize Upload Session
+            const initUrl = `${BASE_URL}/${appId}/uploads`;
+            const initRes = await axios.post(initUrl, null, {
+                params: {
+                    file_name: fileName,
+                    file_length: fileBuffer.length,
+                    file_type: mimeType,
+                    access_token: accessToken
+                }
+            });
+
+            const uploadSessionId = initRes.data.id;
+            console.log(`[NUCLEAR_UPLOAD_META] Session Created: ${uploadSessionId}`);
+
+            // Phase 2: Binary Upload
+            const uploadUrl = `https://graph.facebook.com/${META_API_VERSION}/${uploadSessionId}`;
+            const uploadRes = await axios.post(uploadUrl, fileBuffer, {
+                headers: {
+                    Authorization: `OAuth ${accessToken}`,
+                    "Content-Type": "application/octet-stream"
+                }
+            });
+
+            if (!uploadRes.data.h) {
+                throw new Error("Failed to obtain media handle from Meta upload");
+            }
+
+            console.log(`[NUCLEAR_UPLOAD_META] SUCCESS! Handle: ${uploadRes.data.h}`);
+            return uploadRes.data.h;
+
+        } catch (error: any) {
+            console.error("[NUCLEAR_UPLOAD_META] EXCEPTION:", JSON.stringify(error.response?.data || error.message, null, 2));
+            throw new Error(`Meta Media Upload Failed: ${error.message}`);
         }
     }
 

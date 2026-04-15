@@ -23,12 +23,17 @@ import {
     Store,
     Gift,
     BadgeCheck,
-    Lock
+    Lock,
+    Puzzle,
+    Brain,
+    Mail
 } from "lucide-react";
 import { useUser } from "../../hooks/use-user";
 import { useBranding } from "../../hooks/use-branding";
 import { BrandProvider } from "../../components/branding/BrandProvider";
 import { DynamicLogo } from "../../components/branding/DynamicLogo";
+import { useState, useEffect } from "react";
+import { Menu, X, ChevronDown, ChevronRight } from "lucide-react";
 import { SetPasswordPrompt } from "../../components/auth/SetPasswordPrompt";
 import { SmartPartnerLink } from "../../components/landing-new/SmartPartnerLink";
 import { TrialBanner, TrialExpiredGate } from "../../components/trial/TrialGate";
@@ -40,6 +45,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const { branding } = useBranding();
     const { user, loading: userLoading } = useUser();
     const pathname = usePathname();
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
     // ⛔ Suspension Gate: If workspace is suspended, block the entire UI
     if (user?.workspace?.status === "SUSPENDED") {
@@ -82,111 +88,143 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return (
         <BrandProvider colors={branding ? { primary: branding.primary_color || "#27954D", secondary: branding.secondary_color || "#042F94" } : undefined}>
             <ResellerAnnouncement banner={branding?.broadcast?.banner} link={branding?.broadcast?.link} />
-            <div className="min-h-screen bg-slate-50 flex">
+            <div className="min-h-screen bg-slate-50 flex flex-col lg:flex-row">
+                {/* Mobile Header */}
+                <header className="lg:hidden h-16 bg-white border-b border-slate-100 flex items-center justify-between px-6 sticky top-0 z-[60]">
+                    <DynamicLogo
+                        logoUrl={branding?.logo_url}
+                        brandName={branding?.brand_name || "Grafty"}
+                        showText={true}
+                        className="h-7 w-auto"
+                    />
+                    <button 
+                        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                        className="p-2 text-slate-500 hover:text-slate-900 transition-colors"
+                    >
+                        {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+                    </button>
+                </header>
+
                 {/* Sidebar */}
-                <aside className="w-[280px] bg-white border-r border-slate-100 hidden lg:flex flex-col fixed h-screen z-50 overflow-hidden">
+                <aside className={`w-[280px] bg-white border-r border-slate-100 lg:flex flex-col fixed h-screen z-50 overflow-hidden transition-transform duration-300 ${isMobileMenuOpen ? 'flex translate-x-0' : 'hidden lg:translate-x-0'}`}>
                     {/* Brand Identity */}
                     <div className="h-20 flex items-center px-8 border-b border-slate-50 justify-between">
                         <DynamicLogo
                             logoUrl={branding?.logo_url}
-                            brandName={branding?.brand_name || "Grafty"}
+                            brandName={branding?.brand_name?.trim() || "Grafty"}
                             showText={true}
                             className="h-9 w-auto"
                         />
-                        <span className="text-[10px] bg-emerald-50 text-emerald-600 font-black px-2 py-1 rounded-lg border border-emerald-100">v1.0.1</span>
                     </div>
 
-                    <nav className="flex-1 px-4 py-8 space-y-1.5 overflow-y-auto custom-scrollbar">
-                        <NavItem href="/dashboard" icon={<LayoutDashboard size={20} strokeWidth={1.5} />} label="Overview" pathname={pathname} />
-                        <NavItem icon={<Zap size={20} />} label="Quick Replies" href="/dashboard/responders" pathname={pathname} />
-                        <NavItem icon={<LayoutGrid size={20} />} label="CRM" href="/dashboard/crm" pathname={pathname} />
-                        <NavItem icon={<MessageCircle size={20} />} label="Live Chat" href="/dashboard/chat" pathname={pathname} />
-                        <NavItem icon={<Users size={20} />} label="Contacts" href="/dashboard/contacts" pathname={pathname} />
+                    {/* Unified Scrollable Area */}
+                    <div className="flex-1 overflow-y-auto custom-scrollbar">
+                        <nav className="px-4 py-8 space-y-1.5">
+                            <NavItem href="/dashboard" icon={<LayoutDashboard size={20} strokeWidth={1.5} />} label="Overview" pathname={pathname} />
+                            <NavItem icon={<Zap size={20} />} label="Quick Replies" href="/dashboard/responders" pathname={pathname} />
+                            <NavItem icon={<LayoutGrid size={20} />} label="CRM" href="/dashboard/crm" pathname={pathname} />
+                            <NavItem icon={<MessageCircle size={20} />} label="Live Chat" href="/dashboard/chat" pathname={pathname} />
+                            <NavItem icon={<Users size={20} />} label="Contacts" href="/dashboard/contacts" pathname={pathname} />
 
-                        <div className="pt-8 pb-3 px-6">
-                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] block">Automation</span>
-                        </div>
-                        <NavItem 
-                            href="/dashboard/flows" 
-                            icon={<GitBranch size={20} strokeWidth={1.5} />} 
-                            label="Flow Builder" 
-                            pathname={pathname}
-                        />
-                        <NavItem 
-                            href="/dashboard/drips" 
-                            icon={<Clock size={20} strokeWidth={1.5} />} 
-                            label="Drip Sequences" 
-                            pathname={pathname}
-                            locked={user?.workspace?.plan?.name !== "ENTERPRISE"} 
-                        />
+                            <SidebarCategory title="Automation" pathname={pathname}>
+                                <NavItem 
+                                    href="/dashboard/ai/knowledge" 
+                                    icon={<Brain size={20} strokeWidth={1.5} />} 
+                                    label="AI Knowledge Base" 
+                                    pathname={pathname}
+                                />
+                                <NavItem 
+                                    href="/dashboard/flows" 
+                                    icon={<GitBranch size={20} strokeWidth={1.5} />} 
+                                    label="Flow Builder" 
+                                    pathname={pathname}
+                                />
+                                <NavItem 
+                                    href="/dashboard/drips" 
+                                    icon={<Clock size={20} strokeWidth={1.5} />} 
+                                    label="Drip Sequences" 
+                                    pathname={pathname}
+                                    locked={user?.workspace?.plan?.name !== "ENTERPRISE"} 
+                                />
+                            </SidebarCategory>
 
-                        <div className="pt-8 pb-3 px-6">
-                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] block">Monetization</span>
-                        </div>
-                        <NavItem 
-                            icon={<MonitorPlay size={20} />} 
-                            label="Academy CRM" 
-                            href="/dashboard/education" 
-                            pathname={pathname} 
-                            locked={!user?.workspace?.plan?.module_academy && user?.workspace?.plan?.name !== "ENTERPRISE"} 
-                        />
-                        <NavItem 
-                            icon={<Store size={20} />} 
-                            label="E-Commerce" 
-                            href="/dashboard/commerce" 
-                            pathname={pathname} 
-                            locked={!user?.workspace?.plan?.module_ecommerce && user?.workspace?.plan?.name !== "ENTERPRISE"} 
-                        />
-                        <NavItem icon={<Gift size={20} />} label="Refer & Earn" href="/dashboard/referrals" pathname={pathname} />
+                            <SidebarCategory title="Monetization" pathname={pathname}>
+                                <NavItem 
+                                    icon={<MonitorPlay size={20} />} 
+                                    label="Academy CRM" 
+                                    href="/dashboard/education" 
+                                    pathname={pathname} 
+                                    locked={!user?.workspace?.plan?.module_academy && user?.workspace?.plan?.name !== "ENTERPRISE"} 
+                                />
+                                <NavItem 
+                                    icon={<Store size={20} />} 
+                                    label="E-Commerce" 
+                                    href="/dashboard/commerce" 
+                                    pathname={pathname} 
+                                    locked={!user?.workspace?.plan?.module_ecommerce && user?.workspace?.plan?.name !== "ENTERPRISE"} 
+                                />
+                                <NavItem icon={<Gift size={20} />} label="Refer & Earn" href="/dashboard/referrals" pathname={pathname} />
+                            </SidebarCategory>
 
-                        <div className="pt-8 pb-3 px-6">
-                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] block">Campaigns & Analytics</span>
-                        </div>
-                        <NavItem href="/dashboard/campaigns" icon={<Send size={20} strokeWidth={1.5} />} label="Broadcasts" pathname={pathname} />
-                        <NavItem href="/dashboard/templates" icon={<LayoutTemplate size={20} strokeWidth={1.5} />} label="Templates" pathname={pathname} />
-                        <NavItem 
-                            href="/dashboard/analytics/messages" 
-                            icon={<Activity size={20} strokeWidth={1.5} />} 
-                            label="Delivery Intelligence" 
-                            pathname={pathname} 
-                            locked={user?.workspace?.plan?.name === "STARTER"} 
-                        />
-                    </nav>
+                            <SidebarCategory title="Campaigns & Analytics" pathname={pathname}>
+                                <NavItem href="/dashboard/campaigns" icon={<Send size={20} strokeWidth={1.5} />} label="Broadcasts" pathname={pathname} />
+                                <NavItem 
+                                    href="/dashboard/marketing/email" 
+                                    icon={<Mail size={20} strokeWidth={1.5} />} 
+                                    label="Email Hub" 
+                                    pathname={pathname} 
+                                    locked={!user?.workspace?.addons?.includes("BULK_EMAIL_CHANNEL")}
+                                />
+                                <NavItem href="/dashboard/templates" icon={<LayoutTemplate size={20} strokeWidth={1.5} />} label="Templates" pathname={pathname} />
+                                <NavItem 
+                                    href="/dashboard/analytics/messages" 
+                                    icon={<Activity size={20} strokeWidth={1.5} />} 
+                                    label="Delivery Intelligence" 
+                                    pathname={pathname} 
+                                    locked={user?.workspace?.plan?.name === "STARTER"} 
+                                />
+                            </SidebarCategory>
+                        </nav>
 
-                    {/* Footer Nav */}
-                    <div className="p-6 border-t border-slate-100 space-y-1 bg-slate-50/30">
-                        {/* Simplified Vendor Profile - Resolved Crashing Issues */}
-                        <div className="mb-6 mx-2 p-4 bg-slate-100/50 rounded-2xl border border-slate-200/50">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-full bg-slate-900 flex items-center justify-center text-white font-black text-xs shadow-lg">
-                                    {user?.first_name?.charAt(0) || user?.email?.charAt(0) || "V"}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-[11px] font-black text-slate-900 truncate tracking-tight">
-                                        {user?.first_name || user?.email?.split('@')[0] || "Vendor"}
-                                    </p>
-                                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest truncate mt-0.5">
-                                        {user?.workspace?.name || "Active Workspace"}
-                                    </p>
+                        {/* Footer Nav - Now inside scroll area */}
+                        <div className="p-6 border-t border-slate-100 space-y-1 bg-slate-50/30">
+                            {/* Compact Vendor Profile */}
+                            <div className="mb-4 mx-2 p-3 bg-white border border-slate-100 rounded-2xl shadow-sm">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 rounded-full bg-slate-900 flex items-center justify-center text-white font-black text-[10px] shadow-md shrink-0">
+                                        {user?.first_name?.charAt(0) || user?.email?.charAt(0) || "V"}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-[10px] font-black text-slate-900 truncate tracking-tight">
+                                            {user?.first_name || user?.email?.split('@')[0] || "Vendor"}
+                                        </p>
+                                        <div className="flex items-center gap-1.5 mt-0.5">
+                                            <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse"></div>
+                                            <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest truncate">
+                                                {user?.workspace?.name || "Active"}
+                                            </p>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
 
-                        <NavItem href="/dashboard/credits" icon={<Coins size={20} strokeWidth={1.5} />} label="Credits" pathname={pathname} />
-                        <NavItem href="/dashboard/settings" icon={<Settings size={20} strokeWidth={1.5} />} label="Preferences" pathname={pathname} />
-                        <NavItem href="/dashboard/settings/billing" icon={<CreditCard size={20} strokeWidth={1.5} />} label="Billing" pathname={pathname} />
-                        <button
-                            onClick={async () => {
-                                await fetch("/api/auth/logout", { method: "POST" });
-                                window.location.href = "/login";
-                            }}
-                            className="flex items-center gap-3 text-sm font-medium text-slate-400 hover:text-rose-500 px-4 py-3 w-full rounded-2xl hover:bg-rose-50/50 transition-all mt-4 group"
-                        >
-                            <div className="bg-slate-100 group-hover:bg-rose-100 p-2 rounded-xl transition-colors">
-                                <LogOut size={16} strokeWidth={2} />
-                            </div>
-                            Sign Out
-                        </button>
+                            <NavItem href="/dashboard/credits" icon={<Coins size={20} strokeWidth={1.5} />} label="Credits" pathname={pathname} />
+                            <NavItem href="/dashboard/settings" icon={<Settings size={20} strokeWidth={1.5} />} label="Preferences" pathname={pathname} />
+                            <NavItem href="/dashboard/settings/billing" icon={<CreditCard size={20} strokeWidth={1.5} />} label="Billing" pathname={pathname} />
+                            <NavItem icon={<Puzzle size={20} />} label="Addons Store" href="/dashboard/addons" pathname={pathname} />
+                            <button
+                                onClick={async () => {
+                                    await fetch("/api/auth/logout", { method: "POST" });
+                                    window.location.href = "/login";
+                                }}
+                                className="flex items-center gap-3 text-sm font-medium text-slate-400 hover:text-rose-500 px-4 py-3 w-full rounded-2xl hover:bg-rose-50/50 transition-all mt-4 group"
+                            >
+                                <div className="bg-slate-100 group-hover:bg-rose-100 p-2 rounded-xl transition-colors">
+                                    <LogOut size={16} strokeWidth={2} />
+                                </div>
+                                Sign Out
+                            </button>
+                        </div>
                     </div>
                 </aside>
 
@@ -200,9 +238,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     {!pathname.startsWith('/dashboard/chat') && (
                         <footer className="py-10 px-12 border-t border-slate-100 bg-white shadow-[0_-1px_0_0_rgba(0,0,0,0.02)]">
                             <div className="flex flex-col md:flex-row justify-between items-center gap-6">
-                                <h3 className="text-sm font-black text-slate-900 mb-0.5 tracking-tighter">{branding?.brand_name || "Grafty"} Console</h3>
+                                <h3 className="text-sm font-black text-slate-900 mb-0.5 tracking-tighter">{branding?.brand_name?.trim() || "Grafty"} Console</h3>
                                 <p className="text-[11px] text-slate-400 font-medium tracking-wide">
-                                    &copy; {new Date().getFullYear()} {branding?.brand_name || "Grafty"}. ENTERPRISE GRADE MESSAGING.
+                                    &copy; {new Date().getFullYear()} {branding?.brand_name?.trim() || "Grafty"}. ENTERPRISE GRADE MESSAGING.
                                 </p>
                                 <div className="flex gap-8">
                                     <FooterLink label="Terms of Service" href="/terms" />
@@ -251,6 +289,47 @@ function NavItem({ href, icon, label, pathname, locked = false }: { href: string
                 <div className="absolute right-3 w-1.5 h-1.5 bg-white rounded-full animate-pulse shadow-[0_0_8px_white]" />
             )}
         </Link>
+    );
+}
+
+function SidebarCategory({ title, children, pathname }: { title: string; children: React.ReactNode; pathname: string }) {
+    // Check if any child NavItem is active to auto-expand
+    const hasActiveChild = (children as any)?.props?.children 
+        ? (Array.isArray((children as any).props.children) 
+            ? (children as any).props.children.some((child: any) => child?.props?.href && (pathname === child.props.href || (child.props.href !== "/dashboard" && pathname.startsWith(child.props.href))))
+            : ((children as any).props.children?.props?.href && (pathname === (children as any).props.children.props.href || ((children as any).props.children.props.href !== "/dashboard" && pathname.startsWith((children as any).props.children.props.href))))
+        )
+        : false;
+
+    // We can also just check if the children (NavItems) have a specific href that matches
+    // But a simpler approach is to pass the isOpen state
+    const [isOpen, setIsOpen] = useState(hasActiveChild);
+
+    // Update isOpen if pathname changes and we have an active child
+    useEffect(() => {
+        if (hasActiveChild) setIsOpen(true);
+    }, [pathname, hasActiveChild]);
+
+    return (
+        <div className="space-y-1">
+            <button
+                onClick={() => setIsOpen(!isOpen)}
+                className="w-full flex items-center justify-between px-6 py-4 mt-4 hover:bg-slate-50 rounded-xl transition-all group"
+            >
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] group-hover:text-slate-600 transition-colors">
+                    {title}
+                </span>
+                <div className={`transition-transform duration-300 ${isOpen ? "rotate-180" : ""}`}>
+                    <ChevronDown size={14} className="text-slate-300 group-hover:text-slate-500" />
+                </div>
+            </button>
+            
+            <div className={`overflow-hidden transition-all duration-500 ease-in-out ${isOpen ? "max-h-[500px] opacity-100" : "max-h-0 opacity-0"}`}>
+                <div className="space-y-1.5 pb-2">
+                    {children}
+                </div>
+            </div>
+        </div>
     );
 }
 

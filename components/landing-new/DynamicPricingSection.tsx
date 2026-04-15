@@ -7,8 +7,8 @@ const FALLBACK_PLANS = [
     {
         id: "starter",
         name: "STARTER",
-        monthly_price: 1999,
-        yearly_price: 19990,
+        monthly_price: 999,
+        yearly_price: 9990,
         original_monthly: 2999,
         description: "Essential WhatsApp Automation for small teams.",
         features_list: [
@@ -23,8 +23,8 @@ const FALLBACK_PLANS = [
     {
         id: "growth",
         name: "GROWTH",
-        monthly_price: 3999,
-        yearly_price: 39990,
+        monthly_price: 2999,
+        yearly_price: 29990,
         original_monthly: 5999,
         description: "Scale your sales with E-commerce and CRM.",
         features_list: [

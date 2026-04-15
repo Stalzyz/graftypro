@@ -1,0 +1,72 @@
+#!/usr/bin/expect -f
+set SERVER    "root@72.61.231.187"
+set PASS      "Photoshop09@"
+set REMOTE    "/root/grafty_bsp"
+set timeout   60
+
+# NUCLEAR PIN: Total Production Environment Restoration
+# This is the FULL environment from the local .env 
+puts "\n🚀 \[PIN\] RESTORING FULL PRODUCTION ENVIRONMENT ON VPS..."
+
+spawn ssh -o StrictHostKeyChecking=no $SERVER "mkdir -p $REMOTE"
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}
+
+spawn ssh -o StrictHostKeyChecking=no $SERVER "cat <<EOF > $REMOTE/.env
+# Database Connection
+DATABASE_URL=\"postgresql://wabot:wabot123@postgres:5432/wabot_bsp?schema=public\"
+
+# Auth - PRODUCTION GRADE SECRETS
+JWT_SECRET=\"quroSSJTdkemG6gwFiV0hwekbKwgxpXo0ek5Znf+JNCdF2DgYqrHhFK69Eurdac6c7ua2hG7XhCEZBRnaTzRKQ==\"
+ADMIN_JWT_SECRET=\"9FDq+nXyPY/8Ab2y4UeHXI9vfTvFhcYMzt9Kf94FA5v8lnk6yW2qZoTBqW5TKVTlWbseEyMfd/nxYI+NlPn1Lg==\"
+GOOGLE_CLIENT_ID=\"363172627856-1tjse3r9jbgnu71m4fgiolefbjp8cvv9.apps.googleusercontent.com\"
+GOOGLE_CLIENT_SECRET=\"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\"
+GOOGLE_REDIRECT_URI=\"https://grafty.pro/api/auth/google/callback\"
+
+# Meta WhatsApp Config
+META_APP_ID=\"1183066783900270\"
+META_APP_SECRET=\"5db51ac570b334b41c759fa1df5bda02\"
+META_WEBHOOK_VERIFY_TOKEN=\"grafty_secure_token\"
+
+# Frontend Public Config (Required for Embedded Signup)
+NEXT_PUBLIC_META_APP_ID=\"1183066783900270\"
+NEXT_PUBLIC_META_CONFIG_ID=\"918094017369610\"
+
+# Redis (BullMQ)
+REDIS_HOST=\"redis\"
+REDIS_PORT=\"6379\"
+
+# Security
+ENCRYPTION_KEY=\"b01ae9dd3204da75d401caffbae5e8dc6c27df4a494202d98b0148b9c99d7b4c\"
+
+# Finance (Razorpay)
+RAZORPAY_KEY_ID=\"rzp_live_ST01oX2AVae3qA\"
+RAZORPAY_KEY_SECRET=\"7pSur1LMCalOAMv65zlI7zhd\"
+NEXT_PUBLIC_RAZORPAY_KEY_ID=\"rzp_live_ST01oX2AVae3qA\"
+RAZORPAY_WEBHOOK_SECRET=\"YOUR_WEBHOOK_SECRET_HERE\"
+
+# SMTP Email Configuration (PrivateEmail)
+SMTP_HOST=\"mail.privateemail.com\"
+SMTP_PORT=\"465\"
+SMTP_SECURE=\"true\"
+SMTP_USER=\"support@grafty.pro\"
+SMTP_PASS=\"Wabot@1234\"
+SMTP_FROM_EMAIL=\"support@grafty.pro\"
+SMTP_FROM_NAME=\"Team Grafty\"
+
+OPENAI_API_KEY=\"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\"
+NODE_ENV=\"production\"
+PLATFORM_NAME=Grafty
+PLATFORM_BRAND_NAME=Grafty
+NEXT_TELEMETRY_DISABLED=\"1\"
+NEXT_PUBLIC_APP_URL=\"https://grafty.pro\"
+NEXTAUTH_URL=\"https://grafty.pro\"
+EOF"
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}
+
+puts "\n✅ VPS ENVIRONMENT FULLY RESTORED"

@@ -1,0 +1,63 @@
+#!/usr/bin/expect -f
+# ══════════════════════════════════════════════════════════
+#  PATCH DEPLOY - Upload only the 4 changed files to VPS
+#  then rebuild & restart inside Docker
+# ══════════════════════════════════════════════════════════
+
+set SERVER    "root@72.61.231.187"
+set PASS      "Photoshop09@"
+set REMOTE    "/root/grafty_bsp"
+set timeout   600
+
+# ── FILE 1: worker.ts ──────────────────────────────────
+puts "\n📤 \[1/5\] Uploading worker.ts (Broadcast Analytics Engine)..."
+spawn scp -o StrictHostKeyChecking=no \
+    worker.ts \
+    $SERVER:$REMOTE/worker.ts
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}
+
+# ── FILE 2: Template Name Formatter ────────────────────
+puts "\n📤 \[2/5\] Uploading templates/new/page.tsx (Template Name Fix)..."
+spawn scp -o StrictHostKeyChecking=no \
+    app/dashboard/templates/new/page.tsx \
+    $SERVER:$REMOTE/app/dashboard/templates/new/page.tsx
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}
+
+# ── FILE 3: Template API Sanitizer ─────────────────────
+puts "\n📤 \[3/5\] Uploading api/templates/route.ts (API Validation)..."
+spawn scp -o StrictHostKeyChecking=no \
+    app/api/templates/route.ts \
+    $SERVER:$REMOTE/app/api/templates/route.ts
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}
+
+# ── FILE 4: WhatsApp Settings health banner ─────────────
+puts "\n📤 \[4/5\] Uploading settings/whatsapp/page.tsx (Health Alert UI)..."
+spawn scp -o StrictHostKeyChecking=no \
+    app/dashboard/settings/whatsapp/page.tsx \
+    $SERVER:$REMOTE/app/dashboard/settings/whatsapp/page.tsx
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}
+
+# ── STEP 5: Rebuild Docker & Restart ──────────────────
+puts "\n🔨 \[5/5\] Rebuilding Docker container & restarting services..."
+spawn ssh -o StrictHostKeyChecking=no $SERVER \
+    "cd $REMOTE && docker compose -f docker-compose.prod.yml down && docker compose -f docker-compose.prod.yml up -d --build"
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}
+
+puts "\n\n✅ ══ PATCH DEPLOY COMPLETE ══"
+puts "   All 4 changed files are now live on the server."
+puts "   Docker is rebuilding — wait ~30s then check: https://grafty.pro\n"

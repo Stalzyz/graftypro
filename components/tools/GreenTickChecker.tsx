@@ -62,13 +62,14 @@ export default function GreenTickChecker() {
   useEffect(() => {
     if (phone.length >= 10 && !complete) {
         const timer = setTimeout(() => {
-            fetch('/api/tools/lead-capture', {
+            fetch('/api/leads/capture', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    phone: phone.replace(/\D/g, ''),
-                    tool: 'GREEN_TICK_CHECKER',
-                    metadata: { currentStep, score }
+                    whatsapp_number: phone.replace(/\D/g, ''),
+                    source: 'GREEN_TICK_CHECKER',
+                    business_name: 'Verification Checker',
+                    goal: `Score: ${score}%`
                 })
             }).catch(() => {});
         }, 2000);

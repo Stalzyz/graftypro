@@ -28,7 +28,8 @@ import {
   Clock,
   ShieldAlert,
   Server,
-  Facebook
+  Facebook,
+  Ticket
 } from 'lucide-react';
 
 export default function SuperAdminLayout({ children }: { children: React.ReactNode }) {
@@ -59,6 +60,7 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
                     </div>
                     <NavLink href="/super-admin/dashboard/crm" icon={<Users size={18} />} label="Sales" />
                     <NavLink href="/super-admin/dashboard/growth" icon={<Zap size={18} />} label="Growth" />
+                    <NavLink href="/super-admin/dashboard/growth/coupons" icon={<Ticket size={18} />} label="Coupons" />
                     <NavLink href="/super-admin/dashboard/finance" icon={<CreditCard size={18} />} label="Finance" />
                     <NavLink href="/super-admin/dashboard/proposals" icon={<FileText size={18} />} label="Proposals" />
 
@@ -68,8 +70,9 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
                     <NavLink href="/super-admin/dashboard/settings/rbac" icon={<ShieldCheck size={18} />} label="Permissions" />
                     <NavLink href="/super-admin/dashboard/branding" icon={<Palette size={18} />} label="Branding" />
                     <NavLink href="/super-admin/dashboard/packages" icon={<Package size={18} />} label="Packages" />
+                    <NavLink href="/super-admin/dashboard/addons" icon={<Zap size={18} />} label="Addons" />
                     <NavLink href="/super-admin/dashboard/landing-page" icon={<Globe size={18} />} label="Landing Page" />
-                     <NavLink href="/super-admin/dashboard/settings/smtp" icon={<Mail size={18} />} label="SMTP" />
+                    <NavLink href="/super-admin/dashboard/email" icon={<Mail size={18} />} label="Email Hub" />
                     <NavLink href="/super-admin/dashboard/meta" icon={<Facebook size={18} />} label="Meta Onboarding" />
                     <NavLink href="/super-admin/dashboard/infra" icon={<Server size={18} />} label="Infrastructure" />
 

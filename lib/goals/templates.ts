@@ -293,6 +293,110 @@ export const GOAL_TEMPLATES = {
                 ]
             }
         }
+    },
+    LEAD_GEN_META: {
+        name: "Monster Lead Gen (Meta Flow)",
+        generate: (workspaceId: string, config: any) => {
+            return {
+                nodes: [
+                    {
+                        id: 'start',
+                        type: 'start',
+                        position: { x: 400, y: 0 },
+                        data: { label: "Lead Gen Trigger" }
+                    },
+                    {
+                        id: 'intro',
+                        type: 'message',
+                        position: { x: 400, y: 100 },
+                        data: { 
+                            text: "Hi! 👋 We'd love to learn more about your needs. Could you spare 30 seconds to fill out this quick form?",
+                            buttons: [
+                                { type: 'reply', reply: { id: 'btn_start_flow', title: 'Start Form 📝' } }
+                            ]
+                        }
+                    },
+                    {
+                        id: 'meta_flow_node',
+                        type: 'meta_flow',
+                        position: { x: 400, y: 300 },
+                        data: {
+                            flowId: config.flowId || "1234567890", // Default or user-provided
+                            flowCTA: "Fill Details",
+                            text: "Please tap the button below to provide your business information. It's safe and native! 🛡️",
+                            flowHeader: "Business Inquiry",
+                            flowFooter: "Powered by Grafty"
+                        }
+                    },
+                    {
+                        id: 'success_msg',
+                        type: 'message',
+                        position: { x: 400, y: 500 },
+                        data: { text: "Thank you! Check your WhatsApp — we've captured your details. Our agent will call you shortly. ✅" }
+                    }
+                ],
+                edges: [
+                    { id: 'e1', source: 'start', target: 'intro' },
+                    { id: 'e2', source: 'intro', target: 'meta_flow_node', label: 'Start Form 📝' },
+                    { id: 'e3', source: 'meta_flow_node', target: 'success_msg' }
+                ]
+            }
+        }
+    },
+    BOOKING_META: {
+        name: "Monster Appointment Booking (Meta Flow)",
+        generate: (workspaceId: string, config: any) => {
+            return {
+                nodes: [
+                    {
+                        id: 'start',
+                        type: 'start',
+                        position: { x: 400, y: 0 },
+                        data: { label: "Booking Trigger" }
+                    },
+                    {
+                        id: 'intro',
+                        type: 'message',
+                        position: { x: 400, y: 100 },
+                        data: { 
+                            text: "Ready to schedule your visit? 📅\n\nPlease use the interactive form below to select your service and preferred time.",
+                            buttons: [
+                                { type: 'reply', reply: { id: 'btn_open_booking', title: 'Open Booking Form' } }
+                            ]
+                        }
+                    },
+                    {
+                        id: 'booking_flow',
+                        type: 'meta_flow',
+                        position: { x: 400, y: 300 },
+                        data: {
+                            flowId: config.flowId || "booking_flow_id",
+                            flowCTA: "Select Time Slot",
+                            text: "Our calendar is synced! Tap below to see real-time availability.",
+                            flowHeader: "Schedule Appointment",
+                        }
+                    },
+                    {
+                        id: 'save_data',
+                        type: 'action',
+                        position: { x: 400, y: 450 },
+                        data: { actionType: 'save_to_crm', label: "Sync Booking Data" }
+                    },
+                    {
+                        id: 'confirmation',
+                        type: 'message',
+                        position: { x: 400, y: 600 },
+                        data: { text: "✅ *Appointment Received!*\n\nWe have received your request for {{service}} on {{date}}. You will receive a confirmation message once our team approves it." }
+                    }
+                ],
+                edges: [
+                    { id: 'e1', source: 'start', target: 'intro' },
+                    { id: 'e2', source: 'intro', target: 'booking_flow' },
+                    { id: 'e3', source: 'booking_flow', target: 'save_data' },
+                    { id: 'e4', source: 'save_data', target: 'confirmation' }
+                ]
+            }
+        }
     }
 };
 

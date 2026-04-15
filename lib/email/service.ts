@@ -58,9 +58,15 @@ export class EmailService {
         encryption = config.smtp_encryption || (smtpPort === 465 ? "SSL" : "STARTTLS");
 
         if (!smtpHost || !smtpUser || !smtpPass) {
-            console.warn("⚠️ SMTP not configured. Emails will not be sent.", { smtpHost, smtpUser, hasPass: !!smtpPass });
+            console.warn("⚠️ [EmailService] SMTP not fully configured in database.", { 
+                host: !!smtpHost, 
+                user: !!smtpUser, 
+                hasPass: !!smtpPass 
+            });
             return null;
         }
+
+        console.log(`📡 [EmailService] Relaying via ${smtpHost}:${smtpPort} (User: ${smtpUser}, Auth: Encrypted)`);
 
         return nodemailer.createTransport({
             host: smtpHost,
@@ -93,7 +99,7 @@ export class EmailService {
         // 1. Resolve Branding & Identity
         const rSmtp = (workspace?.reseller?.smtp_config as any);
         const brandName = workspace?.reseller?.brand_name || config.platform_name || "Platform";
-        const logoUrl = workspace?.reseller?.logo_url || config.logo_url || "/logo.png";
+        const logoUrl = workspace?.reseller?.logo_url || config.logo_url || "/grafty_brand.svg";
         
         // Sender Identity: Priority to Reseller SMTP Config -> System Config -> Default
         const fromEmail = rSmtp?.from_email || config.smtp_from_email || "no-reply@system.io";
@@ -173,7 +179,7 @@ export class EmailService {
 
         const config = await SystemConfigService.getConfig();
         const brandName = branding?.brand_name || config.platform_name || "Platform";
-        const logoUrl = branding?.logo_url || config.logo_url || "/logo.png";
+        const logoUrl = branding?.logo_url || config.logo_url || "/grafty_brand.svg";
 
         // Sender Identity: Priority to Reseller SMTP Config -> System Config -> Default
         const fromEmail = branding?.support?.email || config.smtp_from_email || "no-reply@system.io";
@@ -182,7 +188,7 @@ export class EmailService {
         // 2. Resolve Configuration Secrets (SMTP etc)
         const secrets = await SystemConfigService.getDecryptedSecrets();
 
-        console.log(`[EmailService] Preparing system email to: ${options.to} via ${fromEmail} (Branded: ${brandName})`);
+        console.log(`[EmailService] Preparing system email to: ${options.to} | Identity: "${fromName}" <${fromEmail}>`);
 
         let contentHtml = "";
         if (options.templateName === "OTP_VERIFICATION") {
@@ -317,7 +323,7 @@ export class EmailService {
 
         const config = await SystemConfigService.getConfig();
         const brandName = config.platform_name || "Platform";
-        const logoUrl = config.logo_url || "/logo.png";
+        const logoUrl = config.logo_url || "/grafty_brand.svg";
         const isSuccess = options.status === 'PAID';
         
         const amountStr = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(options.amount);
@@ -408,6 +414,101 @@ export class EmailService {
             });
         } catch (e: any) {
             console.error("Failed to send payout confirmation email:", e.message);
+        }
+    }
+
+    /**
+     * Send Welcome Email to Vendor
+     */
+    static async sendWelcomeEmail(workspaceId: string, to: string, name: string) {
+        await this.sendBrandedEmail(workspaceId, {
+            to: to,
+            subject: "🚀 Welcome to Grafty! Let's build your first Flow",
+            templateName: "WELCOME_VENDORS",
+            context: {
+                body_content: `
+                    <div style="text-align: center;">
+                        <h1 style="color: #111; font-size: 28px; margin-bottom: 24px;">Welcome aboard, ${name}! 🚀</h1>
+                        <p style="color: #475569; font-size: 16px; line-height: 1.6; margin-bottom: 32px;">
+                            We're thrilled to have you here. Grafty is designed to help you automate your WhatsApp growth with precision.
+                        </p>
+                        
+                        <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 20px; padding: 32px; text-align: left; margin-bottom: 32px;">
+                            <h3 style="color: #0F172A; font-size: 14px; margin-top: 0; text-transform: uppercase; letter-spacing: 1px;">Next Steps:</h3>
+                            <ul style="color: #475569; padding-left: 20px; margin-bottom: 0;">
+                                <li style="margin-bottom: 12px;"><b>Connect WABA:</b> Head to Settings to link your WhatsApp Business Account.</li>
+                                <li style="margin-bottom: 12px;"><b>Build a Flow:</b> Use our drag-and-drop builder to create your first automation.</li>
+                                <li style="margin-bottom: 0;"><b>Add Credits:</b> Top up your wallet to start sending messages.</li>
+                            </ul>
+                        </div>
+
+                        <a href="${process.env.NEXT_PUBLIC_APP_URL}/dashboard" style="background-color: #27954D; color: white; padding: 18px 36px; border-radius: 50px; text-decoration: none; font-weight: bold; font-size: 16px; display: inline-block; box-shadow: 0 10px 15px -3px rgba(39, 149, 77, 0.3);">Launch Dashboard</a>
+                    </div>
+                `
+            }
+        });
+    }
+
+    /**
+     * Send Addon Activation Confirmation
+     */
+    static async sendAddonActivationEmail(workspaceId: string, to: string, addonName: string) {
+        await this.sendBrandedEmail(workspaceId, {
+            to: to,
+            subject: `💎 Power Up: ${addonName} is now active!`,
+            templateName: "ADDON_ACTIVATION",
+            context: {
+                body_content: `
+                    <div style="text-align: center;">
+                        <div style="font-size: 48px; margin-bottom: 24px;">💎</div>
+                        <h1 style="color: #111; font-size: 24px; margin-bottom: 16px;">Addon Activated Successfully</h1>
+                        <p style="color: #475569; font-size: 16px; line-height: 1.6; margin-bottom: 32px;">
+                            The <b>${addonName}</b> extension has been provisioned to your workspace. You now have full access to its premium capabilities.
+                        </p>
+                        <a href="${process.env.NEXT_PUBLIC_APP_URL}/dashboard" style="background-color: #27954D; color: white; padding: 16px 32px; border-radius: 50px; text-decoration: none; font-weight: bold; font-size: 14px; display: inline-block;">Explore Feature</a>
+                    </div>
+                `
+            }
+        });
+    }
+
+    /**
+     * Send Partner Referral Alert
+     */
+    static async sendPartnerReferralAlert(resellerId: string, referredName: string) {
+        const reseller = await prisma.reseller.findUnique({ where: { id: resellerId } });
+        if (!reseller || !reseller.email) return;
+
+        const config = await SystemConfigService.getConfig();
+        const brandName = config.platform_name || "Grafty";
+
+        const html = `
+            <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 40px; border: 1px solid #E2E8F0; border-radius: 24px;">
+                <h1 style="color: #111; font-size: 22px;">🎉 New Referral Signup!</h1>
+                <p style="color: #475569; font-size: 16px;">
+                    Great news! A new vendor, <b>${referredName}</b>, has just joined using your referral link.
+                </p>
+                <p style="color: #475569; font-size: 16px;">
+                    You will start earning commissions as soon as they begin their messaging campaigns.
+                </p>
+                <div style="margin-top: 32px; padding-top: 20px; border-top: 1px solid #F1F5F9; text-align: center;">
+                    <p style="color: #94A3B8; font-size: 12px;">&copy; ${new Date().getFullYear()} ${brandName} Partner Program</p>
+                </div>
+            </div>
+        `;
+
+        const transporter = await this.getTransporter();
+        if (!transporter) return;
+
+        try {
+            await transporter.sendMail({
+                from: `"${brandName} Partners" <${process.env.SMTP_FROM_EMAIL || 'no-reply@system.io'}>`,
+                to: reseller.email,
+                subject: `🚀 New Referral: ${referredName} just joined!`,
+                html: html
+            });
+        } catch (e: any) {
+            console.error("Failed to send partner referral alert:", e.message);
         }
     }
 }

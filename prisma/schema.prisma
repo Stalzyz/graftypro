@@ -3,7 +3,7 @@
 
 generator client {
   provider      = "prisma-client-js"
-  binaryTargets = ["native", "debian-openssl-3.0.x"]
+  binaryTargets = ["native", "debian-openssl-1.1.x", "debian-openssl-3.0.x", "linux-musl", "linux-musl-openssl-3.0.x"]
 }
 
 datasource db {
@@ -94,6 +94,20 @@ model Workspace {
   follow_ups    FollowUp[]
   internal_notes InternalNote[]
   
+  // Email Marketing Engine
+  email_campaigns EmailCampaign[]
+  unsubscribers   EmailUnsubscriber[]
+  
+  // Custom BYOC SMTP Credentials (Vendor Email Hub)
+  smtp_host         String?
+  smtp_port         Int?     @default(587)
+  smtp_user         String?
+  smtp_pass_enc     String?
+  smtp_from_name    String?
+  smtp_from_email   String?
+  smtp_encryption   String   @default("TLS") // TLS, SSL, NONE
+  email_signature_html String? @db.Text // Global HTML signature appended to all emails
+  
   // CRM Engine
   crm_leads      UniversalCrmLead[]
   crm_columns    UniversalCrmColumn[]
@@ -136,6 +150,7 @@ model Workspace {
 
   // Addons System 🧩
   addons            WorkspaceAddon[]
+  knowledge_sources KnowledgeSource[]
 
   @@map("workspaces")
 }
@@ -165,7 +180,60 @@ model TrialLock {
   @@map("trial_locks")
 }
 
-// ... (existing models)
+// --------------------------------------
+// AI KNOWLEDGE SYSTEM (RAG)
+// --------------------------------------
+
+enum KnowledgeSourceType {
+  PDF
+  URL
+  TEXT
+}
+
+enum KnowledgeStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+model KnowledgeSource {
+  id            String              @id @default(uuid())
+  workspace_id  String
+  name          String
+  type          KnowledgeSourceType
+  status        KnowledgeStatus     @default(PENDING)
+  
+  // Storage
+  content       String?             @db.Text // Raw text representation
+  metadata      Json?               @default("{}") // url, file_path, etc.
+  
+  created_at    DateTime            @default(now())
+  updated_at    DateTime            @updatedAt
+
+  workspace     Workspace           @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  chunks        KnowledgeChunk[]
+
+  @@map("knowledge_sources")
+}
+
+model KnowledgeChunk {
+  id                String          @id @default(uuid())
+  source_id         String
+  workspace_id      String
+  content           String          @db.Text
+  
+  // Vector embedding (1536 is OpenAI text-embedding-3-small size)
+  embedding         Unsupported("vector(1536)")? 
+
+  created_at        DateTime        @default(now())
+
+  source            KnowledgeSource @relation(fields: [source_id], references: [id], onDelete: Cascade)
+
+  @@index([source_id])
+  @@index([workspace_id])
+  @@map("knowledge_chunks")
+}
 
 
 // --------------------------------------
@@ -203,6 +271,9 @@ model CommerceStore {
   // Shipping Configuration
   shipping_provider     String?          // SHIPROCKET, DELHIVERY
   shipping_config       Json?            // API keys for shipping
+
+  // Meta Commerce Catalog
+  catalog_id            String?          // Meta Commerce Catalog ID
 
   // Features
   cod_enabled           Boolean          @default(true)
@@ -250,7 +321,8 @@ model CommerceProduct {
   
   // Sync Meta
   external_id   String?            
-  platform_url  String?            
+  platform_url  String?
+  retailer_id   String?            // Meta Catalog Retailer ID (SKU or unique product key)
 
   // GST Compliance
   hsn_code      String?
@@ -947,6 +1019,7 @@ model Message {
   // ---------------------------------
 
   // --- Delivery Intelligence Enhancements ---
+  campaign_id  String?  // Linked broadcast campaign
   error_code   String?  // Meta error code (e.g. 131026)
   error_message String? // Human-readable translated message
   
@@ -1128,6 +1201,8 @@ enum CampaignStatus {
   DRAFT
   SCHEDULED
   PROCESSING
+  PAUSED
+  CANCELLED
   COMPLETED
   FAILED
 }
@@ -1177,6 +1252,61 @@ model CampaignStats {
   campaign     Campaign @relation(fields: [campaign_id], references: [id], onDelete: Cascade)
   
   @@map("campaign_stats")
+}
+
+model EmailCampaign {
+  id           String     @id @default(uuid())
+  workspace_id String
+  name         String
+  
+  subject      String
+  html_content String?    @db.Text
+  
+  // Segment Config
+  filters      Json       // e.g. { "tags": ["VIP"], "joined_after": "2024-01-01" }
+  attachments  Json?      // e.g. [{ id: "1", name: "catalog.pdf", url: "https://grafty.pro/media/..." }]
+  
+  scheduled_at DateTime?
+  status       CampaignStatus @default(DRAFT)
+  
+  // Statistics
+  stats        EmailCampaignStats?
+  
+  created_at   DateTime   @default(now())
+  updated_at   DateTime   @updatedAt
+
+  workspace    Workspace  @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+
+  @@map("email_campaigns")
+}
+
+model EmailCampaignStats {
+  id           String   @id @default(uuid())
+  campaign_id  String   @unique
+  
+  total        Int      @default(0)
+  sent         Int      @default(0)
+  delivered    Int      @default(0)
+  opened       Int      @default(0)
+  clicked      Int      @default(0)
+  failed       Int      @default(0)
+  
+  campaign     EmailCampaign @relation(fields: [campaign_id], references: [id], onDelete: Cascade)
+  
+  @@map("email_campaign_stats")
+}
+
+model EmailUnsubscriber {
+  id           String   @id @default(uuid())
+  workspace_id String
+  email        String
+  
+  created_at   DateTime @default(now())
+
+  workspace    Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+
+  @@unique([workspace_id, email])
+  @@map("email_unsubscribers")
 }
 
 // --------------------------------------

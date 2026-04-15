@@ -22,7 +22,8 @@ import {
     PlusCircle,
     ShoppingBag as Storefront,
     MessageSquare,
-    Link as LinkIcon
+    Link as LinkIcon,
+    Puzzle
 } from "lucide-react";
 
 import { useUser } from "../../hooks/use-user";
@@ -151,12 +152,21 @@ export default function DashboardPage() {
                     <span className="text-xs font-bold text-slate-800 mb-0.5">Live Chat</span>
                     <span className="text-[10px] font-medium text-slate-400">Respond to customers</span>
                 </Link>
-                <Link href="/dashboard/commerce/products/new" className="flex flex-col p-4 bg-white border border-slate-200 rounded-2xl hover:border-amber-300 hover:shadow-md hover:-translate-y-0.5 transition-all group">
+                <Link href="/dashboard/commerce?add=true" className="flex flex-col p-4 bg-white border border-slate-200 rounded-2xl hover:border-amber-300 hover:shadow-md hover:-translate-y-0.5 transition-all group">
                     <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
                         <Storefront size={16} className="text-amber-600" />
                     </div>
                     <span className="text-xs font-bold text-slate-800 mb-0.5">Add Product</span>
                     <span className="text-[10px] font-medium text-slate-400">For WhatsApp catalog</span>
+                </Link>
+                <Link href="/dashboard/addons" className="flex flex-col p-4 bg-gradient-to-br from-fuchsia-500 to-indigo-600 border-none rounded-2xl hover:shadow-xl hover:-translate-y-1 transition-all group overflow-hidden relative">
+                    <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                        <Puzzle size={16} className="text-white" />
+                    </div>
+                    <span className="text-xs font-black text-white mb-0.5 tracking-tight">Addons Store</span>
+                    <span className="text-[10px] font-bold text-white/70">Unlock Monster Features</span>
+                    <Sparkles size={40} className="absolute -bottom-4 -right-4 text-white/10 group-hover:scale-125 transition-transform" />
                 </Link>
             </div>
 

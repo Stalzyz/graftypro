@@ -1,0 +1,73 @@
+#!/usr/bin/expect -f
+set timeout 900
+set ip "72.61.231.187"
+set user "root"
+set password "Photoshop09@"
+set file "/Users/stalinkumar/Downloads/Grafty_Bsp/grafty_deploy_final.zip"
+
+send_user "🚀 Starting Forced Deployment Process...\n"
+
+# 1. Upload File
+send_user "📦 Uploading Project Archive ($file) to $ip...\n"
+spawn scp -o StrictHostKeyChecking=no $file $user@$ip:/root/
+expect {
+  "password:" { send "$password\r" }
+  "yes/no" { send "yes\r"; exp_continue }
+  timeout { send_user "❌ SCP Connection Timed Out\n"; exit 1 }
+}
+expect eof
+
+# 2. SSH and Deploy
+send_user "🔧 Connecting to VPS to execute deployment...\n"
+spawn ssh -o StrictHostKeyChecking=no $user@$ip
+expect {
+  "password:" { send "$password\r" }
+  "yes/no" { send "yes\r"; exp_continue }
+  timeout { send_user "❌ SSH Connection Timed Out\n"; exit 1 }
+}
+
+expect "#"
+send "echo '--- Cleaning Old Artifacts ---'\r"
+send "rm -rf ~/grafty_bsp/grafty_deploy_final.zip\r"
+expect "#"
+
+send "echo '--- Setting up Directories ---'\r"
+send "mkdir -p ~/grafty_bsp\r"
+expect "#"
+
+send "echo '--- Moving Files ---'\r"
+send "mv /root/grafty_deploy_final.zip ~/grafty_bsp/\r"
+expect "#"
+
+send "cd ~/grafty_bsp\r"
+expect "#"
+
+send "echo '--- Extracting New Code ---'\r"
+send "unzip -o grafty_deploy_final.zip\r"
+expect "#"
+
+send "chmod +x deploy.sh setup-vps.sh\r"
+expect "#"
+
+# Force cleanup to ensure no old code persists
+send "echo '--- Stopping Services & Cleaning Cache ---'\r"
+send "docker compose -f docker-compose.prod.yml down\r"
+expect "#"
+send "docker rmi grafty-app:latest\r"
+expect "#"
+send "docker system prune -f\r"
+expect "#"
+
+send "echo '--- Starting Fresh Deployment ---'\r"
+send "./deploy.sh\r"
+expect "#"
+
+# Restart Nginx to clear any static file caching
+send "echo '--- Restarting Web Server ---'\r"
+send "service nginx restart\r"
+expect "#"
+
+send "exit\r"
+expect eof
+
+send_user "✅ Deployment Completed Successfully!\n"

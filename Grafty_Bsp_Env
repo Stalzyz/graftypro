@@ -2,8 +2,8 @@
 DATABASE_URL="postgresql://user:password@localhost:5432/wabot_bsp?schema=public"
 
 # Auth - PRODUCTION GRADE SECRETS
-JWT_SECRET="gF7Yg9i/IfmX5vV3Y3lRlIb/Ks/Wm3BL+Xq0o3PtQn7c+PtxLYFnepp0F+sZBX4HygIdkpKKurQUdYecB+LZwQ=="
-ADMIN_JWT_SECRET="GpJGYmukAJ9hTB1wbhYDQ+AhzOlQujdQIB3TTbbSqr4LHsUbyDP6/Alj0wn5KspRwJ/OMi+3X1Ij487RVV3B9Q=="
+JWT_SECRET="quroSSJTdkemG6gwFiV0hwekbKwgxpXo0ek5Znf+JNCdF2DgYqrHhFK69Eurdac6c7ua2hG7XhCEZBRnaTzRKQ=="
+ADMIN_JWT_SECRET="9FDq+nXyPY/8Ab2y4UeHXI9vfTvFhcYMzt9Kf94FA5v8lnk6yW2qZoTBqW5TKVTlWbseEyMfd/nxYI+NlPn1Lg=="
 GOOGLE_CLIENT_ID="363172627856-1tjse3r9jbgnu71m4fgiolefbjp8cvv9.apps.googleusercontent.com"
 GOOGLE_CLIENT_SECRET="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"
 GOOGLE_REDIRECT_URI="https://grafty.pro/api/auth/google/callback"

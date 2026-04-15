@@ -6,8 +6,8 @@ export async function GET() {
         const packages = [
             {
                 name: "Starter Pro",
-                monthly_price: 1999,
-                yearly_price: 19990,
+                monthly_price: 999,
+                yearly_price: 9990,
                 description: "Perfect for small businesses starting with WhatsApp automation.",
                 max_contacts: 5000,
                 max_messages: 10000,
@@ -17,8 +17,8 @@ export async function GET() {
             },
             {
                 name: "Business Growth",
-                monthly_price: 3999,
-                yearly_price: 39990,
+                monthly_price: 2999,
+                yearly_price: 29990,
                 description: "Advanced automation and commerce features for growing brands.",
                 max_contacts: 20000,
                 max_messages: 50000,

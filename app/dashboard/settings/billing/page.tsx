@@ -31,6 +31,12 @@ export default function BillingPage() {
     const [trialStatus, setTrialStatus] = useState<any>(null);
     const [upgradeError, setUpgradeError] = useState<string | null>(null);
     const [upgradeSuccess, setUpgradeSuccess] = useState(false);
+    
+    // Coupon State
+    const [couponCode, setCouponCode] = useState("");
+    const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
+    const [isValidating, setIsValidating] = useState(false);
+    const [couponError, setCouponError] = useState<string | null>(null);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -58,6 +64,29 @@ export default function BillingPage() {
         fetchData();
     }, []);
 
+    const validateCoupon = async () => {
+        if (!couponCode) return;
+        setIsValidating(true);
+        setCouponError(null);
+        try {
+            const res = await fetch("/api/billing/validate-coupon", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ code: couponCode })
+            });
+            const data = await res.json();
+            if (data.success) {
+                setAppliedCoupon(data);
+            } else {
+                setCouponError(data.error || "Invalid coupon");
+            }
+        } catch (e) {
+            setCouponError("Validation failed");
+        } finally {
+            setIsValidating(false);
+        }
+    };
+
     const handleUpgrade = async (planName: string) => {
         setUpgrading(true);
         setUpgradeError(null);
@@ -66,7 +95,10 @@ export default function BillingPage() {
             const res = await fetch("/api/billing/subscription", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ plan: planName })
+                body: JSON.stringify({ 
+                    plan: planName,
+                    couponCode: appliedCoupon?.success ? couponCode : undefined
+                })
             });
             const data = await res.json();
 
@@ -170,6 +202,45 @@ export default function BillingPage() {
                     </div>
                 </div>
             </div>
+
+            {/* Coupon Section */}
+            <div className="bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm flex flex-col md:flex-row items-center gap-6">
+                <div className="flex-1">
+                    <h3 className="text-lg font-black text-slate-900 tracking-tight flex items-center gap-2">
+                        <Star className="text-amber-500 fill-amber-500" size={18} />
+                        Exclusive Discount Codes
+                    </h3>
+                    <p className="text-slate-400 text-sm font-medium">Apply a platform-wide or reseller coupon to unlock specialized rates.</p>
+                </div>
+                <div className="flex items-center gap-3 w-full md:w-auto">
+                    <div className="relative group">
+                        <input 
+                            placeholder="Enter Code..."
+                            value={couponCode}
+                            onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                            className={`px-6 py-4 rounded-2xl border bg-slate-50 text-sm font-black text-slate-900 outline-none transition-all w-full md:w-[240px] ${appliedCoupon ? 'border-green-500 ring-4 ring-green-50' : couponError ? 'border-red-500 ring-4 ring-red-50' : 'border-slate-100 focus:ring-4 focus:ring-slate-100'}`}
+                        />
+                        {appliedCoupon && (
+                            <div className="absolute -top-3 -right-3 bg-green-500 text-white p-1 rounded-full shadow-lg">
+                                <Check size={12} strokeWidth={4} />
+                            </div>
+                        )}
+                    </div>
+                    <button 
+                        onClick={validateCoupon}
+                        disabled={isValidating || !couponCode}
+                        className="px-6 py-4 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-800 transition-all disabled:opacity-50"
+                    >
+                        {isValidating ? "..." : "Apply"}
+                    </button>
+                </div>
+            </div>
+            {couponError && <p className="text-red-500 text-[10px] font-black uppercase tracking-widest pl-8 -mt-12">{couponError}</p>}
+            {appliedCoupon && (
+                <p className="text-green-600 text-[10px] font-black uppercase tracking-widest pl-8 -mt-12 flex items-center gap-1">
+                    🎉 {appliedCoupon.discount_type === 'PERCENTAGE' ? `${appliedCoupon.discount_value}%` : `₹${appliedCoupon.discount_value}`} Discount Applied Successfully!
+                </p>
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                 {/* Fallback to STARTER if no plans exist or during load failures */}

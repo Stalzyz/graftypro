@@ -1,0 +1,43 @@
+#!/usr/bin/expect -f
+# FINAL CLEAN DEPLOYMENT - uploads the definitive config and rebuilds
+
+set timeout 900
+set host "72.61.231.187"
+set password "Photoshop09@"
+
+puts "\n📤 Uploading final clean configuration..."
+spawn rsync -avz --no-perms --no-owner --no-group \
+    --exclude "node_modules" \
+    --exclude ".next" \
+    --exclude ".git" \
+    --exclude ".DS_Store" \
+    --exclude "public/uploads" \
+    -e "ssh -o StrictHostKeyChecking=no" /Users/stalinkumar/Downloads/Grafty_Bsp/ root@$host:/root/wabot_bsp
+
+
+expect {
+    "password:" { send "$password\r"; exp_continue }
+    eof
+}
+
+puts "\n🏗️ Performing full clean rebuild with simple postgres config..."
+spawn ssh -o StrictHostKeyChecking=no root@$host \
+    "cd /root/wabot_bsp && docker compose -f docker-compose.prod.yml down --remove-orphans && docker rmi grafty-app:latest 2>/dev/null; docker compose -f docker-compose.prod.yml up -d --build && echo REBUILD_DONE"
+expect {
+    "password:" { send "$password\r"; exp_continue }
+    "REBUILD_DONE" { puts "\n✅ Rebuild done!"; exp_continue }
+    eof
+}
+
+exec sleep 20
+
+puts "\n🗄️ Running DB schema push..."
+spawn ssh -o StrictHostKeyChecking=no root@$host \
+    "docker exec \$(docker ps --filter name=web --format '{{.Names}}' | head -1) npx prisma db push && echo SCHEMA_DONE"
+expect {
+    "password:" { send "$password\r"; exp_continue }
+    "SCHEMA_DONE" { puts "\n✅ Schema synced!" }
+    eof
+}
+
+puts "\n✅ FINAL CLEAN DEPLOY COMPLETE. Check https://grafty.pro"

@@ -14,13 +14,10 @@ import {
     MoreHorizontal,
     Rocket
 } from "lucide-react";
-import FlowInjectorModal from "../../../components/flow-builder/FlowInjectorModal";
-
 export default function FlowsPage() {
     const [flows, setFlows] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
-    const [showInjector, setShowInjector] = useState(false);
 
     const fetchFlows = async () => {
         setLoading(true);
@@ -57,13 +54,6 @@ export default function FlowsPage() {
     return (
         <div className="space-y-6 animate-fade-in relative">
             
-            {/* AI Injector Modal */}
-            <FlowInjectorModal 
-                isOpen={showInjector} 
-                onClose={() => setShowInjector(false)} 
-                onSuccess={() => fetchFlows()} 
-            />
-
             {/* Header */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
@@ -71,12 +61,6 @@ export default function FlowsPage() {
                     <p className="text-gray-500 text-sm">Visual automation journeys for your customers.</p>
                 </div>
                 <div className="flex items-center gap-3 w-full md:w-auto">
-                    <button
-                        onClick={() => setShowInjector(true)}
-                        className="btn-soft px-6 flex-1 md:flex-none border-dashed border-2 hover:border-black/20"
-                    >
-                        <Zap size={18} className="text-yellow-500" fill="currentColor" /> Quick Inject
-                    </button>
                     <Link
                         href="/dashboard/flows/create"
                         className="btn-primary px-8 flex-1 md:flex-none"

@@ -38,15 +38,15 @@ export function DynamicLogo({
                         className="object-contain"
                     />
                 </div>
-                {showText && brandName && (
+                {showText && (brandName?.trim() || "Grafty") && (
                     <span
                         className={`font-black tracking-tighter whitespace-nowrap
                             ${size > 40 ? 'text-2xl' : 'text-xl'}
-                            ${variant === 'light' ? 'text-white' : 'text-slate-900 dark:text-white'}
+                            ${variant === 'light' ? 'text-white' : 'text-slate-900'}
                         `}
                         style={{ lineHeight: 1 }}
                     >
-                        {brandName}
+                        {brandName?.trim() || "Grafty"}
                     </span>
                 )}
             </div>

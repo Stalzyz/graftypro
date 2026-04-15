@@ -1,0 +1,18 @@
+#!/usr/bin/expect -f
+set SERVER    "root@72.61.231.187"
+set PASS      "Photoshop09@"
+set timeout   120
+
+puts "\n🔍 FINALLY finding where grafty.pro is pointed..."
+spawn ssh -o StrictHostKeyChecking=no $SERVER "grep -r \"grafty.pro\" /etc/nginx/sites-enabled/ -A 20 | grep proxy_pass"
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}
+
+puts "\n🔍 LSOF check on port 3001 and other node ports..."
+spawn ssh -o StrictHostKeyChecking=no $SERVER "lsof -i :3001 && lsof -i :3000 && lsof -i :3002 && netstat -tulpn | grep node"
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}

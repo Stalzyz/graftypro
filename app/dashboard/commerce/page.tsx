@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import {
     ShoppingBag,
     RefreshCw,
@@ -34,7 +35,7 @@ interface Store {
     name: string;
     platform: string;
     status: string;
-    last_sync_at?: string;
+    catalog_id?: string;
     _count?: {
         products: number;
         orders: number;
@@ -62,6 +63,7 @@ interface Product {
 }
 
 export default function CommercePage() {
+    const searchParams = useSearchParams();
     const [stores, setStores] = useState<Store[]>([]);
     const [products, setProducts] = useState<Product[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -104,11 +106,18 @@ export default function CommercePage() {
     const [recoveries, setRecoveries] = useState<any[]>([]);
     const [isFetchingRecoveries, setIsFetchingRecoveries] = useState(false);
     const [recoveringId, setRecoveringId] = useState<string | null>(null);
+    const [isMetaSyncing, setIsMetaSyncing] = useState<string | null>(null);
 
     useEffect(() => {
         init();
+        
+        // Remote Trigger Check
+        if (searchParams.get('add') === 'true') {
+            setIsProductModalOpen(true);
+        }
+        
         console.log("🚀 [Grafty] COMMERCE COMMAND CENTER V3.1.2 LOADED");
-    }, []);
+    }, [searchParams]);
 
     const init = async () => {
         setIsLoading(true);
@@ -281,6 +290,28 @@ export default function CommercePage() {
             alert("Network error during sync");
         } finally {
             setIsSyncing(null);
+        }
+    };
+    
+    const handleMetaSync = async (storeId: string) => {
+        setIsMetaSyncing(storeId);
+        try {
+            const res = await fetch("/api/commerce/catalog/sync", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                alert(`☢️ Nuclear Sync Successful: ${data.synced} products pushed to Meta!`);
+                await fetchStores();
+            } else {
+                const err = await res.json();
+                alert(err.error || "Meta Sync failed. Check Catalog ID.");
+            }
+        } catch (err) {
+            alert("Network error during Meta sync");
+        } finally {
+            setIsMetaSyncing(null);
         }
     };
 
@@ -506,7 +537,13 @@ export default function CommercePage() {
                                         <div className="flex items-center gap-3">
                                             <button
                                                 onClick={() => {
-                                                    setNewStore({ platform: store.platform, credentials: {} });
+                                                    setNewStore({ 
+                                                        platform: store.platform, 
+                                                        credentials: { 
+                                                            name: store.name,
+                                                            catalogId: store.catalog_id || "" 
+                                                        } 
+                                                    });
                                                     setEditStoreId(store.id);
                                                     setIsConnectModalOpen(true);
                                                 }}
@@ -520,7 +557,7 @@ export default function CommercePage() {
                                             >
                                                 <Trash2 size={16} />
                                             </button>
-                                            {store.platform !== 'NATIVE' && (
+                                            {store.platform !== 'NATIVE' ? (
                                                 <button
                                                     onClick={() => handleSync(store.id)}
                                                     disabled={isSyncing === store.id}
@@ -528,6 +565,15 @@ export default function CommercePage() {
                                                 >
                                                     <RefreshCw size={14} className={isSyncing === store.id ? "animate-spin" : ""} />
                                                     {isSyncing === store.id ? 'Syncing...' : 'Sync Products'}
+                                                </button>
+                                            ) : (
+                                                <button
+                                                    onClick={() => handleMetaSync(store.id)}
+                                                    disabled={isMetaSyncing === store.id}
+                                                    className="p-3 bg-emerald-50 border border-emerald-100 rounded-xl text-emerald-600 hover:bg-emerald-600 hover:text-white transition-all flex items-center gap-2 text-[10px] font-black uppercase tracking-widest outline-none disabled:opacity-50 shadow-sm"
+                                                >
+                                                    <RefreshCw size={14} className={isMetaSyncing === store.id ? "animate-spin" : ""} />
+                                                    {isMetaSyncing === store.id ? 'Syncing Meta...' : 'Sync to Meta ☢️'}
                                                 </button>
                                             )}
                                         </div>
@@ -945,8 +991,9 @@ export default function CommercePage() {
                             <button onClick={() => { setIsConnectModalOpen(false); setEditStoreId(null); }} className="absolute top-10 right-10 text-slate-300 hover:text-slate-900 transition-colors">
                                 <Plus className="rotate-45" size={24} />
                             </button>
-                            <h3 className="text-3xl font-black text-slate-900 tracking-tight">
+                            <h3 className="text-3xl font-black text-slate-900 tracking-tight flex items-center gap-4">
                                 {editStoreId ? 'Configure' : 'Connect'} <span className="text-emerald-500">Store</span>
+                                <span className="text-[10px] bg-emerald-500/10 text-emerald-600 px-3 py-1 rounded-full border border-emerald-500/20 font-black animate-pulse">NUCLEAR V1.0</span>
                             </h3>
                         </div>
 
@@ -975,6 +1022,19 @@ export default function CommercePage() {
                                         onChange={(e) => setNewStore({ ...newStore, credentials: { ...newStore.credentials, name: e.target.value } })}
                                     />
                                 </div>
+
+                                {newStore.platform === "NATIVE" && (
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Meta Catalog ID (Optional)</label>
+                                        <input
+                                            type="text" placeholder="Found in Meta Commerce Manager Settings"
+                                            className="w-full bg-white border border-slate-200 rounded-2xl px-6 py-4 text-sm font-bold text-slate-700 outline-none focus:border-emerald-500 transition-all shadow-sm"
+                                            value={newStore.credentials.catalogId || ""}
+                                            onChange={(e) => setNewStore({ ...newStore, credentials: { ...newStore.credentials, catalogId: e.target.value } })}
+                                        />
+                                        <p className="text-[9px] text-slate-400 font-bold px-2 italic">Linking this enables Native WhatsApp Cart & Multi-Product Messages.</p>
+                                    </div>
+                                )}
 
                                 {newStore.platform !== "NATIVE" && (
                                     <div className="space-y-4 pt-4 border-t border-slate-100">

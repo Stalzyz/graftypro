@@ -9,11 +9,11 @@ async function main() {
     const plans = [
         {
             name: "STARTER",
-            description: "Essential WhatsApp Automation for small teams.",
-            price: 1999.00, monthly_price: 1999.00, yearly_price: 19990.00,
+            description: "Perfect for getting started with Visual Messaging.",
+            price: 999.00, monthly_price: 999.00, yearly_price: 9990.00,
             original_monthly_price: 2999.00,
-            min_reseller_monthly_price: 999.00,
-            min_reseller_yearly_price: 9990.00,
+            min_reseller_monthly_price: 499.00,
+            min_reseller_yearly_price: 4990.00,
             credits: 0,
             is_managed: true,
             unlimited_messaging: false,
@@ -56,7 +56,7 @@ async function main() {
         {
             name: "GROWTH",
             description: "Scale your sales with E-commerce and CRM.",
-            price: 3999.00, monthly_price: 3999.00, yearly_price: 39990.00,
+            price: 2999.00, monthly_price: 2999.00, yearly_price: 29990.00,
             original_monthly_price: 5999.00,
             min_reseller_monthly_price: 1999.00,
             min_reseller_yearly_price: 19990.00,

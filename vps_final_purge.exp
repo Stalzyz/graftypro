@@ -1,0 +1,47 @@
+#!/usr/bin/expect -f
+set SERVER    "root@72.61.231.187"
+set PASS      "Photoshop09@"
+set REMOTE    "/root/grafty_bsp"
+set timeout   600
+
+puts "\n🚀 \[1/5\] TOTAL PROJECT PURGE: Stopping all grafty & wabot containers..."
+spawn ssh -o StrictHostKeyChecking=no $SERVER "docker stop \$(docker ps -q --filter name=grafty) \$(docker ps -q --filter name=wabot) 2>/dev/null; docker rm \$(docker ps -aq --filter name=grafty) \$(docker ps -aq --filter name=wabot) 2>/dev/null; docker system prune -f"
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}
+
+puts "\n🚀 \[2/5\] Cleaning deployment directory & uploading fresh zip..."
+spawn ssh -o StrictHostKeyChecking=no $SERVER "rm -rf $REMOTE/* && mkdir -p $REMOTE"
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}
+spawn scp -o StrictHostKeyChecking=no code_patch.zip $SERVER:$REMOTE/code_patch.zip
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}
+
+puts "\n🚀 \[3/5\] Unzipping & Verifying Debug Marker..."
+spawn ssh -o StrictHostKeyChecking=no $SERVER "cd $REMOTE && unzip -o code_patch.zip && grep 'LIVE DEPLOY VERIFIED' app/dashboard/templates/\\\[id\\\]/page.tsx"
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}
+
+puts "\n🚀 \[4/5\] NO-CACHE BUILD & START..."
+spawn ssh -o StrictHostKeyChecking=no $SERVER "cd $REMOTE && docker compose -f docker-compose.prod.yml build --no-cache web && docker compose -f docker-compose.prod.yml up -d --force-recreate"
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}
+
+puts "\n🚀 \[5/5\] Database Push (Enforcing latest schema)..."
+spawn ssh -o StrictHostKeyChecking=no $SERVER "cd $REMOTE && docker exec grafty_bsp-web-1 npx prisma db push --accept-data-loss"
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}
+
+puts "\n✅ DEEP PURGE REBUILD COMPLETED"

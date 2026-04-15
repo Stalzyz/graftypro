@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Plus, Edit2, Globe, Trash2, Eye, Layout } from "lucide-react";
+import { Plus, Edit2, Globe, Eye, Layout } from "lucide-react";
 import Link from "next/link";
 
 export default function LandingPagesList() {
@@ -38,10 +38,18 @@ export default function LandingPagesList() {
     const seedV2Page = async () => {
         if (!confirm("This will overwrite 'home' with Monster Level V2 defaults. Proceed?")) return;
         setLoading(true);
-        const res = await fetch("/api/super-admin/landing/seed", { method: "POST" });
-        if (res.ok) fetchPages();
-        else {
-            alert("Failed to seed V2 defaults.");
+        try {
+            const res = await fetch("/api/super-admin/landing/seed", { method: "POST" });
+            const data = await res.json();
+            
+            if (res.ok) {
+                fetchPages();
+            } else {
+                alert(`Failed to seed V2 defaults.\n\nDetails: ${data.details || data.error || "Unknown error"}`);
+                setLoading(false);
+            }
+        } catch (err: any) {
+            alert("Network error while seeding: " + err.message);
             setLoading(false);
         }
     };

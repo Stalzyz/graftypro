@@ -1,0 +1,20 @@
+#!/usr/bin/expect -f
+set SERVER    "root@72.61.231.187"
+set PASS      "Photoshop09@"
+set REMOTE    "/var/www/wabot"
+set timeout   60
+
+puts "\n🔍 \[1/2\] Checking port usage and package.json..."
+spawn ssh -o StrictHostKeyChecking=no $SERVER "cd $REMOTE && cat package.json && netstat -tulpn | grep node"
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}
+
+puts "\n🚀 \[2/2\] Killing all old processes and starting fresh on Port 3001..."
+# Note: Using PORT=3001 to match Nginx proxy_pass
+spawn ssh -o StrictHostKeyChecking=no $SERVER "pm2 delete all || true; pkill -f next-server || true; pkill -f next || true; cd $REMOTE && PORT=3001 pm2 start npm --name 'wabot-bsp' -- start"
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}

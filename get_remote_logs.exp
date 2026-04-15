@@ -1,0 +1,14 @@
+#!/usr/bin/expect -f
+
+set timeout 30
+set password "Photoshop09@"
+
+spawn ssh -o StrictHostKeyChecking=no root@72.61.231.187 "docker logs --since 30m grafty_bsp-web-1"
+
+expect {
+    "*password:*" {
+        send "$password\r"
+        exp_continue
+    }
+    eof
+}

@@ -184,4 +184,128 @@ export class AIService {
             throw error;
         }
     }
+
+    /**
+     * 🔍 SEMANTIC SEARCH: Find relevant knowledge chunks with Source Attribution
+     */
+    static async findRelevantKnowledge(workspaceId: string, query: string, limit = 5): Promise<{ content: string, source: string }[]> {
+        if (!workspaceId) {
+            console.warn("[AIService] findRelevantKnowledge called without workspaceId");
+            return [];
+        }
+
+        try {
+            const embedding = await this.getEmbedding(query);
+            const embeddingSql = `[${embedding.join(",")}]`;
+
+            // PostgreSQL Vector Similarity Search with JOIN to get source names
+            const chunks: any[] = await prisma.$queryRawUnsafe(
+                `SELECT c.content, s.name as source_name
+                 FROM "knowledge_chunks" c
+                 JOIN "knowledge_sources" s ON c.source_id = s.id
+                 WHERE c.workspace_id = $1 
+                 ORDER BY c.embedding <=> $2::vector 
+                 LIMIT $3`,
+                workspaceId,
+                embeddingSql,
+                limit
+            );
+
+            return chunks.map(c => ({
+                content: c.content,
+                source: c.source_name
+            }));
+        } catch (error: any) {
+            console.error(`[AIService] Knowledge Retrieval Error for workspace ${workspaceId}:`, error.message);
+            // Graceful degradation: return empty context so assistant can fallback to general knowledge
+            return [];
+        }
+    }
+
+    /**
+     * 🤖 GROUNDED ANSWER: RAG Generation (v1.3 Additive Intelligence)
+     */
+    static async getGroundedAnswer(workspaceId: string, query: string, history: { role: 'user' | 'assistant', content: string }[] = []) {
+        try {
+            // 1. Fetch relevant context with attribution
+            const contextData = await this.findRelevantKnowledge(workspaceId, query);
+            
+            if (!contextData.length) {
+                return null; // Fallback to general AI if no knowledge found
+            }
+
+            // Group context by source for better readability in the prompt
+            const context = contextData.map(c => `[SOURCE: ${c.source}]\n${c.content}`).join("\n\n---\n\n");
+
+            const openai = getOpenAI();
+            if (!openai) throw new Error("OpenAI Client not initialized");
+
+            // 2. Build Nuclear RAG Prompt with Smart Handoff & Citations
+            const systemPrompt = `You are a highly advanced AI Sales & Support Autopilot for "Grafty BSP".
+            Your task is to answer accurately using the Knowledge Base AND qualify the user as a lead.
+
+            LEAD QUALIFICATION (PROACTIVE):
+            - If the user shows interest, try to steer them toward booking a demo.
+            - Detect if they provide contact info or specific business requirements.
+            
+            TONE & LANGUAGE:
+            - Professional yet conversational.
+            - Use format: simple paragraphs, bullet points, emojis.
+            
+            CITATIONS:
+            - Always cite your source: "[Source: Name]".
+
+            CONSTRAINTS:
+            - ONLY use the provided context. If absent, offer "TALK_TO_HUMAN".
+            
+            RETURN FORMAT (STRICT JSON):
+            {
+              "answer": "Grounded response with citations",
+              "recommended_buttons": ["TALK_TO_HUMAN", "REQUEST_DEMO", "VIEW_PRICING"],
+              "intent": "QUALIFIED_LEAD | GENERAL_QUERY | SUPPORT",
+              "lead_capture": {
+                 "name": "Extracted name or null",
+                 "interest": "Summary of what they want or null"
+              }
+            }
+
+            CONTEXT FROM KNOWLEDGE BASE:
+            ${context}`;
+
+            const response = await openai.chat.completions.create({
+                model: "gpt-4o", // Upgraded to Full GPT-4
+                messages: [
+                    { role: "system", content: systemPrompt },
+                    ...history.slice(-5).map(m => ({ role: m.role as any, content: m.content })),
+                    { role: "user", content: query }
+                ],
+                max_tokens: 800,
+                temperature: 0.5,
+                response_format: { type: "json_object" }
+            });
+
+            const raw = response.choices[0].message.content || "{}";
+            return JSON.parse(raw);
+        } catch (error: any) {
+            console.error("Grounded Answer Error:", error);
+            return null;
+        }
+    }
+
+    static async getEmbedding(text: string): Promise<number[]> {
+        try {
+            const openai = getOpenAI();
+            if (!openai) throw new Error("OpenAI Client not initialized");
+
+            const response = await openai.embeddings.create({
+                model: "text-embedding-3-small",
+                input: text.replace(/\0/g, "").replace(/\s+/g, " ").trim(),
+            });
+
+            return response.data[0].embedding;
+        } catch (error: any) {
+            console.error("OpenAI Embedding Error:", error);
+            throw error;
+        }
+    }
 }

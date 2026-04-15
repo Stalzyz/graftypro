@@ -1,11 +1,11 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, Sparkles, PlayCircle, Star, CheckCircle2, Check, Shield, Zap, Receipt, Globe, BarChart3, ChevronRight, Plus, Minus } from "lucide-react";
+import { ArrowRight, Sparkles, PlayCircle, Star, CheckCircle2, Check, Shield, Zap, Receipt, Globe, BarChart3, ChevronRight, Mail, Video } from "lucide-react";
+import BSP_Animation from "../BSP_Animation";
 
 // Helper components
-const IconMap: any = { Zap, Receipt, Shield, Globe, BarChart3, CheckCircle2, Check, Star, PlayCircle, ArrowRight, Sparkles };
+const IconMap: any = { Zap, Receipt, Shield, Globe, BarChart3, CheckCircle2, Check, Star, PlayCircle, ArrowRight, Sparkles, Mail, Video };
 
 const getIcon = (name: string, props: any) => {
     const Icon = IconMap[name];
@@ -14,16 +14,17 @@ const getIcon = (name: string, props: any) => {
 };
 
 // 1. HERO_V2
-export function HeroV2({ badgeText, headline, subText, statsText, primaryBtnText, primaryBtnLink, secondaryBtnText, secondaryBtnLink, socialProofInitials, socialProofText, dashboardImg }: any) {
+export function HeroV2({ badgeText, headline, subText, statsText, primaryBtnText, primaryBtnLink, secondaryBtnText, secondaryBtnLink, socialProofInitials, socialProofText, dashboardImg, useAnimation }: any) {
     const [isVisible, setIsVisible] = useState(false);
     useEffect(() => setIsVisible(true), []);
 
     return (
-        <section className="pt-36 pb-0 px-6 max-w-7xl mx-auto relative overflow-hidden">
+        <section className={`pt-36 pb-0 px-6 max-w-7xl mx-auto relative overflow-hidden ${useAnimation ? "lg:pb-28" : ""}`}>
             <div className="absolute -top-40 -left-40 w-[700px] h-[700px] bg-green-100 rounded-full blur-[120px] opacity-40 pointer-events-none" />
             <div className="absolute -top-40 -right-40 w-[600px] h-[600px] bg-blue-100 rounded-full blur-[120px] opacity-40 pointer-events-none" />
 
-            <div className={`relative z-10 text-center transition-all duration-700 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}>
+            <div className={`grid grid-cols-1 ${useAnimation ? "lg:grid-cols-2" : ""} gap-16 items-center`}>
+                <div className={`relative z-10 ${useAnimation ? "text-left" : "text-center"} transition-all duration-700 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}>
                 {badgeText && (
                     <div className="inline-flex items-center gap-2 bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 text-green-700 text-xs font-black uppercase tracking-[0.12em] px-5 py-2.5 rounded-full mb-8 shadow-sm">
                         <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
@@ -43,18 +44,20 @@ export function HeroV2({ badgeText, headline, subText, statsText, primaryBtnText
                     <p className="text-sm text-slate-400 font-medium mb-10" dangerouslySetInnerHTML={{ __html: statsText }} />
                 )}
 
-                <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
-                    {primaryBtnText && (
-                        <Link href={primaryBtnLink || "#"} className="group flex items-center gap-2 bg-[#27954D] hover:bg-[#1f7a3f] text-white font-bold px-8 py-4 rounded-xl transition-all shadow-xl shadow-green-200/60 text-base active:scale-95">
-                            {primaryBtnText} <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
-                        </Link>
-                    )}
-                    {secondaryBtnText && (
-                        <Link href={secondaryBtnLink || "#"} className="flex items-center gap-2 bg-white text-slate-700 font-bold px-8 py-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition-all text-base">
-                            <PlayCircle size={18} className="text-green-500" /> {secondaryBtnText}
-                        </Link>
-                    )}
-                </div>
+                {!useAnimation && (
+                    <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
+                        {primaryBtnText && (
+                            <Link href={primaryBtnLink || "#"} className="group flex items-center gap-2 bg-[#27954D] hover:bg-[#1f7a3f] text-white font-bold px-8 py-4 rounded-xl transition-all shadow-xl shadow-green-200/60 text-base active:scale-95">
+                                {primaryBtnText} <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                            </Link>
+                        )}
+                        {secondaryBtnText && (
+                            <Link href={secondaryBtnLink || "#"} className="flex items-center gap-2 bg-white text-slate-700 font-bold px-8 py-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition-all text-base">
+                                <PlayCircle size={18} className="text-green-500" /> {secondaryBtnText}
+                            </Link>
+                        )}
+                    </div>
+                )}
 
                 {socialProofInitials && socialProofInitials.length > 0 && (
                     <div className="flex items-center justify-center gap-6 mb-12">
@@ -73,24 +76,47 @@ export function HeroV2({ badgeText, headline, subText, statsText, primaryBtnText
                         </div>
                     </div>
                 )}
+
+                {useAnimation && (
+                    <div className="flex flex-col sm:flex-row items-center gap-4 mt-12">
+                        {primaryBtnText && (
+                            <Link href={primaryBtnLink || "#"} className="group flex items-center gap-2 bg-[#27954D] hover:bg-[#1f7a3f] text-white font-bold px-8 py-4 rounded-xl transition-all shadow-xl shadow-green-200/60 text-base active:scale-95">
+                                {primaryBtnText} <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                            </Link>
+                        )}
+                        {secondaryBtnText && (
+                            <Link href={secondaryBtnLink || "#"} className="flex items-center gap-2 bg-white text-slate-700 font-bold px-8 py-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition-all text-base">
+                                <PlayCircle size={18} className="text-green-500" /> {secondaryBtnText}
+                            </Link>
+                        )}
+                    </div>
+                )}
             </div>
 
-            {dashboardImg && (
-                <div className="relative mx-auto max-w-5xl">
-                    <div className="bg-slate-100 rounded-t-2xl border border-slate-200 border-b-0 px-4 py-3 flex items-center gap-2">
-                        <div className="flex gap-1.5">
-                            <div className="w-3 h-3 rounded-full bg-red-400" /><div className="w-3 h-3 rounded-full bg-amber-400" /><div className="w-3 h-3 rounded-full bg-green-400" />
-                        </div>
-                        <div className="flex-1 bg-white rounded-md text-xs text-slate-400 font-medium px-3 py-1.5 text-center mx-8 border border-slate-200">
-                            app.grafty.pro/dashboard
-                        </div>
-                    </div>
-                    <div className="relative rounded-b-2xl overflow-hidden border border-slate-200 border-t-0 shadow-2xl shadow-slate-900/20">
-                        <img src={dashboardImg} alt="Dashboard" className="w-full object-cover object-top" />
-                        <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-white to-transparent" />
-                    </div>
+            {useAnimation ? (
+                <div className="relative flex justify-center lg:justify-end">
+                    <BSP_Animation />
+                    <div className="absolute -bottom-10 -right-10 w-64 h-64 bg-green-400/10 rounded-full blur-3xl pointer-events-none" />
                 </div>
+            ) : (
+                dashboardImg && (
+                    <div className="relative mx-auto max-w-5xl">
+                        <div className="bg-slate-100 rounded-t-2xl border border-slate-200 border-b-0 px-4 py-3 flex items-center gap-2">
+                            <div className="flex gap-1.5">
+                                <div className="w-3 h-3 rounded-full bg-red-400" /><div className="w-3 h-3 rounded-full bg-amber-400" /><div className="w-3 h-3 rounded-full bg-green-400" />
+                            </div>
+                            <div className="flex-1 bg-white rounded-md text-xs text-slate-400 font-medium px-3 py-1.5 text-center mx-8 border border-slate-200">
+                                app.grafty.pro/dashboard
+                            </div>
+                        </div>
+                        <div className="relative rounded-b-2xl overflow-hidden border border-slate-200 border-t-0 shadow-2xl shadow-slate-900/20">
+                            <img src={dashboardImg} alt="Dashboard" className="w-full object-cover object-top" />
+                            <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-white to-transparent" />
+                        </div>
+                    </div>
+                )
             )}
+        </div>
         </section>
     );
 }

@@ -275,7 +275,7 @@ export default function TemplateEditor({ params }: { params: { id: string } }) {
                         <Link href="/dashboard/templates" className="text-xs text-gray-500 hover:text-blue-600 flex items-center gap-1 mb-1 transition-colors">
                             <ArrowLeft size={12} /> Back to List
                         </Link>
-                        <h2 className="font-bold text-gray-900 flex items-center gap-2 uppercase tracking-tight text-lg">
+                        <h2 className="font-bold text-gray-900 flex items-center gap-2 tracking-tight text-lg">
                             {template.name}
                             <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${template.status === 'APPROVED' ? 'bg-green-100 text-green-700' :
                                 template.status === 'REJECTED' ? 'bg-red-100 text-red-700' : 'bg-gray-200 text-gray-600'
@@ -317,9 +317,8 @@ export default function TemplateEditor({ params }: { params: { id: string } }) {
                 </div>
 
                 {/* Editor Content */}
-                <div className="flex-1 overflow-y-auto p-6 space-y-8 no-scrollbar">
+                <div className="flex-1 overflow-y-auto p-4 md:p-6 bg-gray-50">
 
-                    {/* Header */}
                     <div className="space-y-4">
                         <div className="flex justify-between items-center">
                             <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
@@ -334,9 +333,9 @@ export default function TemplateEditor({ params }: { params: { id: string } }) {
                             >
                                 <option value="NONE">No Header</option>
                                 <option value="TEXT">Text Header</option>
-                                <option value="IMAGE">Image Header (JPG/PNG)</option>
-                                <option value="VIDEO">Video Header (MP4)</option>
-                                <option value="DOCUMENT">Document Header (PDF)</option>
+                                <option value="IMAGE">Image (Upload JPG/PNG)</option>
+                                <option value="VIDEO">Video (Upload MP4)</option>
+                                <option value="DOCUMENT">Document (Upload PDF)</option>
                             </select>
                         </div>
 

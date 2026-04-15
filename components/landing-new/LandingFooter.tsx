@@ -2,7 +2,7 @@
 import React from "react";
 import Link from "next/link";
 import { Logo } from "../ui/Logo";
-import { Facebook, Instagram, Linkedin } from "lucide-react";
+import { Facebook, Instagram, Linkedin, Zap } from "lucide-react";
 
 function PinterestIcon({ size = 24 }: { size?: number }) {
     return (
@@ -38,6 +38,19 @@ export default function LandingFooter({ branding }: { branding?: any }) {
                         <p className="mt-8 text-slate-500 font-medium italic leading-relaxed max-w-xs">
                             Goal-driven WhatsApp Business Platform for scalable growth. Built for serious business orchestration.
                         </p>
+                        {!isWhitelabel && (
+                            <div className="mt-8 flex items-center gap-3 px-4 py-2 bg-slate-50 border border-slate-100 rounded-xl w-fit group hover:border-blue-200 transition-all">
+                                <img
+                                    src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/Meta_Platforms_Inc._logo_%28cropped%29.svg/3840px-Meta_Platforms_Inc._logo_%28cropped%29.svg.png"
+                                    alt="Meta Logo"
+                                    className="h-3.5 object-contain grayscale group-hover:grayscale-0 transition-all"
+                                />
+                                <div className="w-px h-4 bg-slate-200" />
+                                <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest group-hover:text-blue-600 transition-colors">
+                                    Official Tech Provider
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     <FooterCol title="Product" links={[
@@ -75,9 +88,28 @@ export default function LandingFooter({ branding }: { branding?: any }) {
                 </div>
 
                 <div className="pt-12 border-t border-gray-100 flex flex-col md:flex-row items-center justify-between gap-8">
-                    <p className="text-slate-400 text-xs font-black uppercase tracking-[4px]">
-                        &copy; {new Date().getFullYear()} {brandName}. All Rights Reserved.
-                    </p>
+                    <div className="flex flex-col md:flex-row items-center gap-8">
+                        <p className="text-slate-400 text-xs font-black uppercase tracking-[4px]">
+                            &copy; {new Date().getFullYear()} {brandName}. All Rights Reserved.
+                        </p>
+                        
+                        {!isWhitelabel && (
+                            <div className="flex items-center gap-4 px-5 py-3 bg-white shadow-sm rounded-2xl border border-slate-100 group hover:border-blue-300 transition-all">
+                                <img
+                                    src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/Meta_Platforms_Inc._logo_%28cropped%29.svg/3840px-Meta_Platforms_Inc._logo_%28cropped%29.svg.png"
+                                    alt="Meta Logo"
+                                    className="h-4 object-contain grayscale group-hover:grayscale-0 transition-all"
+                                />
+                                <div className="flex flex-col">
+                                    <span className="text-[10px] font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
+                                        Approved Tech Provider
+                                    </span>
+                                    <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">Official Meta BSP Architecture</span>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
                     {!isWhitelabel && (
                         <div className="flex items-center gap-6">
                             <SocialLink href="https://www.facebook.com/graftypro" icon={<Facebook size={18} />} />

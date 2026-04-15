@@ -1,199 +1,152 @@
 import { test, expect } from '@playwright/test';
-import { humanType, humanClick, humanHover } from '../helpers';
+import { humanType, humanHover, humanClick, humanScroll, humanRead, showNarrative } from '../helpers';
 
 /**
- * PRODUCTION-GRADE MASTER DEMO RECORDING
- * 15 Phases of Grafty BSP Dashboard
+ * GRAFTY MASTERPIECE RECORDING (PROFESSIONAL PRESENTATION)
+ * Full 2-Hour Deep-Dive | Cinematic Pacing | Narrative Overlays
  */
-test('Scenario: Grafty - Fully Automated Master Demo', async ({ page }) => {
-    // Global Timeout for this massive demo: 10 minutes
-    test.setTimeout(600000);
+test('Scenario: Grafty - Fully Automated Masterpiece Demo', async ({ page }) => {
+    // 1. Extreme Timeout: 3 Hours (10,800,000ms)
+    test.setTimeout(10800000);
 
-    // cinematic pause helper
-    const cinematicPause = async (ms = 3000) => await page.waitForTimeout(ms);
+    // cinematic pacing config
+    const pauseLength = 15000; // 15s standard hold
+    const deepDiveHold = 30000; // 30s for critical features
+    const transitionPause = 5000;
 
-    // ==========================================
-    // Phase 1 — Login and Dashboard Overview
-    // ==========================================
+    const narrative = (text: string) => showNarrative(page, text);
+    const hold = (ms = pauseLength) => page.waitForTimeout(ms);
+
+    // Direct Login with Demo Override
+    console.log("🎬 INITIALIZING MASTERPIECE SESSION...");
     await page.goto('/login');
-    await cinematicPause(1500);
+    await narrative("Initializing Grafty Enterprise Session...");
+    await hold(8000);
+    
     await humanType(page, 'input[name="email"]', 'demo@grafty.com');
     await page.keyboard.press('Tab');
     await humanType(page, 'input[name="password"]', 'Demo@123');
+    await hold(3000);
     await page.keyboard.press('Enter');
 
-    await page.waitForURL('**/dashboard**', { timeout: 15000 });
-    await cinematicPause(3000); // Let the full dashboard settle
+    await page.waitForURL('**/dashboard**', { timeout: 30000 });
+    await narrative("Access Granted: Grafty Master Demo Co. (Enterprise)");
+    await hold(15000);
 
-    // Hover over stats cards
-    await humanHover(page, 'div:has-text("Total Contacts")');
-    await page.waitForTimeout(1000);
+    // ==========================================
+    // Phase 1: Dashboard Delivery Intelligence
+    // ==========================================
+    await narrative("Phase 1: Real-time Growth Analytics & KPIs");
     await humanHover(page, 'div:has-text("Revenue")');
-    await page.waitForTimeout(1000);
-
-    // Scroll dashboard
-    await page.mouse.wheel(0, 500);
-    await cinematicPause(2000);
-    await page.mouse.wheel(0, -500);
-    await cinematicPause(2000);
-
-    // ==========================================
-    // Phase 2 — WhatsApp Channel Settings
-    // ==========================================
-    // Navigate to Settings
-    const settingsLink = page.locator('a:has-text("Settings"), a[href*="/settings"]').first();
-    await settingsLink.waitFor({ state: 'visible' });
-    await humanClick(page, 'a:has-text("Settings"), a[href*="/settings"]');
-    await cinematicPause(2000);
-
-    // Sub-nav to WhatsApp
-    const waLink = page.locator('a:has-text("WhatsApp"), [href*="/whatsapp"]').first();
-    if (await waLink.isVisible()) {
-        await humanClick(page, 'a:has-text("WhatsApp"), [href*="/whatsapp"]');
-    }
-    await page.waitForURL('**/whatsapp**', { timeout: 10000 }).catch(() => { });
-    await cinematicPause(3000);
-
-    // Show connection details
-    await page.mouse.wheel(0, 300);
-    await cinematicPause(2000);
+    await hold(8000);
+    await humanHover(page, 'div:has-text("Total Contacts")');
+    await hold(8000);
+    await humanScroll(page, 900, 0.8); // Ultra-slow scroll
+    await hold(20000);
+    await humanScroll(page, -900, 2);
 
     // ==========================================
-    // Phase 3 — Flow Builder Overview
+    // Phase 2: Flow Builder Canvas
     // ==========================================
-    const flowsLink = page.locator('a:has-text("Flow Builder"), a[href*="/flows"]').first();
-    await humanClick(page, 'a:has-text("Flow Builder"), a[href*="/flows"]');
-    await page.waitForURL('**/flows**', { timeout: 15000 });
-    await cinematicPause(2500);
+    await page.goto('/dashboard/flows');
+    await narrative("Phase 2: The Logic Engine — WhatsApp Flow Builder");
+    await hold(12000);
 
-    // ==========================================
-    // Phase 4 — Demonstrate Flow Creation
-    // ==========================================
-    const newFlowBtn = page.locator('a:has-text("New Flow"), button:has-text("New Flow"), a:has-text("Create Flow"), button:has-text("Create Flow")').first();
-    await humanClick(page, 'a:has-text("New Flow"), button:has-text("New Flow"), a:has-text("Create Flow"), button:has-text("Create Flow")');
+    // Create a new flow live
+    const createBtn = page.locator('button:has-text("Create"), a:has-text("New Flow")').first();
+    if (await createBtn.isVisible()) {
+        await humanClick(page, 'button:has-text("Create"), a:has-text("New Flow")');
+        await page.waitForURL('**/create**', { timeout: 20000 }).catch(() => {});
+        await hold(5000);
+        await narrative("Designing a Custom Sales Funnel Architecture...");
+        await humanType(page, 'input[placeholder*="Name"]', 'Automated Enterprise Payout Funnel');
+        await hold(8000);
 
-    await page.waitForURL('**/create**', { timeout: 10000 }).catch(() => { });
-    await cinematicPause(1500);
+        // Interact with Node categories
+        await narrative("Node Library: Messaging, Logic, Commerce, and Integrations.");
+        const sidePanel = page.locator('aside').first();
+        await sidePanel.hover();
+        await humanScroll(sidePanel as any, 500, 1.5);
+        await hold(10000);
+        
+        await humanRead(page, '*:has-text("Interactive List")');
+        await hold(5000);
+        await humanRead(page, '*:has-text("Condition")');
+        await hold(10000);
 
-    // Type name in the top bar input
-    await humanType(page, 'input[placeholder*="Flow Name"]', 'Demo Sales Automation Flow');
-    await cinematicPause(1500);
-
-    // Click the "Save" button in the top bar
-    const saveBtn = page.locator('button:has-text("Save")').first();
-    await humanClick(page, 'button:has-text("Save")');
-
-    // Wait for the redirect to /dashboard/flows/[id]
-    await page.waitForURL(/\/dashboard\/flows\/[0-9a-f-]{36}/, { timeout: 20000 });
-    await cinematicPause(4000);
-
-    // ==========================================
-    // Phase 5 — Demonstrate Node Types (Sampler)
-    // ==========================================
-    // Scroll through node library in the sidebar
-    const sidebar = page.locator('aside').first();
-    await sidebar.hover();
-    await page.mouse.wheel(0, 600);
-    await cinematicPause(2000);
-    await page.mouse.wheel(0, -600);
-    await cinematicPause(1500);
-
-    // Demonstrate interaction with a few representative nodes (hover in sidebar)
-    const nodeTypesToDemo = ['Interactive List', 'Payment Request', 'Condition', 'API Call'];
-    for (const type of nodeTypesToDemo) {
-        const node = page.locator(`aside :has-text("${type}"):not(body)`).first();
-        if (await node.isVisible()) {
-            await node.hover();
-            await cinematicPause(1500);
-        }
+        await narrative("Flow saved and published to the WhatsApp Cloud API.");
+        await humanClick(page, 'button:has-text("Save")');
+        await hold(15000);
     }
 
     // ==========================================
-    // Phase 7 — Template Builder
+    // Phase 3: E-Commerce Architecture
     // ==========================================
-    await humanClick(page, 'a:has-text("Templates"), a[href*="/templates"]');
-    await page.waitForURL('**/templates**', { timeout: 10000 });
-    await cinematicPause(3000);
-    await page.mouse.wheel(0, 400);
-    await cinematicPause(2000);
+    await page.goto('/dashboard/commerce');
+    await narrative("Phase 3: The E-Commerce Engine — Native Store Integration");
+    await hold(20000); // Admire the revenue numbers
+    
+    await humanScroll(page, 1200, 0.5); // Very slow reading
+    await hold(25000);
+    await humanScroll(page, -1200, 3);
 
     // ==========================================
-    // Phase 8 — Broadcast Campaign Module
+    // Phase 4: CRM & Lead Enrichment
     // ==========================================
-    await humanClick(page, 'a:has-text("Broadcast"), a[href*="/campaigns"]');
-    await page.waitForURL('**/campaigns**', { timeout: 10000 });
-    await cinematicPause(3000);
-    // Show one campaign stats hover
-    const campaignRow = page.locator('tr, div[class*="CampaignRow"]').first();
-    if (await campaignRow.isVisible()) {
-        await campaignRow.hover();
-        await cinematicPause(2000);
+    await page.goto('/dashboard/crm');
+    await narrative("Phase 4: CRM Engine — Universal Identity Resolution");
+    await hold(15000);
+    
+    // Check if we have contacts, and hover over one
+    const leadRow = page.locator('tr').nth(1);
+    if (await leadRow.isVisible()) {
+        await narrative("Inspecting Lead #001: Verified WhatsApp Identity.");
+        await humanHover(page, 'tr:nth-child(2)');
+        await hold(10000);
+        await humanRead(page, 'tr:nth-child(2) td:nth-child(2)');
+    } else {
+        await narrative("CRM Pipeline is ready for high-volume message ingestion.");
     }
+    await humanScroll(page, 1000, 0.8);
+    await hold(20000);
 
     // ==========================================
-    // Phase 9 — Drip Campaign Module
+    // Phase 5: Campaign Academy
     // ==========================================
-    await humanClick(page, 'a:has-text("Drip"), a[href*="/drips"]');
-    await page.waitForURL('**/drips**', { timeout: 10000 });
-    await cinematicPause(3000);
+    await page.goto('/dashboard/education');
+    await narrative("Phase 5: Grafty Academy — Training & Best Practices");
+    await hold(15000);
+    await humanScroll(page, 800, 1);
+    await hold(15000);
 
     // ==========================================
-    // Phase 10 — CRM / Lead Engine
+    // Phase 6: Super Admin & Payout Governance
     // ==========================================
-    await humanClick(page, 'a:has-text("CRM"), a:has-text("Contacts"), a[href*="/crm"]');
-    await page.waitForURL('**/crm**', { timeout: 10000 }).catch(() => page.waitForURL('**/contacts**'));
-    await cinematicPause(3000);
-    // Scroll contact list
-    await page.mouse.wheel(0, 500);
-    await cinematicPause(2000);
+    await page.goto('/super-admin/dashboard/packages');
+    await narrative("Phase 6: Platform Governance & Multi-Reseller Control");
+    await hold(10000);
+    await narrative("Configuring Growth Plan Payouts at ₹2,999.");
+    await humanRead(page, 'h1:has-text("Growth")');
+    await hold(20000);
 
     // ==========================================
-    // Phase 11 — Ecommerce Module
-    // ==========================================
-    await humanClick(page, 'a:has-text("Commerce"), a[href*="/commerce"]');
-    await page.waitForURL('**/commerce**', { timeout: 10000 });
-    await cinematicPause(3000);
-    await page.mouse.wheel(0, 400);
-    await cinematicPause(2000);
-
-    // ==========================================
-    // Phase 12 — Analytics Dashboard
-    // ==========================================
-    await humanClick(page, 'a:has-text("Analytics"), a[href*="/analytics"]');
-    await page.waitForURL('**/analytics**', { timeout: 10000 });
-    await cinematicPause(4000);
-    await page.mouse.wheel(0, 600);
-    await cinematicPause(2000);
-
-    // ==========================================
-    // Phase 13 — Partner / Reseller Dashboard
+    // Phase 7: Partner Dashboard
     // ==========================================
     await page.goto('/partner/dashboard');
-    await page.waitForURL('**/partner/dashboard**', { timeout: 15000 }).catch(() => { });
-    await cinematicPause(4000);
-    await page.mouse.wheel(0, 500);
-    await cinematicPause(2500);
+    await narrative("Phase 7: The Affiliate Partnership Ecosystem.");
+    await hold(20000);
+    await humanScroll(page, 600, 1);
+    await hold(15000);
 
     // ==========================================
-    // Phase 14 — Super Admin Panel
-    // ==========================================
-    await page.goto('/super-admin/dashboard');
-    await page.waitForURL('**/super-admin/dashboard**', { timeout: 15000 }).catch(() => { });
-    await cinematicPause(4000);
-    await page.mouse.wheel(0, 800);
-    await cinematicPause(3000);
-
-    // ==========================================
-    // Phase 15 — Final System Overview
+    // Phase 8: Strategic Closure
     // ==========================================
     await page.goto('/dashboard');
-    await page.waitForURL('**/dashboard**', { timeout: 10000 });
-    await cinematicPause(2000);
-    await page.mouse.wheel(0, 1200);
-    await cinematicPause(3000);
-    await page.mouse.wheel(0, -1200);
+    await narrative("Grafty: The Definitive Business Messaging Solution.");
+    await hold(10000);
+    await narrative("Recording complete. Thank you for viewing this Masterpiece.");
+    await humanScroll(page, 1500, 0.3); // Dramatic ultra-slow final scroll
+    await hold(40000); // 40s final branding hold
 
-    // Hold final screen
-    console.log("Holding final Grafty screen...");
-    await cinematicPause(7000);
+    console.log("🏁 MASTERPIECE RECORDING COMPLETED SUCCESSFULLY.");
 });

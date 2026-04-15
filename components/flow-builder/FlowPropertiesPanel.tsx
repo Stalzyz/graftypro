@@ -1,7 +1,8 @@
 "use client";
 
-import { X, Paperclip, Loader2, Calendar, Trash2, Copy, Smartphone, ChevronDown, ChevronUp, FileCode } from "lucide-react";
+import { X, Paperclip, Loader2, Calendar, Trash2, Copy, Smartphone, ChevronDown, ChevronUp, FileCode, Webhook } from "lucide-react";
 import { SmartUploader } from "../ui/SmartUploader";
+import toast from "react-hot-toast";
 import { useEffect, useState, useRef } from "react";
 
 export default function FlowPropertiesPanel({ selectedNode, onChange, onClose, onDelete, onDuplicate }: any) {
@@ -79,6 +80,17 @@ export default function FlowPropertiesPanel({ selectedNode, onChange, onClose, o
     const [locationType, setLocationType] = useState<'REQUEST' | 'SEND'>('REQUEST');
     const [locationName, setLocationName] = useState("");
     const [locationAddress, setLocationAddress] = useState("");
+    
+    // Meta Flow Advanced
+    const [metaFlowSpec, setMetaFlowSpec] = useState("");
+    const [isSyncing, setIsSyncing] = useState(false);
+
+    // External Webhook / CRM Bridge Data
+    const [extUrl, setExtUrl] = useState("");
+    const [extMethod, setExtMethod] = useState("POST");
+    const [extHeaders, setExtHeaders] = useState("");
+    const [extBody, setExtBody] = useState("");
+    const [captureKey, setCaptureKey] = useState("");
 
     useEffect(() => {
         if (selectedNode) {
@@ -126,6 +138,7 @@ export default function FlowPropertiesPanel({ selectedNode, onChange, onClose, o
                 setFlowToken(selectedNode.data.flowToken || "");
                 setMetaFlowHeaderType(selectedNode.data.headerType || "text");
                 setHeaderUrl(selectedNode.data.headerUrl || "");
+                setMetaFlowSpec(selectedNode.data.flowSpec ? JSON.stringify(selectedNode.data.flowSpec, null, 2) : "");
             }
 
             if (selectedNode.type === 'goal') {
@@ -172,6 +185,14 @@ export default function FlowPropertiesPanel({ selectedNode, onChange, onClose, o
                 setLocationType(selectedNode.data.locationType || 'REQUEST');
                 setLocationName(selectedNode.data.name || "");
                 setLocationAddress(selectedNode.data.address || "");
+            }
+
+            if (selectedNode.type === 'external_webhook' || selectedNode.type === 'webhook_crm') {
+                setExtUrl(selectedNode.data.url || "");
+                setExtMethod(selectedNode.data.method || "POST");
+                setExtHeaders(typeof selectedNode.data.headers === 'string' ? selectedNode.data.headers : JSON.stringify(selectedNode.data.headers || {}, null, 2));
+                setExtBody(typeof selectedNode.data.body === 'string' ? selectedNode.data.body : JSON.stringify(selectedNode.data.body || {}, null, 2));
+                setCaptureKey(selectedNode.data.captureKey || "");
             }
         }
     }, [selectedNode]);
@@ -317,6 +338,21 @@ export default function FlowPropertiesPanel({ selectedNode, onChange, onClose, o
         } else if (field === "locationAddress") {
             setLocationAddress(val);
             newData.address = val;
+        } else if (field === "extUrl") {
+            setExtUrl(val);
+            newData.url = val;
+        } else if (field === "extMethod") {
+            setExtMethod(val);
+            newData.method = val;
+        } else if (field === "extHeaders") {
+            setExtHeaders(val);
+            newData.headers = val;
+        } else if (field === "extBody") {
+            setExtBody(val);
+            newData.body = val;
+        } else if (field === "captureKey") {
+            setCaptureKey(val);
+            newData.captureKey = val;
         }
 
         onChange(selectedNode.id, newData);
@@ -342,6 +378,8 @@ export default function FlowPropertiesPanel({ selectedNode, onChange, onClose, o
         order_summary: 'Order Summary',
         meta_template: 'Cloud Template',
         location: 'Location Pin',
+        external_webhook: 'CRM Bridge (Webhook)',
+        webhook_crm: 'CRM Bridge (Enterprise)',
     };
 
     const nodeTypeBg: Record<string, string> = {
@@ -362,6 +400,8 @@ export default function FlowPropertiesPanel({ selectedNode, onChange, onClose, o
         order_summary: 'bg-orange-100 text-orange-800',
         meta_template: 'bg-emerald-100 text-emerald-800',
         location: 'bg-purple-100 text-purple-800',
+        external_webhook: 'bg-slate-100 text-slate-800',
+        webhook_crm: 'bg-indigo-100 text-indigo-800',
     };
 
     return (
@@ -1022,6 +1062,65 @@ export default function FlowPropertiesPanel({ selectedNode, onChange, onClose, o
                                 />
                             </div>
                         </div>
+
+                        <div className="pt-4 border-t border-gray-100 space-y-3">
+                            <label className="block text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1 ml-1">JSON FLOW SPEC (ADVANCED)</label>
+                            <textarea
+                                value={metaFlowSpec}
+                                onChange={(e) => {
+                                    setMetaFlowSpec(e.target.value);
+                                    handleUpdate("flowSpec", e.target.value);
+                                }}
+                                rows={8}
+                                placeholder='{ "screens": [...] }'
+                                className="w-full border border-gray-200 bg-gray-900 text-green-400 font-mono text-[10px] rounded-xl p-3 outline-none focus:ring-4 focus:ring-indigo-100 transition-all resize-none shadow-inner"
+                            />
+                            
+                            <button
+                                onClick={async () => {
+                                    setIsSyncing(true);
+                                    try {
+                                        const res = await fetch('/api/whatsapp/flows/sync', {
+                                            method: 'POST',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify({
+                                                flowId: metaFlowId,
+                                                spec: JSON.parse(metaFlowSpec || "{}"),
+                                                name: selectedNode.data.label || "New Flow"
+                                            })
+                                        });
+                                        const data = await res.json();
+                                        if (data.success) {
+                                            toast.success("Flow Synced to Meta! 🚀");
+                                            if (data.metaFlowId && !metaFlowId) {
+                                                handleUpdate("flowId", data.metaFlowId);
+                                                setMetaFlowId(data.metaFlowId);
+                                            }
+                                        } else {
+                                            toast.error(data.error || "Sync failed");
+                                        }
+                                    } catch (e: any) {
+                                        toast.error("Invalid JSON or Network Error");
+                                    } finally {
+                                        setIsSyncing(false);
+                                    }
+                                }}
+                                disabled={isSyncing}
+                                className={`w-full py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all active:scale-95 ${isSyncing ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white hover:shadow-xl hover:shadow-indigo-100'}`}
+                            >
+                                {isSyncing ? (
+                                    <span className="flex items-center gap-2">
+                                        <div className="w-3 h-3 border-2 border-gray-300 border-t-indigo-600 rounded-full animate-spin" />
+                                        SYNCING...
+                                    </span>
+                                ) : (
+                                    <>
+                                        <div className="w-4 h-4 rounded-full bg-white/20 flex items-center justify-center">↑</div>
+                                        SYNC TO META CLOUD
+                                    </>
+                                )}
+                            </button>
+                        </div>
                     </div>
                 )}
 
@@ -1418,6 +1517,84 @@ export default function FlowPropertiesPanel({ selectedNode, onChange, onClose, o
                                 </p>
                             </div>
                         )}
+                    </div>
+                )}
+
+                {(selectedNode.type === 'external_webhook' || selectedNode.type === 'webhook_crm') && (
+                    <div className="space-y-4 pt-4 border-t border-gray-100">
+                        <div className="flex items-center gap-2 mb-2">
+                            <Webhook size={16} className="text-indigo-600" />
+                            <h4 className="text-[11px] font-black text-indigo-800 uppercase tracking-widest">CRM Bridge Config</h4>
+                        </div>
+                        
+                        <div className="space-y-4 p-4 bg-indigo-50/30 rounded-2xl border border-indigo-100">
+                            <div>
+                                <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5">Webhook URL</label>
+                                <input
+                                    type="text"
+                                    value={extUrl}
+                                    onChange={e => handleUpdate("extUrl", e.target.value)}
+                                    placeholder="https://hooks.hubspot.com/..."
+                                    className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2 text-xs font-bold outline-none focus:border-indigo-500"
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5">Method</label>
+                                    <select
+                                        value={extMethod}
+                                        onChange={e => handleUpdate("extMethod", e.target.value)}
+                                        className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2 text-xs font-bold outline-none"
+                                    >
+                                        <option value="POST">POST</option>
+                                        <option value="GET">GET</option>
+                                        <option value="PUT">PUT</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5">Capture Key</label>
+                                    <input
+                                        type="text"
+                                        value={captureKey}
+                                        onChange={e => handleUpdate("captureKey", e.target.value)}
+                                        placeholder="crm_res"
+                                        className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2 text-xs font-bold outline-none"
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5">JSON Headers</label>
+                                <textarea
+                                    value={extHeaders}
+                                    onChange={e => handleUpdate("extHeaders", e.target.value)}
+                                    placeholder='{ "Authorization": "Bearer ..." }'
+                                    className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2 text-xs font-mono outline-none focus:border-indigo-500 shadow-sm"
+                                    rows={3}
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5">JSON Body Mapping</label>
+                                <textarea
+                                    value={extBody}
+                                    onChange={e => handleUpdate("extBody", e.target.value)}
+                                    placeholder='{ "email": "{{contact.email}}", "name": "{{contact.name}}" }'
+                                    className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2 text-xs font-mono outline-none focus:border-indigo-500 shadow-sm"
+                                    rows={5}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="bg-amber-50 p-3 rounded-xl border border-amber-100 mt-2">
+                            <p className="text-[10px] text-amber-800 font-medium leading-relaxed">
+                                💡 <b>Pro Tip:</b> Use <code className="bg-white px-1 rounded">{"{{contact.____}}"}</code> variables to map WhatsApp data to CRM fields.
+                            </p>
+                            <p className="text-[10px] text-amber-800 font-black mt-2">
+                                ✅ Branches: Connect output handles to &quot;Success&quot; or &quot;Failed&quot;.
+                            </p>
+                        </div>
                     </div>
                 )}
             </div>

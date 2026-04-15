@@ -326,7 +326,7 @@ pg_dump -U user wabot_bsp > wabot_bsp_db_backup_$(date +%Y%m%d).sql
 ### Step 2: Remove Local Files
 ```bash
 # On Mac:
-cd /Users/stalinkumar/Downloads/Wabot_BSP
+cd /Users/stalinkumar/Downloads/Grafty_Bsp
 
 # Remove docs
 rm -rf docs/ temp_project/

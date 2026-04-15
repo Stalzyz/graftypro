@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 
-const homeContent = {
+const homePageData = {
     title: 'Frontline Experience',
     slug: 'home',
     status: 'PUBLISHED',
@@ -11,10 +11,11 @@ const homeContent = {
         link: "/platform-partner",
         is_active: true,
         image: ""
-    },
-    sections: {
-        create: [
-            {
+    }
+};
+
+const homeSections = [
+    {
                 type: 'HERO_V2',
                 order: 0,
                 is_active: true,
@@ -29,7 +30,8 @@ const homeContent = {
                     secondaryBtnLink: "/how-to-use",
                     socialProofInitials: ["RM", "PS", "AN", "KV", "SR"],
                     socialProofText: "500+ businesses trust Grafty",
-                    dashboardImg: "/screens/dashboard.jpg"
+                    dashboardImg: "/screens/dashboard.jpg",
+                    useAnimation: true
                 }
             },
             {
@@ -81,6 +83,20 @@ const homeContent = {
                             tags: ["Live Stats", "Revenue Potential", "Message Funnel", "Onboarding Guide"],
                         },
                         {
+                            label: "AI Autopilot",
+                            image: "/screens/ai.jpg",
+                            title: "Train your AI salesperson",
+                            desc: "Upload PDFs, Docs, or URLs to create a domain-expert AI. Automate lead qualification and FAQ handling with 100% accuracy.",
+                            tags: ["Knowledge Engine", "PDF Training", "Auto-Qualify", "GPT-4 Support"],
+                        },
+                        {
+                            label: "Email Hub",
+                            image: "/screens/email.jpg",
+                            title: "Omni-channel Orchestration",
+                            desc: "Don't just message on WhatsApp. Build flows that send professional Email proposals as fallbacks or follow-ups automatically.",
+                            tags: ["WA + Email", "SMTP Connect", "Unified Inbox", "Smart Fallbacks"],
+                        },
+                        {
                             label: "Flow Builder",
                             image: "/screens/flow.jpg",
                             title: "Build powerful WhatsApp bots visually",
@@ -90,30 +106,70 @@ const homeContent = {
                         {
                             label: "Live Chat",
                             image: "/screens/chat.jpg",
-                            title: "Team inbox built for WhatsApp",
-                            desc: "Multi-agent live chat with labels, internal notes, follow-up scheduler, drip enrollment, and automation activity.",
-                            tags: ["Multi-Agent", "Internal Notes", "Follow-up", "Drip Enroll"],
-                        },
-                        {
-                            label: "CRM Engine",
-                            image: "/screens/crm.jpg",
-                            title: "Kanban CRM for lead management",
-                            desc: "Visual pipeline to track leads from first contact to conversion. Chat directly from lead cards.",
-                            tags: ["Kanban Pipeline", "Lead Tracking", "One-click Chat", "Revenue Tracking"],
-                        },
-                        {
-                            label: "Delivery Intel",
-                            image: "/screens/campaign.jpg",
-                            title: "Smart delivery monitoring",
-                            desc: "Track template performance, monitor delivery rates, detect failures before they affect your Meta account.",
-                            tags: ["Delivery Rate", "Failure Detection", "Health Score", "Template Monitor"],
+                            title: "Team inbox with 1-click Video Meet",
+                            desc: "Multi-agent live chat with a built-in Google Meet generator. Close deals faster with instant video consultations.",
+                            tags: ["Google Meet", "Multi-Agent", "Internal Notes", "Live Meet"],
                         }
                     ]
                 }
             },
             {
-                type: 'SPLIT_LIST_V2',
+                type: 'NEURAL_KNOWLEDGE_V3',
                 order: 4,
+                is_active: true,
+                content: {
+                    pretitle: "Neural Intelligence",
+                    title: "AI Knowledge Engine",
+                    subtitle: "Train your AI on PDFs, URLs, and Docs in seconds.",
+                    knowledgeSources: ["Company PDFs", "Product URLs", "Support Docs", "Policy Manuals"],
+                    learningStatusText: "Active Neural Learning...",
+                    resultHeadline: "100% Accuracy. 0% Delay.",
+                    resultDesc: "Your AI salesperson knows every detail of your business, answering complex queries instantly on WhatsApp.",
+                    demoImage: "/screens/ai.jpg",
+                    primaryBtnText: "Train Your AI Now",
+                    primaryBtnLink: "/register"
+                }
+            },
+            {
+                type: 'OMNI_HUB_V3',
+                order: 5,
+                is_active: true,
+                content: {
+                    pretitle: "Cross-Channel Authority",
+                    title: "Omni-channel Synergy",
+                    subtitle: "WhatsApp for speed. Email for Authority. Master both seamlessly.",
+                    waFeatureTitle: "Personalized WhatsApp",
+                    waFeatureDesc: "High engagement messaging with instant AI replies.",
+                    emailFeatureTitle: "Automated Email Hub",
+                    emailFeatureDesc: "Professional proposals and follow-ups sent via your own SMTP.",
+                    synergyLogic: "If WhatsApp not opened within 2 hrs -> Auto-send Email proposal.",
+                    demoImage: "/screens/email.jpg",
+                    ctaText: "Explore Omni-channel",
+                    ctaLink: "/register"
+                }
+            },
+            {
+                type: 'AUTOPILOT_V3',
+                order: 6,
+                is_active: true,
+                content: {
+                    pretitle: "Autonomous Sales",
+                    title: "AI Autopilot Engine",
+                    subtitle: "Zero manual intervention. Let AI qualify, nurture, and close leads on WhatsApp 24/7.",
+                    stats: [
+                        { label: "Uptime", value: "100%", sub: "Always Online" },
+                        { label: "Latency", value: "< 2s", sub: "Instant Neural Reply" },
+                        { label: "Accuracy", value: "99.9%", sub: "Hallucination-Free" },
+                        { label: "Scaling", value: "Unlimited", sub: "Concurrent Chats" }
+                    ],
+                    autopilotImage: "/screens/ai.jpg",
+                    ctaText: "Launch Autopilot",
+                    ctaLink: "/register"
+                }
+            },
+            {
+                type: 'SPLIT_LIST_V2',
+                order: 7,
                 is_active: true,
                 content: {
                     pretitle: "The Problem",
@@ -136,7 +192,7 @@ const homeContent = {
             },
             {
                 type: 'GROWTH_STEPS_V2',
-                order: 5,
+                order: 8,
                 is_active: true,
                 content: {
                     pretitle: "Growth Engine",
@@ -151,7 +207,7 @@ const homeContent = {
             },
             {
                 type: 'MULTI_CARDS_V2',
-                order: 6,
+                order: 9,
                 is_active: true,
                 content: {
                     styleType: 'LIGHT',
@@ -159,18 +215,18 @@ const homeContent = {
                     title: "Everything Your Business Needs",
                     subtitle: "One platform. Complete control. Every tool to grow on WhatsApp.",
                     cards: [
-                        { title: "Flow Builder", desc: "Build lead qualification, booking, checkout, and payment flows. No coding required.", icon: "CheckCircle2", tags: ["Lead Flows", "No Code", "20+ Nodes", "Payments"] },
-                        { title: "Broadcast Campaigns", desc: "Send targeted campaigns to segmented audiences with cost preview before sending.", icon: "Zap", tags: ["Segments", "Cost Preview", "Delivery Tracking"] },
-                        { title: "Drip Sequences", desc: "Automate follow-up sequences over days and weeks. Build relationships at scale.", icon: "Receipt", tags: ["Day-1 Welcome", "Auto Follow-up", "Scheduling"] },
-                        { title: "Team Inbox & CRM", desc: "Multi-agent inbox with labels, tags, follow-up reminders, and customer history.", icon: "Shield", tags: ["Multi-Agent", "Labels", "Follow-Up"] },
-                        { title: "E-commerce Suite", desc: "Sell on WhatsApp with product catalogs, payment links, COD, and GST invoices.", icon: "Globe", tags: ["Product Catalog", "Payment Links", "GST Invoices"] },
-                        { title: "Wallet & Billing", desc: "Credit system with real-time cost tracking, auto deductions, and full billing history.", icon: "BarChart3", tags: ["Credit Recharge", "Cost Tracking", "Invoices"] }
+                        { title: "AI Knowledge Engine", desc: "Train AI on your business data. Handle complex customer queries automatically using GPT-4 and your own PDFs.", icon: "Sparkles", tags: ["Knowledge Base", "AI Autopilot", "PDF Training"] },
+                        { title: "Email Hub & Fallback", desc: "Connect SMTP and send professional emails alongside WhatsApp flows for a true omni-channel experience.", icon: "Mail", tags: ["SMTP Integration", "Email Flows", "WA+Email Sync"] },
+                        { title: "Google Meet Integration", desc: "Generate 1-click individual meeting links for leads. Close high-ticket deals through instant consultations.", icon: "Video", tags: ["1-Click Meet", "Auto Links", "CSR Video"] },
+                        { title: "Flow Builder", desc: "Build lead qualification, booking, checkout, and payment flows. No coding required.", icon: "CheckCircle2", tags: ["Lead Flows", "No Code", "20+ Nodes"] },
+                        { title: "Team Inbox & CRM", desc: "Multi-agent inbox with labels, tags, follow-up reminders, customer history, and 1-click Meet.", icon: "Shield", tags: ["Multi-Agent", "Labels", "CRM Pipeline"] },
+                        { title: "E-commerce Suite", desc: "Sell on WhatsApp with product catalogs, payment links, COD, and GST invoices.", icon: "Globe", tags: ["Product Catalog", "Payment Links", "GST Invoices"] }
                     ]
                 }
             },
             {
                 type: 'MULTI_CARDS_V2',
-                order: 7,
+                order: 10,
                 is_active: true,
                 content: {
                     styleType: 'DARK',
@@ -187,7 +243,7 @@ const homeContent = {
             },
             {
                 type: 'TESTIMONIALS',
-                order: 8,
+                order: 11,
                 is_active: true,
                 content: {
                     title: "Businesses That Grew With Grafty",
@@ -201,7 +257,7 @@ const homeContent = {
             },
             {
                 type: 'PRICING',
-                order: 9,
+                order: 12,
                 is_active: true,
                 content: {
                     title: "Plans For Every Business",
@@ -212,7 +268,7 @@ const homeContent = {
             },
             {
                 type: 'FAQ',
-                order: 10,
+                order: 13,
                 is_active: true,
                 content: {
                     title: "Frequently Asked Questions",
@@ -229,7 +285,7 @@ const homeContent = {
             },
             {
                 type: 'FINAL_CTA_V2',
-                order: 11,
+                order: 14,
                 is_active: true,
                 content: {
                     topLabel: "Grafty is not just a WhatsApp tool. It is scalable business infrastructure.",
@@ -242,9 +298,7 @@ const homeContent = {
                     bottomLabel: "Meta-Compliant · GST-Ready · Enterprise Infrastructure · No Credit Card Required"
                 }
             }
-        ]
-    }
-};
+];
 
 export async function POST(req: Request) {
     const user = await getCurrentUser(req);
@@ -255,20 +309,65 @@ export async function POST(req: Request) {
     try {
         const p = prisma as any;
 
-        // Remove existing
+        // --- STEP 1: ATOMIC PURGE (Outside main build transaction to ensure commit) ---
+        console.log("SURGICAL_SEED: Starting Atomic Purge...");
         const existing = await p.landingPage.findUnique({ where: { slug: 'home' } });
         if (existing) {
-            await p.landingSection.deleteMany({ where: { landing_page_id: existing.id } });
+            console.log(`SURGICAL_SEED: Purging existing page [${existing.id}]...`);
+            // Explicitly clear all blocking relations
+            await p.landingSection.deleteMany({ where: { page_id: existing.id } });
+            await p.landingVersion.deleteMany({ where: { page_id: existing.id } });
             await p.landingPage.delete({ where: { id: existing.id } });
+            console.log("SURGICAL_SEED: Purge Complete.");
         }
 
-        const page = await p.landingPage.create({
-            data: homeContent
+        // --- STEP 2: SLUG CONFLICT VERIFICATION ---
+        const collision = await p.landingPage.findUnique({ where: { slug: 'home' } });
+        if (collision) {
+            throw new Error(`CRITICAL_CONFLICT: Slug 'home' still exists in DB despite purge [ID: ${collision.id}]. Database index might be out of sync.`);
+        }
+
+        // --- STEP 3: RESILIENT REBUILD ---
+        console.log("SURGICAL_SEED: Starting Resilient Rebuild...");
+        const result = await p.$transaction(async (tx: any) => {
+            // 1. Create Page Identity
+            console.log("SURGICAL_SEED: Creating Page Identity...");
+            const page = await tx.landingPage.create({
+                data: homePageData
+            });
+
+            // 2. Inject Sections Sequentially with Traceability
+            console.log("SURGICAL_SEED: Injecting Sections...");
+            for (const section of homeSections) {
+                try {
+                    console.log(`SURGICAL_SEED: -> Injecting ${section.type}`);
+                    await tx.landingSection.create({
+                        data: {
+                            ...section,
+                            page_id: page.id
+                        }
+                    });
+                } catch (secErr: any) {
+                    throw new Error(`SECTION_FAILURE [${section.type}]: ${secErr.message}`);
+                }
+            }
+
+            return page;
+        }, {
+            timeout: 25000 // 25s for high-latency VPS environments
         });
 
-        return NextResponse.json({ success: true, data: page });
-    } catch (error) {
-        console.error(error);
-        return NextResponse.json({ error: "Failed to seed page" }, { status: 500 });
+        console.log("SURGICAL_SEED: SUCCESS.");
+        return NextResponse.json({ success: true, data: result });
+
+    } catch (error: any) {
+        console.error("SURGICAL_SEED_FAILURE_FATAL:", error);
+        return NextResponse.json({ 
+            error: "Failed to seed page",
+            details: error.message || String(error),
+            code: error.code,
+            meta: error.meta,
+            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        }, { status: 500 });
     }
 }

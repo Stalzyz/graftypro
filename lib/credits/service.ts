@@ -236,13 +236,13 @@ export class CreditService {
         description: string
     ) {
         return await prisma.$transaction(async (tx) => {
-            // 0. Zero-Cost Quick Pass
-            if (amount <= 0) {
+            // 0. Zero-Cost Quick Pass (Refactored to still create a record for tracking)
+            if (amount < 0) {
                 return {
-                    success: true,
-                    balance_after: 0,
-                    transaction_id: "free_msg_" + Date.now(),
-                    margin: 0
+                    success: false,
+                    error: "INVALID_AMOUNT",
+                    transaction_id: null,
+                    balance_after: 0
                 };
             }
 
@@ -545,10 +545,17 @@ export class CreditService {
      * Called after message is sent to Meta
      */
     static async updateMetaMessageId(transactionId: string, metaMessageId: string) {
-        await prisma.creditTransaction.update({
-            where: { id: transactionId },
-            data: { meta_message_id: metaMessageId }
-        });
+        if (!transactionId || transactionId.startsWith("free_msg_")) return;
+
+        try {
+            await prisma.creditTransaction.update({
+                where: { id: transactionId },
+                data: { meta_message_id: metaMessageId }
+            });
+        } catch (err) {
+            // Log but don't crashtransmission flow if ledger sync fails
+            console.warn(`[CreditService] Could not sync Meta ID to transaction ${transactionId}. This is usually safe.`);
+        }
     }
 
     /**

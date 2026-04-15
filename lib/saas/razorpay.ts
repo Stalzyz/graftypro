@@ -56,6 +56,36 @@ export async function createOrder(amount: number, currency: string = "INR", note
     });
 }
 
+export async function createTopupLink(workspaceId: string, amount: number, billingDetails?: any) {
+    const expiredAt = Math.floor(Date.now() / 1000) + (48 * 60 * 60); // 48 Hours
+
+    return await saasRazorpay.paymentLink.create({
+        amount: amount * 100,
+        currency: "INR",
+        accept_partial: false,
+        expire_by: expiredAt,
+        reference_id: `TOPUP_${workspaceId}_${Date.now()}`,
+        description: `WhatsApp Credits Top-up (₹${amount})`,
+        customer: {
+            name: billingDetails?.name || "Grafty Vendor",
+            email: billingDetails?.email || "",
+            contact: billingDetails?.phone || ""
+        },
+        notify: {
+            sms: true,
+            email: true
+        },
+        reminder_enable: true,
+        notes: {
+            source: "SMART_TOPUP",
+            workspace_id: workspaceId,
+            topup_amount: amount.toString()
+        },
+        callback_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/credits?status=success`,
+        callback_method: "get"
+    });
+}
+
 export async function createSubscription(planIdOrRzpId: string) {
     // If it doesn't start with 'plan_', assume it's a DB ID and we need to fetch the synced ID
     let finalRzpId = planIdOrRzpId;

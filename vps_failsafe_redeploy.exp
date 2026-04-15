@@ -1,0 +1,29 @@
+#!/usr/bin/expect -f
+set SERVER    "root@72.61.231.187"
+set PASS      "Photoshop09@"
+set REMOTE    "/root/grafty_bsp"
+set timeout   120
+puts "\n🚀 \[1/4\] Clean remote area..."
+spawn ssh -o StrictHostKeyChecking=no $SERVER "rm -rf $REMOTE/* && mkdir -p $REMOTE"
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}
+puts "\n🚀 \[2/4\] UploadING code..."
+spawn scp -o StrictHostKeyChecking=no code_patch.zip $SERVER:$REMOTE/code_patch.zip
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}
+puts "\n🚀 \[3/4\] ExtractING and confirming..."
+spawn ssh -o StrictHostKeyChecking=no $SERVER "cd $REMOTE && unzip -o code_patch.zip && grep 'tracking-tight' app/dashboard/templates/\\\[id\\\]/page.tsx"
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}
+puts "\n🚀 \[4/4\] BUILD NO CACHE..."
+spawn ssh -o StrictHostKeyChecking=no $SERVER "cd $REMOTE && docker compose -f docker-compose.prod.yml up -d --build --force-recreate"
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}

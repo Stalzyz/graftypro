@@ -3,10 +3,27 @@ import React from "react";
 import "../landing/new-grafty.css";
 import LandingNavbar from "../../components/landing-new/LandingNavbar";
 import LandingFooter from "../../components/landing-new/LandingFooter";
-import { ChevronRight, ArrowRight, GraduationCap, ShoppingBag, HeartPulse, Landmark, Plane, UserCheck, Zap, BarChart4 } from "lucide-react";
+import { 
+    ChevronRight, 
+    ArrowRight, 
+    GraduationCap, 
+    ShoppingBag, 
+    HeartPulse, 
+    Landmark, 
+    Plane, 
+    UserCheck, 
+    Zap, 
+    BarChart4, 
+    Dumbbell, 
+    Scissors, 
+    Utensils, 
+    Home 
+} from "lucide-react";
 import Link from "next/link";
 
 import { SOLUTIONS_DATA } from "./solutions-data";
+
+import { WhatsAppSimulator } from "./WhatsAppSimulator";
 
 export default function SolutionsPage() {
     return (
@@ -69,16 +86,16 @@ export default function SolutionsPage() {
                 id="education"
                 icon={<GraduationCap />}
                 title="Education & EdTech"
-                intro="A lead that isn't contacted in the first 5 minutes is 90% less likely to convert."
-                problem="Manual call attempts have a low pickup rate. Cold calling is inefficient. Fee collection follow-ups are time-consuming and prone to human error."
+                intro="An admission lead that isn't contacted in the first 5 minutes is 90% less likely to convert."
+                problem="High-intent leads cold down rapidly. Manual counseling follow-ups are inconsistent. Students miss critical course updates buried in email inboxes."
                 logicTree={[
-                    { step: "Lead Capture", details: "Lead enters from Meta Ads / Website / Landing Page." },
-                    { step: "Instant Handshake", details: "Within 0.5 seconds, Grafty sends a Greeting + Qualification Question." },
-                    { step: "Automated Qualification", details: "Based on the answer, the lead is assigned a quality score." },
-                    { step: "Conversion Hook", details: "Lead is prompted to schedule a Demo Class inside WhatsApp." }
+                    { step: "Lead Capture", details: "Lead entry from Meta Ads / Landing Pages into Grafty CRM." },
+                    { step: "Instant Handshake", details: "Grafty sends a Welcome Kit + Qualification Question in <0.5s." },
+                    { step: "Course Delivery", details: "Automated lesson drips and study materials via Academy Engine." },
+                    { step: "Fee Automation", details: "Scheduled reminders with integrated 1-click payment links." }
                 ]}
-                kpi="+35% Enrollment Potential"
-                img="/screens/edutech.jpg"
+                kpi="+40% Admission Velocity"
+                industry="education"
             />
 
             {/* 2. Ecommerce */}
@@ -86,16 +103,100 @@ export default function SolutionsPage() {
                 id="ecommerce"
                 icon={<ShoppingBag />}
                 title="Ecommerce & D2C"
-                intro="High bounce rates and abandoned carts kill margins. WhatsApp open rates are >95%."
-                problem="Carts abandoned on checkout require urgent visibility. Customers demand real-time delivery tracking across their lifecycle."
+                intro="98% of mobile shoppers prefer chatting over browsing complex web menus."
+                problem="Cart abandonment kills margins. Customers demand real-time order tracking and conversational support across their entire lifestyle."
                 logicTree={[
-                    { step: "Cart Abandonment Trigger", details: "Integration with Shopify triggers a message 30 mins after abandonment." },
-                    { step: "Dynamic Discounting", details: "Send a personalized coupon with a 'Complete Order' button." },
-                    { step: "Transactional Updates", details: "Automated Order Confirmation, Shipment Tracker, and Delivery alerts." }
+                    { step: "Cart Recovery", details: "Trigger personalized recovery flows 15 mins after abandonment." },
+                    { step: "Order Tracking", details: "Automated status updates from 'Packed' to 'Out for Delivery'." },
+                    { step: "Loyalty Drips", details: "Post-purchase sequences for reviews and repeat order coupons." }
                 ]}
                 kpi="18% Avg Recovery Rate"
-                img="https://cdn.botpenguin.com/assets/website/images/whatsapp-automation/converse-one.png"
+                industry="ecommerce"
                 reverse
+            />
+
+            {/* 3. Real Estate */}
+            <IndustryNuclear
+                id="real-estate"
+                icon={<Home />}
+                title="Real Estate & Prop-Tech"
+                intro="High-ticket deals require zero latency between interest and information delivery."
+                problem="Prospective buyers wait days for brochures. Site visits are lost due to manual scheduling friction and poor lead nurturing."
+                logicTree={[
+                    { step: "Virtual Tour", details: "Deliver floorplans and HD property videos directly in WhatsApp." },
+                    { step: "Qualification", details: "Bot collects Budget, BHK, and Location preferences instantly." },
+                    { step: "Visit Scheduler", details: "Integrated booking for site visits synced with agent calendars." },
+                    { step: "CRM Bridge", details: "Real-time sync to HubSpot/Salesforce for immediate broker follow-up." }
+                ]}
+                kpi="4x Site Visit Volume"
+                industry="real-estate"
+            />
+
+            {/* 4. Gym & Fitness */}
+            <IndustryNuclear
+                id="gym-fitness"
+                icon={<Dumbbell />}
+                title="Gyms & Fitness"
+                intro="Retention is the only metric that matters in the fitness industry."
+                problem="Members stop visiting and subscriptions expire without notice. Manual follow-ups for renewals are time-expensive and inefficient."
+                logicTree={[
+                    { step: "Lead Magnet", details: "Instant 3-day trial pass delivery via QR scan at marketing touchpoints." },
+                    { step: "Renewal Bot", details: "Auto-reminders 7 days before expiry with renewal payment link." },
+                    { step: "Retention Drip", details: "Automated 'Miss You' messages if a member doesn't swipe in for 5 days." },
+                    { step: "Nutrition Upsell", details: "Supplement store catalog available inside the WhatsApp chat." }
+                ]}
+                kpi="65% Member Retention"
+                industry="gym-fitness"
+                reverse
+            />
+
+            {/* 5. Saloon & Wellness */}
+            <IndustryNuclear
+                id="saloon-spa"
+                icon={<Scissors />}
+                title="Saloons & Spas"
+                intro="Convert midnight scrolling into morning appointments without a receptionist."
+                problem="Missed peak-hour calls and high no-show rates. Stylists are underutilized while the phone continues to ring at the front desk."
+                logicTree={[
+                    { step: "Self-Service Booking", details: "Customers select services and favorite stylists in-chat 24/7." },
+                    { step: "Advance Payments", details: "Collect slot-booking fees to eliminate no-show revenue loss." },
+                    { step: "Loyalty Wallet", details: "Track visit history and reward returning clients automatically." }
+                ]}
+                kpi="95% No-Show Reduction"
+                industry="saloon-spa"
+            />
+
+            {/* 6. Restaurants */}
+            <IndustryNuclear
+                id="restaurants"
+                icon={<Utensils />}
+                title="Restaurants & QSRs"
+                intro="Stop paying 30% commission to delivery platforms. Own your customer data."
+                problem="Reliance on third-party aggregators destroys margins. Staffing shortages lead to slow table service and customer frustration."
+                logicTree={[
+                    { step: "QR-to-Kitchen", details: "Scan table QR to browse the menu, order, and pay in WhatsApp." },
+                    { step: "Direct Ordering", details: "Bypass Swiggy/Zomato. Keep 100% of revenue and customer data." },
+                    { step: "Loyalty Broadcasts", details: "Send personalized Happy Hour offers based on order history." }
+                ]}
+                kpi="+22% Net Profit Margin"
+                industry="restaurants"
+                reverse
+            />
+
+            {/* 7. Marketing Agencies */}
+            <IndustryNuclear
+                id="agencies"
+                icon={<BarChart4 />}
+                title="Digital Marketing Agencies"
+                intro="The missing link between ad-spend and client-revenue."
+                problem="Agencies generate leads, but clients fail to convert them. Proving value is difficult without a unified lead nurturing system."
+                logicTree={[
+                    { step: "White-Label ROI", details: "Provide Grafty as your own proprietary tech stack to clients." },
+                    { step: "CTWA Mastery", details: "Deploy Click-to-WhatsApp ads with 100% automated nurturing." },
+                    { step: "Lead Attribution", details: "Track exactly which ad creative converted into a closed deal." }
+                ]}
+                kpi="3x Client LTV"
+                industry="agencies"
             />
 
             {/* Detailed Integration Section */}
@@ -119,6 +220,31 @@ export default function SolutionsPage() {
             </section>
 
             <LandingFooter />
+
+            {/* JSON-LD Schema for SEO */}
+            <script
+                type="application/ld+json"
+                dangerouslySetInnerHTML={{
+                    __html: JSON.stringify({
+                        "@context": "https://schema.org",
+                        "@type": "SoftwareApplication",
+                        "name": "Grafty WhatsApp Automation",
+                        "operatingSystem": "Web-based",
+                        "applicationCategory": "BusinessApplication",
+                        "description": "Unified WhatsApp automation platform for industry-specific scaling in Gyms, Saloons, Real Estate, and Education.",
+                        "offers": {
+                            "@type": "Offer",
+                            "price": "2999",
+                            "priceCurrency": "INR"
+                        },
+                        "aggregateRating": {
+                            "@type": "AggregateRating",
+                            "ratingValue": "4.9",
+                            "reviewCount": "120"
+                        }
+                    })
+                }}
+            />
         </main>
     );
 }
@@ -132,7 +258,7 @@ function ValueItem({ title, desc }: { title: string; desc: string }) {
     );
 }
 
-function IndustryNuclear({ id, icon, title, intro, problem, logicTree, kpi, img, reverse }: { id: string; icon: React.ReactNode; title: string; intro: string; problem: string; logicTree: { step: string, details: string }[], kpi: string, img: string, reverse?: boolean }) {
+function IndustryNuclear({ id, icon, title, intro, problem, logicTree, kpi, industry, reverse }: { id: string; icon: React.ReactNode; title: string; intro: string; problem: string; logicTree: { step: string, details: string }[], kpi: string, industry: string, reverse?: boolean }) {
     return (
         <section id={id} className={`py-40 ${reverse ? 'bg-slate-50' : 'bg-white'}`}>
             <div className="max-w-7xl mx-auto px-6">
@@ -182,10 +308,8 @@ function IndustryNuclear({ id, icon, title, intro, problem, logicTree, kpi, img,
                         </div>
                     </div>
 
-                    <div className="lg:w-1/2 sticky top-32 animate-up">
-                        <div className="p-4 bg-white rounded-[48px] shadow-2xl border border-slate-100 overflow-hidden relative group">
-                            <img src={img} alt={title} className="rounded-[40px] w-full" />
-                        </div>
+                    <div className="lg:w-1/2 sticky top-32 animate-up flex items-center justify-center">
+                        <WhatsAppSimulator industry={industry} />
                     </div>
                 </div>
             </div>

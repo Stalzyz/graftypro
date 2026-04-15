@@ -126,6 +126,33 @@ export async function POST(req: Request) {
             console.error("Automated Invoice failed but subscription was activated:", invoiceError);
         }
 
+        // 4. Update usage stats for coupons
+        const wsForCoupon = await prisma.workspace.findUnique({
+            where: { id: user.workspaceId },
+            select: { global_coupon_id: true, coupon_id: true }
+        });
+
+        if (wsForCoupon?.global_coupon_id) {
+            await prisma.globalCoupon.update({
+                where: { id: wsForCoupon.global_coupon_id },
+                data: { usage_count: { increment: 1 } }
+            });
+        } else if (wsForCoupon?.coupon_id) {
+            await prisma.resellerCoupon.update({
+                where: { id: wsForCoupon.coupon_id },
+                data: { usage_count: { increment: 1 } }
+            });
+        }
+
+        // 5. Send Notifications (Email + WhatsApp)
+        try {
+            const { NotificationService } = await import("@/lib/notifications/service");
+            // Welcome notification (Unifies Email + WhatsApp)
+            await NotificationService.sendWelcomeNotification(user.id);
+        } catch (notifError) {
+            console.error("Automated notifications failed:", notifError);
+        }
+
         return NextResponse.json({ success: true, plan: newPlan });
 
     } catch (error: any) {

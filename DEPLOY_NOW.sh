@@ -4,7 +4,7 @@
 # This script automates the sync and deployment of the Interactive Commerce Engine.
 
 SERVER="root@72.61.231.187"
-REMOTE_PATH="/root/wabot_bsp"
+REMOTE_PATH="/root/grafty_bsp"
 
 # Enable SSH Pass Automation if pass.sh exists
 if [ -f "./scripts/pass.sh" ]; then
@@ -49,7 +49,7 @@ echo "✅ Sync Complete."
 echo "🔧 Executing remote deployment commands..."
 ssh -o StrictHostKeyChecking=no $SERVER "bash -s" << 'EOF'
     set -e
-    cd /root/wabot_bsp
+    cd /root/grafty_bsp
     
     # --- ☢️ EXTREME CLEANUP MODE: Port 3001 Guardian ---
     echo "🛡️ Investigating port 3001 conflict..."
@@ -97,14 +97,14 @@ ssh -o StrictHostKeyChecking=no $SERVER "bash -s" << 'EOF'
     rm -rf app/white-label/dashboard app/white-label/layout.tsx
     rm -rf app/super-admin/settings app/super-admin/branding app/super-admin/email
     
-    if [ ! -f /root/wabot_bsp/.env ]; then
-      echo "❌ FATAL: .env file missing at /root/wabot_bsp/.env"
+    if [ ! -f /root/grafty_bsp/.env ]; then
+      echo "❌ FATAL: .env file missing at /root/grafty_bsp/.env"
       exit 1
     fi
 
     # Restart services from absolute zero
     echo "🏗️ Rebuilding & Starting Fresh Containers..."
-    docker compose -f docker-compose.prod.yml build
+    docker compose -f docker-compose.prod.yml build --no-cache
     docker compose -f docker-compose.prod.yml up -d --force-recreate
     sleep 5
     
@@ -115,9 +115,13 @@ ssh -o StrictHostKeyChecking=no $SERVER "bash -s" << 'EOF'
     # Allow a little time for containers to fully boot
     sleep 5
     
+    # 1c. Ensure pgvector extension exists before DB push
+    echo "🧠 Initializing Vector Brain extension..."
+    docker compose -f docker-compose.prod.yml exec -T postgres psql -U user -d wabot_bsp -c "CREATE EXTENSION IF NOT EXISTS vector;" || true
+
     # Run DB push (always use explicit schema path)
     echo "📊 Syncing Database Schema..."
-    docker compose -f docker-compose.prod.yml exec -e DATABASE_URL="postgresql://user:password@postgres:5432/grafty_bsp?schema=public" -T web npx prisma db push --schema=./prisma/schema.prisma --accept-data-loss < /dev/null
+    docker compose -f docker-compose.prod.yml exec -e DATABASE_URL="postgresql://user:password@postgres:5432/wabot_bsp?schema=public" -T web npx prisma db push --schema=./prisma/schema.prisma --accept-data-loss < /dev/null
     
     # Generate Prisma Client
     echo "🛠️ Regenerating Prisma Client..."
@@ -132,11 +136,15 @@ ssh -o StrictHostKeyChecking=no $SERVER "bash -s" << 'EOF'
     echo "⚙️ Seeding SMTP Configuration..."
     docker compose -f docker-compose.prod.yml exec -T web npx tsx scripts/seed-smtp-fix.ts < /dev/null
 
-    echo "💎 Seeding Premium Subscription Plans..."
+    echo "💎 Seeding Monster & Premium Pricing Plans..."
+    docker compose -f docker-compose.prod.yml exec -T web npx tsx scripts/seed-monster-plans.ts < /dev/null
     docker compose -f docker-compose.prod.yml exec -T web npx tsx scripts/seed-premium-plans.ts < /dev/null
 
-    echo "💳 Initializing Credit Ledger System & Welcome Credits..."
+    echo "💳 Initializing Credit Ledger System & Smart Topup Alerts..."
     docker compose -f docker-compose.prod.yml exec -T web npx tsx scripts/seed-credit-system.ts < /dev/null
+
+    echo "🏆 Finalizing Addon Marketplace..."
+    docker compose -f docker-compose.prod.yml exec -T web npx tsx scripts/seed-addons.ts < /dev/null
 
     echo "🔄 Final Restart..."
     docker compose -f docker-compose.prod.yml restart web worker

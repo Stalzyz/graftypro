@@ -8,7 +8,7 @@ import {
     Type, Image as ImageIcon, CreditCard, HelpCircle,
     Code, Grid, Target, Globe, AlertCircle, Link as LinkIcon,
     UploadCloud, ChevronRight, X, GripVertical, Check,
-    Users, Video, MessageSquare
+    Users, Video, MessageSquare, Sparkles, Bot, Mail
 } from "lucide-react";
 import Link from "next/link";
 
@@ -37,6 +37,9 @@ const SECTION_TEMPLATES = [
     { type: "LOGO_WALL_V2", label: "Company Logo Wall", icon: <Grid size={18} /> },
     { type: "INTERACTIVE_CARD_V2", label: "Interactive Cards", icon: <CreditCard size={18} /> },
     { type: "IMAGE_CAROUSEL_V2", label: "Image Carousel", icon: <ImageIcon size={18} /> },
+    { type: "NEURAL_KNOWLEDGE_V3", label: "Flagship: AI Knowledge", icon: <Sparkles size={18} /> },
+    { type: "OMNI_HUB_V3", label: "Flagship: Omni-channel Hub", icon: <Mail size={18} /> },
+    { type: "AUTOPILOT_V3", label: "Flagship: AI Autopilot", icon: <Bot size={18} /> },
 ];
 
 const DEFAULT_CONTENTS: any = {
@@ -107,7 +110,8 @@ const DEFAULT_CONTENTS: any = {
         secondaryBtnLink: "#",
         socialProofInitials: ["JD", "AB", "XY"],
         socialProofText: "Join thousands of experts",
-        dashboardImg: "https://images.klipfolio.com/website/public/00be0b43-a0d3-4516-9b39-64002f99d71e/SaaS%20Dashboard.png"
+        dashboardImg: "https://images.klipfolio.com/website/public/00be0b43-a0d3-4516-9b39-64002f99d71e/SaaS%20Dashboard.png",
+        useAnimation: true
     },
     TICKER_V2: {
         items: ["Next-Gen Flow Builder", "Multi-Agent Support", "Advanced Automation", "Rich API Integration"]
@@ -190,6 +194,45 @@ const DEFAULT_CONTENTS: any = {
             { img: "https://infobip-cdn-h0h7ekhqhgh4hgau.a02.azurefd.net/1g8x60m5haaeebc38sw9etdnqwq2orfxs6yjtxwklw767cqz71/whatsapp-flow-json.png", caption: "Flow Builder", subcaption: "Build automated conversation flows visually" },
             { img: "", caption: "Add your screenshot here", subcaption: "Upload a platform screenshot" }
         ]
+    },
+    NEURAL_KNOWLEDGE_V3: {
+        pretitle: "Neural Intelligence",
+        title: "AI Knowledge Engine",
+        subtitle: "Train your AI on PDFs, URLs, and Docs in seconds.",
+        knowledgeSources: ["Company PDFs", "Product URLs", "Support Docs", "Policy Manuals"],
+        learningStatusText: "Active Neural Learning...",
+        resultHeadline: "100% Accuracy. 0% Delay.",
+        resultDesc: "Your AI salesperson knows every detail of your business, answering complex queries instantly on WhatsApp.",
+        demoImage: "/screens/ai.jpg",
+        primaryBtnText: "Train Your AI Now",
+        primaryBtnLink: "/register"
+    },
+    OMNI_HUB_V3: {
+        pretitle: "Cross-Channel Authority",
+        title: "Omni-channel Synergy",
+        subtitle: "WhatsApp for speed. Email for Authority. Master both seamlessly.",
+        waFeatureTitle: "Personalized WhatsApp",
+        waFeatureDesc: "High engagement messaging with instant AI replies.",
+        emailFeatureTitle: "Automated Email Hub",
+        emailFeatureDesc: "Professional proposals and follow-ups sent via your own SMTP.",
+        synergyLogic: "If WhatsApp not opened within 2 hrs -> Auto-send Email proposal.",
+        demoImage: "/screens/email.jpg",
+        ctaText: "Explore Omni-channel",
+        ctaLink: "/register"
+    },
+    AUTOPILOT_V3: {
+        pretitle: "Autonomous Sales",
+        title: "AI Autopilot Engine",
+        subtitle: "Zero manual intervention. Let AI qualify, nurture, and close leads on WhatsApp 24/7.",
+        stats: [
+            { label: "Uptime", value: "100%", sub: "Always Online" },
+            { label: "Latency", value: "< 2s", sub: "Instant Neural Reply" },
+            { label: "Accuracy", value: "99.9%", sub: "Hallucination-Free" },
+            { label: "Scaling", value: "Unlimited", sub: "Concurrent Chats" }
+        ],
+        autopilotImage: "/screens/ai.jpg",
+        ctaText: "Launch Autopilot",
+        ctaLink: "/register"
     }
 };
 
@@ -727,12 +770,26 @@ function MonsterPropertyEditor({ section, onChange, onPersist, saving }: { secti
             </div>
 
             {/* 🔥 ULTIMATE DYNAMIC EDITOR FOR NEW V2 BLOCKS 🔥 */}
-            {section.type.endsWith('_V2') && (
+            {(section.type.endsWith('_V2') || section.type.endsWith('_V3')) && (
                 <div className="space-y-6 pt-6 border-t border-slate-100">
                     <h4 className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Dynamic Properties Editor</h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {Object.entries(section.content).map(([key, value]) => {
                             if (key === 'title' || key === 'subtitle' || key === 'sectionImage') return null;
+
+                            if (typeof value === 'boolean') {
+                                return (
+                                    <div key={key} className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl border border-slate-200">
+                                        <input
+                                            type="checkbox"
+                                            className="w-5 h-5 accent-blue-600 rounded"
+                                            checked={value}
+                                            onChange={(e) => handleFieldChange(key, e.target.checked)}
+                                        />
+                                        <label className="text-[10px] font-black text-slate-700 uppercase tracking-widest">{key.replace(/([A-Z])/g, ' $1').trim()}</label>
+                                    </div>
+                                );
+                            }
 
                             if (typeof value === 'string' || typeof value === 'number') {
                                 // If it looks like an image URL or image key, use ImageUploadField. Otherwise use input/textarea.

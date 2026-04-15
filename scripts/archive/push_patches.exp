@@ -1,0 +1,21 @@
+#!/usr/bin/expect -f
+set timeout -1
+spawn scp -o StrictHostKeyChecking=no /Users/stalinkumar/Downloads/Grafty_Bsp/lib/finance/gst-service.ts /Users/stalinkumar/Downloads/Grafty_Bsp/lib/reseller/service.ts /Users/stalinkumar/Downloads/Grafty_Bsp/app/api/webhooks/razorpay/route.ts root@72.61.231.187:/root/wabot_bsp/
+expect "password:"
+send "Photoshop09@\r"
+expect eof
+
+spawn scp -o StrictHostKeyChecking=no /Users/stalinkumar/Downloads/Grafty_Bsp/lib/finance/gst-service.ts root@72.61.231.187:/root/wabot_bsp/lib/finance/
+expect "password:"
+send "Photoshop09@\r"
+expect eof
+
+spawn scp -o StrictHostKeyChecking=no /Users/stalinkumar/Downloads/Grafty_Bsp/lib/reseller/service.ts root@72.61.231.187:/root/wabot_bsp/lib/reseller/
+expect "password:"
+send "Photoshop09@\r"
+expect eof
+
+spawn scp -o StrictHostKeyChecking=no /Users/stalinkumar/Downloads/Grafty_Bsp/app/api/webhooks/razorpay/route.ts root@72.61.231.187:/root/wabot_bsp/app/api/webhooks/razorpay/
+expect "password:"
+send "Photoshop09@\r"
+expect eof

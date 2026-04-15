@@ -20,10 +20,11 @@ export const Logo: React.FC<LogoProps> = ({
     variant = "color",
     showText = true,
     brandName = "Grafty",
-    logoUrl = "/grafty.svg",
+    logoUrl,
     href = "/"
 }) => {
     const [imgError, setImgError] = useState(false);
+    const finalLogoUrl = logoUrl || "/grafty.svg";
 
     // Letter avatar fallback — no Grafty SVG
     const LetterAvatar = (
@@ -41,7 +42,7 @@ export const Logo: React.FC<LogoProps> = ({
         </div>
     );
 
-    const showImage = logoUrl && !imgError;
+    const showImage = finalLogoUrl && !imgError;
 
     return (
         <Link href={href || "/"} className={`group flex items-center gap-3 outline-none ${className}`}>
@@ -51,7 +52,7 @@ export const Logo: React.FC<LogoProps> = ({
             >
                 {showImage ? (
                     <img
-                        src={logoUrl}
+                        src={finalLogoUrl}
                         alt={brandName || "Logo"}
                         className={`h-full w-auto object-contain transition-all ${variant === 'light' ? 'brightness-0 invert' : ''}`}
                         style={{ height: size, maxWidth: size * 3 }}
@@ -67,7 +68,7 @@ export const Logo: React.FC<LogoProps> = ({
                     className={`font-black tracking-tighter select-none whitespace-nowrap ${size > 40 ? 'text-2xl' : 'text-xl'} ${variant === 'light' ? 'text-white' : 'text-slate-900'}`}
                     style={{ lineHeight: 1 }}
                 >
-                    {brandName}
+                    {brandName?.trim() || "Grafty"}
                 </span>
             )}
         </Link>

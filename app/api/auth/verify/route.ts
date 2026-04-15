@@ -46,6 +46,15 @@ export async function GET(request: Request) {
             }
         });
 
+        // 🎯 Trigger Welcome Email
+        try {
+            const { EmailService } = await import("../../../../lib/email/service");
+            await EmailService.sendWelcomeEmail(user.workspace_id, user.email, user.first_name || "there");
+        } catch (e) {
+            console.error("[Welcome Email] Failed to send:", e);
+            // Non-blocking
+        }
+
         // Clean up token
         await redis.del(`verify:${token}`);
 

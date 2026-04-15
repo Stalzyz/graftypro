@@ -2,6 +2,7 @@ import { prisma } from "../db";
 import { encrypt, decrypt } from "./encryption";
 import { Decimal } from "@prisma/client/runtime/library";
 import { CommercePlatform } from "@prisma/client";
+import { scheduleAbandonedCartRecovery } from "../email/automations";
 
 export interface OrderPayload {
     store_id: string;
@@ -70,6 +71,7 @@ export class CommerceService {
         const data: any = {
             name: storeName,
             status: "ACTIVE",
+            catalog_id: credentials.catalogId || null,
             updated_at: new Date()
         };
 
@@ -391,6 +393,26 @@ export class CommerceService {
 
             return order;
         });
+
+        // 🛰️ AUTOMATION: Abandoned Cart Recovery (fires 2 hours later if still unpaid)
+        // Only triggered for non-immediate payment methods
+        if (order.payment_method !== "RAZORPAY") {
+            const workspace = await prisma.commerceStore.findUnique({
+                where: { id: order.store_id },
+                select: { workspace_id: true }
+            });
+            if (workspace) {
+                scheduleAbandonedCartRecovery({
+                    workspaceId: workspace.workspace_id,
+                    orderId: order.id,
+                    contactId: payload.contact_id,
+                    orderNumber: order.order_number,
+                    totalAmount: Number(order.total_amount),
+                }).catch(e => console.error("[ABANDONED-CART-SCHEDULE-FAIL]:", e));
+            }
+        }
+
+        return order;
     }
 
     /**

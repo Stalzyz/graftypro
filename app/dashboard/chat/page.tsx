@@ -51,9 +51,8 @@ import {
     Bug,
     CornerUpLeft
 } from "lucide-react";
-import { format } from "date-fns";
-import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { toast } from "react-hot-toast";
 import LeadScoreBadge from "../../../components/crm/LeadScoreBadge";
 import DripEnrollModal from "../../../components/crm/DripEnrollModal";
 import FollowUpModal from "../../../components/crm/FollowUpModal";
@@ -94,6 +93,7 @@ function SharedInboxContent() {
     const [attachedFile, setAttachedFile] = useState<any>(null);
     const [suggestions, setSuggestions] = useState<string[]>([]);
     const [fetchingSuggestions, setFetchingSuggestions] = useState(false);
+    const [generatingMeet, setGeneratingMeet] = useState(false);
     const [agents, setAgents] = useState<any[]>([]);
     const [chatFilter, setChatFilter] = useState("all");
     const [assigning, setAssigning] = useState(false);
@@ -104,6 +104,8 @@ function SharedInboxContent() {
     const [startingChat, setStartingChat] = useState(false);
     const [isNewChatModalOpen, setIsNewChatModalOpen] = useState(false);
     const [zoomedImage, setZoomedImage] = useState<string | null>(null);
+    const [showScrollButton, setShowScrollButton] = useState(false);
+    const [hasNewMessages, setHasNewMessages] = useState(false);
 
     // -- Modal States --
     const [showDripModal, setShowDripModal] = useState(false);
@@ -126,6 +128,25 @@ function SharedInboxContent() {
             setTemplates(approved);
         } catch (e) {
             console.error("Failed to fetch templates");
+        }
+    };
+
+    const handleGenerateMeet = async () => {
+        if (!selectedId) return;
+        setGeneratingMeet(true);
+        try {
+            const res = await fetch("/api/integrations/google-calendar/meet", { method: "POST" });
+            const data = await res.json();
+            if (data.link) {
+                setReplyText(prev => `${prev}\n\nJoin our meeting here: ${data.link}`.trim());
+                toast.success("Google Meet link generated!");
+            } else {
+                toast.error(data.error || "Please connect Google Calendar in Settings first.");
+            }
+        } catch (e) {
+            toast.error("Failed to generate meeting link");
+        } finally {
+            setGeneratingMeet(false);
         }
     };
 
@@ -193,6 +214,15 @@ function SharedInboxContent() {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const searchInputRef = useRef<HTMLInputElement>(null);
 
+    const handleScroll = () => {
+        if (messagesContainerRef.current) {
+            const el = messagesContainerRef.current;
+            const isNearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 100;
+            setShowScrollButton(!isNearBottom);
+            if (isNearBottom) setHasNewMessages(false);
+        }
+    };
+
     const scrollToBottom = (force = false) => {
         if (messagesContainerRef.current) {
             const el = messagesContainerRef.current;
@@ -200,6 +230,10 @@ function SharedInboxContent() {
             const isNearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 150;
             if (force || isNearBottom) {
                 el.scrollTop = el.scrollHeight;
+                setHasNewMessages(false);
+            } else if (!force) {
+                // If not forced and NOT near bottom, mark as having new messages
+                setHasNewMessages(true);
             }
         }
     };
@@ -212,7 +246,10 @@ function SharedInboxContent() {
 
     // Force scroll when opening a completely new conversation
     useEffect(() => {
-        const timer = setTimeout(() => scrollToBottom(true), 100);
+        const timer = setTimeout(() => {
+            scrollToBottom(true);
+            setHasNewMessages(false);
+        }, 100);
         return () => clearTimeout(timer);
     }, [selectedId]);
 
@@ -726,6 +763,15 @@ function SharedInboxContent() {
 
                                     <div className="flex items-center gap-2 text-gray-400">
                                         <button
+                                            onClick={handleGenerateMeet}
+                                            disabled={generatingMeet}
+                                            className={`p-2.5 rounded-xl transition-all ${generatingMeet ? 'bg-gray-100 text-gray-400' : 'hover:bg-slate-50 text-slate-400 hover:text-blue-600'}`}
+                                            title="Generate Google Meet Link"
+                                        >
+                                            {generatingMeet ? <Loader2 className="animate-spin" size={18} /> : <Video size={18} />}
+                                        </button>
+
+                                        <button
                                             onClick={() => setShowCRM(!showCRM)}
                                             className={`p-2.5 rounded-xl transition-all ${showCRM ? 'bg-green-600 text-white shadow-lg shadow-green-100' : 'hover:bg-gray-50 hover:text-indigo-600'}`}
                                             title="Perfil CRM"
@@ -776,13 +822,11 @@ function SharedInboxContent() {
                             </div>
 
                             {/* Messages Container */}
-                            <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-6 space-y-4 bg-slate-50/50 backdrop-blur-sm no-scrollbar relative scroll-smooth">
-                                {/* Deployment Verification Banner */}
-                                <div className="sticky top-0 z-50 flex justify-center py-1">
-                                    <div className="bg-emerald-500 text-white text-[8px] font-black uppercase tracking-[0.2em] px-3 py-1 rounded-full shadow-lg animate-bounce">
-                                        Grafty CORE V4.2 LIVE
-                                    </div>
-                                </div>
+                            <div 
+                                ref={messagesContainerRef} 
+                                onScroll={handleScroll}
+                                className="flex-1 overflow-y-auto p-6 space-y-4 bg-slate-50/50 backdrop-blur-sm no-scrollbar relative scroll-smooth"
+                            >
                                 <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-[0.02] pointer-events-none" />
                                 {messages.filter(m => !m._deleted).map((msg, i) => {
                                     const isOutbound = msg.direction === "OUTBOUND";
@@ -1082,6 +1126,26 @@ function SharedInboxContent() {
                                     );
                                 })}
                                 <div ref={messagesEndRef} />
+
+                                {/* New Message / Scroll to Bottom Button */}
+                                {(showScrollButton || hasNewMessages) && (
+                                    <div className="sticky bottom-4 left-0 right-0 flex justify-center z-50 pointer-events-none">
+                                        <button 
+                                            onClick={() => scrollToBottom(true)}
+                                            className={`pointer-events-auto flex items-center gap-2 px-6 py-3 rounded-full shadow-2xl transition-all border animate-in slide-in-from-bottom-4 duration-300 ${hasNewMessages ? 'bg-emerald-600 text-white border-emerald-500 scale-105 ring-4 ring-emerald-500/20' : 'bg-white text-slate-600 border-slate-100 hover:bg-slate-50'}`}
+                                        >
+                                            {hasNewMessages ? (
+                                                <>
+                                                    <Sparkles size={16} className="animate-pulse" />
+                                                    <span className="text-xs font-black uppercase tracking-widest">New message below</span>
+                                                    <ChevronRight className="rotate-90" size={16} />
+                                                </>
+                                            ) : (
+                                                <ChevronRight className="rotate-90" size={18} />
+                                            )}
+                                        </button>
+                                    </div>
+                                )}
                             </div>
 
                             {/* Advanced Composer Box */}

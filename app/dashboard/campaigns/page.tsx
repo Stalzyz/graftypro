@@ -19,8 +19,13 @@ import {
     Variable,
     Info,
     AlertTriangle,
-    ChevronDown
+    ChevronDown,
+    Save,
+    RotateCcw,
+    MousePointer2
 } from "lucide-react";
+import { SmartUploader } from "@/components/ui/SmartUploader";
+import { toast } from "react-hot-toast";
 
 export default function CampaignsPage() {
     const [campaigns, setCampaigns] = useState<any[]>([]);
@@ -41,8 +46,34 @@ export default function CampaignsPage() {
     const [headerMediaUrl, setHeaderMediaUrl] = useState("");
     const [variableMapping, setVariableMapping] = useState<Record<string, string>>({});
     const [sending, setSending] = useState(false);
+    
+    // Retargeting State
+    const [retargetModal, setRetargetModal] = useState<any>(null); 
+    const [retargetType, setRetargetType] = useState<"READ" | "UNREAD" | "FAILED" | "REPLIED" | "NONE">("NONE");
+    const [showRetargetOptions, setShowRetargetOptions] = useState(false);
+    const [intelData, setIntelData] = useState<any>(null);
+    const [loadingIntel, setLoadingIntel] = useState(false);
 
     useEffect(() => { fetchData(); }, []);
+
+    useEffect(() => {
+        if (showRetargetOptions && retargetModal) {
+            fetchIntelligence(retargetModal.id);
+        }
+    }, [showRetargetOptions, retargetModal]);
+
+    const fetchIntelligence = async (cid: string) => {
+        setLoadingIntel(true);
+        try {
+            const res = await fetch(`/api/campaigns/${cid}/intelligence`);
+            const data = await res.json();
+            if (data.success) setIntelData(data.data);
+        } catch (e) {
+            console.error("Failed to fetch intelligence:", e);
+        } finally {
+            setLoadingIntel(false);
+        }
+    };
 
     // When a template is selected, auto-detect its variables and header type
     const handleTemplateSelect = useCallback((tName: string) => {
@@ -91,7 +122,9 @@ export default function CampaignsPage() {
                     segmentId: segmentId || null,
                     scheduledAt: scheduledAt || null,
                     variableMapping: targetType === 'TEMPLATE' ? variableMapping : {},
-                    headerMediaUrl: targetType === 'TEMPLATE' ? (headerMediaUrl || null) : null
+                    headerMediaUrl: targetType === 'TEMPLATE' ? (headerMediaUrl || null) : null,
+                    // Pass retargeting context if active
+                    retargeting: retargetType !== 'NONE' ? { campaign_id: retargetModal.id, type: retargetType } : null
                 })
             });
 
@@ -109,16 +142,37 @@ export default function CampaignsPage() {
         }
     };
 
+    const handleStatusChange = async (cid: string, newStatus: string) => {
+        try {
+            const res = await fetch(`/api/campaigns/${cid}/status`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ status: newStatus })
+            });
+            if (res.ok) {
+                toast.success(`Campaign ${newStatus.toLowerCase()} successfully`);
+                fetchData();
+            } else {
+                toast.error("Failed to update status");
+            }
+        } catch (e) {
+            toast.error("Error updating status");
+        }
+    };
+
     const resetForm = () => {
         setName(""); setTargetType("TEMPLATE"); setTemplateName("");
         setSelectedTemplate(null); setFlowId(""); setSegmentId("");
         setScheduledAt(""); setHeaderMediaUrl(""); setVariableMapping({});
+        setRetargetType("NONE"); setRetargetModal(null); setShowRetargetOptions(false);
     };
 
     const getStatusBadge = (status: string) => {
         switch (status) {
             case 'COMPLETED': return 'badge-success';
             case 'PROCESSING': return 'badge-warning animate-pulse';
+            case 'PAUSED': return 'bg-amber-100 text-amber-600 border border-amber-200 px-2 py-0.5 rounded-full text-[10px] font-bold';
+            case 'CANCELLED': return 'bg-rose-100 text-rose-600 border border-rose-200 px-2 py-0.5 rounded-full text-[10px] font-bold';
             case 'SCHEDULED': return 'badge-info';
             default: return 'badge-neutral';
         }
@@ -164,9 +218,9 @@ export default function CampaignsPage() {
             {/* Stats Overview */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
                 <MiniStat label="Total Campaigns" value={campaigns.length} icon={<Send size={18} />} color="text-[#042f94]" bg="bg-[#27954D]/10" />
-                <MiniStat label="Sent Total" value={campaigns.reduce((acc, c) => acc + (c.stats?.sent || 0), 0).toLocaleString()} icon={<TrendingUp size={18} />} color="text-blue-600" bg="bg-blue-50" />
+                <MiniStat label="Sent Successfully" value={campaigns.reduce((acc, c) => acc + (c.stats?.sent || 0), 0).toLocaleString()} icon={<TrendingUp size={18} />} color="text-green-600" bg="bg-green-50" />
+                <MiniStat label="Failed Total" value={campaigns.reduce((acc, c) => acc + (c.stats?.failed || 0), 0).toLocaleString()} icon={<AlertTriangle size={18} />} color="text-rose-600" bg="bg-rose-50" />
                 <MiniStat label="Active" value={campaigns.filter(c => c.status === 'PROCESSING').length} icon={<Zap size={18} />} color="text-amber-600" bg="bg-amber-50" />
-                <MiniStat label="Success Rate" value="98.2%" icon={<CheckCircle size={18} />} color="text-green-600" bg="bg-green-50" />
             </div>
 
             {/* Campaign List */}
@@ -222,10 +276,17 @@ export default function CampaignsPage() {
                                         <div className="max-w-[140px]">
                                             <div className="flex justify-between text-[10px] font-medium text-gray-500 mb-1">
                                                 <span>{c.stats?.sent || 0} / {c.stats?.total || 0}</span>
-                                                <span className="text-[#27954D] font-bold">{Math.round(((c.stats?.sent || 0) / (c.stats?.total || 1)) * 100)}%</span>
+                                                {c.stats?.failed > 0 && <span className="text-rose-500 font-bold">{c.stats.failed} Failed</span>}
                                             </div>
-                                            <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                                                <div className="h-full bg-[#27954D] transition-all duration-500 rounded-full" style={{ width: `${Math.round(((c.stats?.sent || 0) / (c.stats?.total || 1)) * 100)}%` }}></div>
+                                            <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden flex">
+                                                <div 
+                                                    className="h-full bg-[#27954D] transition-all duration-500" 
+                                                    style={{ width: `${Math.round(((c.stats?.sent || 0) / (c.stats?.total || 1)) * 100)}%` }}
+                                                ></div>
+                                                <div 
+                                                    className="h-full bg-rose-500 transition-all duration-500" 
+                                                    style={{ width: `${Math.round(((c.stats?.failed || 0) / (c.stats?.total || 1)) * 100)}%` }}
+                                                ></div>
                                             </div>
                                         </div>
                                     </td>
@@ -233,9 +294,49 @@ export default function CampaignsPage() {
                                         <span className={`badge ${getStatusBadge(c.status)}`}>{c.status}</span>
                                     </td>
                                     <td className="px-6 py-4 text-right">
-                                        <button className="p-2 text-gray-400 hover:text-[#27954D] hover:bg-white rounded-lg transition-all opacity-0 group-hover:opacity-100">
-                                            <BarChart3 size={18} />
-                                        </button>
+                                        <div className="flex justify-end gap-2">
+                                            {c.status === 'PROCESSING' && (
+                                                <button 
+                                                    onClick={() => handleStatusChange(c.id, 'PAUSED')}
+                                                    className="p-1.5 text-amber-500 hover:bg-amber-50 rounded-lg transition-colors"
+                                                    title="Pause Campaign"
+                                                >
+                                                    <Clock size={16} />
+                                                </button>
+                                            )}
+                                            {c.status === 'PAUSED' && (
+                                                <button 
+                                                    onClick={() => handleStatusChange(c.id, 'PROCESSING')}
+                                                    className="p-1.5 text-green-500 hover:bg-green-50 rounded-lg transition-colors"
+                                                    title="Resume Campaign"
+                                                >
+                                                    <Plus size={16} />
+                                                </button>
+                                            )}
+                                            {(c.status === 'PROCESSING' || c.status === 'PAUSED') && (
+                                                <button 
+                                                    onClick={() => handleStatusChange(c.id, 'CANCELLED')}
+                                                    className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
+                                                    title="Stop Campaign"
+                                                >
+                                                    <X size={16} />
+                                                </button>
+                                            )}
+                                            {(c.status === 'COMPLETED' || c.status === 'PROCESSING') && (
+                                                <button 
+                                                    onClick={() => {
+                                                        setRetargetModal(c);
+                                                        setShowRetargetOptions(true);
+                                                    }}
+                                                    className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-lg title='Retarget Audience'"
+                                                >
+                                                    <RotateCcw size={16} />
+                                                </button>
+                                            )}
+                                            <button className="p-1.5 text-gray-400 hover:text-[#27954D] hover:bg-white rounded-lg">
+                                                <BarChart3 size={18} />
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             ))}
@@ -257,6 +358,25 @@ export default function CampaignsPage() {
                         </div>
 
                         <form onSubmit={handleCreate} className="p-8 space-y-6 overflow-y-auto">
+                            {/* Retargeting Context Card */}
+                            {retargetType !== 'NONE' && retargetModal && (
+                                <div className="bg-[#27954D]/5 border border-[#27954D]/10 rounded-2xl p-4 flex items-center justify-between mb-4 border-l-4 border-l-[#27954D]">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-[#27954D] shadow-sm">
+                                            <RotateCcw size={20} />
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] font-bold text-[#27954D] uppercase">Retargeting Active</p>
+                                            <p className="text-xs text-gray-600 font-medium">Source: <span className="font-bold">{retargetModal.name}</span></p>
+                                        </div>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-[10px] font-bold text-gray-400 uppercase">Goal</p>
+                                        <p className="text-xs font-bold text-gray-800">{retargetType}</p>
+                                    </div>
+                                </div>
+                            )}
+
                             {/* Row 1: Name + Audience */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div>
@@ -265,10 +385,16 @@ export default function CampaignsPage() {
                                 </div>
                                 <div>
                                     <label className="block text-xs font-semibold text-gray-600 mb-1.5">Target Audience</label>
-                                    <select value={segmentId} onChange={e => setSegmentId(e.target.value)} className="input appearance-none">
-                                        <option value="">All Contacts</option>
-                                        {segments.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                                    </select>
+                                    {retargetType !== 'NONE' ? (
+                                        <div className="input bg-[#27954D]/5 border-[#27954D]/20 text-[#27954D] flex items-center gap-2 font-bold cursor-not-allowed">
+                                            <RotateCcw size={14} /> {retargetType} Segment
+                                        </div>
+                                    ) : (
+                                        <select value={segmentId} onChange={e => setSegmentId(e.target.value)} className="input appearance-none">
+                                            <option value="">All Contacts</option>
+                                            {segments.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                        </select>
+                                    )}
                                 </div>
                             </div>
 
@@ -302,20 +428,32 @@ export default function CampaignsPage() {
 
                                         {/* Header Media Override */}
                                         {selectedTemplate && hasHeader && ['IMAGE', 'VIDEO', 'DOCUMENT'].includes(headerFormat) && (
-                                            <div>
-                                                <label className="block text-xs font-semibold text-gray-600 mb-1.5 flex items-center gap-1">
+                                            <div className="space-y-2">
+                                                <label className="block text-xs font-semibold text-gray-600 mb-1 flex items-center gap-1">
                                                     <ImageIcon size={12} className="text-blue-500" />
-                                                    Custom Header {headerFormat} URL
-                                                    <span className="text-gray-400 font-normal">(optional override)</span>
+                                                    Header {headerFormat} (Direct Upload)
                                                 </label>
-                                                <input
-                                                    type="url"
-                                                    value={headerMediaUrl}
-                                                    onChange={e => setHeaderMediaUrl(e.target.value)}
-                                                    placeholder={`https://yoursite.com/promo.${headerFormat === 'IMAGE' ? 'jpg' : headerFormat === 'VIDEO' ? 'mp4' : 'pdf'}`}
-                                                    className="input bg-white text-sm"
+                                                <SmartUploader
+                                                    onUploadSuccess={(url) => setHeaderMediaUrl(url)}
+                                                    defaultValue={headerMediaUrl}
+                                                    fileType={headerFormat.toLowerCase() as any}
+                                                    module="campaigns"
+                                                    label=""
+                                                    accept={
+                                                        headerFormat === 'IMAGE' ? "image/*" :
+                                                        headerFormat === 'VIDEO' ? "video/*" :
+                                                        "application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                                                    }
+                                                    description={`Upload the ${headerFormat.toLowerCase()} for this broadcast.`}
                                                 />
-                                                <p className="text-[10px] text-gray-400 mt-1">Must be a publicly accessible HTTPS URL.</p>
+                                                {headerMediaUrl && (
+                                                    <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-xl border border-gray-100 mt-2">
+                                                        <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                                                        <p className="text-[10px] text-gray-500 font-medium truncate flex-1">
+                                                            {headerMediaUrl}
+                                                        </p>
+                                                    </div>
+                                                )}
                                             </div>
                                         )}
 
@@ -410,9 +548,150 @@ export default function CampaignsPage() {
                     </div>
                 </div>
             )}
+
+            {/* Retargeting Selection Modal (Intelligence Hub) */}
+            {showRetargetOptions && retargetModal && (
+                <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4 text-left">
+                    <div className="bg-white rounded-[2.5rem] w-full max-w-xl overflow-hidden shadow-2xl animate-in zoom-in duration-200 border border-gray-100">
+                        <div className="p-8 border-b border-gray-50 flex justify-between items-center bg-[#27954D]/5">
+                            <div>
+                                <h3 className="text-2xl font-bold text-gray-800">Precision Retargeting</h3>
+                                <p className="text-sm text-gray-500">Intelligent follow-ups for "{retargetModal.name}"</p>
+                            </div>
+                            <button onClick={() => setShowRetargetOptions(false)} className="p-2 hover:bg-white rounded-2xl transition-all shadow-sm">
+                                <X size={24} className="text-gray-400" />
+                            </button>
+                        </div>
+
+                        <div className="p-8 space-y-4">
+                            {loadingIntel ? (
+                                <div className="py-20 flex flex-col items-center justify-center space-y-4">
+                                    <div className="w-12 h-12 border-4 border-[#27954D]/20 border-t-[#27954D] rounded-full animate-spin" />
+                                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest animate-pulse">Calculating Audience Impact...</p>
+                                </div>
+                            ) : (
+                                <>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <RetargetOption 
+                                            icon={<Clock size={20} />}
+                                            title="Nudge Readers"
+                                            count={intelData?.counts?.UNREAD || 0}
+                                            color="amber"
+                                            description="Received but not opened"
+                                            onClick={() => {
+                                                setRetargetType("UNREAD");
+                                                setName(`Follow-up: ${retargetModal.name}`);
+                                                setRetargetModal(retargetModal);
+                                                setShowRetargetOptions(false);
+                                                setShowModal(true);
+                                            }}
+                                        />
+                                        <RetargetOption 
+                                            icon={<MousePointer2 size={20} />}
+                                            title="Engage Readers"
+                                            count={intelData?.counts?.READ || 0}
+                                            color="blue"
+                                            description="Read but no response"
+                                            onClick={() => {
+                                                setRetargetType("READ");
+                                                setName(`Next Step: ${retargetModal.name}`);
+                                                setRetargetModal(retargetModal);
+                                                setShowRetargetOptions(false);
+                                                setShowModal(true);
+                                            }}
+                                        />
+                                        <RetargetOption 
+                                            icon={<AlertTriangle size={20} />}
+                                            title="Retry Failed"
+                                            count={intelData?.counts?.FAILED || 0}
+                                            color="rose"
+                                            description="Transmission rejected"
+                                            onClick={() => {
+                                                setRetargetType("FAILED");
+                                                setName(`Retry: ${retargetModal.name}`);
+                                                setRetargetModal(retargetModal);
+                                                setShowRetargetOptions(false);
+                                                setShowModal(true);
+                                            }}
+                                        />
+                                        <RetargetOption 
+                                            icon={<Zap size={20} />}
+                                            title="High intent"
+                                            count={intelData?.counts?.REPLIED || 0}
+                                            color="green"
+                                            description="Already interacted"
+                                            onClick={() => {
+                                                setRetargetType("REPLIED");
+                                                setName(`Conversion: ${retargetModal.name}`);
+                                                setRetargetModal(retargetModal);
+                                                setShowRetargetOptions(false);
+                                                setShowModal(true);
+                                            }}
+                                        />
+                                    </div>
+
+                                    <div className="bg-gray-50 rounded-2xl p-4 flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 bg-[#042f94]/10 rounded-xl flex items-center justify-center text-[#042f94]">
+                                                <TrendingUp size={20} />
+                                            </div>
+                                            <div>
+                                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Total Reachable Reach</p>
+                                                <p className="text-lg font-bold text-gray-800">{intelData?.potentialImpact || 0} Contacts</p>
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="text-[10px] font-bold text-[#27954D] bg-[#27954D]/10 px-2 py-1 rounded-lg">LIVE DATA</p>
+                                        </div>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+
+                        <div className="p-4 bg-gray-50/50 text-[10px] text-gray-400 text-center uppercase tracking-widest font-bold border-t border-gray-100">
+                            Powered by Precision Retargeting Engine
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
+
+// --- Sub-components for Premium UI ---
+
+function RetargetOption({ icon, title, count, color, description, onClick }: any) {
+    const colorClasses: any = {
+        amber: "border-amber-50 bg-amber-50/30 hover:bg-amber-50 hover:border-amber-100 text-amber-600 bg-amber-100",
+        blue: "border-blue-50 bg-blue-50/30 hover:bg-blue-50 hover:border-blue-100 text-blue-600 bg-blue-100",
+        rose: "border-rose-50 bg-rose-50/30 hover:bg-rose-50 hover:border-rose-100 text-rose-600 bg-rose-100",
+        green: "border-green-50 bg-green-50/30 hover:bg-green-50 hover:border-green-100 text-green-600 bg-green-100",
+    };
+
+    const [border, bg, hover, iconText, iconBg] = colorClasses[color].split(" ");
+
+    return (
+        <button 
+            onClick={onClick}
+            className={`w-full flex flex-col gap-3 p-5 rounded-3xl border-2 ${border} ${bg} ${hover} transition-all text-left group`}
+        >
+            <div className="flex items-center justify-between w-full">
+                <div className={`p-2.5 ${iconBg} ${iconText} rounded-xl group-hover:scale-110 transition-transform`}>
+                    {icon}
+                </div>
+                <div className="text-right">
+                    <span className="text-2xl font-black text-gray-800">{count}</span>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase leading-none">Users</p>
+                </div>
+            </div>
+            <div>
+                <h4 className="font-bold text-gray-800 text-sm leading-tight">{title}</h4>
+                <p className="text-[10px] text-gray-500 italic mt-0.5 line-clamp-1">{description}</p>
+            </div>
+        </button>
+    );
+}
+
 
 function MiniStat({ label, value, icon, color, bg }: any) {
     return (

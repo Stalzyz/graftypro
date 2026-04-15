@@ -1,6 +1,5 @@
-import { NextResponse } from "next/server";
 import { prisma } from "../../../../../lib/db";
-import { signToken } from "../../../../../lib/auth";
+import { signToken, getCurrentUser } from "../../../../../lib/auth";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Google OAuth Callback Handler
@@ -46,19 +45,21 @@ export async function GET(request: Request) {
     let PUBLIC_URL = MAIN_DOMAIN;
 
     // Attempt to restore whitelabel host from OAuth state
-    if (stateVal) {
         try {
             const decoded = JSON.parse(
                 Buffer.from(decodeURIComponent(stateVal), "base64").toString("utf8")
             );
             if (decoded.returnTo && decoded.returnTo.startsWith("http")) {
                 PUBLIC_URL = decoded.returnTo;
-                console.log("[Google OAuth] Restored domain from state:", PUBLIC_URL);
             }
+            // Check for integration flag
+            if (decoded.isIntegration) {
+                (request as any).isIntegrationFlow = true;
+            }
+            console.log("[Google OAuth] Restored context from state:", { PUBLIC_URL, isIntegration: (request as any).isIntegrationFlow });
         } catch (e) {
             console.error("[Google OAuth] Failed to parse state parameter — using main domain");
         }
-    }
 
     if (oauthError) {
         console.error("[Google OAuth] Error from Google:", oauthError);
@@ -103,6 +104,45 @@ export async function GET(request: Request) {
                     PUBLIC_URL
                 )
             );
+        }
+
+        // ── 1.5 Handle Integration Handshake ────────────────────────────────
+        if ((request as any).isIntegrationFlow) {
+            console.log("[Google OAuth] Processing INTEGRATION flow...");
+            const currentUser = await getCurrentUser(request);
+            if (!currentUser) {
+                console.error("[Google OAuth] Integration failed: No active session found");
+                return NextResponse.redirect(new URL("/login?error=session_required_for_integration", PUBLIC_URL));
+            }
+
+            // Upsert integration record (raw SQL to bypass schema sync issues)
+            const creds = JSON.stringify({
+                access_token: tokens.access_token,
+                refresh_token: tokens.refresh_token,
+                expiry_date: Date.now() + (tokens.expires_in * 1000),
+                token_type: tokens.token_type,
+                scope: tokens.scope
+            });
+
+            await prisma.$executeRaw`
+                INSERT INTO integrations (id, workspace_id, type, credentials, is_active, created_at, updated_at)
+                VALUES (
+                    ${crypto.randomUUID()}, 
+                    ${currentUser.workspaceId}, 
+                    'GOOGLE_CALENDAR', 
+                    ${creds}::jsonb, 
+                    true, 
+                    NOW(), 
+                    NOW()
+                )
+                ON CONFLICT (workspace_id, type) DO UPDATE SET 
+                    credentials = ${creds}::jsonb,
+                    is_active = true,
+                    updated_at = NOW();
+            `;
+
+            console.log("[Google OAuth] ✅ Integration Linked for workspace:", currentUser.workspaceId);
+            return NextResponse.redirect(new URL("/dashboard/settings/integrations?status=integration_success", PUBLIC_URL));
         }
 
         // ── 2. Fetch Google user profile ────────────────────────────────────

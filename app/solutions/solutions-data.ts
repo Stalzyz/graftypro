@@ -11,12 +11,20 @@ import {
   Zap,
   ShieldCheck,
   TrendingUp,
-  DollarSign
+  DollarSign,
+  Dumbbell,
+  Scissors,
+  BarChart3,
+  Utensils,
+  Smartphone,
+  Mail,
+  FileText,
+  CreditCard
 } from 'lucide-react';
 
 export const SOLUTIONS_DATA: Record<string, any> = {
   "ecommerce": {
-    title: "WhatsApp for E-commerce & Retail",
+    title: "E-commerce & Retail",
     slug: "ecommerce",
     icon: ShoppingBag,
     description: "Scale your storefront with automated recovery and high-conversion marketing flows directly inside WhatsApp.",
@@ -46,8 +54,70 @@ export const SOLUTIONS_DATA: Record<string, any> = {
       quote: "Grafty replaced our email marketing for abandoned carts and the results were immediate. Our customers prefer chatting over reading emails."
     }
   },
+  "gym-fitness": {
+    title: "Gyms & Fitness Centers",
+    slug: "gym-fitness",
+    icon: Dumbbell,
+    description: "Drive member retention and automate renewal follow-ups with high-engagement WhatsApp sequences.",
+    heroTitle: "Build a <br/><span className='text-gradient'>Loyal Fitness Community.</span>",
+    problem: "Gyms lose 60% of their members due to inconsistent engagement. Manual follow-ups for renewals and nutrition upsells are impossible at scale.",
+    solution: "Grafty automates the member lifecycle: from lead qualification and trial reminders to automated renewal payments and supplement store upsells.",
+    features: [
+      {
+        title: "Renewal Automations",
+        desc: "Intelligent reminders sent before membership expiry with integrated 1-click payment links.",
+        icon: CreditCard
+      },
+      {
+        title: "Attendance-Based Drips",
+        desc: "Reach out automatically to members who haven't visited in 5 days to keep them motivated.",
+        icon: Mail
+      },
+      {
+        title: "Nutrition Store",
+        desc: "Launch an in-chat supplement store. Members can buy protein or gear by typing 'STORE'.",
+        icon: ShoppingBag
+      }
+    ],
+    caseStudy: {
+      client: "IronBody Gym Chain",
+      result: "40% Higher Renewal Rate",
+      quote: "Grafty's automated reminders for renewals saved us hundreds of man-hours each month while increasing our revenue significantly."
+    }
+  },
+  "saloon-spa": {
+    title: "Saloons & Wellness Spas",
+    slug: "saloon-spa",
+    icon: Scissors,
+    description: "24/7 self-service booking, stylist commission tracking, and automated loyalty rewards via WhatsApp.",
+    heroTitle: "Automated Booking <br/><span className='text-gradient'>While You Are Closed.</span>",
+    problem: "Receptionists are over-burdened with calls. Peak-hour appointments are missed, and no-shows cost saloons thousands in lost stylist time.",
+    solution: "Grafty provides a complete self-service booking flow. Customers pick services, select their favorite stylist, and pay an advance to confirm—all in WhatsApp.",
+    features: [
+      {
+        title: "Stylist Management",
+        desc: "Dynamic flows that check live stylist availability and allow customers to book their preferred pro.",
+        icon: Users
+      },
+      {
+        title: "No-Show Protection",
+        desc: "Collect advance payments to secure bookings. Send 1-hour automated confirmation reminders.",
+        icon: ShieldCheck
+      },
+      {
+        title: "Membership Program",
+        desc: "Tag loyal customers. Automatically apply discounts and VIP perks based on their visit history.",
+        icon: TrendingUp
+      }
+    ],
+    caseStudy: {
+      client: "GlowUp Wellness",
+      result: "95% Reduction in No-Shows",
+      quote: "Clients love the convenience of booking at midnight via WhatsApp. It has completely offloaded our front desk staff."
+    }
+  },
   "real-estate": {
-    title: "WhatsApp for Real Estate & Prop-Tech",
+    title: "Real Estate & Prop-Tech",
     slug: "real-estate",
     icon: Home,
     description: "Qualify leads instantly, schedule site visits, and share brochures via automated WhatsApp bots.",
@@ -77,70 +147,8 @@ export const SOLUTIONS_DATA: Record<string, any> = {
       quote: "The bot kvalifies users while my team sleeps. By the time my agents start work, they have a list of confirmed appointments."
     }
   },
-  "saas-automation": {
-    title: "WhatsApp for SaaS & IT Automation",
-    slug: "saas-automation",
-    icon: Cpu,
-    description: "Integrate your technical stack with WhatsApp for alerts, onboarding, and developer support.",
-    heroTitle: "Programmable <br/><span className='text-gradient'>Communication Infrastructure.</span>",
-    problem: "Platform alerts hidden in dashboards are ignored. Critical system notifications and onboarding steps need urgent attention.",
-    solution: "Use the Grafty API to bridge your backend to WhatsApp. Send server alerts, auth tokens, and interactive onboarding flows.",
-    features: [
-      {
-        title: "REST API Integration",
-        desc: "Connect your existing backend via our robust API. Trigger messages based on any system event.",
-        icon: Zap
-      },
-      {
-        title: "2FA & Security",
-        desc: "Deliver high-speed authentication codes at a fraction of the cost of international SMS providers.",
-        icon: ShieldCheck
-      },
-      {
-        title: "Onboarding Flows",
-        desc: "Guide new users through your platform features with interactive WhatsApp-based training.",
-        icon: Users
-      }
-    ],
-    caseStudy: {
-      client: "Fintech Platform",
-      result: "99% Delivery Rate",
-      quote: "Global SMS was inconsistent for our OTPs. Switching to Grafty's WhatsApp Auth saved us 40% in costs and improved delivery speeds."
-    }
-  },
-  "healthcare": {
-    title: "WhatsApp for Healthcare & Appointments",
-    slug: "healthcare",
-    icon: Stethoscope,
-    description: "Manage patient communications, appointment reminders, and digital reports with high-trust automation.",
-    heroTitle: "Care beyond the clinic. <br/><span className='text-gradient'>Sync with patients on WhatsApp.</span>",
-    problem: "Missed appointments cost clinics thousands. Manual calling for reminders is repetitive. Patients struggle to access digital reports and prescriptions.",
-    solution: "Automate appointment reminders with 'Confirm' buttons. Deliver HIPAA-compliant notification links and handle prescription refills via AI bots.",
-    features: [
-      {
-        title: "Appointment Reminders",
-        desc: "2nd day and 2hr reminders with automated rescheduling logic. Reduce no-show rates by 60%.",
-        icon: Calendar
-      },
-      {
-        title: "Digital Report Delivery",
-        desc: "Send secure links to laboratory reports and prescriptions directly to the patient's WhatsApp.",
-        icon: ShieldCheck
-      },
-      {
-        title: "Telehealth Triage",
-        desc: "Automated symptom checkers that guide patients to the right specialist or emergency care.",
-        icon: MessageSquare
-      }
-    ],
-    caseStudy: {
-      client: "City Health Hospital",
-      result: "70% Reduction in No-Shows",
-      quote: "Grafty transformed our patient experience. The automated reminders alone paid for the platform in the first month."
-    }
-  },
   "education": {
-    title: "WhatsApp for Education & EdTech",
+    title: "Education & EdTech",
     slug: "education",
     icon: GraduationCap,
     description: "Scale student admissions, fee reminders, and course updates with conversational automation.",
@@ -170,35 +178,97 @@ export const SOLUTIONS_DATA: Record<string, any> = {
       quote: "Our admission team can now focus on counseling high-intent students while the Grafty bot handles the basic inquiries."
     }
   },
+  "agencies": {
+    title: "Digital Marketing Agencies",
+    slug: "agencies",
+    icon: BarChart3,
+    description: "Scale your clients' ROI with white-labeled lead nurturing and automated CRM synchronization.",
+    heroTitle: "The ROI Engine <br/><span className='text-gradient'>For Modern Agencies.</span>",
+    problem: "Agencies generate leads, but clients fail to follow up. Proving value is hard when leads aren't being converted into meetings or sales.",
+    solution: "Grafty gives agencies a white-label engine to nurture leads for their clients. Automate the qualification and booking, then hand over a hot lead.",
+    features: [
+      {
+        title: "White Label Dashboard",
+        desc: "Resell Grafty under your own agency branding. Set your own margins and build proprietary tech value.",
+        icon: Building2
+      },
+      {
+        title: "CRM Bridge Sync",
+        desc: "Native integration with Salesforce, HubSpot, and Google Sheets for multi-client lead management.",
+        icon: Zap
+      },
+      {
+        title: "Custom CTWA Flows",
+        desc: "Build high-converting Click-to-WhatsApp landing pages that maximize your clients' ad spend.",
+        icon: Smartphone
+      }
+    ],
+    caseStudy: {
+      client: "GrowthPulse Agency",
+      result: "3x Higher Client Retention",
+      quote: "Grafty allowed us to go from being 'just another agency' to a technology partner that actually delivers closed deals."
+    }
+  },
+  "restaurants": {
+    title: "Restaurants & QSRs",
+    slug: "restaurants",
+    icon: Utensils,
+    description: "Official Scan-to-Order menu, automated table booking, and direct marketing without the 30% commission.",
+    heroTitle: "Your Own <br/><span className='text-gradient'>Direct Ordering System.</span>",
+    problem: "Delivery apps take huge commissions. Staffing shortages lead to slow table service. Customer data is lost to third-party platforms.",
+    solution: "Grafty's QR-to-WhatsApp system lets customers browse the menu, order, and pay at their table. You own the data and keep 100% of the revenue.",
+    features: [
+      {
+        title: "Digital QR Ordering",
+        desc: "Interactive menus in WhatsApp. Faster ordering for customers and reduced labor for you.",
+        icon: ShoppingBag
+      },
+      {
+        title: "Loyalty & Rewards",
+        desc: "Automated 'Thank You' flows that track points and drive repeat visits via broadcast offers.",
+        icon: Users
+      },
+      {
+        title: "Table Reservations",
+        desc: "Handle bookings 24/7 without a phone operator. Sync availability with your physical floor plan.",
+        icon: Calendar
+      }
+    ],
+    caseStudy: {
+      client: "SpiceRoute Kitchen",
+      result: "15% Margin Increase",
+      quote: "Switching from Swiggy to our own WhatsApp ordering saved us huge commission fees and helped us build a loyal customer list."
+    }
+  },
   "ctwa-ads": {
-    title: "Meta Click-to-WhatsApp (CTWA) Ad Automation",
+    title: "CTWA Ad Automation",
     slug: "ctwa-ads",
     icon: Zap,
-    description: "Convert ad clicks into conversational leads instantly. Leverage Meta's 72-hour free messaging window to maximize ROI.",
+    description: "Convert ad clicks into conversational leads instantly. Leverage Meta's 72-hour free messaging window.",
     heroTitle: "Stop letting ad clicks wither. <br/><span className='text-gradient'>Converge on WhatsApp instantly.</span>",
-    problem: "Marketing spend is wasted on high-friction landing pages. Users drop off before filling forms. Advertisers pay Meta for every conversation, eating into margins.",
-    solution: "Grafty optimizes CTWA ads by triggering the 72-hour free messaging window. Our Flow Builder captures lead data immediately, ensuring 100% attribution and zero dead-leads.",
+    problem: "Marketing spend is wasted on high-friction landing pages. Users drop off before filling forms. Advertisers pay Meta for every conversation.",
+    solution: "Grafty optimizes CTWA ads by triggering the 72-hour free messaging window. Our Flow Builder captures lead data immediately.",
     features: [
       {
         title: "72-Hour Free Window",
-        desc: "Meta waives conversation charges for chats started via CTWA. Grafty uses this window for multi-day nurturing at zero cost.",
+        desc: "Meta waives conversation charges for chats started via CTWA. Grafty uses this window for zero-cost follow-ups.",
         icon: DollarSign
       },
       {
         title: "Precision Attribution",
-        desc: "Identify exactly which ad creative or campaign triggered the chat. Optimize your spend based on chat quality, not just clicks.",
+        desc: "Identify exactly which ad creative or campaign triggered the chat. Optimize your spend accurately.",
         icon: TrendingUp
       },
       {
         title: "Instant Verification",
-        desc: "The moment a user clicks your ad, Grafty verifies their name and phone number, populating your CRM automatically.",
+        desc: "The moment a user clicks your ad, Grafty verifies their name and phone number automatically.",
         icon: ShieldCheck
       }
     ],
     caseStudy: {
       client: "Premium Auto Dealer",
       result: "60% Lower Cost Per Lead",
-      quote: "Switching from lead forms to Grafty-powered CTWA ads changed everything. The 72-hour free window allowed us to follow up 5 times without paying Meta a cent."
+      quote: "The 72-hour free window allowed us to follow up 5 times without paying Meta a cent. Our conversion rates tripled."
     }
   }
 };

@@ -18,8 +18,12 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: "Passwords do not match" }, { status: 400 });
         }
 
-        if (password.length < 8) {
-            return NextResponse.json({ error: "Password must be at least 8 characters" }, { status: 400 });
+        // --- STEP 1: Nuclear-Grade Password Validation ---
+        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{10,}$/;
+        if (!passwordRegex.test(password)) {
+            return NextResponse.json({ 
+                error: "Password must be at least 10 characters long and include uppercase, lowercase, a number, and a special character (@$!%*?&)." 
+            }, { status: 400 });
         }
 
         const normalizedEmail = AuthSecurityService.normalizeEmail(email);
@@ -117,6 +121,26 @@ export async function POST(request: Request) {
                 }
             });
 
+            // --- STEP 1: RESELLER ATTRIBUTION (HARDENING) ---
+            if (referral) {
+                try {
+                    const { ResellerService } = await import("../../../../lib/reseller/service");
+                    // Atomic mapping within the same transaction context
+                    await ResellerService.mapVendorToReseller(workspace.id, referral, undefined);
+                    
+                    // 🎯 Notify Partner (Background)
+                    if (workspace.reseller_id) {
+                        const { EmailService } = await import("../../../../lib/email/service");
+                        EmailService.sendPartnerReferralAlert(workspace.reseller_id, businessName).catch(err => {
+                            console.error("[Partner Referral Alert] Failed:", err);
+                        });
+                    }
+                } catch (e) {
+                    console.error("[Affiliate Engine] Attribution failed during signup:", e);
+                    // We don't block signup if attribution fails, but it's logged
+                }
+            }
+
             const passwordHash = await AuthSecurityService.hashPassword(password);
 
             const user = await tx.user.create({
@@ -168,7 +192,7 @@ export async function POST(request: Request) {
             context: {
                 verification_url: verifyUrl,
                 brand_name: partner?.brand_name || "Grafty",
-                logo_url: partner?.logo_url || "/logo.png"
+                logo_url: partner?.logo_url || "/grafty_brand.svg"
             },
             hostname: finalHost
         });

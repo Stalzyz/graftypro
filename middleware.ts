@@ -88,12 +88,22 @@ export async function middleware(request: NextRequest) {
     if (!userId && !isAdminRoute && !isPartnerRoute) {
         const authHeader = request.headers.get("Authorization");
         const tokenValue = request.cookies.get("token")?.value || authHeader?.split(" ")[1];
+
+        if (path === "/api/whatsapp/manual-setup") {
+            console.log(`[MIDDLEWARE TRACE] Manual Setup Path Detected. Token Found: ${!!tokenValue}`);
+        }
+
         if (tokenValue) {
             const payload = await verifyToken(tokenValue);
             if (payload?.userId) {
                 userId = payload.userId;
                 workspaceId = payload.workspaceId || "";
                 role = payload.role || "OWNER";
+                if (path === "/api/whatsapp/manual-setup") {
+                    console.log(`[MIDDLEWARE TRACE] Token Resolved: ${userId} (${workspaceId})`);
+                }
+            } else if (path === "/api/whatsapp/manual-setup") {
+                console.error("[MIDDLEWARE TRACE] Token Verification FAILED in manual-setup path.");
             }
         }
     }
@@ -214,7 +224,8 @@ export async function middleware(request: NextRequest) {
         path.startsWith("/api/reset-admin") ||
         path.startsWith("/api/ping") ||
         path.startsWith("/api/education/forms/submit") ||
-        path.startsWith("/api/tools/lead-capture") ||
+        path.startsWith("/api/leads/capture") ||
+        path.startsWith("/api/meta/events") ||
         path.startsWith("/api/qa") ||
         path.startsWith("/api/crm/webhook") ||
         path.startsWith("/api/branding") ||

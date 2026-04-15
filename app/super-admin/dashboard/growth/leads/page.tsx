@@ -126,8 +126,9 @@ export default function LeadsDashboard() {
                         <table className="w-full text-left border-collapse">
                             <thead>
                                 <tr className="bg-slate-50/50 border-b border-slate-100">
-                                    <th className="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Phone Number</th>
-                                    <th className="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Captured From</th>
+                                    <th className="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Phone / Name</th>
+                                    <th className="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Source</th>
+                                    <th className="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Goal / Info</th>
                                     <th className="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Timestamp</th>
                                     <th className="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Actions</th>
                                 </tr>
@@ -153,18 +154,29 @@ export default function LeadsDashboard() {
                                                     <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
                                                         <Phone size={16} />
                                                     </div>
-                                                    <span className="font-bold text-slate-800">+{lead.phone}</span>
+                                                    <div>
+                                                        <span className="font-bold text-slate-800 block">+{lead.phone}</span>
+                                                        {lead.name && lead.name !== 'Tool User' && (
+                                                            <span className="text-[10px] text-slate-400 font-medium">{lead.name}</span>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </td>
                                             <td className="px-8 py-6">
+                                                <span className="text-xs font-black text-[#042f94] uppercase tracking-tight">
+                                                    {(lead.tool_type || 'UNKNOWN').replace(/_/g, ' ')}
+                                                </span>
+                                            </td>
+                                            <td className="px-8 py-6">
                                                 <div className="flex flex-col gap-1">
-                                                    <span className="text-xs font-black text-[#042f94] uppercase tracking-tight">
-                                                        {lead.tool_type.replace(/_/g, ' ')}
-                                                    </span>
+                                                    {lead.goal && (
+                                                        <span className="text-xs font-semibold text-slate-600">{lead.goal}</span>
+                                                    )}
                                                     {lead.metadata?.region && (
-                                                        <span className="text-[10px] text-slate-400 font-medium italic">
-                                                            Region: {lead.metadata.region}
-                                                        </span>
+                                                        <span className="text-[10px] text-slate-400 font-medium italic">Region: {lead.metadata.region}</span>
+                                                    )}
+                                                    {lead.metadata?.business && (
+                                                        <span className="text-[10px] text-slate-400 font-medium italic">{lead.metadata.business}</span>
                                                     )}
                                                 </div>
                                             </td>

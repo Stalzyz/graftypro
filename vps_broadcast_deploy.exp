@@ -1,0 +1,41 @@
+#!/usr/bin/expect -f
+
+# ══════════════════════════════════════════════════════════
+#  FULL CODE PATCH DEPLOY - Syncing the entire source tree for Next.js build
+# ══════════════════════════════════════════════════════════
+
+set SERVER    "root@72.61.231.187"
+set PASS      "Photoshop09@"
+set REMOTE    "/var/www/wabot"
+set timeout   1200
+
+puts "\n📤 \[1/4\] Uploading code_patch.zip to VPS..."
+spawn scp -o StrictHostKeyChecking=no code_patch.zip $SERVER:$REMOTE/code_patch.zip
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}
+
+puts "\n📦 \[2/4\] Extracting code_patch.zip on VPS..."
+spawn ssh -o StrictHostKeyChecking=no $SERVER "cd $REMOTE && unzip -o code_patch.zip && rm code_patch.zip"
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}
+
+puts "\n🔨 \[3/4\] Syncing DB and Rebuilding Production Bundle..."
+spawn ssh -o StrictHostKeyChecking=no $SERVER "cd $REMOTE && npx prisma db push && npm run build"
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}
+
+puts "\n♻️ \[4/4\] Restarting PM2 Services..."
+spawn ssh -o StrictHostKeyChecking=no $SERVER "cd $REMOTE && pm2 restart all"
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}
+
+puts "\n\n✅ ══ BROADCAST DEPLOYMENT SUCCESSFUL ══"
+puts "   Full source tree synced and rebuilt on https://grafty.pro\n"

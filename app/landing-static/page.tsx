@@ -9,12 +9,19 @@ import LandingFooter from "../../components/landing-new/LandingFooter";
 import DynamicPricingSection from "../../components/landing-new/DynamicPricingSection";
 import { SmartPartnerLink } from "../../components/landing-new/SmartPartnerLink";
 import {
-    ArrowRight, Check, Star, GitBranch, Send, Clock,
+    ArrowRight, Check, Star, GitBranch, Send,
     ShoppingBag, MessageSquare, ChevronRight, Plus, Minus,
-    Shield, Globe, Zap, Wallet, BarChart3, Receipt, Users,
-    PlayCircle, TrendingUp, CheckCircle2, Sparkles, ChevronLeft,
+    Shield, Globe, Zap, BarChart3, Users,
+    PlayCircle, TrendingUp, CheckCircle2, Sparkles,
+    Mail, Video, Bot
 } from "lucide-react";
 import "../landing/new-grafty.css";
+import {
+    NeuralKnowledgeShowcase, 
+    OmniHubSynergy, 
+    AutopilotDrive 
+} from "../../components/landing-new/cms-blocks/CMSBlocks_V3";
+import BSP_Animation from "../../components/landing-new/BSP_Animation";
 
 // ─── DATA ────────────────────────────────────────────────────────────────────
 
@@ -51,13 +58,31 @@ const PRODUCT_TABS = [
         tags: ["No Code", "20+ Node Types", "E-commerce Flows", "Payment Collection"],
     },
     {
+        id: "ai",
+        label: "AI Autopilot",
+        icon: <Bot size={16} />,
+        image: "/screens/ai.jpg",
+        title: "Train your AI salesperson in seconds",
+        desc: "Upload PDFs, Docs, or URLs to create a domain-expert AI. Automate lead qualification and FAQ handling with 100% accuracy.",
+        tags: ["Knowledge Engine", "PDF Training", "Auto-Qualify", "24/7 Autopilot"],
+    },
+    {
+        id: "email",
+        label: "Email Hub",
+        icon: <Mail size={16} />,
+        image: "/screens/email.jpg",
+        title: "Omni-channel Flow Orchestration",
+        desc: "Don't just message on WhatsApp. Build flows that send professional Email proposals as fallbacks or follow-ups automatically.",
+        tags: ["WA + Email", "Flow Fallbacks", "SMTP Connect", "Unified Inbox"],
+    },
+    {
         id: "chat",
         label: "Live Chat",
         icon: <MessageSquare size={16} />,
         image: "/screens/chat.jpg",
-        title: "Team inbox built for WhatsApp",
-        desc: "Multi-agent live chat with labels, internal notes, follow-up scheduler, drip enrollment, and automation activity.",
-        tags: ["Multi-Agent", "Internal Notes", "Follow-up", "Drip Enroll"],
+        title: "Team inbox with 1-click Video Meet",
+        desc: "Multi-agent live chat with a built-in Google Meet generator. Close deals faster with instant video consultations.",
+        tags: ["Google Meet", "Multi-Agent", "Internal Notes", "Live Meet"],
     },
     {
         id: "crm",
@@ -115,40 +140,40 @@ const STATS = [
 
 const MODULES = [
     {
+        title: "AI Knowledge Engine", icon: <Sparkles size={22} className="text-indigo-600" />,
+        desc: "Train AI on your business data. Handle complex customer queries automatically using GPT-4 and your own PDFs.",
+        bg: "bg-indigo-50", border: "border-indigo-100",
+        tags: ["Knowledge Base", "AI Autopilot", "PDF Training", "GPT-4"],
+    },
+    {
+        title: "Email Hub", icon: <Mail size={22} className="text-blue-600" />,
+        desc: "Connect your SMTP and send professional emails alongside WhatsApp flows for a true omni-channel experience.",
+        bg: "bg-blue-50", border: "border-blue-100",
+        tags: ["SMTP Integration", "Email Flows", "WA+Email Sync", "Email Inbox"],
+    },
+    {
+        title: "Google Meet Integration", icon: <Video size={22} className="text-emerald-600" />,
+        desc: "Generate 1-click individual meeting links for leads. Close high-ticket deals through instant video consultations.",
+        bg: "bg-emerald-50", border: "border-emerald-100",
+        tags: ["1-Click Meet", "Auto Links", "Google Calendar", "Video CSR"],
+    },
+    {
         title: "Flow Builder", icon: <GitBranch size={22} className="text-green-600" />,
         desc: "Build lead qualification, booking, checkout, and payment flows. No coding required.",
         bg: "bg-green-50", border: "border-green-100",
         tags: ["Lead Flows", "No Code", "20+ Nodes", "Payments"],
     },
     {
-        title: "Bulk WhatsApp Messages", icon: <Send size={22} className="text-blue-600" />,
+        title: "Bulk WhatsApp Messages", icon: <Send size={22} className="text-sky-600" />,
         desc: "Send bulk WhatsApp messages to targeted segments with high delivery rates and cost transparency.",
-        bg: "bg-blue-50", border: "border-blue-100",
+        bg: "bg-sky-50", border: "border-sky-100",
         tags: ["Bulk Sending", "Segments", "Cost Preview", "Analytics"],
-    },
-    {
-        title: "Drip Sequences", icon: <Clock size={22} className="text-violet-600" />,
-        desc: "Automate follow-up sequences over days and weeks. Build relationships at scale.",
-        bg: "bg-violet-50", border: "border-violet-100",
-        tags: ["Day-1 Welcome", "Auto Follow-up", "Scheduling"],
     },
     {
         title: "Team Inbox & CRM", icon: <MessageSquare size={22} className="text-amber-600" />,
         desc: "Multi-agent inbox with labels, tags, follow-up reminders, and customer history.",
         bg: "bg-amber-50", border: "border-amber-100",
         tags: ["Multi-Agent", "Labels", "Follow-Up"],
-    },
-    {
-        title: "E-commerce Suite", icon: <ShoppingBag size={22} className="text-rose-600" />,
-        desc: "Sell on WhatsApp with product catalogs, payment links, COD, and GST invoices.",
-        bg: "bg-rose-50", border: "border-rose-100",
-        tags: ["Product Catalog", "Payment Links", "GST Invoices"],
-    },
-    {
-        title: "Wallet & Billing", icon: <Wallet size={22} className="text-cyan-600" />,
-        desc: "Credit system with real-time cost tracking, auto deductions, and full billing history.",
-        bg: "bg-cyan-50", border: "border-cyan-100",
-        tags: ["Credit Recharge", "Cost Tracking", "Invoices"],
     },
 ];
 
@@ -254,100 +279,80 @@ export default function StaticLandingPage({ branding }: { branding?: any }) {
             </div>
 
             {/* ─── HERO ─── */}
-            <section ref={heroRef} className="pt-36 pb-0 px-6 max-w-7xl mx-auto relative overflow-hidden">
+            <section ref={heroRef} className="pt-36 pb-28 px-6 max-w-7xl mx-auto relative overflow-hidden">
                 {/* Gradient orbs */}
                 <div className="absolute -top-40 -left-40 w-[700px] h-[700px] bg-green-100 rounded-full blur-[120px] opacity-40 pointer-events-none" />
                 <div className="absolute -top-40 -right-40 w-[600px] h-[600px] bg-blue-100 rounded-full blur-[120px] opacity-40 pointer-events-none" />
 
-                <div className={`relative z-10 text-center transition-all duration-700 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}>
-                    {/* Badge */}
-                    <div className="inline-flex items-center gap-2 bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 text-green-700 text-xs font-black uppercase tracking-[0.12em] px-5 py-2.5 rounded-full mb-8 shadow-sm">
-                        <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
-                        Official WhatsApp Business API Platform
-                        <Sparkles size={12} className="text-green-500" />
-                    </div>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+                    <div className={`relative z-10 transition-all duration-700 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}>
+                        {/* Badge */}
+                        <div className="inline-flex items-center gap-2 bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 text-green-700 text-xs font-black uppercase tracking-[0.12em] px-5 py-2.5 rounded-full mb-8 shadow-sm">
+                            <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
+                            Official WhatsApp Business API Platform
+                            <Sparkles size={12} className="text-green-500" />
+                        </div>
 
-                    {/* Headline */}
-                    <h1 className="text-5xl md:text-7xl font-black text-slate-900 leading-[1.05] tracking-tight mb-6 max-w-5xl mx-auto">
-                        Official Bulk WhatsApp<br />
-                        Messages &{" "}
-                        <span className="relative inline-block">
-                            <span className="bg-gradient-to-r from-[#27954D] via-[#0EA5E9] to-[#042F94] bg-clip-text text-transparent">
-                                Automation
+                        {/* Headline */}
+                        <h1 className="text-5xl md:text-7xl font-black text-slate-900 leading-[1.05] tracking-tight mb-6">
+                            Stop Losing Customers<br />
+                            to <span className="relative inline-block">
+                                <span className="bg-gradient-to-r from-[#27954D] via-[#0EA5E9] to-[#042F94] bg-clip-text text-transparent">
+                                    Slow Replies
+                                </span>
+                                <svg className="absolute -bottom-2 left-0 w-full" viewBox="0 0 300 12" fill="none">
+                                    <path d="M2 8 Q75 2 150 8 Q225 14 298 8" stroke="#27954D" strokeWidth="3" strokeLinecap="round" fill="none" opacity="0.4" />
+                                </svg>
                             </span>
-                            <svg className="absolute -bottom-2 left-0 w-full" viewBox="0 0 300 12" fill="none">
-                                <path d="M2 8 Q75 2 150 8 Q225 14 298 8" stroke="#27954D" strokeWidth="3" strokeLinecap="round" fill="none" opacity="0.4" />
-                            </svg>
-                        </span>
-                    </h1>
+                        </h1>
 
-                    <p className="text-xl text-slate-500 leading-relaxed max-w-2xl mx-auto mb-4">
-                        {platformName} automates your WhatsApp — so every lead is captured, every customer is followed up, and every sale closes faster. <strong className="text-slate-700">Zero manual work.</strong>
-                    </p>
-                    <p className="text-sm text-slate-400 font-medium mb-10">
-                        Used by 500+ businesses across India&nbsp;·&nbsp;Powered by Meta Official API
-                    </p>
+                        <p className="text-xl text-slate-500 leading-relaxed mb-4">
+                            {platformName} automates your WhatsApp — so every lead is captured, every customer is followed up, and every sale closes faster. <strong className="text-slate-700">Zero manual work.</strong>
+                        </p>
+                        <p className="text-sm text-slate-400 font-medium mb-10">
+                            Used by 500+ businesses across India&nbsp;·&nbsp;Powered by Meta Official API
+                        </p>
 
-                    {/* CTAs */}
-                    <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
-                        <Link
-                            href="/register"
-                            className="group flex items-center gap-2 bg-[#27954D] hover:bg-[#1f7a3f] text-white font-bold px-8 py-4 rounded-xl transition-all shadow-xl shadow-green-200/60 text-base active:scale-95"
-                        >
-                            Start Free Trial
-                            <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
-                        </Link>
-                        <Link
-                            href="/how-to-use"
-                            className="flex items-center gap-2 bg-white text-slate-700 font-bold px-8 py-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition-all text-base"
-                        >
-                            <PlayCircle size={18} className="text-green-500" />
-                            Watch Demo
-                        </Link>
-                    </div>
-
-                    {/* Social proof micro-strip */}
-                    <div className="flex items-center justify-center gap-6 mb-12">
-                        <div className="flex -space-x-2">
-                            {["RM", "PS", "AN", "KV", "SR"].map((init, i) => (
-                                <div key={i} className={`w-8 h-8 rounded-full border-2 border-white flex items-center justify-center text-[10px] font-black text-white ${["bg-green-500", "bg-blue-500", "bg-violet-500", "bg-amber-500", "bg-rose-500"][i]}`}>
-                                    {init}
-                                </div>
-                            ))}
+                        {/* CTAs */}
+                        <div className="flex flex-col sm:flex-row items-center gap-4 mb-10">
+                            <Link
+                                href="/register"
+                                className="group flex items-center gap-2 bg-[#27954D] hover:bg-[#1f7a3f] text-white font-bold px-8 py-4 rounded-xl transition-all shadow-xl shadow-green-200/60 text-base active:scale-95"
+                            >
+                                Start Free Trial
+                                <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                            </Link>
+                            <Link
+                                href="/how-to-use"
+                                className="flex items-center gap-2 bg-white text-slate-700 font-bold px-8 py-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition-all text-base"
+                            >
+                                <PlayCircle size={18} className="text-green-500" />
+                                Watch Demo
+                            </Link>
                         </div>
-                        <div className="text-left">
-                            <div className="flex items-center gap-1">
-                                {[...Array(5)].map((_, i) => <Star key={i} size={13} className="fill-amber-400 text-amber-400" />)}
+
+                        {/* Social proof micro-strip */}
+                        <div className="flex items-center gap-6">
+                            <div className="flex -space-x-2">
+                                {["RM", "PS", "AN", "KV", "SR"].map((init, i) => (
+                                    <div key={i} className={`w-8 h-8 rounded-full border-2 border-white flex items-center justify-center text-[10px] font-black text-white ${["bg-green-500", "bg-blue-500", "bg-violet-500", "bg-amber-500", "bg-rose-500"][i]}`}>
+                                        {init}
+                                    </div>
+                                ))}
                             </div>
-                            <p className="text-xs text-slate-500 font-medium">500+ businesses trust {platformName}</p>
+                            <div className="text-left">
+                                <div className="flex items-center gap-1">
+                                    {[...Array(5)].map((_, i) => <Star key={i} size={13} className="fill-amber-400 text-amber-400" />)}
+                                </div>
+                                <p className="text-xs text-slate-500 font-medium">500+ businesses trust {platformName}</p>
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                {/* ─── HERO PRODUCT SCREENSHOT ─── */}
-                <div className="relative mx-auto max-w-5xl">
-                    {/* Browser chrome */}
-                    <div className="bg-slate-100 rounded-t-2xl border border-slate-200 border-b-0 px-4 py-3 flex items-center gap-2">
-                        <div className="flex gap-1.5">
-                            <div className="w-3 h-3 rounded-full bg-red-400" />
-                            <div className="w-3 h-3 rounded-full bg-amber-400" />
-                            <div className="w-3 h-3 rounded-full bg-green-400" />
-                        </div>
-                        <div className="flex-1 bg-white rounded-md text-xs text-slate-400 font-medium px-3 py-1.5 text-center mx-8 border border-slate-200">
-                            {domain}/dashboard
-                        </div>
-                    </div>
-                    <div className="relative rounded-b-2xl overflow-hidden border border-slate-200 border-t-0 shadow-2xl shadow-slate-900/20">
-                        <Image
-                            src="/screens/dashboard.jpg"
-                            alt="{platformName} Dashboard — Real-time WhatsApp analytics and automation"
-                            width={1200}
-                            height={720}
-                            className="w-full object-cover object-top"
-                            priority
-                        />
-                        {/* Bottom fade */}
-                        <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-white to-transparent" />
+                    <div className="relative flex justify-center lg:justify-end">
+                        <BSP_Animation />
+                        {/* Glow effect */}
+                        <div className="absolute -bottom-10 -right-10 w-64 h-64 bg-green-400/10 rounded-full blur-3xl pointer-events-none" />
                     </div>
                 </div>
             </section>
@@ -442,6 +447,21 @@ export default function StaticLandingPage({ branding }: { branding?: any }) {
                     </div>
                 </div>
             </section>
+
+            {/* ─── V3 FLAGSHIP: AI KNOWLEDGE ─── */}
+            <NeuralKnowledgeShowcase 
+                platformName={platformName}
+            />
+
+            {/* ─── V3 FLAGSHIP: OMNI HUB ─── */}
+            <OmniHubSynergy 
+                platformName={platformName}
+            />
+
+            {/* ─── V3 FLAGSHIP: AUTOPILOT ─── */}
+            <AutopilotDrive 
+                platformName={platformName}
+            />
 
             {/* ─── PROBLEM / SOLUTION ─── */}
             <section className="py-28 px-6 max-w-7xl mx-auto">
@@ -541,10 +561,10 @@ export default function StaticLandingPage({ branding }: { branding?: any }) {
                     </div>
                     <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
                         {[
-                            { title: "Create Account", desc: "Sign up free. Takes under 2 minutes. No credit card required." },
-                            { title: "Connect WhatsApp", desc: "Add your WhatsApp API credentials with guided step-by-step setup." },
-                            { title: "Build Your Flow", desc: "Use prebuilt templates or drag-and-drop your own automation." },
-                            { title: "Start Growing", desc: "Launch campaigns and automate conversations. Watch leads convert." },
+                            { title: "Connect Platforms", desc: "Add your WhatsApp API, SMTP Email, and Google Calendar for a complete setup." },
+                            { title: "Train Your AI", desc: "Upload your business PDFs and docs to the AI Knowledge Engine in seconds." },
+                            { title: "Design Automation", desc: "Build omni-channel flows that handle chats, emails, and meetings automatically." },
+                            { title: "Start Growing", desc: "Launch campaigns and let the AI autopilot handle enquiries while you close deals." },
                         ].map((step, i) => (
                             <div key={i} className="text-center group">
                                 <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-green-500/20 to-blue-500/10 border border-green-500/30 text-green-400 font-black text-xl flex items-center justify-center mx-auto mb-6 group-hover:border-green-400 transition-colors">

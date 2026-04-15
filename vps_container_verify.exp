@@ -1,0 +1,11 @@
+#!/usr/bin/expect -f
+set SERVER    "root@72.61.231.187"
+set PASS      "Photoshop09@"
+set REMOTE    "/root/grafty_bsp"
+set timeout   60
+puts "\n🔍 \[1/1\] Checking if the UI fix is actually INSIDE the running container..."
+spawn ssh -o StrictHostKeyChecking=no $SERVER "docker exec grafty_bsp-web-1 grep 'tracking-tight' app/dashboard/templates/\\\[id\\\]/page.tsx"
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}

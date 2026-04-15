@@ -23,20 +23,15 @@ const BASE = `https://graph.facebook.com/${META_VERSION}`;
 export async function POST(req: Request) {
     try {
         // ── Auth ────────────────────────────────────────────────────────────
+        // ── Auth Resolve (Now with Nuclear Fallback in getCurrentUser) ──────
         let user = await getCurrentUser(req);
-
-        // Fallback: read from middleware-injected headers
+        
         if (!user) {
-            const wsId = req.headers.get("x-workspace-id");
-            const userId = req.headers.get("x-user-id");
-            const role = req.headers.get("x-user-role") || "OWNER";
-            if (wsId && userId) {
-                user = { userId, workspaceId: wsId, role };
-                console.log("[ManualSetup] Auth from headers:", userId, wsId);
-            }
-        }
-
-        if (!user) {
+            const cookiesPresent = req.headers.get("cookie") !== null;
+            console.error("[ManualSetup] ❌ PERMANENT AUTH FAILURE. Traces:", {
+                host: req.headers.get("host"),
+                cookiePresent: cookiesPresent
+            });
             return NextResponse.json({ error: "Unauthorized — please log in again." }, { status: 401 });
         }
 

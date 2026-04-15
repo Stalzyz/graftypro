@@ -1,0 +1,37 @@
+#!/usr/bin/expect -f
+
+set timeout 300
+set host "72.61.231.187"
+set password "Photoshop09@"
+
+puts "\n📤 Starting Comprehensive Upgrade Flow Sync..."
+
+# Files to sync
+set files {
+    "components/trial/TrialGate.tsx"
+    "components/landing-new/DynamicPricingSection.tsx"
+    "components/landing-new/DynamicPricing.tsx"
+    "app/pricing/page.tsx"
+}
+
+foreach file $files {
+    puts "Syncing: $file"
+    spawn rsync -avz -e "ssh -o StrictHostKeyChecking=no" /Users/stalinkumar/Downloads/Grafty_Bsp/$file root@$host:/root/wabot_bsp/$file
+    expect {
+        "password:" { send "$password\r"; exp_continue }
+        eof
+    }
+}
+
+puts "\n🔄 Rebuilding web container for final validation..."
+spawn ssh -o StrictHostKeyChecking=no root@$host "cd /root/wabot_bsp && docker compose -f docker-compose.prod.yml up -d --build web && echo SYNC_COMPLETE"
+expect {
+    "password:" { send "$password\r"; exp_continue }
+    "SYNC_COMPLETE" { puts "\n✅ All pricing and upgrade paths have been synchronized and rebuilt!" }
+    eof
+}
+
+puts "\nVerification Steps:"
+puts "1. Visit https://grafty.pro/pricing while logged in -> Buttons should say 'Upgrade Plan' and go to internal billing."
+puts "2. Expired Trial Modal -> Button should now go to internal billing instead of public pricing."
+puts "3. Internal Billing Page -> Should now properly trigger Razorpay."

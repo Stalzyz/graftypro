@@ -1,0 +1,15 @@
+#!/usr/bin/expect -f
+set timeout 30
+set ip "72.61.231.187"
+set user "root"
+set password "Photoshop09@"
+
+spawn scp -o StrictHostKeyChecking=no $user@$ip:/root/grafty_bsp/.env /Users/stalinkumar/Downloads/Grafty_Bsp/server_env.txt
+expect "password:"
+send "$password\r"
+expect eof
+
+spawn scp -o StrictHostKeyChecking=no $user@$ip:/root/grafty_bsp/app/\\(auth\\)/login/page.tsx /Users/stalinkumar/Downloads/Grafty_Bsp/server_login_page.tsx
+expect "password:"
+send "$password\r"
+expect eof

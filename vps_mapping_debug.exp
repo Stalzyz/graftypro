@@ -1,0 +1,18 @@
+#!/usr/bin/expect -f
+set SERVER    "root@72.61.231.187"
+set PASS      "Photoshop09@"
+set timeout   120
+
+puts "\n🔍 [1/2] Nginx proxy mapping..."
+spawn ssh -o StrictHostKeyChecking=no $SERVER "grep -r \"proxy_pass\" /etc/nginx/sites-enabled/"
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}
+
+puts "\n🔍 [2/2] Container Volume Check..."
+spawn ssh -o StrictHostKeyChecking=no $SERVER "docker inspect grafty_bsp-web-1 --format '{{json .Mounts}}'"
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}

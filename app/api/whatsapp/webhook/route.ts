@@ -198,6 +198,21 @@ async function handleIngestion(account: any, msg: any, metaContact: any) {
     // 6. Flow Engine Path
     FlowRunner.processMessage(workspaceId, contact.id, normalizeMessage(msg, { metadata: { phone_number_id: account.phone_number_id }, contacts: [metaContact] }))
         .catch(e => console.error("Flow Error:", e));
+
+    // 🎯 EXPERT HARDENING: Conversion Tracking (Replied)
+    // If this is an inbound message from a contact who was recently sent a broadcast
+    const lastOutbound = await prisma.message.findFirst({
+        where: { contact_id: contact.id, direction: "OUTBOUND", campaign_id: { not: null } },
+        orderBy: { created_at: "desc" }
+    });
+
+    if (lastOutbound && lastOutbound.campaign_id) {
+        // Increment replied count for this campaign
+        await prisma.campaignStats.update({
+            where: { campaign_id: lastOutbound.campaign_id },
+            data: { replied: { increment: 1 } }
+        }).catch(e => null);
+    }
 }
 
 async function handleStatus(workspaceId: string, status: any) {
@@ -220,8 +235,35 @@ async function handleStatus(workspaceId: string, status: any) {
         updateData.sent_at = new Date();
     }
 
-    await prisma.message.updateMany({
-        where: { workspace_id: workspaceId, meta_id: metaId },
-        data: updateData
-    });
+    try {
+        // 🎯 ATOMIC UPDATE & FETCH: Get campaign_id back immediately
+        const updatedMsg = await (prisma as any).message.update({
+            where: { meta_id: metaId },
+            data: updateData,
+            select: { campaign_id: true }
+        });
+
+        // 🎯 EXPERT HARDENING: Campaign Analytics Bridge
+        if (updatedMsg && updatedMsg.campaign_id && (newStatus === "DELIVERED" || newStatus === "READ" || newStatus === "FAILED")) {
+            let statUpdate: any = {};
+            if (newStatus === "FAILED") {
+                statUpdate = {
+                    failed: { increment: 1 },
+                    sent: { decrement: 1 } // Atomic correction: Move from Sent to Failed
+                };
+            } else {
+                statUpdate = {
+                    [newStatus.toLowerCase()]: { increment: 1 }
+                };
+            }
+
+            await prisma.campaignStats.update({
+                where: { campaign_id: updatedMsg.campaign_id },
+                data: statUpdate
+            });
+        }
+    } catch (err: any) {
+        // catch if message doesn't exist yet (race condition) or other errors
+        console.warn(`[Webhook Status] Skip update for msg ${metaId}: ${err.message}`);
+    }
 }

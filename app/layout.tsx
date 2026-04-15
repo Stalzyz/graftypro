@@ -64,7 +64,18 @@ export async function generateMetadata(): Promise<Metadata> {
             default: `${brandName} | Official Bulk WhatsApp Messages & Automation Platform (BSP)`,
             template: `%s | ${brandName} · Bulk WhatsApp Messages`
         },
-        description: branding ? `Whitelabel Bulk WhatsApp Messaging workspace for ${brandName}.` : "Official Meta BSP Infrastructure for Bulk WhatsApp Messages & Automation. Send 10k+ messages with high delivery rates.",
+        description: branding ? `Whitelabel Bulk WhatsApp Messaging workspace for ${brandName}.` : "Official Meta BSP Infrastructure for Bulk WhatsApp Messages & Automation. Scale your business with 100% automated customer journeys and high-delivery bulk messaging.",
+        keywords: [
+            "WhatsApp Business API",
+            "Bulk WhatsApp Marketing",
+            "WhatsApp Automation Software",
+            "WhatsApp CRM Integration",
+            "WhatsApp Chatbot for Gyms",
+            "WhatsApp Marketing for Agencies",
+            "Official Meta BSP",
+            "Conversational Commerce",
+            "Grafty WhatsApp Platform"
+        ],
         icons: {
             icon: [{ url: versionedFavicon, type: faviconType }],
             shortcut: [versionedFavicon],
@@ -73,8 +84,10 @@ export async function generateMetadata(): Promise<Metadata> {
         metadataBase: new URL(`https://${host}`),
         openGraph: {
             siteName: brandName,
-            title: `${brandName} | WhatsApp Business Platform`,
-            images: [{ url: branding?.logo_url || '/og-image.png' }]
+            title: `${brandName} | Enterprise WhatsApp Automation & ROI Engine`,
+            description: "Scale your revenue with specialized WhatsApp blueprints for Real Estate, Education, Gyms, and E-commerce.",
+            images: [{ url: branding?.logo_url || '/og-image.png' }],
+            type: 'website'
         }
     };
 }

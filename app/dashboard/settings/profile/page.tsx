@@ -33,6 +33,24 @@ export default function UserProfilePage() {
         workspace_name: ""
     });
 
+    const [passwordRequirements, setPasswordRequirements] = useState({
+        length: false,
+        upper: false,
+        lower: false,
+        number: false,
+        special: false
+    });
+
+    const checkPassword = (pass: string) => {
+        setPasswordRequirements({
+            length: pass.length >= 10,
+            upper: /[A-Z]/.test(pass),
+            lower: /[a-z]/.test(pass),
+            number: /\d/.test(pass),
+            special: /[@$!%*?&]/.test(pass)
+        });
+    };
+
     useEffect(() => {
         fetch("/api/auth/me")
             .then(res => res.json())
@@ -299,15 +317,56 @@ export default function UserProfilePage() {
                                 </div>
                             )}
 
-                            <div className="space-y-2">
+                            <div className="space-y-4">
                                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">{profile.hasPassword ? "New Password" : "Create Password"}</label>
                                 <input
                                     type="password"
                                     value={profile.new_password || ""}
-                                    onChange={e => setProfile({ ...profile, new_password: e.target.value })}
-                                    className="w-full bg-slate-50 border-transparent focus:bg-white focus:border-slate-200 rounded-2xl px-5 py-3.5 text-sm font-bold text-slate-800 outline-none transition-all shadow-inner"
+                                    onChange={e => {
+                                        setProfile({ ...profile, new_password: e.target.value });
+                                        checkPassword(e.target.value);
+                                    }}
+                                    className={`w-full bg-slate-50 border ${profile.new_password && !Object.values(passwordRequirements).every(v => v) ? 'border-amber-200' : 'border-transparent'} focus:bg-white focus:border-slate-200 rounded-2xl px-5 py-3.5 text-sm font-bold text-slate-800 outline-none transition-all shadow-inner`}
                                     placeholder={profile.hasPassword ? "New Password" : "Create a secure password"}
                                 />
+
+                                {/* Password Strength Meter */}
+                                {profile.new_password && (
+                                    <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                                        <div className="flex gap-1 h-1 px-0.5">
+                                            {[1, 2, 3, 4, 5].map((level) => {
+                                                const activeCount = Object.values(passwordRequirements).filter(Boolean).length;
+                                                const isActive = level <= activeCount;
+                                                const colors = ['bg-red-500', 'bg-orange-500', 'bg-amber-500', 'bg-blue-500', 'bg-[#27954D]'];
+                                                return (
+                                                    <div 
+                                                        key={level} 
+                                                        className={`h-full flex-1 rounded-full transition-all duration-500 ${isActive ? colors[activeCount - 1] : 'bg-slate-100'}`}
+                                                    />
+                                                );
+                                            })}
+                                        </div>
+                                        
+                                        <div className="grid grid-cols-2 gap-y-2 gap-x-4 bg-slate-50/50 p-4 rounded-2xl border border-slate-100">
+                                            {[
+                                                { key: 'length', label: '10+ Characters' },
+                                                { key: 'upper', label: 'Uppercase' },
+                                                { key: 'lower', label: 'Lowercase' },
+                                                { key: 'number', label: 'Number' },
+                                                { key: 'special', label: 'Special' }
+                                            ].map((req) => (
+                                                <div key={req.key} className="flex items-center gap-2">
+                                                    <div className={`w-3 h-3 rounded-full flex items-center justify-center transition-all ${passwordRequirements[req.key as keyof typeof passwordRequirements] ? 'bg-[#27954D]' : 'bg-slate-200'}`}>
+                                                        {passwordRequirements[req.key as keyof typeof passwordRequirements] && <CheckCircle2 size={10} className="text-white" />}
+                                                    </div>
+                                                    <span className={`text-[9px] font-black uppercase tracking-tight transition-colors ${passwordRequirements[req.key as keyof typeof passwordRequirements] ? 'text-slate-900' : 'text-slate-400'}`}>
+                                                        {req.label}
+                                                    </span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </section>

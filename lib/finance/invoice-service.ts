@@ -318,23 +318,19 @@ export class InvoiceService {
             console.error("PDF Generation failed:", e);
         }
 
-        // 7. Send Email
+        // 7. Send Unified Notification (Email + WhatsApp)
         if (billingDetails.email && pdfBuffer) {
             try {
-                const { EmailService } = await import("@/lib/email/service");
-                await EmailService.sendInvoiceEmailWithAttachment(
-                    billingDetails.email,
-                    invoice,
-                    pdfBuffer
-                );
+                const { NotificationService } = await import("@/lib/notifications/service");
+                await NotificationService.sendInvoiceNotification(invoice.id, pdfBuffer);
 
-                // Update email sent status
+                // Update email sent status (Now handles both)
                 await prisma.invoice.update({
                     where: { id: invoice.id },
                     data: { email_sent: true, email_sent_at: new Date() }
                 });
             } catch (e) {
-                console.error("Email sending failed:", e);
+                console.error("Notification dispatch failed:", e);
             }
         }
 
@@ -414,16 +410,8 @@ export class InvoiceService {
         // Generate PDF
         const pdfBuffer = await this.generatePDF(invoice, invoice.items, sellerDetails);
 
-        // Prep data for branding
-        // We reuse the invoice object but need to ensure 'company_name' etc are available if needed by EmailService
-        // But our EmailService.sendInvoiceEmailWithAttachment handles formatting.
-
-        const { EmailService } = await import("@/lib/email/service");
-        await EmailService.sendInvoiceEmailWithAttachment(
-            invoice.billing_email,
-            invoice,
-            pdfBuffer
-        );
+        const { NotificationService } = await import("@/lib/notifications/service");
+        await NotificationService.sendInvoiceNotification(invoice.id, pdfBuffer);
     }
 
     static getInvoiceHTML(invoice: any) {

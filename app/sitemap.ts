@@ -1,40 +1,58 @@
-import { MetadataRoute } from 'next';
-import { headers } from 'next/headers';
-import { SOLUTIONS_DATA } from './solutions/solutions-data';
-import { COMPARISON_DATA } from './compare/comparison-data';
-import { ACADEMY_ARTICLES } from './academy/academy-data';
+import { MetadataRoute } from 'next'
+import { INTEGRATIONS_DATA } from './integrations-data'
+import { USE_CASES_DATA } from './use-cases-data'
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const headerList = headers();
-  const host = headerList.get("x-request-host") || headerList.get("host") || "grafty.pro";
-  const baseUrl = `https://${host}`;
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://grafty.pro'
+  
+  const industries = [
+    'education',
+    'ecommerce',
+    'real-estate',
+    'gym-fitness',
+    'saloon-spa',
+    'restaurants',
+    'agencies'
+  ]
 
-  // Core Pages
-  const routes = [
-    '',
-    '/pricing',
-    '/solutions',
-    '/reseller-program',
-    '/academy',
-    '/how-to-use',
-    '/join',
-    '/privacy',
-    '/terms',
-    '/affiliate-partner',
-    '/platform-partner',
-    '/docs',
-    '/whatsapp-link-generator',
-    '/whatsapp-cost-calculator',
-    '/whatsapp-green-tick-checker',
-    ...Object.keys(SOLUTIONS_DATA).map(slug => `/solutions/${slug}`),
-    ...Object.keys(COMPARISON_DATA).map(slug => `/compare/${slug}`),
-    ...Object.keys(ACADEMY_ARTICLES).map(slug => `/academy/${slug}`)
-  ];
+  const industryUrls = industries.map((ind) => ({
+    url: `${baseUrl}/solutions/${ind}`,
+    lastModified: new Date(),
+    changeFrequency: 'weekly' as const,
+    priority: 0.8,
+  }))
 
-  return routes.map((route) => ({
-    url: `${baseUrl}${route}`,
-    lastModified: new Date().toISOString(),
-    changeFrequency: route === '' ? 'daily' : 'weekly',
-    priority: route === '' ? 1.0 : route.startsWith('/solutions/') ? 0.9 : 0.8,
-  }));
+  return [
+    {
+      url: baseUrl,
+      lastModified: new Date(),
+      changeFrequency: 'daily',
+      priority: 1,
+    },
+    {
+      url: `${baseUrl}/solutions`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.9,
+    },
+    {
+      url: `${baseUrl}/pricing`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.7,
+    },
+    ...industryUrls,
+    ...Object.keys(INTEGRATIONS_DATA).map((slug) => ({
+      url: `${baseUrl}/integrations/${slug}`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly' as const,
+      priority: 0.8,
+    })),
+    ...Object.keys(USE_CASES_DATA).map((slug) => ({
+      url: `${baseUrl}/use-cases/${slug}`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly' as const,
+      priority: 0.8,
+    }))
+  ]
 }

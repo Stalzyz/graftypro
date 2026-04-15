@@ -141,6 +141,10 @@ async function executeNode(ctx: ExecutionContext, node: any, edges: any[], depth
             await runTemplateNode(ctx, node);
             await executeFrom(session, waba, contact, node.id, null, depth + 1);
             break;
+        case 'external_webhook':
+        case 'webhook_crm':
+            await runExternalWebhookNode(ctx, node, edges, depth);
+            break;
         case 'location':
         case 'message':
         case 'list':
@@ -276,13 +280,11 @@ async function runActionNode(ctx: ExecutionContext, node: any): Promise<void> {
             } catch { }
         }
     } else if (data.actionType === 'save_to_crm') {
-        try {
             await prisma.universalCrmLead.upsert({
-                where: { phone_workspaceId: { phone: ctx.contact.phone, workspace_id: ctx.contact.workspace_id } },
+                where: { phone_workspace_id: { phone: ctx.contact.phone, workspace_id: ctx.contact.workspace_id } },
                 update: { custom_data: { ...(ctx.session.state || {}), last_flow_id: ctx.session.flow_id } },
                 create: { workspace_id: ctx.contact.workspace_id, contact_id: ctx.contact.id, name: ctx.contact.name || ctx.contact.phone, phone: ctx.contact.phone, source: "WhatsApp Flow", custom_data: ctx.session.state }
             });
-        } catch { }
     }
 }
 
@@ -337,7 +339,17 @@ async function runPaymentNode(ctx: ExecutionContext, node: any): Promise<void> {
             shortUrl = result.redirectUrl;
         } else {
             const { RazorpayManager } = await import('../payments/razorpay');
-            const res = await RazorpayManager.createPaymentLink(contact.workspace_id, parseFloat(data.amount), 'INR', data.paymentTitle || 'Payment', { contact: contact.phone });
+            const res = await RazorpayManager.createPaymentLink(
+                contact.workspace_id,
+                parseFloat(data.amount),
+                'INR',
+                data.paymentTitle || 'Payment',
+                {
+                    name: contact.name || 'Customer',
+                    contact: contact.phone,
+                    email: contact.email || 'noreply@grafty.pro'
+                }
+            );
             shortUrl = res.short_url;
         }
 
@@ -443,6 +455,69 @@ async function runOrderSummaryNode(ctx: ExecutionContext, node: any): Promise<vo
     } catch { }
 }
 
+/**
+ * 🛰️ EXTERNAL WEBHOOK (CRM BRIDGE) Node
+ * Pushes real-time capture data to external CRMs like HubSpot, Salesforce, etc.
+ * Gated by Subscription Plan (flow_integration_access).
+ */
+async function runExternalWebhookNode(ctx: ExecutionContext, node: any, edges: any[], depth: number): Promise<void> {
+    const { session, waba, contact, plan } = ctx;
+    const data = node.data || {};
+
+    // 1. Subscription Guard: Ensure the plan supports external integrations
+    if (!plan?.flow_integration_access) {
+        console.warn(`[FlowExecutor] 🚫 CRM Bridge skipped for Workspace: ${session.workspace_id}. Plan limitation.`);
+        // Graceful fallback: just continue the flow
+        return executeFrom(session, waba, contact, node.id, null, depth + 1);
+    }
+
+    if (!data.url) return executeFrom(session, waba, contact, node.id, null, depth + 1);
+
+    try {
+        const url = resolveVariables(data.url, session.state, contact);
+        const headers = typeof data.headers === 'string' ? JSON.parse(resolveVariables(data.headers, session.state, contact)) : (data.headers || {});
+        const body = typeof data.body === 'string' ? resolveVariables(data.body, session.state, contact) : JSON.stringify(data.body || {});
+
+        const res = await fetch(url, {
+            method: data.method || 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...headers
+            },
+            body: data.method !== 'GET' ? body : undefined,
+            signal: AbortSignal.timeout(8000) // 8 second timeout for professional CRM sync
+        });
+
+        const status = res.ok ? 'success' : 'failed';
+        
+        // Potential Capture: If the user specified a key to capture the response JSON into state
+        if (res.ok && data.captureKey) {
+            try {
+                const json = await res.json();
+                await updateSessionState(session.id, session.state, { [data.captureKey]: json });
+            } catch {}
+        }
+
+        // Branching Paths
+        const edge = edges.find((e: any) => e.source === node.id && (e.sourceHandle || '').toLowerCase() === status);
+        if (edge) {
+            await executeFrom(session, waba, contact, node.id, edge.target, depth + 1);
+        } else {
+            // No success/fail specific branch? Just proceed to next default node
+            await executeFrom(session, waba, contact, node.id, null, depth + 1);
+        }
+
+    } catch (e: any) {
+        console.error(`[FlowExecutor] ❌ Webhook Node Failed:`, e.message);
+        const failEdge = edges.find((e: any) => e.source === node.id && (e.sourceHandle || '').toLowerCase() === 'failed');
+        if (failEdge) {
+            await executeFrom(session, waba, contact, node.id, failEdge.target, depth + 1);
+        } else {
+            await executeFrom(session, waba, contact, node.id, null, depth + 1);
+        }
+    }
+}
+
 async function saveOutboundMessage(waba: any, contact: any, metaId: string | null, payload: any): Promise<void> {
     try {
         let conversation = await prisma.conversation.findFirst({ where: { contact_id: contact.id, workspace_id: waba.workspace_id, status: 'OPEN' }, orderBy: { updated_at: 'desc' } });
@@ -527,10 +602,42 @@ export async function handleUserInput(session: FlowSessionData, waba: any, conta
     if (inputValue.startsWith('{') && inputValue.endsWith('}')) {
         try {
             const flowData = JSON.parse(inputValue);
-            await updateSessionState(session.id, session.state, { ...flowData, last_flow_response: flowData });
-            await executeFrom(session, waba, contact, currentNodeId, null, 0);
-            return;
-        } catch { }
+            console.log(`[FlowExecutor] 📦 Meta Flow Response Captured:`, flowData);
+            
+            // 1. Update Session State
+            const newState = await updateSessionState(session.id, session.state, { ...flowData, last_flow_response: flowData });
+            session.state = newState;
+
+            // 2. MONSTER FEATURE: CRM Auto-mapping
+            // Maps common fields (email, name, age, city) directly to CRM attributes
+            const crmFields: Record<string, string> = {
+                email: 'email',
+                email_address: 'email',
+                business_name: 'business_name',
+                full_name: 'name',
+                name: 'name',
+            };
+
+            const updates: any = {};
+            for (const [key, val] of Object.entries(flowData)) {
+                if (crmFields[key]) updates[crmFields[key]] = val;
+            }
+
+            if (Object.keys(updates).length > 0) {
+                console.log(`[FlowExecutor] 🧬 Auto-mapping CRM fields:`, updates);
+                await prisma.contact.update({ where: { id: contact.id }, data: updates });
+            }
+
+            // 3. Continue Flow: Move to the NEXT node after the Meta Flow node
+            const nextEdge = edges.find((e: any) => e.source === currentNodeId);
+            if (nextEdge) {
+                return executeFrom(session, waba, contact, null, nextEdge.target, 0);
+            }
+            
+            return closeSession(session.id, 'FLOW_COMPLETED_AFTER_META_FLOW');
+        } catch (e: any) {
+            console.error(`[FlowExecutor] ❌ Meta Flow Parse Error:`, e.message);
+        }
     }
 
     const matchedEdge = edges.find((e: any) => e.source === currentNodeId && ((e.sourceHandle || '').toLowerCase() === (inputValue || '').toLowerCase() || (e.sourceHandle || '').toLowerCase() === `button-${(inputValue || '').toLowerCase()}`));

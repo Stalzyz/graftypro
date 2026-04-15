@@ -1,0 +1,13 @@
+#!/usr/bin/expect -f
+set timeout -1
+spawn rsync -avz --exclude "node_modules" --exclude ".next" --exclude ".git" /Users/stalinkumar/Downloads/Grafty_Bsp/ root@72.61.231.187:/root/Wabot_BSP
+expect {
+    "Are you sure you want to continue connecting (yes/no" {
+        send "yes\r"
+        exp_continue
+    }
+    "password:" {
+        send "Photoshop09@\r"
+    }
+}
+expect eof

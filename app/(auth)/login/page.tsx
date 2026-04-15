@@ -139,7 +139,7 @@ export default function LoginPage() {
                         </div>
                     )}
 
-                    <form onSubmit={handleLogin} className="space-y-5">
+                    <form onSubmit={handleLogin} method="POST" className="space-y-5">
                         <div className="space-y-1.5">
                             <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider ml-1">Email Address</label>
                             <input
@@ -181,7 +181,7 @@ export default function LoginPage() {
 
                         <button
                             type="submit" disabled={loading}
-                            className="w-full bg-[#0F172A] hover:bg-[#1E293B] disabled:opacity-70 text-white font-bold py-4 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 mt-6 active:scale-[0.98]"
+                            className="w-full bg-gradient-to-r from-[#25D366] to-[#042F94] hover:opacity-90 disabled:opacity-70 text-white font-bold py-4 rounded-xl shadow-lg shadow-emerald-100 transition-all flex items-center justify-center gap-2 mt-6 active:scale-[0.98]"
                         >
                             {loading ? <Loader2 className="animate-spin w-5 h-5" /> : (<>Sign In <ArrowRight size={18} /></>)}
                         </button>

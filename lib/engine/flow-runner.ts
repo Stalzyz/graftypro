@@ -132,6 +132,43 @@ export class FlowRunner {
             // STEP 6: No session, no trigger — check AI Fallback
             // ----------------------------------------------------------------
             const plan = contact.workspace?.plan_details;
+
+            // NUCLEAR OPT-OUT: If user wants to stop, respect it immediately
+            const stopKeywords = ['stop', 'unsubscribe', 'opt out', 'exit', 'quit'];
+            if (stopKeywords.includes(normalizedMsg.value.toLowerCase().trim())) {
+                console.log(`[FlowRunner] 🛑 Opt-out detected for ${contact.phone}`);
+                // @ts-ignore
+                await prisma.contact.update({
+                    where: { id: contactId },
+                    data: { status: 'OPTED_OUT' }
+                });
+                const stopPayload = buildTextPayload(contact.phone, "You have been unsubscribed. You will no longer receive automated messages. Reply START to re-enable.");
+                if (stopPayload) {
+                    await sendMessageDirect({
+                        phoneNumberId: waba.phone_number_id,
+                        accessToken: waba.access_token,
+                        payload: stopPayload,
+                        sessionId: 'opt-out',
+                        nodeId: 'opt-out',
+                        workspaceId,
+                        contactId,
+                    });
+                }
+                return;
+            }
+
+            // Check if contact is currently OPTED_OUT
+            // @ts-ignore
+            if (contact.status === 'OPTED_OUT') {
+                if (normalizedMsg.value.toLowerCase().trim() === 'start') {
+                    // @ts-ignore
+                    await prisma.contact.update({ where: { id: contactId }, data: { status: 'ACTIVE' } });
+                } else {
+                    console.log(`[FlowRunner] 🔇 Contact ${contact.phone} is opted out. Ignoring.`);
+                    return;
+                }
+            }
+
             if (plan?.ai_fallback_enabled) {
                 console.log(`[FlowRunner] 🤖 AI Fallback active for ${contact.phone}`);
 
@@ -152,28 +189,69 @@ export class FlowRunner {
                     messages.push({ role: 'user', content: normalizedMsg.value });
                 }
 
-                const suggestions = await AIService.suggestReply(messages);
-                if (suggestions && suggestions.length > 0) {
-                    const aiReply = suggestions[0];
-                    
-                    // SAFETY FIX: Never send raw error strings to the actual WhatsApp customer!
-                    if (aiReply.includes("Error generating") || aiReply.includes("AI not configured")) {
-                        console.warn(`[FlowRunner] 🤖 AI Fallback skipped due to OpenAI error/misconfiguration.`);
-                        return;
+                // AI v1.2: Returns JSON { answer, recommended_buttons, intent }
+                const aiResult = await AIService.getGroundedAnswer(workspaceId, normalizedMsg.value, messages);
+
+                if (aiResult && aiResult.answer) {
+                    // ----------------------------------------------------
+                    // NUCLEAR CREDIT ENGINE: Deduct for AI Generation
+                    // ----------------------------------------------------
+                    try {
+                        const { CreditService } = await import('@/lib/credits/service');
+                        await CreditService.deductCreditsAtomic(
+                            workspaceId,
+                            5, // 5 credits per AI Answer (Business Rule)
+                            `ai_${Date.now()}`,
+                            null,
+                            'AI_REPLY',
+                            '91',
+                            `AI Knowledge Base Answer to ${contact.phone}`
+                        );
+                    } catch (e: any) {
+                        console.warn(`[FlowRunner] 🤖 Billing Block: ${e.message}.`);
+                        return; // Stop if user out of credits
                     }
 
-                    const p = buildTextPayload(contact.phone, aiReply);
-                    if (p) {
+                    const { buildInteractiveButtonsPayload } = await import('./payload-builder');
+                    
+                    let finalPayload: any;
+                    
+                    const buttonMap: Record<string, string> = {
+                        "TALK_TO_HUMAN": "Talk to Human 👨‍💼",
+                        "VIEW_PRICING": "View Pricing 🏷️",
+                        "MAIN_MENU": "Main Menu 🏠",
+                        "PARTNER_PROGRAM": "Partner Program 🤝",
+                        "REQUEST_DEMO": "Request Demo 🚀"
+                    };
+
+                    const activeButtons = (aiResult.recommended_buttons || [])
+                        .filter((id: string) => !!buttonMap[id])
+                        .slice(0, 3)
+                        .map((id: string) => ({ id, title: buttonMap[id] }));
+
+                    if (activeButtons.length > 0) {
+                        finalPayload = buildInteractiveButtonsPayload(
+                            contact.phone,
+                            aiResult.answer,
+                            activeButtons,
+                            undefined,
+                            "Grafty AI Assistant"
+                        );
+                    } else {
+                        finalPayload = buildTextPayload(contact.phone, aiResult.answer);
+                    }
+
+                    if (finalPayload) {
                         await sendMessageDirect({
                             phoneNumberId: waba.phone_number_id,
                             accessToken: waba.access_token,
-                            payload: p,
-                            sessionId: 'ai-fallback',
-                            nodeId: 'ai-fallback',
+                            payload: finalPayload,
+                            sessionId: 'ai-knowledge',
+                            nodeId: 'ai-knowledge',
                             workspaceId,
                             contactId,
                         });
-                        await saveOutboundText(waba, contact, aiReply);
+                        await saveOutboundText(waba, contact, aiResult.answer);
                     }
                     return;
                 }

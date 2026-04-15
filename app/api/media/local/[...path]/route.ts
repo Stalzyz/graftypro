@@ -89,6 +89,8 @@ export async function GET(
         return new Response(buffer, {
             headers: {
                 "Content-Type": contentType,
+                "Content-Length": buffer.length.toString(),
+                "Accept-Ranges": "bytes",
                 "Cache-Control": "public, max-age=86400",
             },
         });

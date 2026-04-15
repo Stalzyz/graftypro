@@ -216,26 +216,34 @@ export class ResellerService {
         const basePlatformCost = Number(workspace.plan_details?.min_reseller_monthly_price ?? config?.rev_base_platform_cost ?? 2000);
         const paidAmount = Number(amount);
 
-        // 3. Split Calculation (Margin Protection)
-        const partnerProfit = paidAmount - basePlatformCost;
+        // 3. Split Calculation (Hybrid Model: Commission vs Margin)
+        let partnerProfit = 0;
+        let description = "";
+
+        // @ts-ignore
+        if (reseller.role === "AFFILIATE") {
+            // AFFILIATE MODEL: Percentage of Gross (e.g. 20%)
+            const commRate = Number(reseller.tier?.commission_rate ?? reseller.base_commission ?? 20);
+            partnerProfit = (paidAmount * commRate) / 100;
+            description = `Affiliate Commission (${commRate}%): Transaction ${transactionId}`;
+        } else {
+            // PLATFORM MODEL: Margin Protection (Gross - Base Cost)
+            partnerProfit = paidAmount - basePlatformCost;
+            description = `Partner Profit Share: Transaction ${transactionId} (Base: ₹${basePlatformCost})`;
+        }
 
         if (partnerProfit <= 0) {
-            console.warn(`[Revenue Engine] Payment ${transactionId}: Margin too low (Paid: ₹${paidAmount}, Base: ₹${basePlatformCost}). Split skipped.`);
-            // Optional: Log this as a conflict for Super Admin
+            console.warn(`[Revenue Engine] Payment ${transactionId}: No earnings for partner (Profit: ₹${partnerProfit}, Rate: ${reseller.role}). Split skipped.`);
             return;
         }
 
         // 4. ATOMIC LEDGER DISTRIBUTION
-        // We record the Partner Profit Share as the net earning.
-        // The Base Cost is an implicit platform cut and doesn't need to be deducted from the partner's wallet
-        // since the partner never received the gross amount in their wallet to begin with.
-
         await ResellerFinanceEngine.recordTransaction(tx, {
             resellerId: reseller.id,
             workspaceId: workspaceId,
             amount: partnerProfit,
-            type: "PROFIT_SHARE",
-            description: `Partner Profit Share: Transaction ${transactionId} (Base: ₹${basePlatformCost})`,
+            type: reseller.role === "AFFILIATE" ? "COMMISSION" : "PROFIT_SHARE",
+            description: description,
             referenceId: transactionId
         });
 
