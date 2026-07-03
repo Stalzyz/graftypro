@@ -1112,12 +1112,24 @@ function SharedInboxContent() {
                                                                         {(() => {
                                                                             try {
                                                                                 const formData = JSON.parse(content.nfm_reply.response_json);
-                                                                                return Object.entries(formData).map(([key, val]: [string, any]) => (
-                                                                                    <div key={key} className="flex flex-col">
-                                                                                        <span className="text-[9px] font-bold opacity-60 uppercase">{key.replace(/_/g, ' ')}</span>
-                                                                                        <span className="text-[12px] font-semibold">{String(val)}</span>
-                                                                                    </div>
-                                                                                ));
+                                                                                return Object.entries(formData)
+                                                                                    .filter(([key]) => key !== 'flow_token')
+                                                                                    .map(([key, val]: [string, any]) => {
+                                                                                        // Clean up key: screen_0_Whats_Your_Name_4 -> Whats Your Name
+                                                                                        const cleanKey = key.replace(/^screen_\d+_/i, '').replace(/_\d+$/, '').replace(/_/g, ' ');
+                                                                                        // Clean up value: 1_No,_We_have_tried_we_agencies -> No, We have tried we agencies
+                                                                                        let cleanVal = String(val);
+                                                                                        if (typeof val === 'string') {
+                                                                                            cleanVal = cleanVal.replace(/^\d+_/i, '').replace(/_/g, ' ');
+                                                                                        }
+                                                                                        
+                                                                                        return (
+                                                                                            <div key={key} className="flex flex-col">
+                                                                                                <span className="text-[9px] font-bold opacity-60 uppercase">{cleanKey}</span>
+                                                                                                <span className="text-[12px] font-semibold">{cleanVal}</span>
+                                                                                            </div>
+                                                                                        );
+                                                                                    });
                                                                             } catch (e) {
                                                                                 return <span className="text-[10px] font-mono">{content.nfm_reply.response_json}</span>;
                                                                             }
