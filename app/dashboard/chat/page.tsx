@@ -1102,6 +1102,30 @@ function SharedInboxContent() {
                                                                     (type === 'INTERACTIVE' ? <span className="text-[10px] italic opacity-50">Interactive Meta Workflow Message</span> : "")}
                                                             </div>
 
+                                                            {/* Flow Form Submission Data (NFM Reply) */}
+                                                            {content.nfm_reply?.response_json && (
+                                                                <div className={`mt-3 p-3 rounded-xl border ${isOutbound ? 'bg-white/10 border-white/20' : 'bg-emerald-50 border-emerald-100'}`}>
+                                                                    <div className="text-[10px] font-black uppercase tracking-widest mb-2 flex items-center gap-1.5 opacity-70">
+                                                                        <CheckSquare size={12} /> Form Submitted
+                                                                    </div>
+                                                                    <div className="space-y-1.5">
+                                                                        {(() => {
+                                                                            try {
+                                                                                const formData = JSON.parse(content.nfm_reply.response_json);
+                                                                                return Object.entries(formData).map(([key, val]: [string, any]) => (
+                                                                                    <div key={key} className="flex flex-col">
+                                                                                        <span className="text-[9px] font-bold opacity-60 uppercase">{key.replace(/_/g, ' ')}</span>
+                                                                                        <span className="text-[12px] font-semibold">{String(val)}</span>
+                                                                                    </div>
+                                                                                ));
+                                                                            } catch (e) {
+                                                                                return <span className="text-[10px] font-mono">{content.nfm_reply.response_json}</span>;
+                                                                            }
+                                                                        })()}
+                                                                    </div>
+                                                                </div>
+                                                            )}
+
                                                             {/* Interactive Buttons */}
                                                             {(content.buttons || content.raw?.interactive?.action?.buttons) && (
                                                                 <div className="mt-3 space-y-1.5">
