@@ -61,20 +61,32 @@ export async function GET(req: Request) {
 
         // 🛡️ REFORMAT: Align Backend with UI Expectation
         // Ensure 'plan' is the full object that Dashboard hooks expect
+        let resolvedPlan = user.workspace.plan_details || { 
+            name: user.workspace.plan, // Fallback to enum string if relation missing
+            module_crm: user.workspace.plan === "ENTERPRISE" || user.workspace.plan === "PRO",
+            module_ecommerce: user.workspace.plan === "ENTERPRISE",
+            module_academy: user.workspace.plan === "ENTERPRISE",
+            module_drip: user.workspace.plan === "ENTERPRISE",
+            module_integration: user.workspace.plan === "ENTERPRISE"
+        };
+
+        // 🚀 FORCE OVERRIDE: Guarantee Enterprise users always get everything regardless of DB state
+        if (user.workspace.plan === "ENTERPRISE" || resolvedPlan.name?.toUpperCase() === "ENTERPRISE") {
+            resolvedPlan.module_crm = true;
+            resolvedPlan.module_ecommerce = true;
+            resolvedPlan.module_academy = true;
+            resolvedPlan.module_drip = true;
+            resolvedPlan.module_integration = true;
+            resolvedPlan.drip_campaign_access = true;
+        }
+
         const formattedUser = {
             ...user,
             avatar_url: getAbsoluteMediaUrl(user.avatar_url, req),
             workspace: {
                 ...user.workspace,
                 // @ts-ignore
-                plan: user.workspace.plan_details || { 
-                    name: user.workspace.plan, // Fallback to enum string if relation missing
-                    module_crm: user.workspace.plan === "ENTERPRISE" || user.workspace.plan === "PRO",
-                    module_ecommerce: user.workspace.plan === "ENTERPRISE",
-                    module_academy: user.workspace.plan === "ENTERPRISE",
-                    module_drip: user.workspace.plan === "ENTERPRISE",
-                    module_integration: user.workspace.plan === "ENTERPRISE"
-                },
+                plan: resolvedPlan,
                 addons: user.workspace.addons.map((wa: any) => wa.addon.name)
             },
             hasPassword: !!user.password_hash
