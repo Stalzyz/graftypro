@@ -109,7 +109,7 @@ export async function POST(req: Request) {
             await tx.vendorWallet.create({
                 data: {
                     workspace_id: workspace.id,
-                    current_balance: 0.00
+                    current_balance: 500.00
                 }
             });
 
