@@ -137,11 +137,12 @@ export class FlowRunner {
             const stopKeywords = ['stop', 'unsubscribe', 'opt out', 'exit', 'quit'];
             if (stopKeywords.includes(normalizedMsg.value.toLowerCase().trim())) {
                 console.log(`[FlowRunner] 🛑 Opt-out detected for ${contact.phone}`);
-                // @ts-ignore
+                
                 await prisma.contact.update({
                     where: { id: contactId },
-                    data: { status: 'OPTED_OUT' }
+                    data: { opt_in: false, unsubscribed_at: new Date() }
                 });
+                
                 const stopPayload = buildTextPayload(contact.phone, "You have been unsubscribed. You will no longer receive automated messages. Reply START to re-enable.");
                 if (stopPayload) {
                     await sendMessageDirect({
@@ -158,11 +159,9 @@ export class FlowRunner {
             }
 
             // Check if contact is currently OPTED_OUT
-            // @ts-ignore
-            if (contact.status === 'OPTED_OUT') {
+            if (contact.opt_in === false) {
                 if (normalizedMsg.value.toLowerCase().trim() === 'start') {
-                    // @ts-ignore
-                    await prisma.contact.update({ where: { id: contactId }, data: { status: 'ACTIVE' } });
+                    await prisma.contact.update({ where: { id: contactId }, data: { opt_in: true, unsubscribed_at: null } });
                 } else {
                     console.log(`[FlowRunner] 🔇 Contact ${contact.phone} is opted out. Ignoring.`);
                     return;
