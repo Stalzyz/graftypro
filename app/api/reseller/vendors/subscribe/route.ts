@@ -76,11 +76,12 @@ export async function POST(req: Request) {
             // D. Escrow Enforcement Layer
             // If the Partner is selling a plan with a Wholesale Cost, deduct it now.
             // If the Partner's wallet is empty, the transaction rolls back returning INSUFFICIENT_FUNDS.
-            if (Number(plan.min_reseller_price) > 0) {
+            const wholesaleCost = Number((plan as any).min_reseller_monthly_price || 0);
+            if (wholesaleCost > 0) {
                 await ResellerFinanceEngine.processPartnerSubscriptionDeduction(tx, {
                     resellerId: resellerId,
                     workspaceId: workspace.id,
-                    wholesaleCost: Number(plan.min_reseller_price), // Wholesale Price (BSP Gets)
+                    wholesaleCost: wholesaleCost, // Wholesale Price (BSP Gets)
                     retailPrice: Number(plan.monthly_price),        // Retail Price (Partner Collected - just for stats)
                     planName: plan.name
                 });
