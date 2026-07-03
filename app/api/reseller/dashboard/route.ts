@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { getResellerSession } from "@/lib/reseller/auth-helper";
 
 export const dynamic = "force-dynamic";
 
@@ -9,12 +10,9 @@ export const dynamic = "force-dynamic";
  */
 export async function GET(req: Request) {
     try {
-        // Note: Authenticated reseller ID should come from token/session.
-        // For now, assuming it's passed or retrieved from auth middleware.
-        const { searchParams } = new URL(req.url);
-        const resellerId = searchParams.get('resellerId'); // Placeholder for session ID.
-
-        if (!resellerId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        const session = await getResellerSession();
+        if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        const resellerId = session.userId;
 
         const reseller = await prisma.reseller.findUnique({
             where: { id: resellerId },

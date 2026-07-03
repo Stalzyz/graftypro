@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { ResellerAnalyticsService } from "@/lib/reseller/analytics";
+import { getResellerSession } from "@/lib/reseller/auth-helper";
 
 export const dynamic = 'force-dynamic';
 
@@ -9,12 +10,12 @@ export const dynamic = 'force-dynamic';
  */
 export async function GET(req: Request) {
     try {
-        const { searchParams } = new URL(req.url);
-        const resellerId = searchParams.get('resellerId');
-
-        if (!resellerId) {
+        const session = await getResellerSession();
+        if (!session) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
+        
+        const resellerId = session.userId;
 
         const stats = await ResellerAnalyticsService.getDashboardStats(resellerId);
         const topVendors = await ResellerAnalyticsService.getTopVendors(resellerId);

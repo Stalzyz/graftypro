@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { getResellerSession } from "@/lib/reseller/auth-helper";
 
 export const dynamic = "force-dynamic";
 
@@ -9,12 +10,13 @@ export const dynamic = "force-dynamic";
  */
 export async function GET(req: Request) {
     try {
+        const session = await getResellerSession();
+        if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        const resellerId = session.userId;
+
         const { searchParams } = new URL(req.url);
-        const resellerId = searchParams.get('resellerId');
         const month = parseInt(searchParams.get('month') || (new Date().getMonth() + 1).toString());
         const year = parseInt(searchParams.get('year') || new Date().getFullYear().toString());
-
-        if (!resellerId) return NextResponse.json({ error: "Reseller ID required" }, { status: 400 });
 
         const startDate = new Date(year, month - 1, 1);
         const endDate = new Date(year, month, 0, 23, 59, 59);
