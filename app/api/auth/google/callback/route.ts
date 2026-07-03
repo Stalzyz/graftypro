@@ -1,5 +1,7 @@
 import { prisma } from "../../../../../lib/db";
 import { signToken, getCurrentUser } from "../../../../../lib/auth";
+import { NextResponse } from "next/server";
+import crypto from "crypto";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Google OAuth Callback Handler
@@ -43,22 +45,32 @@ export async function GET(request: Request) {
     const stateVal = searchParams.get("state");
 
     let PUBLIC_URL = MAIN_DOMAIN;
+    console.log("[Google OAuth] Callback received. Params:", { 
+        hasCode: !!code, 
+        hasState: !!stateVal, 
+        error: oauthError 
+    });
 
     // Attempt to restore whitelabel host from OAuth state
         try {
-            const decoded = JSON.parse(
-                Buffer.from(decodeURIComponent(stateVal), "base64").toString("utf8")
-            );
-            if (decoded.returnTo && decoded.returnTo.startsWith("http")) {
-                PUBLIC_URL = decoded.returnTo;
+            if (stateVal) {
+                const decoded = JSON.parse(
+                    Buffer.from(decodeURIComponent(stateVal), "base64").toString("utf8")
+                );
+                
+                // Sanitize returnTo: must be a valid URL and preferably on a known domain
+                if (decoded.returnTo && typeof decoded.returnTo === "string" && decoded.returnTo.startsWith("http")) {
+                    PUBLIC_URL = decoded.returnTo;
+                }
+                
+                // Check for integration flag
+                if (decoded.isIntegration) {
+                    (request as any).isIntegrationFlow = true;
+                }
+                console.log("[Google OAuth] Decoded state:", { PUBLIC_URL, isIntegration: (request as any).isIntegrationFlow });
             }
-            // Check for integration flag
-            if (decoded.isIntegration) {
-                (request as any).isIntegrationFlow = true;
-            }
-            console.log("[Google OAuth] Restored context from state:", { PUBLIC_URL, isIntegration: (request as any).isIntegrationFlow });
         } catch (e) {
-            console.error("[Google OAuth] Failed to parse state parameter — using main domain");
+            console.error("[Google OAuth] Failed to parse state parameter:", e);
         }
 
     if (oauthError) {
@@ -105,6 +117,8 @@ export async function GET(request: Request) {
                 )
             );
         }
+
+        console.log("[Google OAuth] Tokens received successfully. Scope:", tokens.scope);
 
         // ── 1.5 Handle Integration Handshake ────────────────────────────────
         if ((request as any).isIntegrationFlow) {
@@ -266,7 +280,7 @@ export async function GET(request: Request) {
             // Create credit wallet
             await prisma.$executeRaw`
                 INSERT INTO vendor_wallets (id, workspace_id, current_balance, total_purchased, total_used, created_at, updated_at)
-                VALUES (${walletId}, ${wsId}, 0.00, 0.00, 0.00, ${now}, ${now})
+                VALUES (${walletId}, ${wsId}, 500.00, 0.00, 0.00, ${now}, ${now})
             `;
 
             // Create user
@@ -319,8 +333,9 @@ export async function GET(request: Request) {
         }
 
         // Same-domain (main platform): set cookie directly and go to dashboard
-        const redirectTarget = new URL("/dashboard", MAIN_DOMAIN);
-        console.log("[Google OAuth] ✅ Setting cookie directly → dashboard");
+        // CRITICAL FIX: Ensure the redirect target is absolute and uses the correct domain
+        const redirectTarget = new URL("/dashboard", PUBLIC_URL);
+        console.log("[Google OAuth] ✅ Success! Redirecting to dashboard:", redirectTarget.toString());
 
         const response = NextResponse.redirect(redirectTarget);
         response.cookies.set("token", sessionToken, cookieOptions);

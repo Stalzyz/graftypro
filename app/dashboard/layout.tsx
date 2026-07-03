@@ -144,7 +144,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                     icon={<Clock size={20} strokeWidth={1.5} />} 
                                     label="Drip Sequences" 
                                     pathname={pathname}
-                                    locked={user?.workspace?.plan?.name !== "ENTERPRISE"} 
+                                    locked={!user?.workspace?.plan?.module_drip} 
                                 />
                             </SidebarCategory>
 
@@ -154,14 +154,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                     label="Academy CRM" 
                                     href="/dashboard/education" 
                                     pathname={pathname} 
-                                    locked={!user?.workspace?.plan?.module_academy && user?.workspace?.plan?.name !== "ENTERPRISE"} 
+                                    locked={!user?.workspace?.plan?.module_academy} 
                                 />
                                 <NavItem 
                                     icon={<Store size={20} />} 
                                     label="E-Commerce" 
                                     href="/dashboard/commerce" 
                                     pathname={pathname} 
-                                    locked={!user?.workspace?.plan?.module_ecommerce && user?.workspace?.plan?.name !== "ENTERPRISE"} 
+                                    locked={!user?.workspace?.plan?.module_ecommerce} 
                                 />
                                 <NavItem icon={<Gift size={20} />} label="Refer & Earn" href="/dashboard/referrals" pathname={pathname} />
                             </SidebarCategory>

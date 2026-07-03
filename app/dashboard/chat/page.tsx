@@ -932,7 +932,7 @@ function SharedInboxContent() {
                                                 const isAudio = (url: string) => persistentMime.startsWith('audio/') || /\.(mp3|ogg|wav|m4a|weba|opus|aac)(\?.*)?$/i.test(url) || type === 'AUDIO';
 
                                                 const isCarousel = content.interactiveType === 'carousel' || content.type === 'carousel' || content.action?.cards || content.raw?.interactive?.action?.cards;
-                                                const isProduct = type === 'PRODUCT' || type === 'INTERACTIVE' && (content.interactiveType?.includes('product') || content.raw?.interactive?.type?.includes('product')) || content.catalog_id;
+                                                const isProduct = type === 'PRODUCT' || type === 'INTERACTIVE' && (content.type?.includes('product') || content.product_reply || content.interactiveType?.includes('product') || content.raw?.interactive?.type?.includes('product')) || content.catalog_id || content.product_retailer_id;
 
                                                 let contentType = isCarousel ? 'CAROUSEL' : isProduct ? 'PRODUCT' : isImage(link) ? 'IMAGE' : isVideo(link) ? 'VIDEO' : isDoc(link) ? 'DOCUMENT' : isAudio(link) ? 'AUDIO' : (content.contentType?.toUpperCase() || '');
                                                 if (!contentType && link) contentType = 'IMAGE';
@@ -1041,8 +1041,8 @@ function SharedInboxContent() {
                                                                         </div>
                                                                     )}
                                                                     <div className="p-3">
-                                                                        {content.product_retailer_id && <div className="text-[9px] font-bold text-slate-400 mb-1">ID: {content.product_retailer_id}</div>}
-                                                                        <div className="text-[12px] font-black text-slate-800">{content.body || content.text || "View Product"}</div>
+                                                                        {(content.product_retailer_id || content.product_reply?.product_retailer_id || content.action?.catalog_id) && <div className="text-[9px] font-bold text-slate-400 mb-1">ID: {content.product_retailer_id || content.product_reply?.product_retailer_id || content.action?.catalog_id}</div>}
+                                                                        <div className="text-[12px] font-black text-slate-800">{content.product_reply?.title || content.body || content.text || "View Product"}</div>
                                                                     </div>
                                                                 </div>
                                                             )}
