@@ -1114,13 +1114,22 @@ function SharedInboxContent() {
                                                                                 const formData = JSON.parse(content.nfm_reply.response_json);
                                                                                 return Object.entries(formData)
                                                                                     .filter(([key]) => key !== 'flow_token')
+                                                                                    .sort(([a], [b]) => {
+                                                                                        // Sort by the original index suffix e.g., _4 vs _5
+                                                                                        const numA = parseInt(a.match(/_(\d+)$/)?.[1] || "0");
+                                                                                        const numB = parseInt(b.match(/_(\d+)$/)?.[1] || "0");
+                                                                                        return numA - numB;
+                                                                                    })
                                                                                     .map(([key, val]: [string, any]) => {
                                                                                         // Clean up key: screen_0_Whats_Your_Name_4 -> Whats Your Name
                                                                                         const cleanKey = key.replace(/^screen_\d+_/i, '').replace(/_\d+$/, '').replace(/_/g, ' ');
-                                                                                        // Clean up value: 1_No,_We_have_tried_we_agencies -> No, We have tried we agencies
-                                                                                        let cleanVal = String(val);
-                                                                                        if (typeof val === 'string') {
-                                                                                            cleanVal = cleanVal.replace(/^\d+_/i, '').replace(/_/g, ' ');
+                                                                                        
+                                                                                        // Clean up value: "1_Afternoon" or ["1_Afternoon"] -> "Afternoon"
+                                                                                        let cleanVal = "";
+                                                                                        if (Array.isArray(val)) {
+                                                                                            cleanVal = val.map(v => String(v).replace(/^\d+_/i, '').replace(/_/g, ' ')).join(', ');
+                                                                                        } else {
+                                                                                            cleanVal = String(val).replace(/^\d+_/i, '').replace(/_/g, ' ');
                                                                                         }
                                                                                         
                                                                                         return (
