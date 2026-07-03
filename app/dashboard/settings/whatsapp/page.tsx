@@ -598,6 +598,28 @@ export default function WhatsAppSettingsPage() {
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="space-y-2">
+                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Access Token</label>
+                                            <input
+                                                type="password"
+                                                value={editForm.access_token}
+                                                onChange={(e) => setEditForm({ ...editForm, access_token: e.target.value })}
+                                                className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-bold focus:ring-4 focus:ring-green-50 outline-none transition-all font-mono"
+                                                placeholder="EAAB..."
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">App Secret</label>
+                                            <input
+                                                type="password"
+                                                value={editForm.app_secret}
+                                                onChange={(e) => setEditForm({ ...editForm, app_secret: e.target.value })}
+                                                className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-bold focus:ring-4 focus:ring-green-50 outline-none transition-all font-mono"
+                                                placeholder="Secret Key"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
                                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">WABA ID</label>
                                             <input
                                                 value={editForm.waba_id}
