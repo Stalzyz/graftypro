@@ -44,14 +44,21 @@ export class MetaFlowService {
         const token = decrypt(account.access_token);
 
         try {
-            // Meta expects spec as a form-data file or raw JSON in specific versions.
-            // For v21.0, we use the assets endpoint for the source spec.
-            const res = await axios.post(`${BASE_URL}/${flowId}/assets`, {
-                name: "flow_spec",
-                asset_type: "FLOW_JSON",
-                data: spec
-            }, {
-                headers: { Authorization: `Bearer ${token}` }
+            // Meta expects spec as a form-data file
+            const formData = new FormData();
+            formData.append("name", "flow.json");
+            formData.append("asset_type", "FLOW_JSON");
+            
+            // Convert JSON object to a File/Blob equivalent for upload
+            const jsonString = typeof spec === 'string' ? spec : JSON.stringify(spec);
+            const blob = new Blob([jsonString], { type: 'application/json' });
+            formData.append("file", blob, "flow.json");
+
+            const res = await axios.post(`${BASE_URL}/${flowId}/assets`, formData, {
+                headers: { 
+                    Authorization: `Bearer ${token}`,
+                    // Axios will automatically set the correct Content-Type for FormData
+                }
             });
 
             return res.data;
