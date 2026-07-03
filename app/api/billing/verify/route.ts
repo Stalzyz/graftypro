@@ -35,27 +35,22 @@ export async function POST(req: Request) {
         const subscription = await saasRazorpay.subscriptions.fetch(razorpay_subscription_id);
         const planId = subscription.plan_id;
 
-        // Detect Plan Name from local config OR Database
-        let planKey = Object.keys(PLANS).find(key => PLANS[key as keyof typeof PLANS].id === planId) as keyof typeof PLANS;
-        let newPlan = planKey ? PLANS[planKey].name : null;
+        // Detect Plan Name directly from the secure Razorpay notes we injected during checkout!
+        let newPlan = subscription.notes?.plan;
 
-        // NEW: Database Lookup Fallback (The Nuclear Fix)
+        if (!newPlan) {
+            throw new Error(`Critical Error: Could not resolve plan name from notes for Razorpay Plan ID ${planId}`);
+        }
+
+        // Database Lookup for the actual plan (Safe, no invalid keys)
         const dbPlanRecord = await prisma.subscriptionPlan.findFirst({
-            where: {
-                OR: [
-                    { razorpay_monthly_plan_id: planId } as any,
-                    { razorpay_yearly_plan_id: planId } as any,
-                    { name: { equals: newPlan || undefined, mode: 'insensitive' } }
-                ]
-            }
+            where: { name: { equals: newPlan, mode: 'insensitive' } }
         });
 
         if (dbPlanRecord) {
-            newPlan = dbPlanRecord.name;
-        }
-
-        if (!newPlan) {
-            throw new Error(`Critical Error: Could not resolve plan name for Razorpay Plan ID ${planId}`);
+            newPlan = dbPlanRecord.name; // Normalize case
+        } else {
+             throw new Error(`Critical Error: Plan ${newPlan} no longer exists in database.`);
         }
 
         // 3. Activate Plan in DB
@@ -99,7 +94,7 @@ export async function POST(req: Request) {
         // 4. AUTOMATED MONSTER INVOICE TRIGGER
         try {
             const { InvoiceService } = await import("@/lib/finance/invoice-service");
-            const planData = PLANS[newPlan as keyof typeof PLANS];
+            const price = Number((dbPlanRecord as any).monthly_price || (dbPlanRecord as any).price || 0);
 
             await InvoiceService.createInvoice({
                 workspaceId: user.workspaceId,
@@ -107,11 +102,11 @@ export async function POST(req: Request) {
                 paymentMethod: "Razorpay",
                 status: "PAID",
                 items: [{
-                    description: `Grafty ${newPlan} Subscription (Monthly)`,
+                    description: `Grafty ${newPlan} Subscription`,
                     hsn_code: "998311",
                     quantity: 1,
-                    rate: planData.price / 1.18, // Back calculate taxable value from inclusive amount
-                    taxable_value: planData.price / 1.18
+                    rate: price / 1.18, // Back calculate taxable value from inclusive amount
+                    taxable_value: price / 1.18
                 }],
                 billingDetails: {
                     name: updatedWorkspace.business_name || updatedWorkspace.name,
