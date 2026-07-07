@@ -49,7 +49,8 @@ import {
     ShoppingBag,
     Globe,
     Bug,
-    CornerUpLeft
+    CornerUpLeft,
+    ExternalLink
 } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { toast } from "react-hot-toast";
@@ -1147,14 +1148,29 @@ function SharedInboxContent() {
                                                                 </div>
                                                             )}
 
-                                                            {/* Interactive Buttons */}
-                                                            {(content.buttons || content.raw?.interactive?.action?.buttons) && (
+                                                            {/* Interactive Buttons / CTAs */}
+                                                            {(content.buttons || content.raw?.interactive?.action?.buttons || content.action?.name === 'cta_url' || content.action?.name === 'call_number') && (
                                                                 <div className="mt-3 space-y-1.5">
+                                                                    {/* Standard Buttons */}
                                                                     {(content.buttons || content.raw?.interactive?.action?.buttons || []).map((b: any, bi: number) => (
-                                                                        <div key={bi} className={`py-1.5 px-3 rounded-lg border text-[10px] font-black uppercase text-center cursor-pointer hover:opacity-80 transition-opacity ${isOutbound ? 'bg-white/10 border-white/20' : 'bg-slate-50 border-slate-200'}`}>
+                                                                        <div key={bi} className={`py-1.5 px-3 rounded-lg border text-[10px] font-black uppercase text-center cursor-pointer hover:opacity-80 transition-opacity flex items-center justify-center gap-1 ${isOutbound ? 'bg-white/10 border-white/20' : 'bg-slate-50 border-slate-200 text-slate-700'}`}>
                                                                             {b.reply?.title || b.title || b}
                                                                         </div>
                                                                     ))}
+
+                                                                    {/* CTA URL */}
+                                                                    {content.action?.name === 'cta_url' && (
+                                                                        <div className={`py-1.5 px-3 rounded-lg border text-[10px] font-black uppercase text-center cursor-pointer hover:opacity-80 transition-opacity flex items-center justify-center gap-1.5 ${isOutbound ? 'bg-white/10 border-white/20' : 'bg-slate-50 border-slate-200 text-slate-700'}`}>
+                                                                            <ExternalLink size={10} /> {content.action.parameters?.display_text || 'Link'}
+                                                                        </div>
+                                                                    )}
+
+                                                                    {/* CTA Call */}
+                                                                    {content.action?.name === 'call_number' && (
+                                                                        <div className={`py-1.5 px-3 rounded-lg border text-[10px] font-black uppercase text-center cursor-pointer hover:opacity-80 transition-opacity flex items-center justify-center gap-1.5 ${isOutbound ? 'bg-white/10 border-white/20' : 'bg-slate-50 border-slate-200 text-slate-700'}`}>
+                                                                            <Phone size={10} /> {content.action.parameters?.display_text || 'Call'}
+                                                                        </div>
+                                                                    )}
                                                                 </div>
                                                             )}
 
