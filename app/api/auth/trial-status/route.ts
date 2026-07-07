@@ -29,6 +29,8 @@ export async function GET(request: Request) {
         const isFreePlanId = workspace.current_plan_id && workspace.plan === 'FREE';
         const hasPaidPlan = (!!workspace.current_plan_id && !isFreePlanId) || (workspace.plan && workspace.plan !== 'FREE');
         
+        console.log(`[TRIAL_DEBUG] workspaceId=${workspace.id}, current_plan_id=${workspace.current_plan_id}, plan=${workspace.plan}, isFreePlanId=${isFreePlanId}, hasPaidPlan=${hasPaidPlan}`);
+
         let trialEnd = workspace.trial_ends_at;
 
         if (!hasPaidPlan) {
