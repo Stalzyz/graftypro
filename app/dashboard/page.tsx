@@ -170,8 +170,18 @@ export default function DashboardPage() {
                 </Link>
             </div>
 
-            {/* === STAT CARDS === */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
+            {/* === CORE METRICS GRID === */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {stats.trialDaysLeft !== null && stats.trialDaysLeft !== undefined && (
+                    <StatCard
+                        label="Trial Days Left"
+                        value={stats.trialDaysLeft}
+                        icon={<Clock size={20} />}
+                        trend={stats.trialDaysLeft <= 2 ? "Expiring Soon!" : "Active"}
+                        trendUp={false}
+                        color={stats.trialDaysLeft <= 2 ? "amber" : "blue"}
+                    />
+                )}
                 <StatCard
                     label="Total Contacts"
                     value={stats.contactsCount?.toLocaleString() ?? "0"}

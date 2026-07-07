@@ -21,7 +21,9 @@ export async function GET(req: Request) {
             totalRevenue,
             funnelStats,
             waba,
-            vendorWallet
+            vendorWallet,
+            workspace,
+            dbUser
         ] = await Promise.all([
             prisma.contact.count({
                 where: { workspace_id: workspaceId }
@@ -67,8 +69,33 @@ export async function GET(req: Request) {
             }),
             prisma.vendorWallet.findUnique({
                 where: { workspace_id: workspaceId }
+            }),
+            prisma.workspace.findUnique({
+                where: { id: workspaceId },
+                select: { trial_ends_at: true, plan: true, current_plan_id: true }
+            }),
+            prisma.user.findUnique({
+                where: { id: user.userId },
+                select: { email: true }
             })
         ]);
+
+        let trialDaysLeft = null;
+        if (workspace) {
+            const isFreePlanId = workspace.current_plan_id && workspace.plan === 'FREE';
+            const hasPaidPlan = (!!workspace.current_plan_id && !isFreePlanId) || (workspace.plan && workspace.plan !== 'FREE');
+            
+            if (!hasPaidPlan && dbUser?.email) {
+                let trialEnd = workspace.trial_ends_at;
+                const lock = await prisma.trialLock.findUnique({ where: { email: dbUser.email } });
+                if (lock) trialEnd = lock.trial_ends_at;
+                
+                if (trialEnd) {
+                    const days = Math.ceil((trialEnd.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+                    trialDaysLeft = Math.max(0, days);
+                }
+            }
+        }
 
         const isWabaConnected = !!waba && waba.status === "CONNECTED";
         const revenueRecovered = totalRevenue._sum.total_amount || 0;
@@ -78,6 +105,7 @@ export async function GET(req: Request) {
             contactsCount,
             messagesSent,
             activeFlows,
+            trialDaysLeft,
             wabaConnected: isWabaConnected,
             wabaDetails: waba ? {
                 status: waba.status,
