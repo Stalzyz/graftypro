@@ -1037,7 +1037,7 @@ export default function FlowPropertiesPanel({ selectedNode, onChange, onClose, o
                                             if (data.success) {
                                                 toast.success("Flow Synced to Meta! 🚀");
                                                 if (data.metaFlowId && !metaFlowId) {
-                                                    handleUpdate("flowId", data.metaFlowId);
+                                                    handleUpdate("metaFlowId", data.metaFlowId);
                                                     setMetaFlowId(data.metaFlowId);
                                                     toast.success("Meta Flow ID attached to Node!");
                                                     setTimeout(() => window.dispatchEvent(new Event('flow:save')), 500);

@@ -1,0 +1,117 @@
+[GraftyAPI] 🚀 Dispatching template 'abandan_cart_test' for Workspace: Grekam's Workspace (89b6c788-d842-4bf6-8af9-bc02e84e76d2)
+[GraftyAPI] 🚀 Dispatching template 'abandan_cart_test' for Workspace: Grekam's Workspace (89b6c788-d842-4bf6-8af9-bc02e84e76d2)
+[GraftyAPI] 🚀 Dispatching template 'abandan_cart_test' for Workspace: Grekam's Workspace (89b6c788-d842-4bf6-8af9-bc02e84e76d2)
+[GraftyAPI] 🚀 Dispatching template 'abandan_cart_test' for Workspace: Grekam's Workspace (89b6c788-d842-4bf6-8af9-bc02e84e76d2)
+[GraftyAPI] 🚀 Dispatching template 'abandan_cart_test' for Workspace: Grekam's Workspace (89b6c788-d842-4bf6-8af9-bc02e84e76d2)
+[GraftyAPI] 🚀 Dispatching template 'abandan_cart_test' for Workspace: Grekam's Workspace (89b6c788-d842-4bf6-8af9-bc02e84e76d2)
+[CreditService] ✅ Bypass L1: plan='ENTERPRISE'
+prisma:error 
+Invalid `prisma.creditPricing.findFirst()` invocation:
+
+
+Timed out fetching a new connection from the connection pool. More info: http://pris.ly/d/connection-pool (Current connection pool timeout: 10, connection limit: 5)
+[GraftyAPI] 🚀 Dispatching template 'abandan_cart_test' for Workspace: Grekam's Workspace (89b6c788-d842-4bf6-8af9-bc02e84e76d2)
+[GraftyAPI] 🚀 Dispatching template 'abandan_cart_test' for Workspace: Grekam's Workspace (89b6c788-d842-4bf6-8af9-bc02e84e76d2)
+[CreditService] ✅ Bypass L1: plan='ENTERPRISE'
+prisma:error 
+Invalid `prisma.whatsAppAccount.findUnique()` invocation:
+
+
+Timed out fetching a new connection from the connection pool. More info: http://pris.ly/d/connection-pool (Current connection pool timeout: 10, connection limit: 5)
+prisma:error 
+Invalid `prisma.creditPricing.findFirst()` invocation:
+
+
+Timed out fetching a new connection from the connection pool. More info: http://pris.ly/d/connection-pool (Current connection pool timeout: 10, connection limit: 5)
+[CreditService] ✅ Bypass L1: plan='ENTERPRISE'
+[GraftyAPI] 🚀 Dispatching template 'abandan_cart_test' for Workspace: Grekam's Workspace (89b6c788-d842-4bf6-8af9-bc02e84e76d2)
+📥 [INGEST_SUCCESS] text LocalURL: NONE
+[Credit Engine] Credits Deducted: 0 from 89b6c788-d842-4bf6-8af9-bc02e84e76d2. Balance: 185.5
+[FlowRunner] ▶️ Processing [text] "agency" for 919042583701
+[GraftyAPI] 🚀 Dispatching template 'abandan_cart_test' for Workspace: Grekam's Workspace (89b6c788-d842-4bf6-8af9-bc02e84e76d2)
+prisma:error 
+Invalid `prisma.workspace.findUnique()` invocation:
+
+
+Transaction API error: Transaction not found. Transaction ID is invalid, refers to an old closed transaction Prisma doesn't have information about anymore, or was obtained before disconnecting.
+prisma:error 
+Invalid `prisma.$executeRaw()` invocation:
+
+
+Transaction API error: Transaction already closed: A query cannot be executed on an expired transaction. The timeout for this transaction was 30000 ms, however 30004 ms passed since the start of the transaction. Consider increasing the interactive transaction timeout or doing less work in the transaction.
+[CreditService] ✅ Bypass L1: plan='ENTERPRISE'
+[SessionManager] 🔄 Flow a1aecd9f-c3cf-49cb-979e-7223da33d627 was updated after session creation — using fresh node graph.
+[GraftyAPI] 🚀 Dispatching template 'abandan_cart_test' for Workspace: Grekam's Workspace (89b6c788-d842-4bf6-8af9-bc02e84e76d2)
+[GraftyAPI] 🚀 Dispatching template 'abandan_cart_test' for Workspace: Grekam's Workspace (89b6c788-d842-4bf6-8af9-bc02e84e76d2)
+[Credit Engine] Credits Deducted: 0 from 89b6c788-d842-4bf6-8af9-bc02e84e76d2. Balance: 185.5
+[TriggerEngine] ❌ No trigger matched for: "agency"
+[FlowRunner] 🔄 Continuing session 41097c88-0bfb-4830-8737-95ce7f16758d at node "node_6"
+[WA_API_SEND] Sending template to 9500607536 (Token: a295***************65d6)
+prisma:error 
+Invalid `prisma.$executeRaw()` invocation:
+
+
+Raw query failed. Code: `40001`. Message: `could not serialize access due to concurrent update`
+prisma:error 
+Invalid `prisma.$executeRaw()` invocation:
+
+
+Raw query failed. Code: `40001`. Message: `could not serialize access due to concurrent update`
+prisma:error 
+Invalid `prisma.$executeRaw()` invocation:
+
+
+Raw query failed. Code: `40001`. Message: `could not serialize access due to concurrent update`
+[GraftyAPI] 🚀 Dispatching template 'abandan_cart_test' for Workspace: Grekam's Workspace (89b6c788-d842-4bf6-8af9-bc02e84e76d2)
+[FlowRunner] ✅ Done in 10054ms
+[CreditService] ✅ Bypass L1: plan='ENTERPRISE'
+[GraftyAPI] 🚀 Dispatching template 'abandan_cart_test' for Workspace: Grekam's Workspace (89b6c788-d842-4bf6-8af9-bc02e84e76d2)
+[Credit Engine] Credits Deducted: 0 from 89b6c788-d842-4bf6-8af9-bc02e84e76d2. Balance: 185.5
+[GraftyAPI] 🚀 Dispatching template 'abandan_cart_test' for Workspace: Grekam's Workspace (89b6c788-d842-4bf6-8af9-bc02e84e76d2)
+[WA_API_SEND] Sending template to 9500607536 (Token: a295***************65d6)
+prisma:error 
+Invalid `prisma.$executeRaw()` invocation:
+
+
+Raw query failed. Code: `40001`. Message: `could not serialize access due to concurrent update`
+prisma:error 
+Invalid `prisma.$executeRaw()` invocation:
+
+
+Raw query failed. Code: `40001`. Message: `could not serialize access due to concurrent update`
+[GraftyAPI] 🚀 Dispatching template 'abandan_cart_test' for Workspace: Grekam's Workspace (89b6c788-d842-4bf6-8af9-bc02e84e76d2)
+[CreditService] ✅ Bypass L1: plan='ENTERPRISE'
+[Credit Engine] Credits Deducted: 0 from 89b6c788-d842-4bf6-8af9-bc02e84e76d2. Balance: 185.5
+[WA_API_SEND] Sending template to 8220548872 (Token: a295***************65d6)
+prisma:error 
+Invalid `prisma.$executeRaw()` invocation:
+
+
+Raw query failed. Code: `40001`. Message: `could not serialize access due to concurrent update`
+[GraftyAPI] 🚀 Dispatching template 'abandan_cart_test' for Workspace: Grekam's Workspace (89b6c788-d842-4bf6-8af9-bc02e84e76d2)
+[CreditService] ✅ Bypass L1: plan='ENTERPRISE'
+[Credit Engine] Credits Deducted: 0 from 89b6c788-d842-4bf6-8af9-bc02e84e76d2. Balance: 185.5
+[WA_API_SEND] Sending template to 8220548872 (Token: a295***************65d6)
+[GraftyAPI] 🚀 Dispatching template 'abandan_cart_test' for Workspace: Grekam's Workspace (89b6c788-d842-4bf6-8af9-bc02e84e76d2)
+[CreditService] ✅ Bypass L1: plan='ENTERPRISE'
+[Credit Engine] Credits Deducted: 0 from 89b6c788-d842-4bf6-8af9-bc02e84e76d2. Balance: 185.5
+[WA_API_SEND] Sending template to 8220548872 (Token: a295***************65d6)
+📥 [INGEST_SUCCESS] text LocalURL: NONE
+[FlowRunner] ▶️ Processing [text] "agency" for 919042583701
+[SessionManager] 🔄 Flow a1aecd9f-c3cf-49cb-979e-7223da33d627 was updated after session creation — using fresh node graph.
+[TriggerEngine] ✅ Legacy flow keyword match: "agency" → Agency (a1aecd9f-c3cf-49cb-979e-7223da33d627)
+[FlowRunner] 🎯 Trigger matched: type=FLOW
+[SessionManager] ✅ Created session 7584b91e-3e83-48bc-abc5-f88c7c2815e0 for contact 6eb9215b-6e62-4318-9f48-54f85f3b31f2 (flow: a1aecd9f-c3cf-49cb-979e-7223da33d627)
+[FlowExecutor] ▶️ Node start-1 (start) depth=0
+[FlowExecutor] ▶️ Node node_6 (meta_flow) depth=1
+[FlowRunner] ✅ Done in 29ms
+[FlowSync] Creating new flow: shopify_flow_mraltf0r
+[FlowSync] Uploading spec to flow: 1571228154521975
+📥 [INGEST_SUCCESS] text LocalURL: NONE
+[FlowRunner] ▶️ Processing [text] "agency" for 919042583701
+[TriggerEngine] ✅ Legacy flow keyword match: "agency" → Agency (a1aecd9f-c3cf-49cb-979e-7223da33d627)
+[FlowRunner] 🎯 Trigger matched: type=FLOW
+[SessionManager] ✅ Created session 4910ed22-5756-4ebc-8273-2f5906833ba0 for contact 6eb9215b-6e62-4318-9f48-54f85f3b31f2 (flow: a1aecd9f-c3cf-49cb-979e-7223da33d627)
+[FlowExecutor] ▶️ Node start-1 (start) depth=0
+[FlowExecutor] ▶️ Node node_6 (meta_flow) depth=1
+[FlowRunner] ✅ Done in 26ms
