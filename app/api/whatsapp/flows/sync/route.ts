@@ -22,13 +22,16 @@ export async function POST(req: Request) {
 
         // 1. Create Flow if no ID exists
         if (!finalFlowId) {
-            // Meta API enforces strict naming: lowercase, alphanumeric, max 60 chars
-            const sanitizedName = (name || "new_flow")
+            // Meta API enforces strict naming: lowercase, alphanumeric, max 60 chars.
+            // MUST be unique across the entire WhatsApp Business Account.
+            const uniqueSuffix = Date.now().toString(36);
+            let baseName = (name || "new_flow")
                 .toLowerCase()
                 .replace(/[^a-z0-9_]/g, '_')
                 .replace(/_+/g, '_')
-                .replace(/^_|_$/g, '')
-                .substring(0, 60) || "new_flow";
+                .replace(/^_|_$/g, '');
+            baseName = baseName.substring(0, 50) || "new_flow"; // Keep room for suffix
+            const sanitizedName = `${baseName}_${uniqueSuffix}`;
 
             console.log(`[FlowSync] Creating new flow: ${sanitizedName}`);
             finalFlowId = await MetaFlowService.createFlow(workspaceId, sanitizedName);

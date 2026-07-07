@@ -1,0 +1,17 @@
+#!/usr/bin/expect -f
+set SERVER "root@72.61.231.187"
+set PASS "Photoshop09@"
+set REMOTE "/root/grafty_bsp"
+set timeout -1
+
+spawn scp -o StrictHostKeyChecking=no app/api/whatsapp/flows/sync/route.ts $SERVER:$REMOTE/app/api/whatsapp/flows/sync/route.ts
+expect "password:" { send "$PASS\r"; exp_continue } eof
+
+spawn scp -o StrictHostKeyChecking=no lib/whatsapp/flows-service.ts $SERVER:$REMOTE/lib/whatsapp/flows-service.ts
+expect "password:" { send "$PASS\r"; exp_continue } eof
+
+spawn ssh -o StrictHostKeyChecking=no $SERVER "cd $REMOTE && docker compose -f docker-compose.prod.yml down && docker compose -f docker-compose.prod.yml up -d --build"
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}
