@@ -22,7 +22,7 @@ export function TrialExpiredGate() {
 
     const fetchTrial = useCallback(async () => {
         try {
-            const res = await fetch("/api/auth/trial-status");
+            const res = await fetch("/api/auth/trial-status", { cache: 'no-store' });
             
             if (res.status === 401) {
                 console.warn("[TrialGate] Unauthorized access to trial status.");
@@ -116,7 +116,7 @@ export function TrialBanner() {
     useEffect(() => {
         async function fetchTrial() {
             try {
-                const res = await fetch("/api/auth/trial-status");
+                const res = await fetch("/api/auth/trial-status", { cache: 'no-store' });
                 const data = await res.json();
                 setTrial({ status: data.status, days_left: data.days_left ?? 0, trial_expired: data.trial_expired });
             } catch {

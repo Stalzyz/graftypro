@@ -61,12 +61,17 @@ export async function GET(request: Request) {
                 }
             }
         }
+        const headers = { "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate" };
         
-        if (hasPaidPlan) return NextResponse.json({ status: "paid", trial_expired: false });
-        if (!trialEnd) return NextResponse.json({ status: "no_trial", trial_expired: true, days_left: 0 });
+        if (hasPaidPlan) return NextResponse.json({ 
+            status: "paid", 
+            trial_expired: false,
+            _debug: { plan: workspace.plan, current_plan_id: workspace.current_plan_id, isFreePlanId }
+        }, { headers });
+        if (!trialEnd) return NextResponse.json({ status: "no_trial", trial_expired: true, days_left: 0 }, { headers });
         
         // Calculate dynamic precision: if less than 24 hours left, we might want to show hours,
-        // but for now, we'll keep it at days but ensure Math.ceil works against a consistent endpoint.
+        // but for now we stick to days.
         const daysLeft = Math.ceil((trialEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
         const expired = trialEnd < now;
 
@@ -76,7 +81,7 @@ export async function GET(request: Request) {
             trial_ends_at: trialEnd.toISOString(), 
             days_left: Math.max(0, daysLeft),
             server_time: now.toISOString()
-        });
+        }, { headers });
     } catch (e: any) {
         return NextResponse.json({ error: e.message }, { status: 500 });
     }
