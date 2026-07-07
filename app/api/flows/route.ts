@@ -73,9 +73,23 @@ export async function GET(req: Request) {
         const flows = await prisma.flow.findMany({
             where: where,
             orderBy: { updated_at: "desc" },
+            include: {
+                _count: {
+                    select: { sessions: true }
+                }
+            }
         });
 
-        return NextResponse.json({ data: flows });
+        const mappedFlows = flows.map(f => ({
+            ...f,
+            analytics: {
+                _count: {
+                    hits: f._count.sessions
+                }
+            }
+        }));
+
+        return NextResponse.json({ data: mappedFlows });
     } catch (error) {
         return NextResponse.json(
             { error: "Internal Server Error" },

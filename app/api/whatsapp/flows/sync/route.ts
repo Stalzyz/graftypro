@@ -41,10 +41,14 @@ export async function POST(req: Request) {
         console.log(`[FlowSync] Uploading spec to flow: ${finalFlowId}`);
         await MetaFlowService.updateSpec(workspaceId, finalFlowId, spec);
 
-        // 3. Mark in DB (local sync)
+        // 3. Publish Flow (GO LIVE)
+        console.log(`[FlowSync] Publishing flow: ${finalFlowId}`);
+        await MetaFlowService.publishFlow(workspaceId, finalFlowId);
+
+        // 4. Mark in DB (local sync) - Note: meta_flow_id might not be set natively yet
         await (prisma as any).flow.updateMany({
             where: { meta_flow_id: finalFlowId },
-            data: { meta_flow_status: "DRAFT_UPLOADED" }
+            data: { meta_flow_status: "PUBLISHED" }
         });
 
         return NextResponse.json({ 
