@@ -22,7 +22,8 @@ const MODULES = [
     { key: "api_access", label: "API Access", icon: "🔌" },
 ];
 
-const PLANS = ["FREE", "STARTER", "PRO", "ENTERPRISE"];
+    const [dbPackages, setDbPackages] = useState<any[]>([]);
+
 
 export default function VendorDetailPage({ params }: { params: { id: string } }) {
     const [vendor, setVendor] = useState<any>(null);
@@ -61,21 +62,31 @@ export default function VendorDetailPage({ params }: { params: { id: string } })
     };
 
     const fetchVendor = useCallback(async () => {
+        setLoading(true);
         const res = await fetch(`/api/super-admin/vendors/${params.id}`);
         const data = await res.json();
         if (data.workspace) {
             setVendor(data.workspace);
             setPlan(data.workspace.plan);
             setStatus(data.workspace.status);
-            const owner = data.workspace.users?.find((u: any) => u.role === "OWNER");
             setProfile({
-                business_name: data.workspace.business_name || data.workspace.name,
-                phone: owner?.phone || "",
+                business_name: data.workspace.business_name || "",
+                phone: data.workspace.users?.[0]?.phone || "",
                 password: ""
             });
         }
         setLoading(false);
     }, [params.id]);
+
+    const fetchPackages = useCallback(async () => {
+        try {
+            const res = await fetch('/api/super-admin/packages');
+            const data = await res.json();
+            if (data.data) setDbPackages(data.data);
+        } catch (e) {
+            console.error(e);
+        }
+    }, []);
 
     const fetchModules = useCallback(async () => {
         const res = await fetch(`/api/super-admin/vendors/${params.id}/modules`);
@@ -108,7 +119,8 @@ export default function VendorDetailPage({ params }: { params: { id: string } })
         fetchModules();
         fetchAddons();
         fetchSubscription();
-    }, [fetchVendor, fetchModules, fetchAddons, fetchSubscription]);
+        fetchPackages();
+    }, [fetchVendor, fetchModules, fetchAddons, fetchSubscription, fetchPackages]);
 
     useEffect(() => {
         if (activeTab === "audit") fetchAudit();
@@ -374,7 +386,8 @@ export default function VendorDetailPage({ params }: { params: { id: string } })
                                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Plan Tier</label>
                                     <select value={plan} onChange={e => setPlan(e.target.value)}
                                         className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-4 py-3 font-bold text-slate-800 outline-none focus:border-[#042f94]/30 transition-all appearance-none">
-                                        {PLANS.map(p => <option key={p} value={p}>{p}</option>)}
+                                        <option value="FREE">FREE (Fallback)</option>
+                                        {dbPackages.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
                                     </select>
                                 </div>
                                 <div>
@@ -625,7 +638,7 @@ export default function VendorDetailPage({ params }: { params: { id: string } })
                                     <select value={subValue} onChange={e => setSubValue(e.target.value)}
                                         className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-4 py-3 font-bold text-slate-800 outline-none appearance-none">
                                         <option value="">Select plan...</option>
-                                        {PLANS.map(p => <option key={p} value={p}>{p}</option>)}
+                                        {dbPackages.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                                     </select>
                                 </div>
                             )}

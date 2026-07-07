@@ -53,11 +53,18 @@ export async function POST(req: Request) {
              throw new Error(`Critical Error: Plan ${newPlan} no longer exists in database.`);
         }
 
+        const normalizePlanEnum = (name: string) => {
+            const n = name.toUpperCase();
+            if (n.includes("FREE")) return "FREE";
+            if (n.includes("ENTERPRISE")) return "ENTERPRISE";
+            return "PRO"; // All dynamic premium plans fall under PRO enum mapping
+        };
+
         // 3. Activate Plan in DB
         const updatedWorkspace = await prisma.workspace.update({
             where: { id: user.workspaceId },
             data: {
-                plan: newPlan as any,
+                plan: normalizePlanEnum(newPlan) as any,
                 subscription_status: "active",
                 subscription_id: razorpay_subscription_id,
                 current_plan_id: dbPlanRecord?.id || null
