@@ -67,7 +67,7 @@ export default function VendorDetailPage({ params }: { params: { id: string } })
         const data = await res.json();
         if (data.workspace) {
             setVendor(data.workspace);
-            setPlan(data.workspace.plan);
+            setPlan(data.workspace.plan_details?.name || data.workspace.plan);
             setStatus(data.workspace.status);
             setProfile({
                 business_name: data.workspace.business_name || "",

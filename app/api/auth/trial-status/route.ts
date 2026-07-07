@@ -9,7 +9,7 @@ export async function GET(request: Request) {
     try {
         const workspace = await prisma.workspace.findUnique({
             where: { id: user.workspaceId },
-            select: { id: true, trial_ends_at: true, subscription_status: true, current_plan_id: true, plan: true, created_at: true }
+            select: { id: true, trial_ends_at: true, subscription_status: true, current_plan_id: true, plan: true, created_at: true, plan_details: { select: { name: true } } }
         });
         if (!workspace) return NextResponse.json({ error: "Workspace not found" }, { status: 404 });
         const now = new Date();
@@ -65,11 +65,9 @@ export async function GET(request: Request) {
         }
         const headers = { "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate" };
         
-        if (hasPaidPlan) return NextResponse.json({ 
-            status: "paid", 
-            trial_expired: false,
-            _debug: { plan: workspace.plan, current_plan_id: workspace.current_plan_id, isFreePlanId }
-        }, { headers });
+        if (hasPaidPlan) {
+            return NextResponse.json({ status: "paid", trial_expired: false, plan: workspace.plan_details?.name || workspace.plan }, { headers });
+        }
         if (!trialEnd) return NextResponse.json({ status: "no_trial", trial_expired: true, days_left: 0 }, { headers });
         
         // Calculate dynamic precision: if less than 24 hours left, we might want to show hours,

@@ -19,6 +19,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
             include: {
                 users: true,
                 waba: true,
+                plan_details: true,
                 _count: {
                     select: {
                         messages: true,
