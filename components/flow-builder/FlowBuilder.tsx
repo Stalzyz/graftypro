@@ -313,6 +313,15 @@ export default function FlowBuilder({ initialData }: { initialData?: any }) {
         pushHistory({ nodes: newNodes, edges });
     }, [nodes, edges, setNodes, pushHistory]);
 
+    // ── Global Save Listener ──────────────────────────────────────────────────
+    useEffect(() => {
+        const handleGlobalSave = () => {
+            handleSave('DRAFT', true);
+        };
+        window.addEventListener('flow:save', handleGlobalSave);
+        return () => window.removeEventListener('flow:save', handleGlobalSave);
+    }, [nodes, edges, flowName]); // Dependencies needed so handleSave uses latest state
+
     // ── Save Flow ─────────────────────────────────────────────────────────────
     const handleSave = async (status: 'DRAFT' | 'PUBLISHED' = 'DRAFT', silent = false) => {
         if (saving) return;

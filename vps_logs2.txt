@@ -1,0 +1,34 @@
+
+> grafty-bsp@0.1.0 start
+> next start
+
+   ▲ Next.js 14.1.0
+   - Local:        http://localhost:3000
+
+ ✓ Ready in 1050ms
+📥 [INGEST_SUCCESS] text LocalURL: NONE
+[FlowRunner] ▶️ Processing [text] "agency" for 919042583701
+[SessionManager] 🔄 Flow a1aecd9f-c3cf-49cb-979e-7223da33d627 was updated after session creation — using fresh node graph.
+[TriggerEngine] ❌ No trigger matched for: "agency"
+[FlowRunner] 🔄 Continuing session c02aba1d-61bf-4d74-9da7-0fb8cf1b60b8 at node "node_6"
+[FlowRunner] ✅ Done in 78ms
+📥 [INGEST_SUCCESS] text LocalURL: NONE
+[FlowRunner] ▶️ Processing [text] "agency" for 919042583701
+[SessionManager] 🔄 Flow a1aecd9f-c3cf-49cb-979e-7223da33d627 was updated after session creation — using fresh node graph.
+[TriggerEngine] ✅ Legacy flow keyword match: "agency" → Agency (a1aecd9f-c3cf-49cb-979e-7223da33d627)
+[FlowRunner] 🎯 Trigger matched: type=FLOW
+[SessionManager] ✅ Created session 650c563b-879c-490f-9fb8-83f808232379 for contact 6eb9215b-6e62-4318-9f48-54f85f3b31f2 (flow: a1aecd9f-c3cf-49cb-979e-7223da33d627)
+[FlowExecutor] ▶️ Node start-1 (start) depth=0
+[FlowExecutor] ▶️ Node node_6 (meta_flow) depth=1
+[FlowRunner] ✅ Done in 105ms
+[FlowSync] Creating new flow: shopify_flow_mral0fax
+[FlowSync] Uploading spec to flow: 2443503269497720
+📥 [INGEST_SUCCESS] text LocalURL: NONE
+[FlowRunner] ▶️ Processing [text] "agency" for 919042583701
+[SessionManager] 🔄 Flow a1aecd9f-c3cf-49cb-979e-7223da33d627 was updated after session creation — using fresh node graph.
+[TriggerEngine] ✅ Legacy flow keyword match: "agency" → Agency (a1aecd9f-c3cf-49cb-979e-7223da33d627)
+[FlowRunner] 🎯 Trigger matched: type=FLOW
+[SessionManager] ✅ Created session 41097c88-0bfb-4830-8737-95ce7f16758d for contact 6eb9215b-6e62-4318-9f48-54f85f3b31f2 (flow: a1aecd9f-c3cf-49cb-979e-7223da33d627)
+[FlowExecutor] ▶️ Node start-1 (start) depth=0
+[FlowExecutor] ▶️ Node node_6 (meta_flow) depth=1
+[FlowRunner] ✅ Done in 23ms
