@@ -1035,7 +1035,11 @@ export default function FlowPropertiesPanel({ selectedNode, onChange, onClose, o
                                             });
                                             const data = await res.json();
                                             if (data.success) {
-                                                toast.success("Flow Synced to Meta! 🚀");
+                                                if (data.warning) {
+                                                    toast.warning("Uploaded but not published: " + data.warning);
+                                                } else {
+                                                    toast.success("Flow Synced to Meta! 🚀");
+                                                }
                                                 if (data.metaFlowId && !metaFlowId) {
                                                     handleUpdate("metaFlowId", data.metaFlowId);
                                                     setMetaFlowId(data.metaFlowId);

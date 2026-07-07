@@ -43,17 +43,26 @@ export async function POST(req: Request) {
 
         // 3. Publish Flow (GO LIVE)
         console.log(`[FlowSync] Publishing flow: ${finalFlowId}`);
-        await MetaFlowService.publishFlow(workspaceId, finalFlowId);
+        let publishWarning = null;
+        try {
+            await MetaFlowService.publishFlow(workspaceId, finalFlowId);
+        } catch (e: any) {
+            console.error(`[FlowSync] Publish Failed:`, e.message);
+            publishWarning = e.message;
+        }
 
         // 4. Mark in DB (local sync) - Note: meta_flow_id might not be set natively yet
-        await (prisma as any).flow.updateMany({
-            where: { meta_flow_id: finalFlowId },
-            data: { meta_flow_status: "PUBLISHED" }
-        });
+        if (!publishWarning) {
+            await (prisma as any).flow.updateMany({
+                where: { meta_flow_id: finalFlowId },
+                data: { meta_flow_status: "PUBLISHED" }
+            });
+        }
 
         return NextResponse.json({ 
             success: true, 
-            metaFlowId: finalFlowId 
+            metaFlowId: finalFlowId,
+            warning: publishWarning
         });
 
     } catch (error: any) {
