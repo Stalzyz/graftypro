@@ -49,9 +49,15 @@ export async function GET(request: Request) {
             } else if (!trialEnd) {
                 // Fallback (Should rarely happen with new registration flow)
                 trialEnd = new Date(workspace.created_at.getTime() + 7 * 24 * 60 * 60 * 1000);
-                await prisma.trialLock.create({
-                    data: { email: userEmail, trial_ends_at: trialEnd }
-                });
+                try {
+                    await prisma.trialLock.upsert({
+                        where: { email: userEmail },
+                        update: {},
+                        create: { email: userEmail, trial_ends_at: trialEnd }
+                    });
+                } catch (err) {
+                    console.error("[Trial Security] Failed to upsert trial lock:", err);
+                }
             }
         }
         

@@ -79,6 +79,10 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
                 updateData.plan = normalizePlan(p.name);
             }
         } else if (plan) {
+            const p = await prisma.subscriptionPlan.findFirst({ where: { name: { equals: plan, mode: 'insensitive' } } });
+            if (p) {
+                updateData.current_plan_id = p.id;
+            }
             updateData.plan = normalizePlan(plan);
         }
 
