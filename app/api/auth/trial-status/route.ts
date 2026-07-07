@@ -26,7 +26,8 @@ export async function GET(request: Request) {
         }
 
         const userEmail = AuthSecurityService.normalizeEmail(dbUser.email);
-        const hasPaidPlan = !!workspace.current_plan_id || (workspace.plan && workspace.plan !== 'FREE');
+        const isFreePlanId = workspace.current_plan_id && workspace.plan === 'FREE';
+        const hasPaidPlan = (!!workspace.current_plan_id && !isFreePlanId) || (workspace.plan && workspace.plan !== 'FREE');
         
         let trialEnd = workspace.trial_ends_at;
 
