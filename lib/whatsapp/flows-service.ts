@@ -31,8 +31,11 @@ export class MetaFlowService {
 
             return res.data.id;
         } catch (error: any) {
-            const msg = error.response?.data?.error?.message || error.message;
-            throw new Error(`[FlowCreate] ${msg}`);
+            const metaError = error.response?.data?.error;
+            const msg = metaError?.message || error.message;
+            const details = metaError?.error_user_msg || JSON.stringify(metaError || {});
+            console.error(`[FlowCreate] Failed:`, details);
+            throw new Error(`[FlowCreate] ${msg} - ${details}`);
         }
     }
 

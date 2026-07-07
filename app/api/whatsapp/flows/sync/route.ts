@@ -22,8 +22,16 @@ export async function POST(req: Request) {
 
         // 1. Create Flow if no ID exists
         if (!finalFlowId) {
-            console.log(`[FlowSync] Creating new flow: ${name}`);
-            finalFlowId = await MetaFlowService.createFlow(workspaceId, name);
+            // Meta API enforces strict naming: lowercase, alphanumeric, max 60 chars
+            const sanitizedName = (name || "new_flow")
+                .toLowerCase()
+                .replace(/[^a-z0-9_]/g, '_')
+                .replace(/_+/g, '_')
+                .replace(/^_|_$/g, '')
+                .substring(0, 60) || "new_flow";
+
+            console.log(`[FlowSync] Creating new flow: ${sanitizedName}`);
+            finalFlowId = await MetaFlowService.createFlow(workspaceId, sanitizedName);
         }
 
         // 2. Update Spec (UPLOAD ASSET)

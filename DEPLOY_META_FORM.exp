@@ -1,0 +1,36 @@
+#!/usr/bin/expect -f
+set SERVER "root@72.61.231.187"
+set PASS "Photoshop09@"
+set REMOTE "/root/grafty_bsp"
+set timeout -1
+
+puts "\n============================================="
+puts "🚀 DEPLOYING META FORM BUILDER TO PRODUCTION 🚀"
+puts "=============================================\n"
+
+puts "==> Uploading files..."
+spawn scp -o StrictHostKeyChecking=no lib/whatsapp/meta-form-compiler.ts $SERVER:$REMOTE/lib/whatsapp/meta-form-compiler.ts
+expect "password:" { send "$PASS\r"; exp_continue } eof
+
+spawn ssh -o StrictHostKeyChecking=no $SERVER "mkdir -p $REMOTE/components/flow-builder/sidebar/"
+expect "password:" { send "$PASS\r"; exp_continue } eof
+
+spawn scp -o StrictHostKeyChecking=no components/flow-builder/sidebar/MetaFormSidebar.tsx $SERVER:$REMOTE/components/flow-builder/sidebar/MetaFormSidebar.tsx
+expect "password:" { send "$PASS\r"; exp_continue } eof
+
+spawn scp -o StrictHostKeyChecking=no components/flow-builder/nodes/MetaFlowNode.tsx $SERVER:$REMOTE/components/flow-builder/nodes/MetaFlowNode.tsx
+expect "password:" { send "$PASS\r"; exp_continue } eof
+
+spawn scp -o StrictHostKeyChecking=no components/flow-builder/FlowPropertiesPanel.tsx $SERVER:$REMOTE/components/flow-builder/FlowPropertiesPanel.tsx
+expect "password:" { send "$PASS\r"; exp_continue } eof
+
+puts "\n==> Rebuilding Production Docker Container..."
+spawn ssh -o StrictHostKeyChecking=no $SERVER "cd $REMOTE && docker compose -f docker-compose.prod.yml down && docker compose -f docker-compose.prod.yml up -d --build"
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}
+
+puts "\n======================================================="
+puts "✅ META FORM DEPLOYMENT COMPLETE."
+puts "=======================================================\n"
