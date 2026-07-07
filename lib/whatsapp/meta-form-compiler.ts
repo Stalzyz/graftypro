@@ -110,7 +110,7 @@ export class MetaFormCompiler {
 
         // Construct full Meta JSON
         const flowJson = {
-            version: "3.1",
+            version: "5.0",
             routing_model: {
                 "QUESTION_1": []
             },
