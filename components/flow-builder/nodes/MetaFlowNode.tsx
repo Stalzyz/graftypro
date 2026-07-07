@@ -24,13 +24,32 @@ export default memo(({ data, isConnectable }: any) => {
                     <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-2">
                             <FormInput size={14} className="text-indigo-600" />
-                            <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">Flow ID</span>
+                            <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">Internal Form</span>
                         </div>
-                        <span className="text-[10px] font-bold text-indigo-400">#{data.flowId || 'UNSET'}</span>
+                        {data.formFields && data.formFields.length > 0 ? (
+                            <span className="text-[10px] font-bold text-indigo-600 bg-indigo-100 px-2 py-0.5 rounded-full">{data.formFields.length} Fields</span>
+                        ) : (
+                            <span className="text-[10px] font-bold text-indigo-400">#{data.flowId || 'UNSET'}</span>
+                        )}
                     </div>
-                    <p className="text-[11px] text-gray-500 font-bold leading-relaxed">
-                        {data.flowName || 'Configuration required. Select a Meta Flow from your account.'}
-                    </p>
+                    {data.formFields && data.formFields.length > 0 ? (
+                        <div className="space-y-1">
+                            {data.formFields.slice(0, 3).map((f: any, i: number) => (
+                                <div key={i} className="text-[9px] text-indigo-800 font-bold bg-white px-2 py-1 rounded border border-indigo-50 truncate">
+                                    {f.label} <span className="text-indigo-400 font-normal">({f.type})</span>
+                                </div>
+                            ))}
+                            {data.formFields.length > 3 && (
+                                <div className="text-[9px] text-indigo-400 font-bold px-2 py-0.5">
+                                    + {data.formFields.length - 3} more fields
+                                </div>
+                            )}
+                        </div>
+                    ) : (
+                        <p className="text-[11px] text-gray-500 font-bold leading-relaxed">
+                            {data.flowName || 'Build a native form or select an existing Meta Flow.'}
+                        </p>
+                    )}
                 </div>
 
                 <div className="flex items-center gap-2 px-1">

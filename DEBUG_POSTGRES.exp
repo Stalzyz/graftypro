@@ -1,0 +1,9 @@
+#!/usr/bin/expect -f
+set SERVER "root@72.61.231.187"
+set PASS "Photoshop09@"
+set timeout 60
+spawn ssh -o StrictHostKeyChecking=no $SERVER "echo '--- STARTING POSTGRES ---' && docker start grafty_postgres && sleep 2 && docker inspect --format='{{.State.Error}}' grafty_postgres && echo '--- CHECKING PORT 5432 ---' && netstat -tulpn | grep 5432"
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}

@@ -1,0 +1,9 @@
+#!/usr/bin/expect -f
+set SERVER "root@72.61.231.187"
+set PASS "Photoshop09@"
+set timeout 10
+spawn ssh -o StrictHostKeyChecking=no $SERVER "cd /root/grafty_bsp && docker compose -f docker-compose.prod.yml exec redis redis-cli HGETALL 'bull:campaign-queue:UNROLL-91f09f62-8bd5-4c9d-8fd3-fb2af015410f'"
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}

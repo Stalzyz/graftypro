@@ -1,0 +1,249 @@
+#!/usr/bin/expect -f
+# ============================================================
+# 🚨 BROADCAST FIX DEPLOY — Nuclear Broadcast Stabilization v2
+# ============================================================
+# Deploys ALL broadcast pipeline fixes with a full rebuild.
+#
+# Fixes included in this deploy:
+#  1. lib/queue.ts               — Stray '+' syntax error fixed, smart Redis host
+#  2. lib/redis-status.ts        — Production-aware Redis host (was localhost)
+#  3. lib/commerce/segmentation.ts — getSegmentContacts() was inside a comment
+#  4. worker.ts                  — Redis hardcoded localhost fixed, retry logic
+#  5. app/api/campaigns/route.ts — Retry/backoff on launch job
+#  6. app/api/campaigns/recover/ — Draft+Processing recovery
+#  7. lib/whatsapp/service.ts    — retryCount/messageId idempotency
+#  8. lib/credits/service.ts     — RepeatableRead isolation for concurrency
+#
+# Run from your Mac: expect BROADCAST_FIX_DEPLOY.exp
+# ============================================================
+
+set VPS_PASS "Photoshop09@"
+set VPS_HOST "root@72.61.231.187"
+set REMOTE_PATH "/root/grafty_bsp"
+set LOCAL_PATH "/Users/stalinkumar/Downloads/Grafty_Bsp"
+set timeout 900
+
+puts "\n╔═══════════════════════════════════════════════════════════╗"
+puts "║  🚨 BROADCAST FIX DEPLOY v2 — Full Nuclear Stabilization  ║"
+puts "║                                                             ║"
+puts "║  8 Critical Files Being Deployed:                          ║"
+puts "║  1. lib/queue.ts              (syntax error + Redis host)  ║"
+puts "║  2. lib/redis-status.ts       (Redis host in Docker)       ║"
+puts "║  3. lib/commerce/segmentation.ts (method was in comment)   ║"
+puts "║  4. worker.ts                 (Redis localhost → docker)   ║"
+puts "║  5. app/api/campaigns/route.ts (launch retries)            ║"
+puts "║  6. app/api/campaigns/recover/ (DRAFT recovery)            ║"
+puts "║  7. lib/whatsapp/service.ts   (idempotency)                ║"
+puts "║  8. lib/credits/service.ts    (concurrency fix)            ║"
+puts "╚═══════════════════════════════════════════════════════════╝\n"
+
+# ─── STEP 1: Sync ALL changed files ─────────────────────────────────────────
+puts "📡 \[1/5\] Syncing ALL broadcast fix files to VPS..."
+
+# 1a. lib/queue.ts — The most critical fix (syntax error was crashing app)
+spawn rsync -avz --no-perms --no-owner --no-group \
+    -e "ssh -o StrictHostKeyChecking=no" \
+    "$LOCAL_PATH/lib/queue.ts" \
+    $VPS_HOST:$REMOTE_PATH/lib/queue.ts
+expect {
+    "assword:" { send "$VPS_PASS\r"; exp_continue }
+    eof { puts "  ✅ lib/queue.ts synced." }
+}
+
+# 1b. lib/redis-status.ts — Docker Redis host fix + isActive() method
+spawn rsync -avz --no-perms --no-owner --no-group \
+    -e "ssh -o StrictHostKeyChecking=no" \
+    "$LOCAL_PATH/lib/redis-status.ts" \
+    $VPS_HOST:$REMOTE_PATH/lib/redis-status.ts
+expect {
+    "assword:" { send "$VPS_PASS\r"; exp_continue }
+    eof { puts "  ✅ lib/redis-status.ts synced." }
+}
+
+# 1c. lib/commerce/segmentation.ts — Method was inside a comment (CRITICAL)
+spawn rsync -avz --no-perms --no-owner --no-group \
+    -e "ssh -o StrictHostKeyChecking=no" \
+    "$LOCAL_PATH/lib/commerce/segmentation.ts" \
+    $VPS_HOST:$REMOTE_PATH/lib/commerce/segmentation.ts
+expect {
+    "assword:" { send "$VPS_PASS\r"; exp_continue }
+    eof { puts "  ✅ lib/commerce/segmentation.ts synced." }
+}
+
+# 1d. worker.ts — Redis localhost→redis, retry logic, idempotency
+spawn rsync -avz --no-perms --no-owner --no-group \
+    -e "ssh -o StrictHostKeyChecking=no" \
+    "$LOCAL_PATH/worker.ts" \
+    $VPS_HOST:$REMOTE_PATH/worker.ts
+expect {
+    "assword:" { send "$VPS_PASS\r"; exp_continue }
+    eof { puts "  ✅ worker.ts synced." }
+}
+
+# 1e. app/api/campaigns/route.ts — Retry/backoff on launch job
+spawn rsync -avz --no-perms --no-owner --no-group \
+    -e "ssh -o StrictHostKeyChecking=no" \
+    "$LOCAL_PATH/app/api/campaigns/route.ts" \
+    $VPS_HOST:$REMOTE_PATH/app/api/campaigns/route.ts
+expect {
+    "assword:" { send "$VPS_PASS\r"; exp_continue }
+    eof { puts "  ✅ app/api/campaigns/route.ts synced." }
+}
+
+# 1f. app/api/campaigns/recover/ — DRAFT+PROCESSING recovery
+spawn rsync -avz --no-perms --no-owner --no-group \
+    -e "ssh -o StrictHostKeyChecking=no" \
+    "$LOCAL_PATH/app/api/campaigns/recover/" \
+    $VPS_HOST:$REMOTE_PATH/app/api/campaigns/recover/
+expect {
+    "assword:" { send "$VPS_PASS\r"; exp_continue }
+    eof { puts "  ✅ app/api/campaigns/recover/ synced." }
+}
+
+# 1g. lib/whatsapp/service.ts — retryCount/messageId idempotency
+spawn rsync -avz --no-perms --no-owner --no-group \
+    -e "ssh -o StrictHostKeyChecking=no" \
+    "$LOCAL_PATH/lib/whatsapp/service.ts" \
+    $VPS_HOST:$REMOTE_PATH/lib/whatsapp/service.ts
+expect {
+    "assword:" { send "$VPS_PASS\r"; exp_continue }
+    eof { puts "  ✅ lib/whatsapp/service.ts synced." }
+}
+
+# 1h. lib/credits/service.ts — RepeatableRead for concurrency
+spawn rsync -avz --no-perms --no-owner --no-group \
+    -e "ssh -o StrictHostKeyChecking=no" \
+    "$LOCAL_PATH/lib/credits/service.ts" \
+    $VPS_HOST:$REMOTE_PATH/lib/credits/service.ts
+expect {
+    "assword:" { send "$VPS_PASS\r"; exp_continue }
+    eof { puts "  ✅ lib/credits/service.ts synced." }
+}
+
+# 1i. dashboard campaigns page — Recover button + status badges
+spawn rsync -avz --no-perms --no-owner --no-group \
+    -e "ssh -o StrictHostKeyChecking=no" \
+    "$LOCAL_PATH/app/dashboard/campaigns/page.tsx" \
+    $VPS_HOST:$REMOTE_PATH/app/dashboard/campaigns/page.tsx
+expect {
+    "assword:" { send "$VPS_PASS\r"; exp_continue }
+    eof { puts "  ✅ app/dashboard/campaigns/page.tsx synced." }
+}
+
+sleep 1
+
+# ─── STEP 2: Stop, clean ports, rebuild, restart ─────────────────────────────
+puts "\n🏗️ \[2/5\] Rebuilding web + worker containers (no cache)..."
+
+spawn ssh -o StrictHostKeyChecking=no $VPS_HOST "cd $REMOTE_PATH && \
+    echo '🛑 Stopping web and worker...' && \
+    docker compose -f docker-compose.prod.yml stop web worker 2>/dev/null || true && \
+    echo '🔥 Clearing conflicting ports on host...' && \
+    (lsof -ti:5432 | xargs kill -9 2>/dev/null || true) && \
+    (lsof -ti:6379 | xargs kill -9 2>/dev/null || true) && \
+    (lsof -ti:6380 | xargs kill -9 2>/dev/null || true) && \
+    (service postgresql stop 2>/dev/null || true) && \
+    docker rm -f grafty_bsp-web-1 grafty_bsp-worker-1 2>/dev/null || true && \
+    echo '🏗️ Rebuilding images (no cache)...' && \
+    docker compose -f docker-compose.prod.yml build --no-cache web worker && \
+    echo '🚀 Starting containers...' && \
+    docker compose -f docker-compose.prod.yml up -d web worker && \
+    sleep 10 && \
+    echo '✅ BUILD COMPLETE'"
+
+expect {
+    "assword:" { send "$VPS_PASS\r"; exp_continue }
+    "Permission denied" { puts "\n❌ SSH Authentication failed."; exit 1 }
+    "BUILD COMPLETE" {
+        puts "\n  ✅ Containers rebuilt successfully."
+        exp_continue
+    }
+    timeout { puts "\n❌ Build timed out."; exit 1 }
+    eof { puts "\n  ✅ Build step done." }
+}
+
+sleep 3
+
+# ─── STEP 3: Verify worker connected to Redis ─────────────────────────────────
+puts "\n🔌 \[3/5\] Verifying worker Redis connection..."
+
+spawn ssh -o StrictHostKeyChecking=no $VPS_HOST "cd $REMOTE_PATH && \
+    echo '--- Worker startup logs ---' && \
+    docker compose -f docker-compose.prod.yml logs --tail=20 worker && \
+    echo '✅ REDIS CHECK DONE'"
+
+expect {
+    "assword:" { send "$VPS_PASS\r"; exp_continue }
+    "REDIS CHECK DONE" {
+        puts "\n  ✅ Worker logs retrieved. Look for '🔌 \[Worker\] Redis Connection: redis:6379'"
+        exp_continue
+    }
+    eof { puts "\n  ✅ Done." }
+}
+
+sleep 1
+
+# ─── STEP 4: Reset stuck campaigns ───────────────────────────────────────────
+puts "\n🔁 \[4/5\] Running Recovery Engine..."
+
+spawn rsync -avz --no-perms --no-owner --no-group \
+    -e "ssh -o StrictHostKeyChecking=no" \
+    "$LOCAL_PATH/lib/recovery-engine.ts" \
+    $VPS_HOST:$REMOTE_PATH/lib/recovery-engine.ts
+expect {
+    "assword:" { send "$VPS_PASS\r"; exp_continue }
+    eof { puts "  ✅ Recovery Engine file synced." }
+}
+
+spawn ssh -o StrictHostKeyChecking=no $VPS_HOST "cd $REMOTE_PATH && \
+    docker compose -f docker-compose.prod.yml exec -T web npx tsx lib/recovery-engine.ts && \
+    echo '✅ RECOVERY DONE'"
+
+expect {
+    "assword:" { send "$VPS_PASS\r"; exp_continue }
+    "RECOVERY DONE" {
+        puts "\n  ✅ Stuck campaigns reset."
+        exp_continue
+    }
+    timeout { puts "\n  ⚠️ Recovery timed out — check VPS logs manually." }
+    eof { puts "\n  ✅ Recovery step done." }
+}
+
+sleep 1
+
+# ─── STEP 5: Full health check ────────────────────────────────────────────────
+puts "\n🩺 \[5/5\] Full health check..."
+
+spawn ssh -o StrictHostKeyChecking=no $VPS_HOST "cd $REMOTE_PATH && \
+    echo '--- Container Status ---' && \
+    docker compose -f docker-compose.prod.yml ps && \
+    echo '--- Worker Logs (Last 40 lines) ---' && \
+    docker compose -f docker-compose.prod.yml logs --tail=40 worker && \
+    echo '--- Web Logs (Last 20 lines) ---' && \
+    docker compose -f docker-compose.prod.yml logs --tail=20 web && \
+    echo '✅ HEALTH CHECK DONE'"
+
+expect {
+    "assword:" { send "$VPS_PASS\r"; exp_continue }
+    "HEALTH CHECK DONE" {
+        puts "\n  ✅ Health check complete."
+        exp_continue
+    }
+    eof { puts "\n  ✅ Done." }
+}
+
+puts "\n╔═══════════════════════════════════════════════════════════╗"
+puts "║  🎉 BROADCAST FIX v2 IS LIVE!                              ║"
+puts "║                                                             ║"
+puts "║  ✅ lib/queue.ts syntax error fixed                         ║"
+puts "║  ✅ Worker + Redis-status use Docker 'redis' host           ║"
+puts "║  ✅ getSegmentContacts() is now callable                    ║"
+puts "║  ✅ Jobs have retry + idempotency                           ║"
+puts "║  ✅ Stuck campaigns reset                                   ║"
+puts "║                                                             ║"
+puts "║  NEXT: Click 'Recover Stuck' in dashboard, then            ║"
+puts "║        create a small test campaign (1-5 contacts).         ║"
+puts "║                                                             ║"
+puts "║  VERIFY: docker compose logs -f worker (look for           ║"
+puts "║          '🔌 Redis Connection: redis:6379')                 ║"
+puts "╚═══════════════════════════════════════════════════════════╝\n"

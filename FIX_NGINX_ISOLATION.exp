@@ -1,0 +1,50 @@
+#!/usr/bin/expect -f
+# ============================================================
+# FIX_NGINX_ISOLATION.exp
+# Uploads FIX_VPS_NGINX.sh to VPS and runs it.
+# Run from Mac: expect FIX_NGINX_ISOLATION.exp
+# ============================================================
+
+set VPS_PASS  "Photoshop09@"
+set VPS_HOST  "root@72.61.231.187"
+set LOCAL_SCRIPT "/Users/stalinkumar/Downloads/Grafty_Bsp/FIX_VPS_NGINX.sh"
+set timeout   180
+
+puts "\n╔══════════════════════════════════════════════════════╗"
+puts "║  🔐 NGINX DOMAIN ISOLATION FIX                       ║"
+puts "╚══════════════════════════════════════════════════════╝\n"
+
+# ─── STEP 1: Upload fix script ────────────────────────────
+puts "📡 \[1/2\] Uploading fix script to VPS..."
+
+spawn scp -o StrictHostKeyChecking=no $LOCAL_SCRIPT $VPS_HOST:/root/FIX_VPS_NGINX.sh
+expect {
+    "assword:" { send "$VPS_PASS\r"; exp_continue }
+    eof
+}
+sleep 1
+
+# ─── STEP 2: Execute fix script ───────────────────────────
+puts "\n🚀 \[2/2\] Executing fix on VPS..."
+
+spawn ssh -o StrictHostKeyChecking=no $VPS_HOST "chmod +x /root/FIX_VPS_NGINX.sh && bash /root/FIX_VPS_NGINX.sh"
+expect {
+    "assword:" { send "$VPS_PASS\r"; exp_continue }
+    "DONE — grafty.pro is now isolated" {
+        puts "\n✅ Fix applied successfully!"
+        exp_continue
+    }
+    timeout {
+        puts "\n❌ Timed out"
+        exit 1
+    }
+    eof {
+        puts "\n✅ Script finished."
+    }
+}
+
+puts "\n╔══════════════════════════════════════════════════════╗"
+puts "║  ✅ FIX COMPLETE                                      ║"
+puts "║  Test: https://grafty.pro  (Grafty Next.js)          ║"
+puts "║  Test: https://raaghas.in  (unchanged)               ║"
+puts "╚══════════════════════════════════════════════════════╝\n"

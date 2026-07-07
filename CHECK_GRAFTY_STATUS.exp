@@ -1,0 +1,9 @@
+#!/usr/bin/expect -f
+set SERVER "root@72.61.231.187"
+set PASS "Photoshop09@"
+set timeout 60
+spawn ssh -o StrictHostKeyChecking=no $SERVER "echo '--- DOCKER STATUS ---' && docker ps -a | grep grafty && echo '--- RECENT LOGS ---' && (docker logs --tail 20 grafty_bsp-web-1 || docker logs --tail 20 wabot_bsp-web-1)"
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}

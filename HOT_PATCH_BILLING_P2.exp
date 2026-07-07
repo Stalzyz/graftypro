@@ -1,0 +1,44 @@
+#!/usr/bin/expect -f
+# ☢️ HOT PATCH PHASE 2: Run DB fix (inside Docker /app) + rebuild + restart
+
+set VPS_PASS "Photoshop09@"
+set VPS_HOST "root@72.61.231.187"
+set REMOTE_PATH "/root/grafty_bsp"
+set timeout 600
+
+puts "\n╔══════════════════════════════════════════════════════╗"
+puts "║  ☢️  BILLING HOT PATCH PHASE 2 — DB Fix + Restart   ║"
+puts "╚══════════════════════════════════════════════════════╝\n"
+
+spawn ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null $VPS_HOST \
+    "cd $REMOTE_PATH && \
+    echo '=== Step 1: Run DB Fix ===' && \
+    docker compose -f docker-compose.prod.yml exec -T web npx tsx /app/scripts/fix-enterprise-billing.ts < /dev/null ; \
+    echo '=== Step 2: Rebuild web+worker ===' && \
+    docker compose -f docker-compose.prod.yml build web worker && \
+    echo '=== Step 3: Restart ===' && \
+    docker compose -f docker-compose.prod.yml up -d --force-recreate web worker && \
+    sleep 15 && \
+    echo '=== Step 4: Verify ===' && \
+    docker compose -f docker-compose.prod.yml logs --tail=25 web && \
+    echo 'PATCH_DONE'"
+
+expect {
+    "assword:" {
+        send "$VPS_PASS\r"
+        exp_continue
+    }
+    "PATCH_DONE" {
+        puts "\n╔══════════════════════════════════════════════════════╗"
+        puts "║  🎉 HOT PATCH COMPLETE! Billing fix is LIVE.         ║"
+        puts "╚══════════════════════════════════════════════════════╝"
+        exp_continue
+    }
+    timeout {
+        puts "\n❌ Timed out."
+        exit 1
+    }
+    eof {
+        puts "\n✅ Done."
+    }
+}

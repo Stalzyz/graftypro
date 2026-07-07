@@ -1,0 +1,42 @@
+#!/usr/bin/expect -f
+set SERVER "root@72.61.231.187"
+set PASS "Photoshop09@"
+set timeout 10
+spawn ssh -o StrictHostKeyChecking=no $SERVER "cat << 'INNER' > /root/grafty_bsp/enqueue_draft_fixed.ts
+import { Queue } from \\\"bullmq\\\";
+import Redis from \\\"ioredis\\\";
+
+const redis = new Redis({ host: \\\"redis\\\", port: 6379 });
+const campaignQueue = new Queue(\\\"campaign-queue\\\", { connection: redis });
+
+async function run() {
+    try {
+        const campaignId = \\\"91f09f62-8bd5-4c9d-8fd3-fb2af015410f\\\";
+        const workspaceId = \\\"89b6c788-d842-4bf6-8af9-bc02e84e76d2\\\";
+        await campaignQueue.add(
+            \\\"send-campaign\\\",
+            {
+                campaignId: campaignId,
+                workspaceId: workspaceId,
+                segmentId: null
+            },
+            {
+                jobId: \\\`UNROLL-FIXED-\\\${campaignId}-\\\${Date.now()}\\\`,
+                attempts: 3,
+                backoff: { type: \\\"exponential\\\", delay: 5000 }
+            }
+        );
+        console.log(\\\"Job enqueued successfully!\\\");
+        await redis.quit();
+        process.exit(0);
+    } catch(e) {
+        console.error(e);
+    }
+}
+run();
+INNER
+docker cp /root/grafty_bsp/enqueue_draft_fixed.ts grafty_bsp-worker-1:/app/enqueue_draft_fixed.ts && docker exec grafty_bsp-worker-1 npx tsx /app/enqueue_draft_fixed.ts"
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}

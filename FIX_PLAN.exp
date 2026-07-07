@@ -1,0 +1,24 @@
+#!/usr/bin/expect -f
+set VPS_PASS "Photoshop09@"
+set VPS_HOST "root@72.61.231.187"
+set REMOTE_PATH "/root/grafty_bsp"
+set timeout 120
+
+spawn ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null $VPS_HOST \
+    "docker exec grafty_bsp-web-1 node -e \"
+        const { PrismaClient } = require('@prisma/client');
+        const prisma = new PrismaClient();
+        async function run() {
+            const w = await prisma.workspace.update({ 
+                where: { id: '89b6c788-d842-4bf6-8af9-bc02e84e76d2' },
+                data: { current_plan_id: '174290de-19dd-410a-a559-3e3300b08943' }
+            });
+            console.log('Fixed workspace:', w.name, w.plan, w.current_plan_id);
+        }
+        run().catch(console.error).finally(() => process.exit(0));
+    \""
+
+expect {
+    "assword:" { send "$VPS_PASS\r"; exp_continue }
+    eof { }
+}

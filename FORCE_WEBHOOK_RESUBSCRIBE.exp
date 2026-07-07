@@ -1,0 +1,20 @@
+#!/usr/bin/expect -f
+set VPS_PASS "Photoshop09@"
+set VPS_HOST "root@72.61.231.187"
+set REMOTE_PATH "/root/grafty_bsp"
+set timeout 120
+
+puts "\n🔔 Force Re-subscribing all WABAs to Grafty webhook...\n"
+
+spawn ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null $VPS_HOST \
+    "cd $REMOTE_PATH && docker exec grafty_bsp-web-1 npx tsx scripts/archive/legacy_scripts/force-webhook-url.ts 2>&1 | tail -50"
+
+expect {
+    "assword:" { send "$VPS_PASS\r"; exp_continue }
+    "Webhook Sweep Complete" {
+        puts "\n✅ All WABA webhooks re-subscribed!"
+        exp_continue
+    }
+    timeout { puts "\n⚠️ Timed out." }
+    eof { puts "\nDone." }
+}

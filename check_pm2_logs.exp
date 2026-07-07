@@ -1,0 +1,9 @@
+#!/usr/bin/expect -f
+set SERVER "root@72.61.231.187"
+set PASS "Photoshop09@"
+set timeout 10
+spawn ssh -o StrictHostKeyChecking=no $SERVER "pm2 logs send-grafty --lines 50 --nostream"
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}

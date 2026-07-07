@@ -1,0 +1,12 @@
+#!/usr/bin/expect -f
+set VPS_PASS "Photoshop09@"
+set VPS_HOST "root@72.61.231.187"
+set timeout 120
+
+spawn ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null $VPS_HOST \
+    "docker logs grafty_bsp-web-1 --tail 100"
+
+expect {
+    "assword:" { send "$VPS_PASS\r"; exp_continue }
+    eof { }
+}

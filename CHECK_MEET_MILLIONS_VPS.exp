@@ -1,0 +1,26 @@
+#!/usr/bin/expect -f
+set VPS_PASS "Photoshop09@"
+set VPS_HOST "root@72.61.231.187"
+set REMOTE_PATH "/root/grafty_bsp"
+set timeout 120
+
+spawn ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null $VPS_HOST \
+    "cd $REMOTE_PATH && docker exec grafty_bsp-web-1 node -e \"
+        const { PrismaClient } = require('@prisma/client');
+        const prisma = new PrismaClient();
+        async function main() {
+            const acc = await prisma.whatsAppAccount.findFirst({
+                where: { display_name: { contains: 'Meet Millions', mode: 'insensitive' } },
+                select: { id: true, app_id: true, app_secret: true, access_token: true }
+            });
+            console.log('--- DB RESULT ---');
+            console.log(acc);
+            console.log('-----------------');
+        }
+        main().finally(() => prisma.\\\$disconnect());
+    \""
+
+expect {
+    "assword:" { send "$VPS_PASS\r"; exp_continue }
+    eof { }
+}

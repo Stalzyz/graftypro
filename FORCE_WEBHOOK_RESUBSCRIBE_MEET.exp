@@ -1,0 +1,13 @@
+#!/usr/bin/expect -f
+set VPS_PASS "Photoshop09@"
+set VPS_HOST "root@72.61.231.187"
+set REMOTE_PATH "/root/grafty_bsp"
+set timeout 120
+
+spawn ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null $VPS_HOST \
+    "cd $REMOTE_PATH && docker exec grafty_bsp-web-1 npx tsx scripts/archive/legacy_scripts/force-webhook-url.ts"
+
+expect {
+    "assword:" { send "$VPS_PASS\r"; exp_continue }
+    eof { }
+}

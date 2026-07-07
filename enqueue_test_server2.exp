@@ -1,0 +1,38 @@
+#!/usr/bin/expect -f
+set SERVER "root@72.61.231.187"
+set PASS "Photoshop09@"
+set timeout 30
+spawn ssh -o StrictHostKeyChecking=no $SERVER "cat << 'INNER_EOF' > /root/grafty_bsp/enqueue.ts
+import { Queue } from 'bullmq';
+import Redis from 'ioredis';
+
+const redis = new Redis({ host: 'redis', port: 6379 });
+const campaignQueue = new Queue('campaign-queue', { connection: redis });
+
+async function run() {
+    const campaignId = '91f09f62-8bd5-4c9d-8fd3-fb2af015410f';
+    const workspaceId = '89b6c788-d842-4bf6-8af9-bc02e84e76d2';
+    await campaignQueue.add(
+        'send-campaign',
+        {
+            campaignId: campaignId,
+            workspaceId: workspaceId,
+            segmentId: null
+        },
+        {
+            jobId: \`UNROLL-\${campaignId}\`,
+            attempts: 3,
+            backoff: { type: 'exponential', delay: 5000 }
+        }
+    );
+    console.log('Job enqueued manually.');
+    process.exit(0);
+}
+run();
+INNER_EOF
+docker cp /root/grafty_bsp/enqueue.ts grafty_bsp-worker-1:/app/enqueue.ts
+docker exec grafty_bsp-worker-1 npx tsx /app/enqueue.ts"
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}

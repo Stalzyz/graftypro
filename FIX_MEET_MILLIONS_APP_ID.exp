@@ -1,0 +1,24 @@
+#!/usr/bin/expect -f
+set VPS_PASS "Photoshop09@"
+set VPS_HOST "root@72.61.231.187"
+set REMOTE_PATH "/root/grafty_bsp"
+set timeout 120
+
+spawn ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null $VPS_HOST \
+    "cd $REMOTE_PATH && docker exec grafty_bsp-web-1 node -e \"
+        const { PrismaClient } = require('@prisma/client');
+        const prisma = new PrismaClient();
+        async function main() {
+            await prisma.whatsAppAccount.update({
+                where: { id: '6228d345-2c54-4c7a-bc8a-22d7c1c27198' },
+                data: { app_id: '1000735102744170' }
+            });
+            console.log('App ID fixed in DB.');
+        }
+        main().finally(() => prisma.\\\$disconnect());
+    \""
+
+expect {
+    "assword:" { send "$VPS_PASS\r"; exp_continue }
+    eof { }
+}

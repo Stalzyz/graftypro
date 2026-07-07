@@ -1,0 +1,34 @@
+#!/usr/bin/expect -f
+# =====================================================================
+# PORT ISOLATION DEPLOYMENT SCRIPT
+# Moves Grafty DB to 5433 to avoid conflict with Raaghas (5432).
+# =====================================================================
+
+set SERVER "root@72.61.231.187"
+set PASS "Photoshop09@"
+set REMOTE "/root/grafty_bsp"
+set timeout -1
+
+puts "\n============================================="
+puts "🚀 DEPLOYING PORT ISOLATION FIX 🚀"
+puts "=============================================\n"
+
+puts "==> \[1/2\] Uploading updated docker-compose.prod.yml and .env..."
+spawn scp -o StrictHostKeyChecking=no docker-compose.prod.yml .env $SERVER:$REMOTE/
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}
+
+puts "\n==> \[2/2\] Restarting Isolated Containers..."
+spawn ssh -o StrictHostKeyChecking=no $SERVER "cd $REMOTE && docker compose -f docker-compose.prod.yml down && docker compose -f docker-compose.prod.yml up -d"
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}
+
+puts "\n======================================================="
+puts "✅ PORT ISOLATION COMPLETE."
+puts "Grafty is now running on internal port 5433."
+puts "Raaghas (port 5432) remains completely untouched."
+puts "=======================================================\n"

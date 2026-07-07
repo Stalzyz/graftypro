@@ -1,0 +1,36 @@
+#!/usr/bin/expect -f
+# ============================================================
+# 🧹 VPS DEEP CLEAN & REPAIR — Fixes Port Conflicts & 502s
+# ============================================================
+
+set VPS_PASS "Photoshop09@"
+set VPS_HOST "root@72.61.231.187"
+set REMOTE_PATH "/root/grafty_bsp"
+set timeout 300
+
+puts "\n🧹 Starting Deep Clean of VPS Infrastructure..."
+
+spawn ssh -o StrictHostKeyChecking=no $VPS_HOST " \
+    echo '🛑 Stopping all Docker containers...' && \
+    docker stop \$(docker ps -q) 2>/dev/null || true && \
+    echo '🗑️ Removing all containers...' && \
+    docker rm \$(docker ps -a -q) 2>/dev/null || true && \
+    echo '🔥 Killing all processes on ports 5432, 6379, 6380, 3001...' && \
+    fuser -k 5432/tcp 2>/dev/null || true && \
+    fuser -k 6379/tcp 2>/dev/null || true && \
+    fuser -k 6380/tcp 2>/dev/null || true && \
+    fuser -k 3001/tcp 2>/dev/null || true && \
+    (lsof -ti:5432,6379,6380,3001 | xargs kill -9 2>/dev/null || true) && \
+    echo '🧼 Stopping native DB services...' && \
+    (service postgresql stop 2>/dev/null || true) && \
+    (service redis-server stop 2>/dev/null || true) && \
+    echo '🏗️ Pruning Docker networks...' && \
+    docker network prune -f && \
+    echo '✅ VPS IS NOW CLEAN. Ready for fresh deploy.' \
+"
+
+expect {
+    "assword:" { send "$VPS_PASS\r"; exp_continue }
+    "CLEAN. Ready" { puts "\n✅ VPS cleaned successfully." }
+    eof { puts "\n✅ Done." }
+}

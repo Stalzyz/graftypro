@@ -1,0 +1,9 @@
+#!/usr/bin/expect -f
+set SERVER "root@72.61.231.187"
+set PASS "Photoshop09@"
+set timeout 10
+spawn ssh -o StrictHostKeyChecking=no $SERVER "docker logs --tail 100 grafty_bsp-worker-1 | grep -i -E 'CampaignWorker|BatchWorker|error|harden'"
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}

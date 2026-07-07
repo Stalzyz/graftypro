@@ -1,0 +1,11 @@
+#!/usr/bin/expect -f
+set VPS_PASS "Photoshop09@"
+set VPS_HOST "root@72.61.231.187"
+set timeout 30
+
+# Use npx prisma to find stuck campaigns
+spawn ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null $VPS_HOST "cd /root/grafty_bsp && docker exec grafty_bsp-worker-1 npx prisma query \"SELECT id, name, status FROM Campaign WHERE status = 'PROCESSING' ORDER BY updated_at DESC LIMIT 5\""
+expect {
+    "assword:" { send "$VPS_PASS\r"; exp_continue }
+    eof
+}

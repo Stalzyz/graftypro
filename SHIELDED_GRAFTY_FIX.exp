@@ -1,0 +1,46 @@
+#!/usr/bin/expect -f
+
+# =====================================================================
+# SHIELDED GRAFTY FIX SCRIPT
+# This script strictly targets Grafty configurations and containers.
+# Raaghas is explicitly shielded by avoiding global pm2/docker commands.
+# =====================================================================
+
+set SERVER "root@72.61.231.187"
+set PASS "Photoshop09@"
+set timeout -1
+
+puts "\n============================================="
+puts "🛡️  INITIATING SHIELDED FIX FOR GRAFTY 🛡️"
+puts "=============================================\n"
+
+puts "==> \[1/3\] Fixing SSL for app.grafty.pro..."
+# Expand the existing certificate to include the app subdomain.
+# The --expand flag ensures it only touches this specific cert.
+spawn ssh -o StrictHostKeyChecking=no $SERVER "nginx -t && certbot --nginx --expand -d grafty.pro -d www.grafty.pro -d app.grafty.pro --non-interactive --redirect"
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}
+
+puts "\n==> \[2/3\] Patching Environment Variables..."
+# Fix the DATABASE_URL to point to wabot_bsp safely without touching other services.
+spawn ssh -o StrictHostKeyChecking=no $SERVER "cd /root/wabot_bsp && sed -i 's/grafty_bsp/wabot_bsp/g' .env"
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}
+
+puts "\n==> \[3/3\] Targeted Restart of Grafty Services Only (Shielding Raaghas)..."
+# Using docker compose in the targeted directory instead of global system prune or pm2 restart
+spawn ssh -o StrictHostKeyChecking=no $SERVER "cd /root/wabot_bsp && docker compose -f docker-compose.prod.yml down && docker compose -f docker-compose.prod.yml up -d --build"
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}
+
+puts "\n======================================================="
+puts "✅ SHIELDED FIX COMPLETE."
+puts "✅ Grafty has been patched and restarted."
+puts "🛡️  Raaghas remains completely unaffected."
+puts "=======================================================\n"

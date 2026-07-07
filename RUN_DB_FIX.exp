@@ -1,0 +1,40 @@
+#!/usr/bin/expect -f
+# Copy file DIRECTLY into the running container, then execute it
+# This bypasses the Docker layer cache entirely
+
+set VPS_PASS "Photoshop09@"
+set VPS_HOST "root@72.61.231.187"
+set REMOTE_PATH "/root/grafty_bsp"
+set timeout 120
+
+puts "\n☢️  DIRECT CONTAINER INJECTION + DB FIX\n"
+
+spawn ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null $VPS_HOST \
+    "cd $REMOTE_PATH && \
+    CONTAINER=\$(docker compose -f docker-compose.prod.yml ps -q web) && \
+    echo \"Container ID: \$CONTAINER\" && \
+    docker cp scripts/fix-enterprise-billing.ts \$CONTAINER:/app/scripts/fix-enterprise-billing.ts && \
+    echo 'File injected into container.' && \
+    docker compose -f docker-compose.prod.yml exec -T web npx tsx /app/scripts/fix-enterprise-billing.ts < /dev/null"
+
+expect {
+    "assword:" {
+        send "$VPS_PASS\r"
+        exp_continue
+    }
+    "COMPLETE" {
+        puts "\n\n✅ DB Fix is LIVE!"
+        exp_continue
+    }
+    "Script failed" {
+        puts "\n❌ Script error — check output."
+        exp_continue
+    }
+    timeout {
+        puts "\n❌ Timed out."
+        exit 1
+    }
+    eof {
+        puts "\n✅ Done."
+    }
+}

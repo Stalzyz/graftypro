@@ -1,0 +1,23 @@
+#!/usr/bin/expect -f
+set SERVER "root@72.61.231.187"
+set PASS "Photoshop09@"
+set timeout 10
+spawn ssh -o StrictHostKeyChecking=no $SERVER "cat << 'INNER_EOF' > /root/grafty_bsp/check_campaign.ts
+import { PrismaClient } from '@prisma/client';
+const prisma = new PrismaClient();
+async function run() {
+    const campaign = await prisma.campaign.findUnique({
+        where: { id: '91f09f62-8bd5-4c9d-8fd3-fb2af015410f' },
+        include: { stats: true }
+    });
+    console.log(JSON.stringify(campaign, null, 2));
+    process.exit(0);
+}
+run();
+INNER_EOF
+docker cp /root/grafty_bsp/check_campaign.ts grafty_bsp-worker-1:/app/check_campaign.ts
+docker exec grafty_bsp-worker-1 npx tsx /app/check_campaign.ts"
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}

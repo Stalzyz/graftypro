@@ -1,0 +1,92 @@
+#!/usr/bin/expect -f
+# ============================================================
+# DEPLOY_BROADCAST_FIX.exp
+# Deploys atomic broadcast pipeline fixes to VPS and restarts worker
+# Run: expect DEPLOY_BROADCAST_FIX.exp
+# ============================================================
+
+set VPS_PASS  "Photoshop09@"
+set VPS_HOST  "root@72.61.231.187"
+set REMOTE_PATH "/root/grafty_bsp"
+set LOCAL_PATH "/Users/stalinkumar/Downloads/Grafty_Bsp"
+set timeout   120
+
+puts "\n╔══════════════════════════════════════════════════════╗"
+puts "║  📡 BROADCAST FIX DEPLOY — Atomic Worker Patch      ║"
+puts "╚══════════════════════════════════════════════════════╝\n"
+
+# ─── STEP 1: Upload fixed files ───────────────────────────
+puts "📡 \[1/3\] Uploading patched worker.ts to VPS..."
+
+spawn scp -o StrictHostKeyChecking=no \
+    "$LOCAL_PATH/worker.ts" \
+    $VPS_HOST:$REMOTE_PATH/worker.ts
+
+expect {
+    "assword:" { send "$VPS_PASS\r"; exp_continue }
+    eof { puts "✅ worker.ts uploaded." }
+}
+
+sleep 1
+
+# ─── STEP 2: Upload lib/whatsapp/service.ts ───────────────
+puts "\n📡 \[2/4\] Uploading WhatsApp service.ts..."
+
+spawn scp -o StrictHostKeyChecking=no \
+    "$LOCAL_PATH/lib/whatsapp/service.ts" \
+    $VPS_HOST:$REMOTE_PATH/lib/whatsapp/service.ts
+
+expect {
+    "assword:" { send "$VPS_PASS\r"; exp_continue }
+    eof { puts "✅ service.ts uploaded." }
+}
+
+sleep 1
+
+# ─── STEP 2.5: Upload lib/commerce/segmentation.ts ────────
+puts "\n📡 \[3/4\] Uploading commerce segmentation.ts and meta-module.ts..."
+
+spawn scp -o StrictHostKeyChecking=no \
+    "$LOCAL_PATH/lib/commerce/segmentation.ts" \
+    $VPS_HOST:$REMOTE_PATH/lib/commerce/segmentation.ts
+spawn scp -o StrictHostKeyChecking=no \
+    "$LOCAL_PATH/lib/whatsapp/meta-module.ts" \
+    $VPS_HOST:$REMOTE_PATH/lib/whatsapp/meta-module.ts
+
+expect {
+    "assword:" { send "$VPS_PASS\r"; exp_continue }
+    eof { puts "✅ segmentation.ts and meta-module.ts uploaded." }
+}
+
+sleep 1
+
+# ─── STEP 3: Restart the worker Docker container ──────────
+puts "\n🔄 \[4/4\] Restarting worker container to apply fixes..."
+
+spawn ssh -o StrictHostKeyChecking=no $VPS_HOST \
+    "cd $REMOTE_PATH && \
+     echo '🛑 Restarting Services...' && \
+     docker compose -f docker-compose.prod.yml restart worker && \
+     pm2 restart all && \
+     sleep 5 && \
+     echo '📊 Worker logs (last 30 lines):' && \
+     docker compose -f docker-compose.prod.yml logs --tail=30 worker && \
+     echo 'RESTART_DONE'"
+
+expect {
+    "assword:" { send "$VPS_PASS\r"; exp_continue }
+    "RESTART_DONE" { puts "\n✅ Worker restarted!" ; exp_continue }
+    timeout { puts "\n⏱️ Timeout waiting for restart" ; exit 1 }
+    eof { puts "\n✅ Done." }
+}
+
+puts "\n╔══════════════════════════════════════════════════════╗"
+puts "║  ✅ BROADCAST FIX DEPLOYED!                          ║"
+puts "║                                                      ║"
+puts "║  Fixes applied:                                      ║"
+puts "║  1. Billing errors now immediately fatal (no retry) ║"
+puts "║  2. stats.failed always incremented on failures     ║"
+puts "║  3. Dedup key includes epoch (re-runs work)         ║"
+puts "║  4. BullMQ failed event safety net added            ║"
+puts "║  5. sendTemplate description arg fixed              ║"
+puts "╚══════════════════════════════════════════════════════╝\n"

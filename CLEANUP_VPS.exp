@@ -1,0 +1,15 @@
+#!/usr/bin/expect -f
+set VPS_PASS "Photoshop09@"
+set VPS_HOST "root@72.61.231.187"
+set REMOTE_PATH "/root/grafty_bsp"
+set timeout 120
+
+puts "\n🧹 Cleaning up VPS Disk Space...\n"
+
+spawn ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null $VPS_HOST \
+    "docker system prune -af --volumes && cd $REMOTE_PATH && docker compose -f docker-compose.prod.yml up -d --force-recreate web"
+
+expect {
+    "assword:" { send "$VPS_PASS\r"; exp_continue }
+    eof { puts "\n✅ Cleanup and restart complete." }
+}

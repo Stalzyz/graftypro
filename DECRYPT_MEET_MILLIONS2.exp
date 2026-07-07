@@ -1,0 +1,45 @@
+#!/usr/bin/expect -f
+set VPS_PASS "Photoshop09@"
+set VPS_HOST "root@72.61.231.187"
+set REMOTE_PATH "/root/grafty_bsp"
+set timeout 120
+
+spawn ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null $VPS_HOST \
+    "cd $REMOTE_PATH && docker exec grafty_bsp-web-1 node -e \"
+        const { PrismaClient } = require('@prisma/client');
+        const crypto = require('crypto');
+        const prisma = new PrismaClient();
+        
+        function decrypt(cipherText) {
+            try {
+                if (!cipherText || cipherText === 'SYSTEM') return 'SYSTEM';
+                const key = Buffer.from(process.env.ENCRYPTION_KEY, 'hex');
+                const parts = cipherText.split(':');
+                const ivHex = parts.shift();
+                const tagHex = parts.shift();
+                const encryptedData = parts.shift();
+                const decipher = crypto.createDecipheriv('aes-256-gcm', key, Buffer.from(ivHex, 'hex'));
+                decipher.setAuthTag(Buffer.from(tagHex, 'hex'));
+                let decrypted = decipher.update(encryptedData, 'hex', 'utf8');
+                decrypted += decipher.final('utf8');
+                return decrypted;
+            } catch (e) {
+                return 'ERROR: ' + e.message;
+            }
+        }
+        
+        async function main() {
+            const acc = await prisma.whatsAppAccount.findFirst({
+                where: { id: '6228d345-2c54-4c7a-bc8a-22d7c1c27198' }
+            });
+            console.log('App ID:', acc.app_id);
+            console.log('Decrypted Secret:', decrypt(acc.app_secret));
+            console.log('Decrypted Token:', decrypt(acc.access_token));
+        }
+        main().finally(() => prisma.\\\$disconnect());
+    \""
+
+expect {
+    "assword:" { send "$VPS_PASS\r"; exp_continue }
+    eof { }
+}

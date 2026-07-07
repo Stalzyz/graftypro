@@ -1,0 +1,35 @@
+#!/usr/bin/expect -f
+# =====================================================================
+# HOTFIX DEPLOYMENT SCRIPT
+# Pushes the fixed landing page (Receipt import bug) to the VPS 
+# and restarts the server safely.
+# =====================================================================
+
+set SERVER "root@72.61.231.187"
+set PASS "Photoshop09@"
+# Using grafty_bsp as seen in recent deploy scripts
+set REMOTE "/root/grafty_bsp"
+set timeout -1
+
+puts "\n============================================="
+puts "🚀 DEPLOYING HOTFIX TO PRODUCTION 🚀"
+puts "=============================================\n"
+
+puts "==> \[1/2\] Uploading patched app/api/campaigns/route.ts..."
+spawn scp -o StrictHostKeyChecking=no app/api/campaigns/route.ts $SERVER:$REMOTE/app/api/campaigns/route.ts
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}
+
+puts "\n==> \[2/2\] Rebuilding Production Docker Container..."
+spawn ssh -o StrictHostKeyChecking=no $SERVER "cd $REMOTE && docker compose -f docker-compose.prod.yml down && docker compose -f docker-compose.prod.yml up -d --build"
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}
+
+puts "\n======================================================="
+puts "✅ HOTFIX DEPLOYMENT COMPLETE."
+puts "Wait ~30 seconds and check https://grafty.pro"
+puts "=======================================================\n"

@@ -1,0 +1,16 @@
+#!/usr/bin/expect -f
+set SERVER "root@72.61.231.187"
+set PASS "Photoshop09@"
+set timeout 30
+
+spawn scp -o StrictHostKeyChecking=no /tmp/enqueue_draft_final.ts $SERVER:/root/grafty_bsp/enqueue_draft_final.ts
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}
+
+spawn ssh -o StrictHostKeyChecking=no $SERVER "docker cp /root/grafty_bsp/enqueue_draft_final.ts grafty_bsp-worker-1:/app/enqueue_draft_final.ts && docker exec grafty_bsp-worker-1 npx tsx /app/enqueue_draft_final.ts && sleep 5 && docker logs --tail 200 grafty_bsp-worker-1"
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}

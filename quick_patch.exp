@@ -1,0 +1,9 @@
+#!/usr/bin/expect -f
+set SERVER "root@72.61.231.187"
+set PASS "Photoshop09@"
+set timeout 10
+spawn ssh -o StrictHostKeyChecking=no $SERVER "docker exec grafty_bsp-worker-1 sed -i 's/decryptToken/decrypt/g' /app/worker.ts && docker exec grafty_bsp-worker-1 sed -i 's/prisma.whatsappConfig/prisma.whatsAppAccount/g' /app/worker.ts && docker restart grafty_bsp-worker-1 && sleep 5 && docker exec grafty_bsp-worker-1 npx tsx /app/enqueue_draft.ts"
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}

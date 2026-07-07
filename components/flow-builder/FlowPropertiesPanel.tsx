@@ -2,6 +2,8 @@
 
 import { X, Paperclip, Loader2, Calendar, Trash2, Copy, Smartphone, ChevronDown, ChevronUp, FileCode, Webhook } from "lucide-react";
 import { SmartUploader } from "../ui/SmartUploader";
+import MetaFormSidebar from "./sidebar/MetaFormSidebar";
+import { MetaFormCompiler } from "../../lib/whatsapp/meta-form-compiler";
 import toast from "react-hot-toast";
 import { useEffect, useState, useRef } from "react";
 
@@ -961,165 +963,108 @@ export default function FlowPropertiesPanel({ selectedNode, onChange, onClose, o
 
                 {selectedNode.type === 'meta_flow' && (
                     <div className="space-y-4">
-                        <div className="bg-indigo-50 p-4 rounded-2xl border border-indigo-100">
-                            <h4 className="text-sm font-black text-indigo-900 mb-2 tracking-tight">Structured Data Collection</h4>
-                            <p className="text-xs text-indigo-700 font-medium leading-relaxed">
-                                Launches a native WhatsApp form. Captured data is auto-mapped to CRM Contact Attributes.
-                            </p>
-                        </div>
-                        <div>
-                            <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Meta Flow ID</label>
-                            <input
-                                type="text"
-                                value={metaFlowId}
-                                onChange={(e) => handleUpdate("metaFlowId", e.target.value)}
-                                placeholder="e.g. 1234567890"
-                                className="w-full border border-gray-200 bg-gray-50 rounded-lg p-2.5 text-sm font-bold outline-none focus:ring-4 focus:ring-indigo-100 transition-all"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">CTA Button Text</label>
-                            <input
-                                type="text"
-                                value={metaFlowCTA}
-                                onChange={(e) => handleUpdate("metaFlowCTA", e.target.value)}
-                                placeholder="e.g. Book Survey"
-                                className="w-full border border-gray-200 bg-gray-50 rounded-lg p-2.5 text-sm font-bold outline-none focus:ring-4 focus:ring-indigo-100 transition-all"
-                            />
-                        </div>
-                        <div className="flex gap-2 p-1 bg-gray-100 rounded-xl mb-4">
-                            <button
-                                onClick={() => handleUpdate("metaFlowHeaderType", "text")}
-                                className={`flex-1 py-1.5 text-[10px] font-black rounded-lg transition-all ${metaFlowHeaderType === 'text' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
-                            >
-                                TEXT HEADER
-                            </button>
-                            <button
-                                onClick={() => handleUpdate("metaFlowHeaderType", "image")}
-                                className={`flex-1 py-1.5 text-[10px] font-black rounded-lg transition-all ${metaFlowHeaderType === 'image' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
-                            >
-                                IMAGE HEADER
-                            </button>
-                        </div>
-
-                        {metaFlowHeaderType === 'text' ? (
-                            <div>
-                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Header (Optional)</label>
-                                <input
-                                    type="text"
-                                    value={metaFlowHeader}
-                                    onChange={(e) => handleUpdate("metaFlowHeader", e.target.value)}
-                                    className="w-full border border-gray-200 bg-gray-50 rounded-lg p-2.5 text-sm font-bold outline-none focus:ring-4 focus:ring-indigo-100 transition-all"
-                                />
-                            </div>
-                        ) : (
-                            <div>
-                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Header Image</label>
-                                <SmartUploader
-                                    defaultValue={headerUrl}
-                                    onUploadSuccess={(url: string) => handleUpdate("metaFlowHeaderUrl", url)}
-                                    module="flows"
-                                />
-                            </div>
-                        )}
-                        <div>
-                            <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Body Message</label>
-                            <textarea
-                                value={content}
-                                onChange={(e) => handleUpdate("content", e.target.value)}
-                                rows={4}
-                                className="w-full border border-gray-200 bg-gray-50 rounded-lg p-2.5 text-sm font-bold outline-none focus:ring-4 focus:ring-indigo-100 transition-all resize-none"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Footer (Optional)</label>
-                            <input
-                                type="text"
-                                value={metaFlowFooter}
-                                onChange={(e) => handleUpdate("metaFlowFooter", e.target.value)}
-                                className="w-full border border-gray-200 bg-gray-50 rounded-lg p-2.5 text-sm font-bold outline-none focus:ring-4 focus:ring-indigo-100 transition-all"
-                            />
-                        </div>
-                        <div className="grid grid-cols-2 gap-3">
-                            <div>
-                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Initial Screen ID</label>
-                                <input
-                                    type="text"
-                                    value={initialScreen}
-                                    onChange={(e) => handleUpdate("initialScreen", e.target.value)}
-                                    placeholder="QUESTION_1"
-                                    className="w-full border border-gray-200 bg-gray-50 rounded-lg p-2.5 text-xs font-bold outline-none focus:ring-4 focus:ring-indigo-100 transition-all"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Flow Token</label>
-                                <input
-                                    type="text"
-                                    value={flowToken}
-                                    onChange={(e) => handleUpdate("flowToken", e.target.value)}
-                                    placeholder="Optional"
-                                    className="w-full border border-gray-200 bg-gray-50 rounded-lg p-2.5 text-xs font-bold outline-none focus:ring-4 focus:ring-indigo-100 transition-all"
-                                />
-                            </div>
-                        </div>
-
-                        <div className="pt-4 border-t border-gray-100 space-y-3">
-                            <label className="block text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1 ml-1">JSON FLOW SPEC (ADVANCED)</label>
-                            <textarea
-                                value={metaFlowSpec}
-                                onChange={(e) => {
-                                    setMetaFlowSpec(e.target.value);
-                                    handleUpdate("flowSpec", e.target.value);
-                                }}
-                                rows={8}
-                                placeholder='{ "screens": [...] }'
-                                className="w-full border border-gray-200 bg-gray-900 text-green-400 font-mono text-[10px] rounded-xl p-3 outline-none focus:ring-4 focus:ring-indigo-100 transition-all resize-none shadow-inner"
-                            />
+                        <MetaFormSidebar 
+                            nodeId={selectedNode.id} 
+                            nodeData={selectedNode.data} 
+                            onChange={onChange} 
+                        />
+                        
+                        <div className="pt-4 border-t border-gray-100 space-y-4">
+                            <h4 className="text-[11px] font-black text-gray-500 uppercase tracking-widest">Advanced Configuration</h4>
                             
-                            <button
-                                onClick={async () => {
-                                    setIsSyncing(true);
-                                    try {
-                                        const res = await fetch('/api/whatsapp/flows/sync', {
-                                            method: 'POST',
-                                            headers: { 'Content-Type': 'application/json' },
-                                            body: JSON.stringify({
-                                                flowId: metaFlowId,
-                                                spec: JSON.parse(metaFlowSpec || "{}"),
-                                                name: selectedNode.data.label || "New Flow"
-                                            })
-                                        });
-                                        const data = await res.json();
-                                        if (data.success) {
-                                            toast.success("Flow Synced to Meta! 🚀");
-                                            if (data.metaFlowId && !metaFlowId) {
-                                                handleUpdate("flowId", data.metaFlowId);
-                                                setMetaFlowId(data.metaFlowId);
+                            <div className="p-3 bg-amber-50 rounded-xl border border-amber-100">
+                                <p className="text-[10px] text-amber-700 font-bold leading-tight mb-2">
+                                    If you have an existing form created outside of Grafty, you can map it here.
+                                </p>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Meta Flow ID (Optional)</label>
+                                <input
+                                    type="text"
+                                    value={metaFlowId}
+                                    onChange={(e) => handleUpdate("flowId", e.target.value)}
+                                    placeholder="e.g. 1234567890"
+                                    className="w-full border border-amber-200 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-amber-400"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">CTA Button Text</label>
+                                <input
+                                    type="text"
+                                    value={metaFlowCTA}
+                                    onChange={(e) => handleUpdate("flowCTA", e.target.value)}
+                                    placeholder="Open Form"
+                                    className="w-full border border-gray-200 bg-gray-50 rounded-lg p-3 text-sm font-bold outline-none focus:ring-4 focus:ring-indigo-100 transition-all"
+                                />
+                            </div>
+
+                            <div className="pt-4 border-t border-gray-100 space-y-3">
+                                <label className="block text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1 ml-1">JSON FLOW SPEC (ADVANCED)</label>
+                                <textarea
+                                    value={metaFlowSpec}
+                                    onChange={(e) => {
+                                        setMetaFlowSpec(e.target.value);
+                                        handleUpdate("flowSpec", e.target.value);
+                                    }}
+                                    rows={8}
+                                    placeholder='{ "screens": [...] }'
+                                    className="w-full border border-gray-200 bg-gray-900 text-green-400 font-mono text-[10px] rounded-xl p-3 outline-none focus:ring-4 focus:ring-indigo-100 transition-all resize-none shadow-inner"
+                                />
+                                
+                                <button
+                                    onClick={async () => {
+                                        setIsSyncing(true);
+                                        try {
+                                            let finalSpec = {};
+                                            
+                                            if (selectedNode.data.formFields && selectedNode.data.formFields.length > 0) {
+                                                finalSpec = MetaFormCompiler.compileSingleScreen(selectedNode.data.formFields);
+                                                setMetaFlowSpec(JSON.stringify(finalSpec, null, 2));
+                                                handleUpdate("flowSpec", JSON.stringify(finalSpec, null, 2));
+                                            } else {
+                                                finalSpec = JSON.parse(metaFlowSpec || "{}");
                                             }
-                                        } else {
-                                            toast.error(data.error || "Sync failed");
+
+                                            const res = await fetch('/api/whatsapp/flows/sync', {
+                                                method: 'POST',
+                                                headers: { 'Content-Type': 'application/json' },
+                                                body: JSON.stringify({
+                                                    flowId: metaFlowId,
+                                                    spec: finalSpec,
+                                                    name: selectedNode.data.label || "New Flow"
+                                                })
+                                            });
+                                            const data = await res.json();
+                                            if (data.success) {
+                                                toast.success("Flow Synced to Meta! 🚀");
+                                                if (data.metaFlowId && !metaFlowId) {
+                                                    handleUpdate("flowId", data.metaFlowId);
+                                                    setMetaFlowId(data.metaFlowId);
+                                                }
+                                            } else {
+                                                toast.error(data.error || "Sync failed");
+                                            }
+                                        } catch (e: any) {
+                                            toast.error("Invalid JSON or Network Error");
+                                        } finally {
+                                            setIsSyncing(false);
                                         }
-                                    } catch (e: any) {
-                                        toast.error("Invalid JSON or Network Error");
-                                    } finally {
-                                        setIsSyncing(false);
-                                    }
-                                }}
-                                disabled={isSyncing}
-                                className={`w-full py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all active:scale-95 ${isSyncing ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white hover:shadow-xl hover:shadow-indigo-100'}`}
-                            >
-                                {isSyncing ? (
-                                    <span className="flex items-center gap-2">
-                                        <div className="w-3 h-3 border-2 border-gray-300 border-t-indigo-600 rounded-full animate-spin" />
-                                        SYNCING...
-                                    </span>
-                                ) : (
-                                    <>
-                                        <div className="w-4 h-4 rounded-full bg-white/20 flex items-center justify-center">↑</div>
-                                        SYNC TO META CLOUD
-                                    </>
-                                )}
-                            </button>
+                                    }}
+                                    disabled={isSyncing}
+                                    className={`w-full py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all active:scale-95 ${isSyncing ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white hover:shadow-xl hover:shadow-indigo-100'}`}
+                                >
+                                    {isSyncing ? (
+                                        <span className="flex items-center gap-2">
+                                            <div className="w-3 h-3 border-2 border-gray-300 border-t-indigo-600 rounded-full animate-spin" />
+                                            SYNCING...
+                                        </span>
+                                    ) : (
+                                        <>
+                                            <div className="w-4 h-4 rounded-full bg-white/20 flex items-center justify-center">↑</div>
+                                            SYNC TO META CLOUD
+                                        </>
+                                    )}
+                                </button>
+                            </div>
                         </div>
                     </div>
                 )}

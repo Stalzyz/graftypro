@@ -1,0 +1,9 @@
+#!/usr/bin/expect -f
+set SERVER "root@72.61.231.187"
+set PASS "Photoshop09@"
+set timeout 10
+spawn ssh -o StrictHostKeyChecking=no $SERVER "docker network inspect grafty_bsp_default"
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}

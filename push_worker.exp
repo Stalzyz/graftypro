@@ -1,0 +1,16 @@
+#!/usr/bin/expect -f
+set SERVER "root@72.61.231.187"
+set PASS "Photoshop09@"
+set timeout 60
+
+spawn scp -o StrictHostKeyChecking=no /Users/stalinkumar/Downloads/Grafty_Bsp/worker.ts $SERVER:/root/grafty_bsp/worker.ts
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}
+
+spawn ssh -o StrictHostKeyChecking=no $SERVER "cd /root/grafty_bsp && docker build -t grafty-app:latest -f Dockerfile . && docker compose -f docker-compose.prod.yml up -d worker && docker exec grafty_bsp-worker-1 npx tsx /app/enqueue_draft_final.ts"
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}

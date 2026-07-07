@@ -1,0 +1,59 @@
+#!/usr/bin/expect -f
+
+set timeout 120
+set SERVER "root@72.61.231.187"
+set PASSWORD "Photoshop09@"
+set REMOTE_PATH "/root/grafty_bsp"
+
+puts "🚀 Connecting to VPS: $SERVER"
+
+spawn ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null $SERVER
+
+expect {
+    "password:" {
+        send "$PASSWORD\r"
+    }
+    "Permission denied" {
+        puts "❌ Auth failed"
+        exit 1
+    }
+}
+
+expect "# "
+
+puts "\n📦 Step 1: Seeding AI Addon..."
+send "cd $REMOTE_PATH && docker compose -f docker-compose.prod.yml exec -T web npx tsx scripts/seed-addons.ts\r"
+expect -timeout 60 "# "
+
+puts "\n🔍 Step 2: Running Full AI Diagnostics..."
+send {docker compose -f docker-compose.prod.yml exec -T web node -e "
+const { PrismaClient } = require('@prisma/client');
+const p = new PrismaClient();
+async function run() {
+  console.log('=== AI AGENT DIAGNOSTICS ===');
+
+  const addon = await p.addon.findFirst({ where: { name: 'AI_KNOWLEDGE_ENGINE' } }).catch(() => null);
+  console.log('Addon:', addon ? '✅ Found: ' + addon.id : '❌ NOT FOUND');
+
+  const ws = await p.workspace.findMany({ take: 5, include: { plan_details: true } }).catch(() => []);
+  console.log('Workspaces found:', ws.length);
+  ws.forEach(w => console.log(' -', w.name || w.id.slice(0,8), '| Plan:', w.plan_details?.name || 'NO PLAN', '| AI Enabled:', w.plan_details?.ai_fallback_enabled));
+
+  const wAddons = await p.workspaceAddon.findMany({ take: 5, include: { addon: true } }).catch(() => []);
+  console.log('Workspace Addons activated:', wAddons.length);
+  wAddons.forEach(a => console.log(' -', a.addon?.name, '| Status:', a.status));
+
+  const sources = await p.\$queryRawUnsafe('SELECT name, type, status FROM knowledge_sources LIMIT 5').catch(() => []);
+  console.log('Knowledge Sources:', sources.length);
+  sources.forEach(s => console.log(' -', s.name, '| Status:', s.status));
+
+  await p.\$disconnect();
+}
+run().catch(e => { console.error(e.message); process.exit(1); });
+"}
+send "\r"
+expect -timeout 60 "# "
+
+puts "\n✅ Done! Check output above."
+send "exit\r"
+expect eof
