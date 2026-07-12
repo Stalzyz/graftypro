@@ -280,15 +280,123 @@ async function runActionNode(ctx: ExecutionContext, node: any): Promise<void> {
             } catch { }
         }
     } else if (data.actionType === 'save_to_crm') {
-            await prisma.universalCrmLead.upsert({
-                where: { phone_workspace_id: { phone: ctx.contact.phone, workspace_id: ctx.contact.workspace_id } },
-                update: { custom_data: { ...(ctx.session.state || {}), last_flow_id: ctx.session.flow_id } },
-                create: { workspace_id: ctx.contact.workspace_id, contact_id: ctx.contact.id, name: ctx.contact.name || ctx.contact.phone, phone: ctx.contact.phone, source: "WhatsApp Flow", custom_data: ctx.session.state }
-            });
+        if (!ctx.plan?.module_crm && !ctx.plan?.crm_access) {
+            console.warn(`[FlowEngine] 🚫 save_to_crm skipped: CRM access denied by plan for workspace ${ctx.session.workspace_id}`);
+            return;
+        }
+        await prisma.universalCrmLead.upsert({
+            where: { phone_workspace_id: { phone: ctx.contact.phone, workspace_id: ctx.contact.workspace_id } },
+            update: { custom_data: { ...(ctx.session.state || {}), last_flow_id: ctx.session.flow_id } },
+            create: { workspace_id: ctx.contact.workspace_id, contact_id: ctx.contact.id, name: ctx.contact.name || ctx.contact.phone, phone: ctx.contact.phone, source: "WhatsApp Flow", custom_data: ctx.session.state }
+        });
+    } else if (data.actionType === 'send_email') {
+        if (!ctx.plan?.flow_integration_access) {
+            console.warn(`[FlowEngine] 🚫 send_email skipped: Integration access denied by plan for workspace ${ctx.session.workspace_id}`);
+            return;
+        }
+        const toEmail = data.emailAddress;
+        const subject = data.emailSubject || 'New Lead from WhatsApp Flow';
+        if (toEmail) {
+            try {
+                const { EmailService } = await import('../email/service');
+                
+                // Build a human-readable body from session state variables
+                const state = ctx.session.state || {};
+                const stateLines = Object.entries(state)
+                    .filter(([k]) => !k.startsWith('_') && k !== 'last_input' && k !== 'flow_token' && k !== 'started_at')
+                    .map(([k, v]) => {
+                        // Clean up Meta Flow keys (e.g. screen_0_Business_Name_0 -> Business Name)
+                        const cleanKey = k.replace(/^screen_\d+_/, '').replace(/_\d+$/, '').replace(/_/g, ' ');
+                        const displayKey = cleanKey.charAt(0).toUpperCase() + cleanKey.slice(1);
+                        
+                        let displayValue = String(v);
+                        if (displayValue.startsWith('0_') || displayValue.startsWith('1_')) {
+                            displayValue = displayValue.replace(/^\d+_/, '').replace(/_/g, ' ');
+                        } else if (Array.isArray(v)) {
+                            displayValue = v.map(item => String(item).replace(/^\d+_/, '').replace(/_/g, ' ')).join(', ');
+                        }
+
+                        return `<tr><td style="padding:6px 12px;font-weight:bold;color:#555;border-bottom:1px solid #f0f0f0">${displayKey}</td><td style="padding:6px 12px;border-bottom:1px solid #f0f0f0">${displayValue}</td></tr>`;
+                    })
+                    .join('');
+
+                const htmlBody = `
+                    <div style="font-family:sans-serif;max-width:600px;margin:0 auto">
+                        <h2 style="color:#6366f1">📩 New Lead from WhatsApp Flow</h2>
+                        <p style="color:#555">A contact has completed a flow step and triggered this notification.</p>
+                        <table style="width:100%;border-collapse:collapse;margin:16px 0;background:#fafafa;border-radius:8px;overflow:hidden">
+                            <tr><td style="padding:6px 12px;font-weight:bold;color:#555;border-bottom:1px solid #f0f0f0">Phone</td><td style="padding:6px 12px;border-bottom:1px solid #f0f0f0">${ctx.contact.phone}</td></tr>
+                            <tr><td style="padding:6px 12px;font-weight:bold;color:#555;border-bottom:1px solid #f0f0f0">Name</td><td style="padding:6px 12px;border-bottom:1px solid #f0f0f0">${ctx.contact.name || 'Unknown'}</td></tr>
+                            ${stateLines}
+                        </table>
+                        <p style="color:#999;font-size:12px">Sent by Grafty Flow Engine · ${new Date().toLocaleString()}</p>
+                    </div>
+                `;
+
+                await EmailService.sendBrandedEmail(ctx.session.workspace_id, {
+                    to: toEmail,
+                    subject,
+                    templateName: 'FLOW_NOTIFICATION',
+                    context: { body_content: htmlBody },
+                });
+                console.log(`[FlowEngine] ✅ Email sent to ${toEmail} for contact ${ctx.contact.phone}`);
+            } catch (emailErr: any) {
+                console.error(`[FlowEngine] ❌ send_email failed:`, emailErr.message);
+            }
+        } else {
+            console.warn(`[FlowEngine] send_email node has no emailAddress configured.`);
+        }
+    } else if (data.actionType === 'google_sheet') {
+        if (!ctx.plan?.flow_integration_access) {
+            console.warn(`[FlowEngine] 🚫 google_sheet skipped: Integration access denied by plan for workspace ${ctx.session.workspace_id}`);
+            return;
+        }
+        const spreadsheetId = data.spreadsheetId;
+        const sheetName = data.sheetName || 'Sheet1';
+        
+        if (spreadsheetId) {
+            try {
+                const { SheetsService } = await import('../google/sheets-service');
+                
+                // Collect row data in alphabetical order (after fixed initial columns)
+                const state = ctx.session.state || {};
+                
+                const fixedColumns = [
+                    new Date().toISOString(),
+                    ctx.contact.phone,
+                    ctx.contact.name || ''
+                ];
+
+                const dynamicEntries = Object.entries(state)
+                    .filter(([k]) => !k.startsWith('_') && k !== 'last_input' && k !== 'flow_token' && k !== 'started_at')
+                    .sort((a, b) => a[0].localeCompare(b[0]))
+                    .map(([_, v]) => {
+                        let displayValue = String(v);
+                        if (displayValue.startsWith('0_') || displayValue.startsWith('1_')) {
+                            displayValue = displayValue.replace(/^\d+_/, '').replace(/_/g, ' ');
+                        } else if (Array.isArray(v)) {
+                            displayValue = v.map(item => String(item).replace(/^\d+_/, '').replace(/_/g, ' ')).join(', ');
+                        }
+                        return displayValue;
+                    });
+
+                const rowData = [...fixedColumns, ...dynamicEntries];
+                
+                await SheetsService.appendRow(ctx.session.workspace_id, spreadsheetId, sheetName, rowData);
+            } catch (sheetErr: any) {
+                console.error(`[FlowEngine] ❌ google_sheet failed:`, sheetErr.message);
+            }
+        } else {
+            console.warn(`[FlowEngine] google_sheet node has no spreadsheetId configured.`);
+        }
     }
 }
 
 async function runDripNode(ctx: ExecutionContext, node: any): Promise<void> {
+    if (!ctx.plan?.module_drip && !ctx.plan?.drip_campaign_access) {
+        console.warn(`[FlowEngine] 🚫 runDripNode skipped: Drip access denied by plan for workspace ${ctx.session.workspace_id}`);
+        return;
+    }
     const data = node.data || {};
     const dripId = data.dripId || data.drip_id || data.dripIdSelect;
     if (!dripId) return;

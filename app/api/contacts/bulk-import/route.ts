@@ -10,10 +10,23 @@ export async function POST(req: Request) {
         const user = await getCurrentUser(req);
         if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-        const { contacts } = await req.json();
+        const { contacts, segmentId } = await req.json();
 
         if (!Array.isArray(contacts)) {
             return NextResponse.json({ error: "Invalid data format" }, { status: 400 });
+        }
+
+        let additionalTags: string[] = [];
+        if (segmentId) {
+            const segment = await prisma.segment.findFirst({
+                where: { id: segmentId, workspace_id: user.workspaceId }
+            });
+            if (segment && segment.filters) {
+                const filters = segment.filters as any;
+                if (filters.tags && Array.isArray(filters.tags)) {
+                    additionalTags = filters.tags;
+                }
+            }
         }
 
         // BATCH LIMIT (DoS Protection)
@@ -54,8 +67,8 @@ export async function POST(req: Request) {
                             name: c.name || undefined,
                             email: c.email || undefined,
                             // Merge tags — don't wipe existing ones
-                            tags: Array.isArray(c.tags) && c.tags.length > 0
-                                ? { set: c.tags } // caller should pre-merge if needed
+                            tags: Array.isArray(c.tags) && c.tags.length > 0 || additionalTags.length > 0
+                                ? { set: Array.from(new Set([...(Array.isArray(c.tags) ? c.tags : []), ...additionalTags])) }
                                 : undefined,
                             attributes: c.attributes ? { ...(c.attributes || {}) } : undefined,
                             // Bug #3 Fix: also opt-in existing contacts on re-import
@@ -66,7 +79,7 @@ export async function POST(req: Request) {
                             phone: phone,
                             name: c.name || null,
                             email: c.email || null,
-                            tags: Array.isArray(c.tags) ? c.tags : [],
+                            tags: Array.from(new Set([...(Array.isArray(c.tags) ? c.tags : []), ...additionalTags])),
                             attributes: c.attributes || {},
                             opt_in: true, // Bug #3 Fix: imported contacts must be opted-in
                         },

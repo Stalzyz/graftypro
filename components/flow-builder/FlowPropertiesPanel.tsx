@@ -1024,6 +1024,12 @@ export default function FlowPropertiesPanel({ selectedNode, onChange, onClose, o
                                                 finalSpec = JSON.parse(metaFlowSpec || "{}");
                                             }
 
+                                            if (Object.keys(finalSpec).length === 0) {
+                                                toast.error("Form is empty! Add fields first.");
+                                                setIsSyncing(false);
+                                                return;
+                                            }
+
                                             const res = await fetch('/api/whatsapp/flows/sync', {
                                                 method: 'POST',
                                                 headers: { 'Content-Type': 'application/json' },
@@ -1036,7 +1042,7 @@ export default function FlowPropertiesPanel({ selectedNode, onChange, onClose, o
                                             const data = await res.json();
                                             if (data.success) {
                                                 if (data.warning) {
-                                                    toast.warning("Uploaded but not published: " + data.warning);
+                                                    toast("Uploaded but not published: " + data.warning, { icon: '⚠️' });
                                                 } else {
                                                     toast.success("Flow Synced to Meta! 🚀");
                                                 }

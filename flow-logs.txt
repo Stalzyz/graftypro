@@ -1,0 +1,102 @@
+
+> grafty-bsp@0.1.0 start
+> next start
+
+   ▲ Next.js 14.1.0
+   - Local:        http://localhost:3000
+
+ ✓ Ready in 561ms
+[FlowSync] Uploading spec to flow: 27387501587525199
+[FlowSync] Publishing flow: 27387501587525199
+[FlowSync] Uploading spec to flow: 27387501587525199
+[FlowSync] Publishing flow: 27387501587525199
+[GraftyAPI] 🚀 Dispatching template 'abandan_cart_test' for Workspace: Grekam's Workspace (89b6c788-d842-4bf6-8af9-bc02e84e76d2)
+[GraftyAPI] 🚀 Dispatching template 'abandan_cart_test' for Workspace: Grekam's Workspace (89b6c788-d842-4bf6-8af9-bc02e84e76d2)
+[GraftyAPI] 🚀 Dispatching template 'abandan_cart_test' for Workspace: Grekam's Workspace (89b6c788-d842-4bf6-8af9-bc02e84e76d2)
+[GraftyAPI] 🚀 Dispatching template 'abandan_cart_test' for Workspace: Grekam's Workspace (89b6c788-d842-4bf6-8af9-bc02e84e76d2)
+[CreditService] ✅ Bypass L1: plan='ENTERPRISE'
+[Credit Engine] Credits Deducted: 0 from 89b6c788-d842-4bf6-8af9-bc02e84e76d2. Balance: 185.5
+prisma:error 
+Invalid `prisma.$executeRaw()` invocation:
+
+
+Raw query failed. Code: `40001`. Message: `could not serialize access due to concurrent update`
+prisma:error 
+Invalid `prisma.$executeRaw()` invocation:
+
+
+Raw query failed. Code: `40001`. Message: `could not serialize access due to concurrent update`
+prisma:error 
+Invalid `prisma.$executeRaw()` invocation:
+
+
+Raw query failed. Code: `40001`. Message: `could not serialize access due to concurrent update`
+[WA_API_SEND] Sending template to 9840645631 (Token: d056***************d0d2)
+[GraftyAPI] 🚀 Dispatching template 'abandan_cart_test' for Workspace: Grekam's Workspace (89b6c788-d842-4bf6-8af9-bc02e84e76d2)
+[GraftyAPI] 🚀 Dispatching template 'abandan_cart_test' for Workspace: Grekam's Workspace (89b6c788-d842-4bf6-8af9-bc02e84e76d2)
+[GraftyAPI] 🚀 Dispatching template 'abandan_cart_test' for Workspace: Grekam's Workspace (89b6c788-d842-4bf6-8af9-bc02e84e76d2)
+[CreditService] ✅ Bypass L1: plan='ENTERPRISE'
+[Credit Engine] Credits Deducted: 0 from 89b6c788-d842-4bf6-8af9-bc02e84e76d2. Balance: 185.5
+prisma:error 
+Invalid `prisma.$executeRaw()` invocation:
+
+
+Raw query failed. Code: `40001`. Message: `could not serialize access due to concurrent update`
+[WA_API_SEND] Sending template to 9500607536 (Token: d056***************d0d2)
+prisma:error 
+Invalid `prisma.$executeRaw()` invocation:
+
+
+Raw query failed. Code: `40001`. Message: `could not serialize access due to concurrent update`
+[GraftyAPI] 🚀 Dispatching template 'abandan_cart_test' for Workspace: Grekam's Workspace (89b6c788-d842-4bf6-8af9-bc02e84e76d2)
+[GraftyAPI] 🚀 Dispatching template 'abandan_cart_test' for Workspace: Grekam's Workspace (89b6c788-d842-4bf6-8af9-bc02e84e76d2)
+[GraftyAPI] 🚀 Dispatching template 'abandan_cart_test' for Workspace: Grekam's Workspace (89b6c788-d842-4bf6-8af9-bc02e84e76d2)
+[GraftyAPI] 🚀 Dispatching template 'abandan_cart_test' for Workspace: Grekam's Workspace (89b6c788-d842-4bf6-8af9-bc02e84e76d2)
+[CreditService] ✅ Bypass L1: plan='ENTERPRISE'
+[Credit Engine] Credits Deducted: 0 from 89b6c788-d842-4bf6-8af9-bc02e84e76d2. Balance: 185.5
+[WA_API_SEND] Sending template to 8220548872 (Token: d056***************d0d2)
+prisma:error 
+Invalid `prisma.$executeRaw()` invocation:
+
+
+Raw query failed. Code: `40001`. Message: `could not serialize access due to concurrent update`
+prisma:error 
+Invalid `prisma.$executeRaw()` invocation:
+
+
+Raw query failed. Code: `40001`. Message: `could not serialize access due to concurrent update`
+prisma:error 
+Invalid `prisma.$executeRaw()` invocation:
+
+
+Raw query failed. Code: `40001`. Message: `could not serialize access due to concurrent update`
+[GraftyAPI] 🚀 Dispatching template 'abandan_cart_test' for Workspace: Grekam's Workspace (89b6c788-d842-4bf6-8af9-bc02e84e76d2)
+[CreditService] ✅ Bypass L1: plan='ENTERPRISE'
+[Credit Engine] Credits Deducted: 0 from 89b6c788-d842-4bf6-8af9-bc02e84e76d2. Balance: 185.5
+[WA_API_SEND] Sending template to 9500607536 (Token: d056***************d0d2)
+[GraftyAPI] 🚀 Dispatching template 'abandan_cart_test' for Workspace: Grekam's Workspace (89b6c788-d842-4bf6-8af9-bc02e84e76d2)
+[GraftyAPI] 🚀 Dispatching template 'abandan_cart_test' for Workspace: Grekam's Workspace (89b6c788-d842-4bf6-8af9-bc02e84e76d2)
+[CreditService] ✅ Bypass L1: plan='ENTERPRISE'
+[Credit Engine] Credits Deducted: 0 from 89b6c788-d842-4bf6-8af9-bc02e84e76d2. Balance: 185.5
+prisma:error 
+Invalid `prisma.$executeRaw()` invocation:
+
+
+Raw query failed. Code: `40001`. Message: `could not serialize access due to concurrent update`
+[WA_API_SEND] Sending template to 9500607536 (Token: d056***************d0d2)
+[GraftyAPI] 🚀 Dispatching template 'abandan_cart_test' for Workspace: Grekam's Workspace (89b6c788-d842-4bf6-8af9-bc02e84e76d2)
+[CreditService] ✅ Bypass L1: plan='ENTERPRISE'
+[Credit Engine] Credits Deducted: 0 from 89b6c788-d842-4bf6-8af9-bc02e84e76d2. Balance: 185.5
+[WA_API_SEND] Sending template to 8220548872 (Token: d056***************d0d2)
+[GraftyAPI] 🚀 Dispatching template 'abandan_cart_test' for Workspace: Grekam's Workspace (89b6c788-d842-4bf6-8af9-bc02e84e76d2)
+[CreditService] ✅ Bypass L1: plan='ENTERPRISE'
+[Credit Engine] Credits Deducted: 0 from 89b6c788-d842-4bf6-8af9-bc02e84e76d2. Balance: 185.5
+[WA_API_SEND] Sending template to 8220548872 (Token: d056***************d0d2)
+[GraftyAPI] 🚀 Dispatching template 'abandan_cart_test' for Workspace: Grekam's Workspace (89b6c788-d842-4bf6-8af9-bc02e84e76d2)
+[CreditService] ✅ Bypass L1: plan='ENTERPRISE'
+[Credit Engine] Credits Deducted: 0 from 89b6c788-d842-4bf6-8af9-bc02e84e76d2. Balance: 185.5
+[WA_API_SEND] Sending template to 8220548872 (Token: d056***************d0d2)
+[GraftyAPI] 🚀 Dispatching template 'abandan_cart_test' for Workspace: Grekam's Workspace (89b6c788-d842-4bf6-8af9-bc02e84e76d2)
+[CreditService] ✅ Bypass L1: plan='ENTERPRISE'
+[Credit Engine] Credits Deducted: 0 from 89b6c788-d842-4bf6-8af9-bc02e84e76d2. Balance: 185.5
+[WA_API_SEND] Sending template to 8220548872 (Token: d056***************d0d2)

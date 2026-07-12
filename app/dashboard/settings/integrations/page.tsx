@@ -156,7 +156,7 @@ function IntegrationsContent() {
                         Export leads and conversation data directly to your sheets for real-time reporting.
                     </p>
                     <button
-                        onClick={() => window.location.href = '/api/auth/google?scope=sheets'}
+                        onClick={() => window.location.href = '/api/auth/google?scope=sheets&integration=true'}
                         className="w-full mt-6 py-2.5 rounded-xl text-sm font-black btn-primary shadow-lg">
                         Connect Sheets
                     </button>

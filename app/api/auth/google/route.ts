@@ -23,8 +23,13 @@ export async function GET(request: Request) {
         "https://www.googleapis.com/auth/userinfo.profile"
     ];
 
+    let integrationType = "GOOGLE_CALENDAR";
+    
     if (requestedScope === "calendar") {
         scopes.push("https://www.googleapis.com/auth/calendar.events");
+    } else if (requestedScope === "sheets") {
+        scopes.push("https://www.googleapis.com/auth/spreadsheets");
+        integrationType = "GOOGLE_SHEETS";
     }
 
     const scopeString = scopes.join(" ");
@@ -36,7 +41,8 @@ export async function GET(request: Request) {
     // We base64 encode the state so it remains a single valid URL string
     const statePayload = {
         returnTo: `${protocol}://${host}`,
-        isIntegration: isIntegration
+        isIntegration: isIntegration,
+        integrationType: integrationType
     };
     const originState = encodeURIComponent(Buffer.from(JSON.stringify(statePayload)).toString('base64'));
 

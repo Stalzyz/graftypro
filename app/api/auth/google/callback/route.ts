@@ -66,8 +66,9 @@ export async function GET(request: Request) {
                 // Check for integration flag
                 if (decoded.isIntegration) {
                     (request as any).isIntegrationFlow = true;
+                    (request as any).integrationType = decoded.integrationType || "GOOGLE_CALENDAR";
                 }
-                console.log("[Google OAuth] Decoded state:", { PUBLIC_URL, isIntegration: (request as any).isIntegrationFlow });
+                console.log("[Google OAuth] Decoded state:", { PUBLIC_URL, isIntegration: (request as any).isIntegrationFlow, integrationType: (request as any).integrationType });
             }
         } catch (e) {
             console.error("[Google OAuth] Failed to parse state parameter:", e);
@@ -137,13 +138,14 @@ export async function GET(request: Request) {
                 token_type: tokens.token_type,
                 scope: tokens.scope
             });
+            const integrationType = (request as any).integrationType || "GOOGLE_CALENDAR";
 
             await prisma.$executeRaw`
                 INSERT INTO integrations (id, workspace_id, type, credentials, is_active, created_at, updated_at)
                 VALUES (
                     ${crypto.randomUUID()}, 
                     ${currentUser.workspaceId}, 
-                    'GOOGLE_CALENDAR', 
+                    ${integrationType}, 
                     ${creds}::jsonb, 
                     true, 
                     NOW(), 

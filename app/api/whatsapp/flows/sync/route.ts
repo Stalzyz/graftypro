@@ -39,7 +39,14 @@ export async function POST(req: Request) {
 
         // 2. Update Spec (UPLOAD ASSET)
         console.log(`[FlowSync] Uploading spec to flow: ${finalFlowId}`);
+        console.log(`[FlowSync] Spec keys:`, Object.keys(spec || {}));
+        
+        if (!spec || Object.keys(spec).length === 0) {
+            return NextResponse.json({ success: false, error: "Cannot sync: spec is empty. Add form fields first." }, { status: 400 });
+        }
+        
         await MetaFlowService.updateSpec(workspaceId, finalFlowId, spec);
+
 
         // 3. Publish Flow (GO LIVE)
         console.log(`[FlowSync] Publishing flow: ${finalFlowId}`);

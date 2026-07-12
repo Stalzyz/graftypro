@@ -18,11 +18,14 @@ export class MetaFormCompiler {
      * @returns A valid Meta Flow JSON object
      */
     static compileSingleScreen(fields: FormField[]): any {
-        const screenId = "QUESTION_1";
+        const screenId = "QUESTION_SCREEN";
 
         // Map visual fields to Meta components
         const components = fields.map((field, index) => {
-            const safeId = field.id || `field_${index}`;
+            // Meta requires component names to only contain alphabets and underscores
+            // Strip leading digits and invalid characters
+            const rawId = field.id || `field_${index}`;
+            const safeId = rawId.replace(/[^a-zA-Z0-9_]/g, '_').replace(/^[^a-zA-Z]+/, 'f_');
             const label = field.label || `Field ${index + 1}`;
 
             switch (field.type) {
@@ -43,7 +46,7 @@ export class MetaFormCompiler {
                         label: label,
                         required: field.required,
                         "data-source": (field.options || []).map((opt, i) => ({
-                            id: `${i}_${opt.replace(/\s+/g, '_')}`,
+                            id: `opt_${i}_${opt.replace(/[^a-zA-Z0-9]/g, '_')}`,
                             title: opt
                         }))
                     };
@@ -55,7 +58,7 @@ export class MetaFormCompiler {
                         label: label,
                         required: field.required,
                         "data-source": (field.options || []).map((opt, i) => ({
-                            id: `${i}_${opt.replace(/\s+/g, '_')}`,
+                            id: `opt_${i}_${opt.replace(/[^a-zA-Z0-9]/g, '_')}`,
                             title: opt
                         }))
                     };
@@ -67,7 +70,7 @@ export class MetaFormCompiler {
                         label: label,
                         required: field.required,
                         "data-source": (field.options || []).map((opt, i) => ({
-                            id: `${i}_${opt.replace(/\s+/g, '_')}`,
+                            id: `opt_${i}_${opt.replace(/[^a-zA-Z0-9]/g, '_')}`,
                             title: opt
                         }))
                     };
@@ -93,33 +96,29 @@ export class MetaFormCompiler {
         });
 
         // Add standard submit footer
-        const payloadData = fields.reduce((acc: any, field, index) => {
-            const safeId = field.id || `field_${index}`;
-            acc[`${screenId}_${safeId.replace(/[^a-zA-Z0-9]/g, '_')}_${index}`] = `\${form.${safeId}}`;
-            return acc;
-        }, {});
-
         components.push({
             type: "Footer",
             label: "Submit",
             "on-click-action": {
                 name: "complete",
-                payload: payloadData
+                payload: fields.reduce((acc: any, field, index) => {
+                    const safeId = field.id || `field_${index}`;
+                    acc[`${screenId}_${safeId}_${index}`] = `\${form.${safeId}}`;
+                    return acc;
+                }, {})
             }
         });
 
         // Construct full Meta JSON
-        const flowJson = {
-            version: "5.0",
-            routing_model: {
-                "QUESTION_1": []
-            },
-            data_api_version: "3.0",
+        // Version 6.1 is a stable, widely-supported version as of 2025/2026.
+        // Older versions (3.x, 4.x, 5.x) have been deprecated/frozen by Meta.
+        return {
+            version: "6.1",
             screens: [
                 {
                     id: screenId,
                     title: "Please fill in the details",
-                    data: {},
+                    terminal: true,
                     layout: {
                         type: "SingleColumnLayout",
                         children: [
@@ -133,7 +132,5 @@ export class MetaFormCompiler {
                 }
             ]
         };
-
-        return flowJson;
     }
 }

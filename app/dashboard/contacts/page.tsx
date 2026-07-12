@@ -173,7 +173,10 @@ export default function ContactsPage() {
                 const res = await fetch("/api/contacts/bulk-import", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ contacts: contactsToImport })
+                    body: JSON.stringify({ 
+                        contacts: contactsToImport,
+                        segmentId: selectedSegmentId !== "all" ? selectedSegmentId : undefined
+                    })
                 });
                 const data = await res.json();
                 setImportStats(data.stats);

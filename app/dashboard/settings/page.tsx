@@ -114,6 +114,17 @@ export default function SettingsPage() {
                     bg="bg-fuchsia-100"
                     borderColor="hover:border-fuchsia-300"
                 />
+
+                {/* SMTP / Email Settings */}
+                <SettingCard
+                    href="/dashboard/marketing/email/settings"
+                    title="Email (SMTP)"
+                    desc="Configure your SMTP server to send email notifications from flows and automations."
+                    icon={<Mail size={24} />}
+                    color="text-sky-600"
+                    bg="bg-sky-50"
+                    borderColor="hover:border-sky-300"
+                />
             </div>
         </div>
     );
