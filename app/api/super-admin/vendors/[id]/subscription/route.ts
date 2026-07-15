@@ -4,6 +4,7 @@ import { getAdminSession } from "../../../../../../lib/admin-auth";
 import { validateAdminVendorMutation } from "../../../../../../lib/admin/guard";
 import { normalizePlanEnum } from "../../../../../../lib/billing/plans";
 import { revalidatePath } from "next/cache";
+import { systemEmailQueue } from "../../../../../../lib/queue";
 
 export const dynamic = "force-dynamic";
 
@@ -59,13 +60,31 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
                         updateData.current_plan_id = dbPlan.id;
                         updateData.plan = normalizePlanEnum(dbPlan.name);
                     } else if (plan) {
-                        // Fallback fallback
+                        // Fallback fallback: Clear the DB ID pointer to drop Pro modules
                         updateData.plan = normalizePlanEnum(plan);
+                        updateData.current_plan_id = null;
                     }
                 }
                 updateData.subscription_status = "active";
                 auditDetails.old_plan = ws.plan;
                 auditDetails.new_plan = plan || plan_id;
+                
+                // Enqueue Email Notification if it's a downgrade
+                if (auditDetails.old_plan !== "FREE" && (auditDetails.new_plan === "FREE" || (dbPlan && dbPlan.name.toUpperCase() === "FREE"))) {
+                    const owner = await prisma.user.findFirst({ where: { workspace_id: params.id, role: "OWNER" } });
+                    if (owner) {
+                        await systemEmailQueue?.add("send-system-email", {
+                            type: "PLAN_DOWNGRADE",
+                            payload: {
+                                workspaceId: params.id,
+                                to: owner.email,
+                                vendorName: owner.first_name || "Valued Customer",
+                                oldPlan: auditDetails.old_plan,
+                                newPlan: updateData.plan
+                            }
+                        });
+                    }
+                }
                 break;
 
             case "extend_trial":
@@ -77,7 +96,24 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 
             case "cancel":
                 updateData.subscription_status = "cancelled";
+                updateData.plan = "FREE";
+                updateData.current_plan_id = null;
                 auditDetails.old_status = ws.subscription_status;
+                
+                // Enqueue Email Notification for Cancel
+                const cancelOwner = await prisma.user.findFirst({ where: { workspace_id: params.id, role: "OWNER" } });
+                if (cancelOwner) {
+                    await systemEmailQueue?.add("send-system-email", {
+                        type: "PLAN_DOWNGRADE",
+                        payload: {
+                            workspaceId: params.id,
+                            to: cancelOwner.email,
+                            vendorName: cancelOwner.first_name || "Valued Customer",
+                            oldPlan: ws.plan,
+                            newPlan: "CANCELLED / FREE"
+                        }
+                    });
+                }
                 break;
 
             case "reactivate":

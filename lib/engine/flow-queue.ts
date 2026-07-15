@@ -153,49 +153,9 @@ export async function sendMessageDirect(msg: QueuedMessage): Promise<string | nu
             `(node: ${msg.nodeId})`
         );
 
-        // --- 1. PRE-FLIGHT CREDIT CHECK (The "Block" Logic) ---
-        const { CreditService } = await import('../credits/service');
-        const { prisma } = await import('../db');
+        // --- 1. PRE-FLIGHT CREDIT CHECK BYPASSED FOR FLOWS ---
+        // (Customers already pay subscription & Meta costs directly, so flow automation is free)
 
-        const getCategory = (payload: any) => {
-            if (payload.template?.name) return 'MARKETING'; // Default for template
-            if (payload.type === 'interactive') {
-                const i = payload.interactive || {};
-                if (i.type === 'flow' || i.type === 'button') return 'SERVICE';
-                if (i.type === 'list' || i.type === 'product' || i.type === 'product_list') return 'UTILITY';
-            }
-            if (['image', 'video', 'audio', 'document'].includes(payload.type)) return 'UTILITY';
-            return 'SERVICE';
-        };
-
-        const category = getCategory(msg.payload);
-        const countryCode = (msg.payload.to || '91').replace(/\D/g, '').substring(0, 2);
-
-        let cost = 0;
-        try {
-            cost = await CreditService.getMessageCost(category, countryCode, msg.workspaceId);
-        } catch {
-            // Ignored - if pricing fails we assume 0 for now (fallback)
-        }
-
-        if (cost > 0 && msg.workspaceId) {
-            const wallet = await prisma.vendorWallet.findUnique({
-                where: { workspace_id: msg.workspaceId },
-                select: { current_balance: true, is_frozen: true, is_automated_blocked: true }
-            });
-
-            if (wallet) {
-                if (wallet.is_frozen || wallet.is_automated_blocked) {
-                    console.warn(`[FlowQueue] 🚫 Blocked: Vendor wallet for workspace ${msg.workspaceId} is frozen or blocked.`);
-                    return null;
-                }
-
-                if (Number(wallet.current_balance) < cost) {
-                    console.warn(`[FlowQueue] 🚫 Paywall Blocked: Insufficient credits for workspace ${msg.workspaceId}. Has ${wallet.current_balance}, needs ${cost}.`);
-                    return null; // Silently abort to protect Meta wholesale billing
-                }
-            }
-        }
 
         // --- 2. SEND MESSAGE TO META ---
         const resp = await WhatsAppService.sendMessage(
@@ -207,62 +167,8 @@ export async function sendMessageDirect(msg: QueuedMessage): Promise<string | nu
         const metaId = resp?.messages?.[0]?.id;
         console.log(`[FlowQueue] ✅ Sent. Meta ID: ${metaId}`);
 
-        // 💳 STEP 2: Credit deduction — fire-and-forget, never blocks message
-        // Runs AFTER successful send so we only charge for messages that went through
-        if (msg.workspaceId) {
-            setImmediate(async () => {
-                try {
-                    const { CreditService } = await import('../credits/service');
-
-                    // Determine message category
-                    const getCategory = (payload: any) => {
-                        if (payload.template?.name) return 'MARKETING';
-                        if (payload.type === 'interactive') {
-                            const i = payload.interactive || {};
-                            if (i.type === 'flow' || i.type === 'button') return 'SERVICE';
-                            if (i.type === 'list' || i.type === 'product' || i.type === 'product_list') return 'UTILITY';
-                        }
-                        if (['image', 'video', 'audio', 'document'].includes(payload.type)) return 'UTILITY';
-                        return 'SERVICE';
-                    };
-
-                    const category = getCategory(msg.payload);
-                    const countryCode = (msg.payload.to || '91').replace(/\D/g, '').substring(0, 2);
-
-                    // Get cost (with fallback to 0 if pricing not configured)
-                    let cost = 0;
-                    try {
-                        cost = await CreditService.getMessageCost(category, countryCode, msg.workspaceId);
-                    } catch {
-                        // No pricing configured yet — skip deduction
-                        return;
-                    }
-
-                    if (cost <= 0) return; // Free message (SERVICE category)
-
-                    // Deduct atomically
-                    const deductionResult = await CreditService.deductCreditsAtomic(
-                        msg.workspaceId,
-                        cost,
-                        `flow_${msg.sessionId}_${msg.nodeId}_${metaId || Date.now()}`,
-                        metaId || null,
-                        category,
-                        countryCode,
-                        `Flow: ${category}`
-                    );
-
-                    if (deductionResult.success) {
-                        console.log(`[CreditLedger] ✅ Deducted ${cost} credits (${category}) from ${msg.workspaceId}. Balance: ${deductionResult.balance_after}`);
-                    } else {
-                        // Duplicate or zero balance — log only, don't break
-                        console.warn(`[CreditLedger] ⚠️ Deduction skipped: ${deductionResult.error}`);
-                    }
-                } catch (creditErr: any) {
-                    // Credit errors NEVER propagate — message already delivered
-                    console.error(`[CreditLedger] ❌ Non-fatal credit error: ${creditErr?.message}`);
-                }
-            });
-        }
+        // 💳 STEP 2: Credit deduction — BYPASSED FOR FLOWS
+        // Flow automation messaging is now totally free for the vendor since they pay Meta costs directly.
 
         return metaId || null;
 

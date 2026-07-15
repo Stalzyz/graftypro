@@ -52,3 +52,4 @@ export const dripDispatchQueue = createQueue("drip-dispatch-queue");
 export const metaApiQueue = createQueue("meta-api-queue");
 export const flowMessageQueue = createQueue("flow-message-queue");
 export const knowledgeQueue = createQueue("knowledge-queue");
+export const systemEmailQueue = createQueue("system-email-queue");

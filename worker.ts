@@ -900,3 +900,48 @@ const knowledgeWorker = new Worker(
 );
 
 console.log("🚀 Enterprise Workers (Drip Pulse + Meta API + Campaign Dispatch + Knowledge) Active");
+
+// ---------------------------------------------------------
+// 5. SYSTEM EMAIL WORKER (Resend)
+// ---------------------------------------------------------
+const systemEmailWorker = new Worker(
+    "system-email-queue",
+    async (job) => {
+        const { type, payload } = job.data;
+        console.log(`[EmailWorker] 📧 Processing ${type} email for workspace ${payload.workspaceId}`);
+        
+        try {
+            const { resend } = await import("@/lib/email/resend");
+            
+            if (type === "PLAN_DOWNGRADE") {
+                const { to, vendorName, newPlan, oldPlan } = payload;
+                
+                await resend.emails.send({
+                    from: "Grafty Notifications <notifications@grafty.io>", // Replace with verified domain later
+                    to: to,
+                    subject: "Important: Your Subscription Plan has been Downgraded",
+                    html: `
+                        <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
+                            <h2>Subscription Update</h2>
+                            <p>Hi ${vendorName},</p>
+                            <p>This is an automated notification to inform you that your workspace's subscription has been downgraded from <strong>${oldPlan}</strong> to <strong>${newPlan}</strong>.</p>
+                            <p>As a result, access to premium modules (such as CRM, E-Commerce, Academy, etc.) has been restricted in accordance with the new plan.</p>
+                            <p>If you believe this was a mistake or you wish to upgrade again, please log in to your dashboard or contact support.</p>
+                            <br/>
+                            <p>Best regards,<br/>The Grafty Team</p>
+                        </div>
+                    `
+                });
+                console.log(`[EmailWorker] ✅ PLAN_DOWNGRADE email sent to ${to}`);
+            }
+            
+        } catch (err: any) {
+            console.error(`[EmailWorker] ❌ Failed to send ${type} email:`, err.message);
+            throw err; // Trigger BullMQ retry
+        }
+    },
+    { 
+        connection: REDIS_CONNECTION,
+        concurrency: 5 
+    }
+);
