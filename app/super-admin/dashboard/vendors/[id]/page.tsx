@@ -21,11 +21,8 @@ const MODULES = [
     { key: "analytics", label: "Analytics", icon: "📊" },
     { key: "api_access", label: "API Access", icon: "🔌" },
 ];
-
-    const [dbPackages, setDbPackages] = useState<any[]>([]);
-
-
 export default function VendorDetailPage({ params }: { params: { id: string } }) {
+    const [dbPackages, setDbPackages] = useState<any[]>([]);
     const [vendor, setVendor] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
