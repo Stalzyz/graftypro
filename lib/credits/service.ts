@@ -368,6 +368,24 @@ export class CreditService {
                 }
             });
 
+            // Trigger low balance email if it drops below threshold (e.g. 100)
+            if (balanceAfter <= 100 && currentBalance > 100) {
+                const { systemEmailQueue } = await import('@/lib/queue');
+                const workspace = await tx.workspace.findUnique({ where: { id: workspaceId }, select: { email: true, name: true }});
+                if (workspace?.email) {
+                    await systemEmailQueue?.add("send-system-email", {
+                        type: "LOW_CREDIT_BALANCE",
+                        payload: {
+                            workspaceId: workspaceId,
+                            vendorName: workspace.name,
+                            to: workspace.email,
+                            currentBalance: balanceAfter
+                        }
+                    });
+                }
+            }
+
+
             // 6. Create ledger entry
             const transaction = await tx.creditTransaction.create({
                 data: {
@@ -422,7 +440,7 @@ export class CreditService {
             };
 
         }, {
-            isolationLevel: 'Serializable',
+            isolationLevel: 'ReadCommitted',
             timeout: 10000
         });
     }
