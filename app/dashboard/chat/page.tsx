@@ -664,6 +664,20 @@ function SharedInboxContent() {
                                                 if (!rawMsg) return "No messages yet";
                                                 try {
                                                     const parsed = typeof rawMsg === 'string' ? JSON.parse(rawMsg) : rawMsg;
+                                                    
+                                                    // Resolve template preview if applicable
+                                                    if (chat.messages[0].type === 'TEMPLATE' && parsed.template_name && (!parsed.body || parsed.body === "Template Message")) {
+                                                        const t = templates.find((t: any) => t.name === parsed.template_name);
+                                                        if (t && t.components) {
+                                                            try {
+                                                                const comps = typeof t.components === 'string' ? JSON.parse(t.components) : t.components;
+                                                                const bodyComp = (comps as any[] || []).find((c: any) => c.type === 'BODY');
+                                                                if (bodyComp && bodyComp.text) return bodyComp.text;
+                                                            } catch(e) {}
+                                                        }
+                                                        return `Template: ${parsed.template_name}`;
+                                                    }
+                                                    
                                                     // Extract text based on interactive types or standards
                                                     return parsed.body?.text ||
                                                         parsed.text?.body ||
@@ -1095,12 +1109,25 @@ function SharedInboxContent() {
 
                                                             {/* Text Body */}
                                                             <div className="text-[14px] leading-relaxed whitespace-pre-wrap break-words font-medium">
-                                                                {content.nfm_reply?.body || content.nfm_reply?.name ||
-                                                                    content.button_reply?.title || content.list_reply?.title ||
-                                                                    content.body || content.text || content.caption ||
-                                                                    content.raw?.interactive?.body?.text ||
-                                                                    content.raw?.text?.body ||
-                                                                    (type === 'INTERACTIVE' ? <span className="text-[10px] italic opacity-50">Interactive Meta Workflow Message</span> : "")}
+                                                                {(() => {
+                                                                    if (type === 'TEMPLATE' && content.template_name && (!content.body || content.body === "Template Message")) {
+                                                                        const t = templates.find((t: any) => t.name === content.template_name);
+                                                                        if (t && t.components) {
+                                                                            try {
+                                                                                const comps = typeof t.components === 'string' ? JSON.parse(t.components) : t.components;
+                                                                                const bodyComp = (comps as any[] || []).find((c: any) => c.type === 'BODY');
+                                                                                if (bodyComp && bodyComp.text) return <span className="opacity-90">{bodyComp.text}</span>;
+                                                                            } catch(e) {}
+                                                                        }
+                                                                        return <span className="opacity-70 italic">Template: {content.template_name}</span>;
+                                                                    }
+                                                                    return content.nfm_reply?.body || content.nfm_reply?.name ||
+                                                                        content.button_reply?.title || content.list_reply?.title ||
+                                                                        content.body || content.text || content.caption ||
+                                                                        content.raw?.interactive?.body?.text ||
+                                                                        content.raw?.text?.body ||
+                                                                        (type === 'INTERACTIVE' ? <span className="text-[10px] italic opacity-50">Interactive Meta Workflow Message</span> : "");
+                                                                })()}
                                                             </div>
 
                                                             {/* Flow Form Submission Data (NFM Reply) */}
