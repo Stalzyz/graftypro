@@ -121,26 +121,6 @@ export async function POST(request: Request) {
                 }
             });
 
-            // --- STEP 1: RESELLER ATTRIBUTION (HARDENING) ---
-            if (referral) {
-                try {
-                    const { ResellerService } = await import("../../../../lib/reseller/service");
-                    // Atomic mapping within the same transaction context
-                    await ResellerService.mapVendorToReseller(workspace.id, referral, undefined);
-                    
-                    // 🎯 Notify Partner (Background)
-                    if (workspace.reseller_id) {
-                        const { EmailService } = await import("../../../../lib/email/service");
-                        EmailService.sendPartnerReferralAlert(workspace.reseller_id, businessName).catch(err => {
-                            console.error("[Partner Referral Alert] Failed:", err);
-                        });
-                    }
-                } catch (e) {
-                    console.error("[Affiliate Engine] Attribution failed during signup:", e);
-                    // We don't block signup if attribution fails, but it's logged
-                }
-            }
-
             const passwordHash = await AuthSecurityService.hashPassword(password);
 
             const user = await tx.user.create({
@@ -167,6 +147,27 @@ export async function POST(request: Request) {
 
             return { user, workspace, wallet };
         });
+
+        // --- STEP 1: RESELLER ATTRIBUTION (HARDENING) ---
+        // Moved outside the transaction to prevent nested transaction deadlock
+        // and ensure the workspace actually exists before creating the vendor map
+        if (referral) {
+            try {
+                const { ResellerService } = await import("../../../../lib/reseller/service");
+                await ResellerService.mapVendorToReseller(result.workspace.id, referral, undefined);
+                
+                // 🎯 Notify Partner (Background)
+                if (result.workspace.reseller_id) {
+                    const { EmailService } = await import("../../../../lib/email/service");
+                    EmailService.sendPartnerReferralAlert(result.workspace.reseller_id, businessName).catch(err => {
+                        console.error("[Partner Referral Alert] Failed:", err);
+                    });
+                }
+            } catch (e) {
+                console.error("[Affiliate Engine] Attribution failed during signup:", e);
+                // We don't block signup if attribution fails, but it's logged
+            }
+        }
 
         // Generate Verification Token
         const verificationToken = uuidv4();

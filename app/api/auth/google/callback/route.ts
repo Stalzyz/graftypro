@@ -306,6 +306,22 @@ export async function GET(request: Request) {
             workspaceId = wsId;
             userRole = "OWNER";
             console.log("[Google OAuth] Created user:", userId, "workspace:", workspaceId);
+
+            // --- STEP 3.5: RESELLER ATTRIBUTION FOR OAUTH ---
+            try {
+                const cookieHeader = request.headers.get("cookie") || "";
+                const cookies = cookieHeader.split(";").map(c => c.trim());
+                const refCookie = cookies.find(c => c.startsWith("res_referral_code="));
+                if (refCookie) {
+                    const referralCode = refCookie.split("=")[1];
+                    console.log("[Google OAuth] Found referral cookie:", referralCode);
+                    const { ResellerService } = await import("../../../../../lib/reseller/service");
+                    await ResellerService.mapVendorToReseller(workspaceId, referralCode, undefined);
+                    console.log("[Google OAuth] Successfully attributed to reseller");
+                }
+            } catch (attrErr) {
+                console.error("[Google OAuth] Failed to attribute reseller for OAuth user:", attrErr);
+            }
         }
 
         // ── 4. Sign session JWT ─────────────────────────────────────────────
