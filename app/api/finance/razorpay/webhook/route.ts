@@ -93,7 +93,7 @@ export async function POST(req: Request) {
 
                 // --- PHASE 3 & 5: RESELLER COMMISSION ---
                 try {
-                    const { ResellerService } = require("@/lib/reseller/service");
+                    const { ResellerService } = await import("@/lib/reseller/service");
                     await ResellerService.processPaymentCommission(tx, workspace_id, amount, payment.id);
                 } catch (resellerError) {
                     console.error("Reseller Commission Error:", resellerError);
@@ -196,7 +196,7 @@ export async function POST(req: Request) {
 
                     // --- PHASE 3 & 5: RESELLER COMMISSION (Subscription) ---
                     try {
-                        const { ResellerService } = require("@/lib/reseller/service");
+                        const { ResellerService } = await import("@/lib/reseller/service");
                         // Pass the transaction context (tx) instead of the global prisma client
                         await ResellerService.processPaymentCommission(tx, workspace_id, payment.amount / 100, payment.id);
                     } catch (resellerError) {
