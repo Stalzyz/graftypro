@@ -255,6 +255,10 @@ function SharedInboxContent() {
     }, [selectedId]);
 
     useEffect(() => {
+        fetchTemplates();
+    }, []);
+
+    useEffect(() => {
         fetchConversations();
         fetchAgents();
         const interval = setInterval(fetchConversations, 10000);
