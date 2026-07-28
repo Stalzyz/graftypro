@@ -35,7 +35,11 @@ const REDIS_CONNECTION = {
             await automationQueue.add("nightly-reconciliation", {}, {
                 repeat: { pattern: "0 2 * * *" } // Run at 2 AM every night
             });
+            await automationQueue.add("daily-drip-campaign", {}, {
+                repeat: { pattern: "0 10 * * *" } // Run at 10 AM UTC every day
+            });
             console.log("🌙 [Worker] Nightly Reconciliation scheduled (2 AM)");
+            console.log("📅 [Worker] Daily Drip Campaign scheduled (10 AM UTC)");
         }
 
         // Start Global Health Monitor
@@ -265,6 +269,13 @@ const metaApiWorker = new Worker(
                     if (isBillingError) {
                         console.warn(`[MetaAPIWorker] 💳 ☢️ PRO-TIP: This looks like a Meta Billing/Payment issue. Please check your Payment Method in WhatsApp Business Manager!`);
                     }
+
+                    await prisma.campaign.update({
+                        where: { id: payload.campaignId },
+                        data: { 
+                            status: "FAILED"
+                        }
+                    }).catch(e => console.error("[MetaAPIWorker] Failed to update campaign status to FAILED:", e));
 
                     // Update failed stats
                     await prisma.campaignStats.update({
@@ -644,6 +655,64 @@ const automationWorker = new Worker(
             console.log("✅ [Worker] Nightly Audit Complete.");
         }
 
+        if (job.name === "daily-drip-campaign") {
+            console.log("📅 [Worker] Running Daily Drip Campaign Check...");
+            const now = new Date();
+            
+            // Helper to get start and end of a specific day offset
+            const getDayRange = (daysAgo: number) => {
+                const start = new Date(now);
+                start.setDate(start.getDate() - daysAgo);
+                start.setHours(0, 0, 0, 0);
+                const end = new Date(start);
+                end.setHours(23, 59, 59, 999);
+                return { gte: start, lte: end };
+            };
+
+            const day2 = getDayRange(2);
+            const day5 = getDayRange(5);
+            const day10 = getDayRange(10);
+
+            // Fetch workspaces matching these ranges
+            const targetWorkspaces = await prisma.workspace.findMany({
+                where: {
+                    OR: [
+                        { created_at: day2 },
+                        { created_at: day5 },
+                        { created_at: day10 }
+                    ],
+                    email: { not: null }
+                },
+                select: { id: true, name: true, email: true, created_at: true }
+            });
+
+            const { systemEmailQueue } = await import("@/lib/queue");
+
+            if (systemEmailQueue) {
+                for (const workspace of targetWorkspaces) {
+                    const ageInMs = now.getTime() - workspace.created_at.getTime();
+                    const ageInDays = Math.floor(ageInMs / (1000 * 60 * 60 * 24));
+                    
+                    let emailType = null;
+                    if (ageInDays === 2) emailType = "DRIP_DAY_2";
+                    else if (ageInDays === 5) emailType = "DRIP_DAY_5";
+                    else if (ageInDays === 10) emailType = "DRIP_DAY_10";
+
+                    if (emailType && workspace.email) {
+                        await systemEmailQueue.add("send-system-email", {
+                            type: emailType,
+                            payload: {
+                                to: workspace.email,
+                                vendorName: workspace.name
+                            }
+                        });
+                        console.log(`[Worker] Queued ${emailType} for ${workspace.email}`);
+                    }
+                }
+            }
+            console.log("✅ [Worker] Daily Drip Campaign Check Complete.");
+        }
+
         if (job.name === "abandoned-cart-recovery") {
             const { workspaceId, orderId } = job.data;
             const order = await (prisma as any).commerceOrder.findUnique({
@@ -933,6 +1002,141 @@ const systemEmailWorker = new Worker(
                     `
                 });
                 console.log(`[EmailWorker] ✅ PLAN_DOWNGRADE email sent to ${to}`);
+            }
+
+            if (type === "PAYMENT_SUCCESS") {
+                const { to, vendorName, amount, currency, invoiceUrl } = payload;
+                
+                await resend.emails.send({
+                    from: "Grafty Billing <billing@grafty.io>", 
+                    to: to,
+                    cc: ["greeksacademy@gmail.com"], // Hardcoded CC for accounting/notifs
+                    subject: "Payment Receipt & Subscription Upgrade",
+                    html: `
+                        <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
+                            <h2>Payment Successful!</h2>
+                            <p>Hi ${vendorName},</p>
+                            <p>Thank you for your payment of <strong>${currency} ${amount}</strong>.</p>
+                            <p>Your subscription has been successfully updated, and premium modules have been unlocked.</p>
+                            ${invoiceUrl ? `<p><a href="${invoiceUrl}" style="background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Download Invoice</a></p>` : ''}
+                            <br/>
+                            <p>Best regards,<br/>The Grafty Team</p>
+                        </div>
+                    `
+                });
+                console.log(`[EmailWorker] ✅ PAYMENT_SUCCESS email sent to ${to} (CC: greeksacademy)`);
+            }
+
+            if (type === "LOW_CREDIT_BALANCE") {
+                const { to, vendorName, currentBalance } = payload;
+                
+                await resend.emails.send({
+                    from: "Grafty Alerts <alerts@grafty.io>", 
+                    to: to,
+                    subject: "Action Required: Low Wallet Balance Alert",
+                    html: `
+                        <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
+                            <h2 style="color: #e74c3c;">Low Credit Balance</h2>
+                            <p>Hi ${vendorName},</p>
+                            <p>This is an automated alert to let you know that your wallet balance has dropped to <strong>${currentBalance} credits</strong>.</p>
+                            <p>If your balance reaches 0, your automated WhatsApp flows and campaigns will stop working.</p>
+                            <p><a href="https://grafty.pro/super-admin/dashboard/credits" style="background-color: #e74c3c; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Recharge Now</a></p>
+                            <br/>
+                            <p>Best regards,<br/>The Grafty Team</p>
+                        </div>
+                    `
+                });
+                console.log(`[EmailWorker] ✅ LOW_CREDIT_BALANCE email sent to ${to}`);
+            }
+
+            if (type === "WELCOME_EMAIL") {
+                const { to, vendorName, dashboardUrl } = payload;
+                
+                await resend.emails.send({
+                    from: "Grafty Welcome <hello@grafty.io>", 
+                    to: to,
+                    subject: "Welcome to Grafty! Get Started in 5 Minutes",
+                    html: `
+                        <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
+                            <h2>Welcome to Grafty! 🎉</h2>
+                            <p>Hi ${vendorName},</p>
+                            <p>We're thrilled to have you onboard. Grafty is the most powerful platform to scale your WhatsApp marketing and automations.</p>
+                            <h3>Next Steps:</h3>
+                            <ol>
+                                <li>Connect your Meta Business Manager.</li>
+                                <li>Create your first automation flow.</li>
+                                <li>Import your contacts into the CRM.</li>
+                            </ol>
+                            <p><a href="${dashboardUrl || 'https://grafty.pro/super-admin/login'}" style="background-color: #25D366; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Go to Dashboard</a></p>
+                            <br/>
+                            <p>Best regards,<br/>The Grafty Team</p>
+                        </div>
+                    `
+                });
+                console.log(`[EmailWorker] ✅ WELCOME_EMAIL email sent to ${to}`);
+            }
+
+            if (type === "DRIP_DAY_2") {
+                const { to, vendorName } = payload;
+                await resend.emails.send({
+                    from: "Grafty Success <success@grafty.io>", 
+                    to: to,
+                    subject: "Have you built your first flow yet?",
+                    html: `
+                        <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
+                            <h2>Day 2: Build Your First Automation! 🤖</h2>
+                            <p>Hi ${vendorName},</p>
+                            <p>It's been a couple of days since you joined Grafty. Have you had a chance to explore the Flow Builder?</p>
+                            <p>Setting up an automated greeting or away message is the easiest way to start saving time immediately.</p>
+                            <p><a href="https://grafty.pro/super-admin/dashboard/automation" style="background-color: #25D366; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Open Flow Builder</a></p>
+                            <br/>
+                            <p>Best regards,<br/>The Grafty Success Team</p>
+                        </div>
+                    `
+                });
+                console.log(`[EmailWorker] ✅ DRIP_DAY_2 email sent to ${to}`);
+            }
+
+            if (type === "DRIP_DAY_5") {
+                const { to, vendorName } = payload;
+                await resend.emails.send({
+                    from: "Grafty Success <success@grafty.io>", 
+                    to: to,
+                    subject: "Turn your contacts into customers",
+                    html: `
+                        <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
+                            <h2>Day 5: Supercharge your CRM 📈</h2>
+                            <p>Hi ${vendorName},</p>
+                            <p>Did you know you can easily import all your existing customers into Grafty?</p>
+                            <p>Once imported, you can launch broadcast campaigns to reactivate old leads and drive instant sales.</p>
+                            <p><a href="https://grafty.pro/super-admin/dashboard/crm" style="background-color: #25D366; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Go to CRM</a></p>
+                            <br/>
+                            <p>Best regards,<br/>The Grafty Success Team</p>
+                        </div>
+                    `
+                });
+                console.log(`[EmailWorker] ✅ DRIP_DAY_5 email sent to ${to}`);
+            }
+
+            if (type === "DRIP_DAY_10") {
+                const { to, vendorName } = payload;
+                await resend.emails.send({
+                    from: "Grafty Billing <billing@grafty.io>", 
+                    to: to,
+                    subject: "Your Free Trial is Ending Soon!",
+                    html: `
+                        <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
+                            <h2 style="color: #e74c3c;">Trial Expiring Soon ⏰</h2>
+                            <p>Hi ${vendorName},</p>
+                            <p>We hope you're loving Grafty! Your free trial is coming to an end in just a few days.</p>
+                            <p>To ensure your WhatsApp automations and campaigns continue running without interruption, please select a subscription plan.</p>
+                            <p><a href="https://grafty.pro/super-admin/dashboard/packages" style="background-color: #e74c3c; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Upgrade Now</a></p>
+                            <br/>
+                            <p>Best regards,<br/>The Grafty Team</p>
+                        </div>
+                    `
+                });
+                console.log(`[EmailWorker] ✅ DRIP_DAY_10 email sent to ${to}`);
             }
             
         } catch (err: any) {
