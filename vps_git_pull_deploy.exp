@@ -1,0 +1,20 @@
+#!/usr/bin/expect -f
+set SERVER    "root@72.61.231.187"
+set PASS      "Photoshop09@"
+set REMOTE    "/root/grafty_bsp"
+set timeout   600
+
+puts "\n🚀 \[1/2\] Pulling from Git on VPS..."
+spawn ssh -o StrictHostKeyChecking=no -o PubkeyAuthentication=no $SERVER "cd $REMOTE && git reset --hard && git pull origin main"
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}
+
+puts "\n🚀 \[2/2\] Rebuilding Docker container (zero-downtime)..."
+spawn ssh -o StrictHostKeyChecking=no -o PubkeyAuthentication=no $SERVER "cd $REMOTE && docker compose -f docker-compose.prod.yml up -d --build --remove-orphans 2>&1"
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}
+puts "\n✅ DEPLOYMENT COMPLETE"
