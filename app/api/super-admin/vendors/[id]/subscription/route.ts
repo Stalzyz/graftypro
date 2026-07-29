@@ -49,28 +49,29 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 
         switch (action) {
             case "upgrade":
-            case "downgrade":
-                if (plan || plan_id) {
-                    // Pull full package data if we only have the ID or Name
-                    const dbPlan = await prisma.subscriptionPlan.findFirst({
+            case "downgrade": {
+                let dbPlan: any = null;
+                if (plan_id || plan) {
+                    dbPlan = await prisma.subscriptionPlan.findFirst({
                         where: plan_id ? { id: plan_id } : { name: { equals: plan, mode: 'insensitive' } }
                     });
-
-                    if (dbPlan) {
-                        updateData.current_plan_id = dbPlan.id;
-                        updateData.plan = normalizePlanEnum(dbPlan.name);
-                    } else if (plan) {
-                        // Fallback fallback: Clear the DB ID pointer to drop Pro modules
-                        updateData.plan = normalizePlanEnum(plan);
-                        updateData.current_plan_id = null;
-                    }
                 }
+
+                if (dbPlan) {
+                    updateData.current_plan_id = dbPlan.id;
+                    updateData.plan = normalizePlanEnum(dbPlan.name);
+                } else if (plan) {
+                    // Fallback: normalize the raw plan name string
+                    updateData.plan = normalizePlanEnum(plan);
+                    updateData.current_plan_id = null;
+                }
+
                 updateData.subscription_status = "active";
                 auditDetails.old_plan = ws.plan;
-                auditDetails.new_plan = plan || plan_id;
-                
-                // Enqueue Email Notification if it's a downgrade
-                if (auditDetails.old_plan !== "FREE" && (auditDetails.new_plan === "FREE" || (dbPlan && dbPlan.name.toUpperCase() === "FREE"))) {
+                auditDetails.new_plan = updateData.plan || plan || plan_id;
+
+                // Enqueue Email Notification if it's a downgrade to FREE
+                if (auditDetails.old_plan !== "FREE" && updateData.plan === "FREE") {
                     const owner = await prisma.user.findFirst({ where: { workspace_id: params.id, role: "OWNER" } });
                     if (owner) {
                         await systemEmailQueue?.add("send-system-email", {
@@ -86,6 +87,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
                     }
                 }
                 break;
+            }
 
             case "extend_trial":
                 const trialEnd = new Date();

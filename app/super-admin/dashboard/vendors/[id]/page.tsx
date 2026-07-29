@@ -186,7 +186,7 @@ export default function VendorDetailPage({ params }: { params: { id: string } })
         setSubLoading(true);
         try {
             const body: any = { action: subAction };
-            if (subAction === "upgrade" || subAction === "downgrade") body.plan = subValue;
+            if (subAction === "upgrade" || subAction === "downgrade") body.plan_id = subValue;
             if (subAction === "extend_trial") body.trial_days = parseInt(subValue) || 7;
             if (subAction === "set_custom_price") body.custom_price = parseFloat(subValue);
             if (subAction === "force_renewal") body.renewal_date = subValue;
