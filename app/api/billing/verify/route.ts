@@ -112,8 +112,8 @@ export async function POST(req: Request) {
                     description: `Grafty ${newPlan} Subscription`,
                     hsn_code: "998311",
                     quantity: 1,
-                    rate: price / 1.18, // Back calculate taxable value from inclusive amount
-                    taxable_value: price / 1.18
+                    rate: price, // Base price from DB (excl. GST)
+                    taxable_value: price
                 }],
                 billingDetails: {
                     name: updatedWorkspace.business_name || updatedWorkspace.name,

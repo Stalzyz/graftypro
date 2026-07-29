@@ -20,7 +20,8 @@ export default function BrandingPage() {
         support_url: "",
         support_whatsapp: "",
         broadcast_banner: "",
-        broadcast_link: ""
+        broadcast_link: "",
+        gst_number: ""
     });
 
     const [loading, setLoading] = useState(true);
@@ -42,7 +43,8 @@ export default function BrandingPage() {
                         support_url: data.data.support_url || "",
                         support_whatsapp: data.data.support_whatsapp || "",
                         broadcast_banner: data.data.broadcast_banner || "",
-                        broadcast_link: data.data.broadcast_link || ""
+                        broadcast_link: data.data.broadcast_link || "",
+                        gst_number: data.data.gst_number || ""
                     });
                 }
                 setLoading(false);
@@ -167,8 +169,8 @@ export default function BrandingPage() {
                                 <Mail size={22} />
                             </div>
                             <div>
-                                <h2 className="text-xs font-black text-slate-900 uppercase tracking-[0.2em]">Partner Support</h2>
-                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest italic mt-1 leading-none">Customer Service Touchpoints</p>
+                                <h2 className="text-xs font-black text-slate-900 uppercase tracking-[0.2em]">Partner Support & Billing</h2>
+                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest italic mt-1 leading-none">Customer Service & Tax Compliance</p>
                             </div>
                         </div>
 
@@ -193,6 +195,13 @@ export default function BrandingPage() {
                                 value={config.support_whatsapp}
                                 onChange={(v: string) => setConfig({ ...config, support_whatsapp: v.replace(/\D/g, '') })}
                                 icon={<MessageCircle size={14} />}
+                            />
+                            <InputModule
+                                label="GSTIN (For Commission Payouts)"
+                                placeholder="29XXXXX0000X1Z5"
+                                value={config.gst_number}
+                                onChange={(v: string) => setConfig({ ...config, gst_number: v.toUpperCase() })}
+                                icon={<Shield size={14} />}
                             />
                         </div>
                     </section>

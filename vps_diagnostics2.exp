@@ -1,0 +1,10 @@
+#!/usr/bin/expect -f
+set SERVER    "root@72.61.231.187"
+set PASS      "Photoshop09@"
+set timeout   120
+
+spawn ssh -o StrictHostKeyChecking=no $SERVER "docker system df && echo '===' && du -hx -d 2 / | sort -rh | head -n 15"
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}

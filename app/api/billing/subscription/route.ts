@@ -109,15 +109,18 @@ export async function POST(req: Request) {
                      return NextResponse.json({ error: `Free plans do not require Razorpay subscriptions.` }, { status: 400 });
                 }
 
-                // Create plan in Razorpay
+                // Create plan in Razorpay (price is GST-exclusive, Razorpay must charge inclusive)
+                const gstRate = Number((dbPlan as any).gst_percentage ?? 18) / 100;
+                const priceIncGst = Math.round(priceValue * (1 + gstRate) * 100); // in paise, GST-inclusive
+
                 const generatedPlan = await saasRazorpay.plans.create({
                     period: cycle === "yearly" ? "yearly" : "monthly",
                     interval: 1,
                     item: {
                         name: `${planName} (${cycle}) - Auto`,
-                        amount: priceValue * 100, // in paise
+                        amount: priceIncGst, // in paise, incl. GST
                         currency: "INR",
-                        description: `Auto-generated plan for ${planName}`
+                        description: `Auto-generated plan for ${planName} (incl. ${gstRate * 100}% GST)`
                     }
                 });
 

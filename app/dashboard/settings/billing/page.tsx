@@ -312,7 +312,11 @@ export default function BillingPage() {
                     const currentPrice = isYearly 
                         ? Number(plan.yearly_price || 0)
                         : Number(plan.price);
-                    const savings = originalPrice > currentPrice ? originalPrice - currentPrice : 0;
+                    
+                    const gstRate = Number((plan as any).gst_percentage || 18) / 100;
+                    const totalPayable = currentPrice * (1 + gstRate);
+
+                    const savings = originalPrice > currentPrice ? (originalPrice * (1 + gstRate)) - totalPayable : 0;
 
                     return (
                         <div key={plan.id} className={`relative flex flex-col rounded-[2rem] border-2 p-8 transition-all duration-300 hover:shadow-2xl ${isCurrent || isPopular ? 'border-[#27954D] bg-white ' + (isPopular ? 'ring-8 ring-[#27954D]/5 shadow-xl scale-105 z-10' : 'shadow-lg scale-[1.02]') : 'border-slate-100 bg-white hover:border-slate-200'}`}>
@@ -342,27 +346,30 @@ export default function BillingPage() {
                                     <div className="mb-1">
                                         <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">MSRP:</span>
                                         <span className="text-sm text-slate-400 line-through font-bold ml-1">
-                                            ₹{originalPrice.toLocaleString("en-IN")}/{isYearly ? 'yr' : 'mo'}
+                                            ₹{(originalPrice * (1 + gstRate)).toLocaleString("en-IN", { maximumFractionDigits: 0 })}/{isYearly ? 'yr' : 'mo'}
                                         </span>
                                     </div>
                                 )}
 
                                 {originalPrice > 0 && (
-                                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Selling Price</p>
+                                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Total Price</p>
                                 )}
 
-                                <div className="flex items-baseline gap-1 mb-2">
+                                <div className="flex items-baseline gap-1 mb-1">
                                     <span className="text-2xl font-bold text-slate-900">₹</span>
                                     <span className="text-5xl font-black tracking-tighter text-slate-900 leading-none">
-                                        {currentPrice.toLocaleString("en-IN")}
+                                        {totalPayable.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
                                     </span>
                                     <span className="text-slate-400 font-bold uppercase text-[10px] tracking-widest">/{isYearly ? 'yr' : 'mo'}</span>
+                                </div>
+                                <div className="text-[10px] font-bold text-slate-400 mb-4 ml-1">
+                                    Base: ₹{currentPrice.toLocaleString("en-IN")} + {gstRate * 100}% GST
                                 </div>
 
                                 {/* Savings Badge */}
                                 {savings > 0 && (
                                     <div className="inline-flex items-center gap-1 bg-green-50 text-green-700 text-[10px] font-black px-2.5 py-1 rounded-full border border-green-100 mb-4 w-fit">
-                                        You Save ₹{savings.toLocaleString("en-IN")}/{isYearly ? 'yr' : 'mo'}
+                                        You Save ₹{savings.toLocaleString("en-IN", { maximumFractionDigits: 0 })}/{isYearly ? 'yr' : 'mo'}
                                     </div>
                                 )}
 

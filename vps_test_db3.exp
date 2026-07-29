@@ -1,0 +1,10 @@
+#!/usr/bin/expect -f
+set SERVER    "root@72.61.231.187"
+set PASS      "Photoshop09@"
+set timeout   60
+
+spawn ssh -o StrictHostKeyChecking=no -o PubkeyAuthentication=no $SERVER "docker exec grafty_postgres psql -U user -d wabot_bsp -c \"SELECT w.id, wa.phone_number_id FROM workspaces w JOIN whatsapp_accounts wa ON wa.workspace_id = w.id WHERE w.name ILIKE '%Grekam%';\""
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}

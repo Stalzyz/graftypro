@@ -1,0 +1,10 @@
+#!/usr/bin/expect -f
+set SERVER    "root@72.61.231.187"
+set PASS      "Photoshop09@"
+set timeout   60
+
+spawn ssh -o StrictHostKeyChecking=no -o PubkeyAuthentication=no $SERVER "docker exec grafty_postgres psql -U root -d grafty -c \\\"SELECT id, name, status FROM campaigns WHERE workspace_id IN (SELECT id FROM workspaces WHERE name ILIKE '%Grekam%') ORDER BY created_at DESC LIMIT 5;\\\""
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}

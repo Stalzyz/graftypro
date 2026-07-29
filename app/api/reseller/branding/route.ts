@@ -25,6 +25,7 @@ export async function GET(req: Request) {
                 support_whatsapp: true,
                 custom_domain: true,
                 smtp_config: true,
+                gst_number: true,
                 // @ts-ignore
                 role: true
             }
@@ -61,7 +62,7 @@ export async function PUT(req: Request) {
             brand_name, logo_url, favicon_url, primary_color, secondary_color,
             support_email, support_url, support_whatsapp,
             custom_domain, smtp_config, domain_verified,
-            broadcast_banner, broadcast_link
+            broadcast_banner, broadcast_link, gst_number
         } = body;
 
         // Build update payload — only include fields that were sent
@@ -76,6 +77,7 @@ export async function PUT(req: Request) {
         if (support_whatsapp !== undefined) updateData.support_whatsapp = support_whatsapp;
         if (broadcast_banner !== undefined) updateData.broadcast_banner = broadcast_banner;
         if (broadcast_link !== undefined) updateData.broadcast_link = broadcast_link;
+        if (gst_number !== undefined) updateData.gst_number = gst_number;
         if (custom_domain !== undefined) updateData.custom_domain = custom_domain || null;
         if (smtp_config !== undefined) {
             const config = { ...smtp_config };

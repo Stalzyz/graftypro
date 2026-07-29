@@ -216,19 +216,24 @@ export class ResellerService {
         const basePlatformCost = Number(workspace.plan_details?.min_reseller_monthly_price ?? config?.rev_base_platform_cost ?? 2000);
         const paidAmount = Number(amount);
 
-        // 3. Split Calculation (Hybrid Model: Commission vs Margin)
+        // 3. Extract Base Price for Commission Calculation
+        // Since Razorpay amount is now GST inclusive, we must strip GST to find the base value.
+        const gstRate = Number(workspace.plan_details?.gst_percentage ?? 18) / 100;
+        const baseAmount = paidAmount / (1 + gstRate);
+
+        // 4. Split Calculation (Hybrid Model: Commission vs Margin)
         let partnerProfit = 0;
         let description = "";
 
         // @ts-ignore
         if (reseller.role === "AFFILIATE") {
-            // AFFILIATE MODEL: Percentage of Gross (e.g. 20%)
+            // AFFILIATE MODEL: Percentage of Base Price (e.g. 20%)
             const commRate = Number(reseller.tier?.commission_rate ?? reseller.base_commission ?? 20);
-            partnerProfit = (paidAmount * commRate) / 100;
-            description = `Affiliate Commission (${commRate}%): Transaction ${transactionId}`;
+            partnerProfit = (baseAmount * commRate) / 100;
+            description = `Affiliate Commission (${commRate}% on Base ₹${baseAmount.toFixed(2)}): Transaction ${transactionId}`;
         } else {
-            // PLATFORM MODEL: Margin Protection (Gross - Base Cost)
-            partnerProfit = paidAmount - basePlatformCost;
+            // PLATFORM MODEL: Margin Protection (Base Price - Base Cost)
+            partnerProfit = baseAmount - basePlatformCost;
             description = `Partner Profit Share: Transaction ${transactionId} (Base: ₹${basePlatformCost})`;
         }
 

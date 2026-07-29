@@ -61,15 +61,18 @@ export async function POST(req: Request) {
                 key_secret: finalKeySecret!,
             });
 
-            const priceInPaise = cycle === "monthly"
-                ? Math.round(Number(plan.monthly_price) * 100)
-                : Math.round(Number(plan.yearly_price) * 100);
+            const gstRate = Number((plan as any).gst_percentage ?? 18) / 100;
+            const basePrice = cycle === "monthly"
+                ? Number(plan.monthly_price)
+                : Number(plan.yearly_price);
+            // Razorpay must charge the GST-inclusive amount
+            const priceInPaise = Math.round(basePrice * (1 + gstRate) * 100);
 
             if (priceInPaise <= 0) {
                 return NextResponse.json({ error: "Plan price must be greater than 0" }, { status: 400 });
             }
 
-            // Create plan in Razorpay
+            // Create plan in Razorpay with GST-inclusive amount
             const rzpPlan = await (razorpay.plans as any).create({
                 period: cycle === "monthly" ? "monthly" : "yearly",
                 interval: 1,
@@ -77,7 +80,7 @@ export async function POST(req: Request) {
                     name: `${plan.name} - ${cycle === "monthly" ? "Monthly" : "Yearly"}`,
                     amount: priceInPaise,
                     currency: "INR",
-                    description: plan.description || `Grafty ${plan.name} Plan`,
+                    description: plan.description || `Grafty ${plan.name} Plan (incl. ${gstRate * 100}% GST)`,
                 },
                 notes: {
                     plan_db_id: plan_id,
