@@ -385,23 +385,23 @@ const campaignWorker = new Worker(
                     if (segment) {
                         const { CommerceSegmentation } = await import("@/lib/commerce/segmentation");
                         const segmentTargetIds = (await CommerceSegmentation.getSegmentContacts(workspaceId, segment.filters)).map(c => c.id);
-                        recipients = optInContacts.filter(c => segmentTargetIds.includes(c.id)).map(c => ({ ...c }));
+                        recipients = optInContacts.filter(c => segmentTargetIds.includes(c.id)).map(c => ({ ...c, name: c.name || "Customer" }));
                     }
                 } else if ((campaign.filters as any)?.retarget_campaign_id) {
                     const { CommerceSegmentation } = await import("@/lib/commerce/segmentation");
                     const retargetTargetIds = (await CommerceSegmentation.getSegmentContacts(workspaceId, campaign.filters)).map(c => c.id);
-                    recipients = optInContacts.filter(c => retargetTargetIds.includes(c.id)).map(c => ({ ...c }));
+                    recipients = optInContacts.filter(c => retargetTargetIds.includes(c.id)).map(c => ({ ...c, name: c.name || "Customer" }));
                 } else if ((campaign.filters as any)?.segment_id) {
                     const storedSegmentId = (campaign.filters as any).segment_id;
                     const segment = await prisma.segment.findUnique({ where: { id: storedSegmentId } });
                     if (segment) {
                         const { CommerceSegmentation } = await import("@/lib/commerce/segmentation");
                         const segmentTargetIds = (await CommerceSegmentation.getSegmentContacts(workspaceId, segment.filters)).map(c => c.id);
-                        recipients = optInContacts.filter(c => segmentTargetIds.includes(c.id)).map(c => ({ ...c }));
+                        recipients = optInContacts.filter(c => segmentTargetIds.includes(c.id)).map(c => ({ ...c, name: c.name || "Customer" }));
                     }
                 } else {
                     // Send to all Opted-In contacts
-                    recipients = optInContacts.map(c => ({ ...c }));
+                    recipients = optInContacts.map(c => ({ ...c, name: c.name || "Customer" }));
                 }
             }
 
@@ -681,9 +681,8 @@ const automationWorker = new Worker(
                         { created_at: day5 },
                         { created_at: day10 }
                     ],
-                    email: { not: null }
                 },
-                select: { id: true, name: true, email: true, created_at: true }
+                select: { id: true, name: true, created_at: true, users: { select: { email: true }, take: 1 } }
             });
 
             const { systemEmailQueue } = await import("@/lib/queue");
@@ -698,15 +697,16 @@ const automationWorker = new Worker(
                     else if (ageInDays === 5) emailType = "DRIP_DAY_5";
                     else if (ageInDays === 10) emailType = "DRIP_DAY_10";
 
-                    if (emailType && workspace.email) {
+                    const email = workspace.users[0]?.email;
+                    if (emailType && email) {
                         await systemEmailQueue.add("send-system-email", {
                             type: emailType,
                             payload: {
-                                to: workspace.email,
+                                to: email,
                                 vendorName: workspace.name
                             }
                         });
-                        console.log(`[Worker] Queued ${emailType} for ${workspace.email}`);
+                        console.log(`[Worker] Queued ${emailType} for ${email}`);
                     }
                 }
             }

@@ -112,7 +112,7 @@ async function processDrips() {
                     // For now, we skip or alert.
                 } else {
                     try {
-                        const { FlowRunner } = await import("../lib/engine/flow-runner");
+                        const { executeFrom } = await import("../lib/engine/flow-executor");
                         const session = await prisma.flowSession.create({
                             data: {
                                 // @ts-ignore
@@ -122,7 +122,7 @@ async function processDrips() {
                             },
                             include: { flow: true }
                         });
-                        await FlowRunner.executeNextStep(session, null);
+                        await executeFrom(session as any, null, waba, enrollment.contact);
                         sentSuccess = true;
                     } catch (err) { console.error(err); }
                 }
@@ -191,6 +191,19 @@ async function processDrips() {
             is_waiting: true,
             // @ts-ignore
             next_run_at: { lte: now }
+        },
+        include: {
+            // @ts-ignore
+            flow: true,
+            contact: {
+                include: {
+                    workspace: {
+                        include: {
+                            waba: true
+                        }
+                    }
+                }
+            }
         }
     });
 
@@ -198,7 +211,7 @@ async function processDrips() {
 
     for (const session of waitingSessions) {
         try {
-            const { FlowRunner } = await import("../lib/engine/flow-runner");
+            const { executeFrom } = await import("../lib/engine/flow-executor");
 
             // 1. Mark as not waiting
             await prisma.flowSession.update({
@@ -208,7 +221,13 @@ async function processDrips() {
             });
 
             // 2. Execute next step (moving from the 'wait' node target)
-            await FlowRunner.executeNextStep(session, session.current_node_id);
+            const waba = session.contact?.workspace?.waba;
+            if (!waba) {
+                console.error(`No WABA found for session ${session.id}, cannot resume`);
+                continue;
+            }
+            // @ts-ignore
+            await executeFrom(session as any, session.current_node_id, waba, session.contact);
             console.log(`Resumed Flow Session ${session.id}`);
 
         } catch (e) {
