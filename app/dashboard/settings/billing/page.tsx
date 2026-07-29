@@ -31,6 +31,7 @@ export default function BillingPage() {
     const [trialStatus, setTrialStatus] = useState<any>(null);
     const [upgradeError, setUpgradeError] = useState<string | null>(null);
     const [upgradeSuccess, setUpgradeSuccess] = useState(false);
+    const [isYearly, setIsYearly] = useState(false);
     
     // Coupon State
     const [couponCode, setCouponCode] = useState("");
@@ -51,7 +52,11 @@ export default function BillingPage() {
                 const plansData = await plansRes.json();
                 const trialData = await trialRes.json();
 
-                if (statusData.plan) setCurrentPlan(statusData.plan);
+                if (statusData.details?.name) {
+                    setCurrentPlan(statusData.details.name);
+                } else if (statusData.plan) {
+                    setCurrentPlan(statusData.plan);
+                }
                 setAvailablePlans(plansData.data || []);
                 setTrialStatus(trialData);
             } catch (error) {
@@ -97,6 +102,7 @@ export default function BillingPage() {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ 
                     plan: planName,
+                    cycle: isYearly ? "yearly" : "monthly",
                     couponCode: appliedCoupon?.success ? couponCode : undefined
                 })
             });
@@ -242,6 +248,35 @@ export default function BillingPage() {
                 </p>
             )}
 
+            {/* Monthly / Yearly Toggle */}
+            <div className="flex items-center justify-center gap-4 mb-12">
+                <span className={`text-sm font-bold transition-colors ${!isYearly ? "text-slate-900" : "text-slate-400"}`}>
+                    Monthly
+                </span>
+
+                {/* Gradient Toggle Button */}
+                <button
+                    type="button"
+                    onClick={() => setIsYearly(v => !v)}
+                    aria-label="Toggle billing period"
+                    className="relative w-[56px] h-[30px] rounded-full p-[3px] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#27954D] transition-all"
+                    style={{ background: "linear-gradient(135deg, #27954D 0%, #042F94 100%)" }}
+                >
+                    <div
+                        className={`w-6 h-6 bg-white rounded-full shadow-lg transition-transform duration-300 ${isYearly ? "translate-x-[26px]" : "translate-x-0"}`}
+                    />
+                </button>
+
+                <div className="flex items-center gap-2">
+                    <span className={`text-sm font-bold transition-colors ${isYearly ? "text-slate-900" : "text-slate-400"}`}>
+                        Yearly
+                    </span>
+                    <span className="inline-flex items-center bg-green-50 text-green-700 text-[10px] font-black px-2.5 py-1 rounded-full border border-green-100">
+                        SAVE 2 MONTHS
+                    </span>
+                </div>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                 {/* Fallback to STARTER if no plans exist or during load failures */}
                 {availablePlans.length === 0 && (
@@ -271,8 +306,12 @@ export default function BillingPage() {
                 {availablePlans.map((plan) => {
                     const isCurrent = currentPlan === plan.name;
                     const isPopular = (plan as any).is_featured || plan.name.includes("GROWTH");
-                    const originalPrice = Number(plan.original_monthly_price || 0);
-                    const currentPrice = Number(plan.price);
+                    const originalPrice = isYearly 
+                        ? Number(plan.original_yearly_price || 0)
+                        : Number(plan.original_monthly_price || 0);
+                    const currentPrice = isYearly 
+                        ? Number(plan.yearly_price || 0)
+                        : Number(plan.price);
                     const savings = originalPrice > currentPrice ? originalPrice - currentPrice : 0;
 
                     return (
@@ -303,7 +342,7 @@ export default function BillingPage() {
                                     <div className="mb-1">
                                         <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">MSRP:</span>
                                         <span className="text-sm text-slate-400 line-through font-bold ml-1">
-                                            ₹{originalPrice.toLocaleString("en-IN")}/mo
+                                            ₹{originalPrice.toLocaleString("en-IN")}/{isYearly ? 'yr' : 'mo'}
                                         </span>
                                     </div>
                                 )}
@@ -317,13 +356,13 @@ export default function BillingPage() {
                                     <span className="text-5xl font-black tracking-tighter text-slate-900 leading-none">
                                         {currentPrice.toLocaleString("en-IN")}
                                     </span>
-                                    <span className="text-slate-400 font-bold uppercase text-[10px] tracking-widest">/{plan.billing_cycle === 'YEARLY' ? 'yr' : 'mo'}</span>
+                                    <span className="text-slate-400 font-bold uppercase text-[10px] tracking-widest">/{isYearly ? 'yr' : 'mo'}</span>
                                 </div>
 
                                 {/* Savings Badge */}
                                 {savings > 0 && (
                                     <div className="inline-flex items-center gap-1 bg-green-50 text-green-700 text-[10px] font-black px-2.5 py-1 rounded-full border border-green-100 mb-4 w-fit">
-                                        You Save ₹{savings.toLocaleString("en-IN")}/mo
+                                        You Save ₹{savings.toLocaleString("en-IN")}/{isYearly ? 'yr' : 'mo'}
                                     </div>
                                 )}
 

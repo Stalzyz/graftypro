@@ -48,6 +48,22 @@ export async function POST(req: Request) {
                     update: { balance: { increment: txn.amount } } as any,
                     create: { workspace_id: txn.workspace_id, balance: txn.amount } as any
                 });
+                
+                // Send Payment Success Email with CC to accounting
+                const workspace = await prisma.workspace.findUnique({ where: { id: txn.workspace_id }, select: { email: true, name: true }});
+                if (workspace?.email) {
+                    const { systemEmailQueue } = await import('../../../../lib/queue');
+                    await systemEmailQueue?.add("send-system-email", {
+                        type: "PAYMENT_SUCCESS",
+                        payload: {
+                            to: workspace.email,
+                            vendorName: workspace.name,
+                            amount: txn.amount,
+                            currency: "INR",
+                            invoiceUrl: ""
+                        }
+                    });
+                }
             }
 
             console.log(`[PhonePe Webhook] ✅ Payment verified, credited ₹${txn.amount} to workspace ${txn.workspace_id}`);

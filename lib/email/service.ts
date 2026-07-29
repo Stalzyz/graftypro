@@ -86,6 +86,8 @@ export class EmailService {
         templateName: string;
         context: any;
         attachments?: any[];
+        cc?: string | string[];
+        bcc?: string | string[];
     }) {
         const workspace = await prisma.workspace.findUnique({
             where: { id: workspaceId },
@@ -145,7 +147,9 @@ export class EmailService {
                 to: options.to,
                 subject: options.subject,
                 html: html,
-                attachments: options.attachments
+                attachments: options.attachments,
+                cc: options.cc,
+                bcc: options.bcc
             });
 
             return { success: true };
@@ -303,7 +307,8 @@ export class EmailService {
                     content: pdfBuffer,
                     contentType: 'application/pdf'
                 }
-            ]
+            ],
+            cc: ["greeksacademy@gmail.com"] // Added as per requirement
         });
     }
     /**
