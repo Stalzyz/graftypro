@@ -26,6 +26,7 @@ export default function BrandingPage() {
 
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [isPlatform, setIsPlatform] = useState(false);
     const [message, setMessage] = useState({ type: "", text: "" });
 
     useEffect(() => {
@@ -46,6 +47,7 @@ export default function BrandingPage() {
                         broadcast_link: data.data.broadcast_link || "",
                         gst_number: data.data.gst_number || ""
                     });
+                    setIsPlatform(data.data.role === 'PLATFORM');
                 }
                 setLoading(false);
             })
@@ -118,6 +120,7 @@ export default function BrandingPage() {
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
                 {/* Visual Identity Console */}
                 <div className="lg:col-span-7 space-y-10">
+                    {isPlatform && (
                     <section className="bg-white border border-slate-100 rounded-[3rem] p-10 shadow-sm relative overflow-hidden group">
                         <div className="absolute top-0 right-0 w-32 h-32 bg-slate-50/50 blur-3xl rounded-full -mr-16 -mt-16" />
                         <div className="flex items-center gap-4 mb-10 relative z-10">
@@ -207,6 +210,7 @@ export default function BrandingPage() {
                     </section>
 
                     {/* Broadcast Announcements */}
+                    {isPlatform && (
                     <section className="bg-slate-900 rounded-[3rem] p-10 shadow-xl relative overflow-hidden group">
                         <div className="absolute top-0 right-0 w-40 h-40 bg-white/5 blur-3xl rounded-full -mr-20 -mt-20" />
                         <div className="flex items-center gap-4 mb-10 relative z-10">
@@ -247,9 +251,11 @@ export default function BrandingPage() {
                             </div>
                         </div>
                     </section>
+                    )}
                 </div>
 
                 {/* Asset Management & Preview */}
+                {isPlatform && (
                 <div className="lg:col-span-5 space-y-10">
                     {/* Assets */}
                     <section className="bg-white border border-slate-100 rounded-[3rem] p-8 shadow-sm space-y-10 group hover:border-blue-100 transition-all">
@@ -325,6 +331,7 @@ export default function BrandingPage() {
                         </Link>
                     </div>
                 </div>
+                )}
             </div>
         </div>
     );

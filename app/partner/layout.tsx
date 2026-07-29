@@ -111,6 +111,7 @@ export default function PartnerLayout({ children }: { children: React.ReactNode 
                     {!isPlatform && (
                         <div className="space-y-1">
                             <SectionHeader label="Settings" />
+                            <NavItem href="/partner/settings" icon={<Settings size={18} />} label="Profile & Tax" pathname={pathname} />
                             <NavItem href="/partner/settings/billing" icon={<CreditCard size={18} />} label="Payment Gateway" pathname={pathname} />
                         </div>
                     )}
