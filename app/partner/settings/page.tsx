@@ -163,6 +163,7 @@ export default function BrandingPage() {
                             </div>
                         </div>
                     </section>
+                    )}
 
                     {/* Support Config */}
                     <section className="bg-white border border-slate-100 rounded-[3rem] p-10 shadow-sm relative overflow-hidden group">
