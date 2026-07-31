@@ -230,6 +230,7 @@ export async function middleware(request: NextRequest) {
         path.startsWith("/api/crm/webhook") ||
         path.startsWith("/api/branding") ||
         path.startsWith("/api/billing/plans") ||
+        path.startsWith("/api/super-admin/finance/payment/public-key") ||
         path.startsWith("/api/public/config") ||
         path.startsWith("/api/media/local") ||
         path.startsWith("/uploads") ||

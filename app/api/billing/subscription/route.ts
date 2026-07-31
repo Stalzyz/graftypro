@@ -159,14 +159,6 @@ export async function POST(req: Request) {
             }
         });
 
-        // 4. Update workspace with pending subscription
-        await prisma.workspace.update({
-            where: { id: user.workspaceId },
-            data: {
-                subscription_id: sub.id,
-                subscription_status: "created"
-            }
-        });
 
         return NextResponse.json({ subscriptionId: sub.id });
 

@@ -113,17 +113,22 @@ export default function BillingPage() {
                 return;
             }
 
-            // Diagnostic: If key is missing, fetch it from system (or use a sensible fallback)
+            // Diagnostic: If key is missing, fetch it from system config
             let rzpKey = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
             if (!rzpKey) {
-                // Try fetching from public config if not in env
-                const configRes = await fetch("/api/super-admin/finance/payment/public-key");
-                const configData = await configRes.json();
-                rzpKey = configData.key_id;
+                try {
+                    const configRes = await fetch("/api/super-admin/finance/payment/public-key");
+                    if (configRes.ok) {
+                        const configData = await configRes.json();
+                        rzpKey = configData.key_id;
+                    }
+                } catch (_) {
+                    // Ignore network errors — fall through to the check below
+                }
             }
 
             if (!rzpKey) {
-                throw new Error("Payment Gateway not configured. Please contact support.");
+                throw new Error("Payment gateway is not configured. Please contact support.");
             }
 
             const options = {
