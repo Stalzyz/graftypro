@@ -61,6 +61,21 @@ export class AIService {
         try {
             const openai = getOpenAI();
             if (!openai) throw new Error("OpenAI Client not initialized");
+
+            // OpenAI Vision cannot access private/VPS-hosted URLs.
+            // We fetch the image from our own server and convert to base64 data URL.
+            let imageContent: string = imageUrl;
+            try {
+                const imgRes = await fetch(imageUrl);
+                if (imgRes.ok) {
+                    const buffer = await imgRes.arrayBuffer();
+                    const base64 = Buffer.from(buffer).toString('base64');
+                    const contentType = imgRes.headers.get('content-type') || 'image/jpeg';
+                    imageContent = `data:${contentType};base64,${base64}`;
+                }
+            } catch (fetchErr) {
+                console.warn("Could not fetch image for base64 conversion, using URL directly:", fetchErr);
+            }
             
             const response = await openai.chat.completions.create({
                 model: "gpt-4o-mini", // Efficient and has Vision
@@ -91,7 +106,7 @@ export class AIService {
                             { type: "text", text: `Analyze this image as a ${type} document.` },
                             {
                                 type: "image_url",
-                                image_url: { url: imageUrl }
+                                image_url: { url: imageContent }
                             }
                         ]
                     }
@@ -109,7 +124,6 @@ export class AIService {
             };
         } catch (error: any) {
             console.error("AI Vision KYC Error:", error);
-            // On failure, we might want to default to human review or rejection
             return { success: false, score: 0, reason: "AI Engine Processing Fault: " + error.message };
         }
     }

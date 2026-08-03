@@ -147,10 +147,103 @@ export default function BrandingPage() {
                 </div>
             )}
 
+            {/* ── AFFILIATE PARTNER VIEW ─────────────────────────── */}
+            {!isPlatform && (
+                <div className="space-y-8">
+                    {/* Account & Security */}
+                    <section className="bg-white border border-slate-100 rounded-[3rem] p-10 shadow-sm relative overflow-hidden group">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-slate-50/50 blur-3xl rounded-full -mr-16 -mt-16" />
+                        <div className="flex items-center gap-4 mb-10 relative z-10">
+                            <div className="w-12 h-12 rounded-2xl bg-[#042f94] flex items-center justify-center text-white shadow-lg">
+                                <Shield size={22} />
+                            </div>
+                            <div>
+                                <h2 className="text-xs font-black text-slate-900 uppercase tracking-[0.2em]">Account & Security</h2>
+                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest italic mt-1 leading-none">Update your name, brand, and login password</p>
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 relative z-10">
+                            <InputModule
+                                label="Full Name"
+                                placeholder="Your Name"
+                                value={profile.name}
+                                onChange={(v: string) => setProfile({ ...profile, name: v })}
+                                icon={<Shield size={14} />}
+                            />
+                            <InputModule
+                                label="Business / Brand Name"
+                                placeholder="Brand Name"
+                                value={profile.business_name}
+                                onChange={(v: string) => setProfile({ ...profile, business_name: v })}
+                                icon={<Building size={14} />}
+                            />
+                        </div>
+                        <div className="space-y-3 mt-8 relative z-10">
+                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em] ml-1">New Password (Leave blank to keep current)</label>
+                            <div className="relative group/field">
+                                <div className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within/field:text-blue-600 transition-colors"><Lock size={14} /></div>
+                                <input
+                                    type="password"
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-[2rem] pl-14 pr-8 py-5 text-sm font-black italic text-slate-900 focus:border-blue-600 focus:bg-white outline-none transition-all placeholder:text-slate-200 shadow-inner"
+                                    placeholder="••••••••"
+                                    value={profile.password}
+                                    onChange={e => setProfile({ ...profile, password: e.target.value })}
+                                />
+                            </div>
+                        </div>
+                    </section>
+
+                    {/* Support & Tax */}
+                    <section className="bg-white border border-slate-100 rounded-[3rem] p-10 shadow-sm relative overflow-hidden group">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-slate-50/50 blur-3xl rounded-full -mr-16 -mt-16" />
+                        <div className="flex items-center gap-4 mb-10 relative z-10">
+                            <div className="w-12 h-12 rounded-2xl bg-blue-600 flex items-center justify-center text-white shadow-lg">
+                                <Mail size={22} />
+                            </div>
+                            <div>
+                                <h2 className="text-xs font-black text-slate-900 uppercase tracking-[0.2em]">Support & Tax Info</h2>
+                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest italic mt-1 leading-none">Contact Info & Tax Compliance</p>
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 relative z-10">
+                            <InputModule
+                                label="Support Email"
+                                placeholder="SUPPORT@BRAND.COM"
+                                value={config.support_email}
+                                onChange={(v: string) => setConfig({ ...config, support_email: v.toLowerCase() })}
+                                icon={<Mail size={14} />}
+                            />
+                            <InputModule
+                                label="Support WhatsApp"
+                                placeholder="919789359407"
+                                value={config.support_whatsapp}
+                                onChange={(v: string) => setConfig({ ...config, support_whatsapp: v.replace(/\D/g, '') })}
+                                icon={<MessageCircle size={14} />}
+                            />
+                            <InputModule
+                                label="Support URL"
+                                placeholder="HTTPS://SUPPORT.BRAND.COM"
+                                value={config.support_url}
+                                onChange={(v: string) => setConfig({ ...config, support_url: v.toLowerCase() })}
+                                icon={<Globe size={14} />}
+                            />
+                            <InputModule
+                                label="GSTIN (For Commission Payouts)"
+                                placeholder="29XXXXX0000X1Z5"
+                                value={config.gst_number}
+                                onChange={(v: string) => setConfig({ ...config, gst_number: v.toUpperCase() })}
+                                icon={<Shield size={14} />}
+                            />
+                        </div>
+                    </section>
+                </div>
+            )}
+
+            {/* ── PLATFORM PARTNER VIEW ─────────────────────────── */}
+            {isPlatform && (
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
                 {/* Visual Identity Console */}
                 <div className="lg:col-span-7 space-y-10">
-                    {isPlatform && (
                     <section className="bg-white border border-slate-100 rounded-[3rem] p-10 shadow-sm relative overflow-hidden group">
                         <div className="absolute top-0 right-0 w-32 h-32 bg-slate-50/50 blur-3xl rounded-full -mr-16 -mt-16" />
                         <div className="flex items-center gap-4 mb-10 relative z-10">
@@ -193,7 +286,6 @@ export default function BrandingPage() {
                             </div>
                         </div>
                     </section>
-                    )}
 
                     {/* Support Config */}
                     <section className="bg-white border border-slate-100 rounded-[3rem] p-10 shadow-sm relative overflow-hidden group">
@@ -240,54 +332,7 @@ export default function BrandingPage() {
                         </div>
                     </section>
 
-                    {/* Account Settings */}
-                    <section className="bg-white border border-slate-100 rounded-[3rem] p-10 shadow-sm relative overflow-hidden group">
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-slate-50/50 blur-3xl rounded-full -mr-16 -mt-16" />
-                        <div className="flex items-center gap-4 mb-10 relative z-10">
-                            <div className="w-12 h-12 rounded-2xl bg-[#042f94] flex items-center justify-center text-white shadow-lg">
-                                <Shield size={22} />
-                            </div>
-                            <div>
-                                <h2 className="text-xs font-black text-slate-900 uppercase tracking-[0.2em]">Account & Security</h2>
-                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest italic mt-1 leading-none">Modify partner details & credentials</p>
-                            </div>
-                        </div>
-
-                        <div className="space-y-6 relative z-10">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                <InputModule
-                                    label="Full Name"
-                                    placeholder="Your Name"
-                                    value={profile.name}
-                                    onChange={(v: string) => setProfile({ ...profile, name: v })}
-                                    icon={<Shield size={14} />}
-                                />
-                                <InputModule
-                                    label="Business Name / Brand Name"
-                                    placeholder="Business Name"
-                                    value={profile.business_name}
-                                    onChange={(v: string) => setProfile({ ...profile, business_name: v })}
-                                    icon={<Building size={14} />}
-                                />
-                            </div>
-                            <div className="space-y-3">
-                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em] ml-1">New Password (Leave blank to keep current)</label>
-                                <div className="relative group/field">
-                                    <div className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within/field:text-blue-600 transition-colors"><Lock size={14} /></div>
-                                    <input
-                                        type="password"
-                                        className="w-full bg-slate-50 border border-slate-200 rounded-[2rem] pl-14 pr-8 py-5 text-sm font-black italic uppercase tracking-tighter text-slate-900 focus:border-blue-600 focus:bg-white outline-none transition-all placeholder:text-slate-200 shadow-inner"
-                                        placeholder="••••••••"
-                                        value={profile.password}
-                                        onChange={e => setProfile({ ...profile, password: e.target.value })}
-                                    />
-                                </div>
-                            </div>
-                        </div>
-                    </section>
-
                     {/* Broadcast Announcements */}
-                    {isPlatform && (
                     <section className="bg-slate-900 rounded-[3rem] p-10 shadow-xl relative overflow-hidden group">
                         <div className="absolute top-0 right-0 w-40 h-40 bg-white/5 blur-3xl rounded-full -mr-20 -mt-20" />
                         <div className="flex items-center gap-4 mb-10 relative z-10">
@@ -328,11 +373,9 @@ export default function BrandingPage() {
                             </div>
                         </div>
                     </section>
-                    )}
                 </div>
 
                 {/* Asset Management & Preview */}
-                {isPlatform && (
                 <div className="lg:col-span-5 space-y-10">
                     {/* Assets */}
                     <section className="bg-white border border-slate-100 rounded-[3rem] p-8 shadow-sm space-y-10 group hover:border-blue-100 transition-all">
@@ -408,8 +451,8 @@ export default function BrandingPage() {
                         </Link>
                     </div>
                 </div>
-                )}
             </div>
+            )}
         </div>
     );
 }
