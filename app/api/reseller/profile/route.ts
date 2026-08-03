@@ -61,7 +61,7 @@ export async function POST(req: Request) {
         }
 
         const body = await req.json();
-        const { name, business_name, avatar_url, bio, bank_account_holder, bank_account_number, bank_ifsc, bank_name } = body;
+        const { name, business_name, avatar_url, bio, bank_account_holder, bank_account_number, bank_ifsc, bank_name, password } = body;
 
         // Only encrypt if it's a new value (not masked)
         const updateData: any = {
@@ -71,6 +71,11 @@ export async function POST(req: Request) {
             bio,
             bank_name: bank_name || undefined
         };
+
+        if (password) {
+            const bcrypt = require("bcryptjs");
+            updateData.password_hash = await bcrypt.hash(password, 10);
+        }
 
         const { encrypt } = await import("@/lib/security/encryption");
 

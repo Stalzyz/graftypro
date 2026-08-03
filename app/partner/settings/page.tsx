@@ -4,7 +4,8 @@ import {
     Layout, Palette, Shield, RefreshCw, Save,
     CheckCircle2, Globe, Eye, Loader2, Image as ImageIcon,
     Target, Monitor, Mail, HelpCircle, ArrowRight, Zap,
-    AlertTriangle, Send, Megaphone, ExternalLink, MessageCircle
+    AlertTriangle, Send, Megaphone, ExternalLink, MessageCircle,
+    Lock, Building
 } from "lucide-react";
 import Link from 'next/link';
 import { SmartUploader } from "../../../components/ui/SmartUploader";
@@ -28,46 +29,75 @@ export default function BrandingPage() {
     const [saving, setSaving] = useState(false);
     const [isPlatform, setIsPlatform] = useState(false);
     const [message, setMessage] = useState({ type: "", text: "" });
+    const [profile, setProfile] = useState({
+        name: "",
+        business_name: "",
+        password: ""
+    });
 
     useEffect(() => {
-        fetch("/api/reseller/branding")
-            .then(res => res.json())
-            .then(data => {
-                if (data.data) {
-                    setConfig({
-                        brand_name: data.data.brand_name || "",
-                        logo_url: data.data.logo_url || "",
-                        favicon_url: data.data.favicon_url || "",
-                        primary_color: data.data.primary_color || "#0F172A",
-                        secondary_color: data.data.secondary_color || "#3B82F6",
-                        support_email: data.data.support_email || "",
-                        support_url: data.data.support_url || "",
-                        support_whatsapp: data.data.support_whatsapp || "",
-                        broadcast_banner: data.data.broadcast_banner || "",
-                        broadcast_link: data.data.broadcast_link || "",
-                        gst_number: data.data.gst_number || ""
-                    });
-                    setIsPlatform(data.data.role === 'PLATFORM');
-                }
-                setLoading(false);
-            })
-            .catch(() => setLoading(false));
+        Promise.all([
+            fetch("/api/reseller/branding").then(res => res.json()),
+            fetch("/api/reseller/profile").then(res => res.json())
+        ])
+        .then(([brandingData, profileData]) => {
+            if (brandingData.data) {
+                setConfig({
+                    brand_name: brandingData.data.brand_name || "",
+                    logo_url: brandingData.data.logo_url || "",
+                    favicon_url: brandingData.data.favicon_url || "",
+                    primary_color: brandingData.data.primary_color || "#0F172A",
+                    secondary_color: brandingData.data.secondary_color || "#3B82F6",
+                    support_email: brandingData.data.support_email || "",
+                    support_url: brandingData.data.support_url || "",
+                    support_whatsapp: brandingData.data.support_whatsapp || "",
+                    broadcast_banner: brandingData.data.broadcast_banner || "",
+                    broadcast_link: brandingData.data.broadcast_link || "",
+                    gst_number: brandingData.data.gst_number || ""
+                });
+                setIsPlatform(brandingData.data.role === 'PLATFORM');
+            }
+            if (profileData && !profileData.error) {
+                setProfile({
+                    name: profileData.name || "",
+                    business_name: profileData.business_name || "",
+                    password: ""
+                });
+            }
+            setLoading(false);
+        })
+        .catch(() => setLoading(false));
     }, []);
 
     const handleSave = async () => {
         setSaving(true);
         setMessage({ type: "", text: "" });
         try {
-            const res = await fetch("/api/reseller/branding", {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(config)
-            });
-            if (res.ok) {
-                setMessage({ type: "success", text: "Identity Synchronization Complete." });
+            const [brandRes, profileRes] = await Promise.all([
+                fetch("/api/reseller/branding", {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(config)
+                }),
+                fetch("/api/reseller/profile", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        name: profile.name,
+                        business_name: profile.business_name,
+                        password: profile.password || undefined
+                    })
+                })
+            ]);
+            
+            if (brandRes.ok && profileRes.ok) {
+                setMessage({ type: "success", text: "Identity & Profile Synchronization Complete." });
+                setProfile(prev => ({ ...prev, password: "" }));
             } else {
                 setMessage({ type: "error", text: "Update Sequence Failed." });
             }
+        } catch (e: any) {
+            setMessage({ type: "error", text: "Network Sync Fault." });
         } finally {
             setSaving(false);
         }
@@ -207,6 +237,52 @@ export default function BrandingPage() {
                                 onChange={(v: string) => setConfig({ ...config, gst_number: v.toUpperCase() })}
                                 icon={<Shield size={14} />}
                             />
+                        </div>
+                    </section>
+
+                    {/* Account Settings */}
+                    <section className="bg-white border border-slate-100 rounded-[3rem] p-10 shadow-sm relative overflow-hidden group">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-slate-50/50 blur-3xl rounded-full -mr-16 -mt-16" />
+                        <div className="flex items-center gap-4 mb-10 relative z-10">
+                            <div className="w-12 h-12 rounded-2xl bg-[#042f94] flex items-center justify-center text-white shadow-lg">
+                                <Shield size={22} />
+                            </div>
+                            <div>
+                                <h2 className="text-xs font-black text-slate-900 uppercase tracking-[0.2em]">Account & Security</h2>
+                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest italic mt-1 leading-none">Modify partner details & credentials</p>
+                            </div>
+                        </div>
+
+                        <div className="space-y-6 relative z-10">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <InputModule
+                                    label="Full Name"
+                                    placeholder="Your Name"
+                                    value={profile.name}
+                                    onChange={(v: string) => setProfile({ ...profile, name: v })}
+                                    icon={<Shield size={14} />}
+                                />
+                                <InputModule
+                                    label="Business Name / Brand Name"
+                                    placeholder="Business Name"
+                                    value={profile.business_name}
+                                    onChange={(v: string) => setProfile({ ...profile, business_name: v })}
+                                    icon={<Building size={14} />}
+                                />
+                            </div>
+                            <div className="space-y-3">
+                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em] ml-1">New Password (Leave blank to keep current)</label>
+                                <div className="relative group/field">
+                                    <div className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within/field:text-blue-600 transition-colors"><Lock size={14} /></div>
+                                    <input
+                                        type="password"
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-[2rem] pl-14 pr-8 py-5 text-sm font-black italic uppercase tracking-tighter text-slate-900 focus:border-blue-600 focus:bg-white outline-none transition-all placeholder:text-slate-200 shadow-inner"
+                                        placeholder="••••••••"
+                                        value={profile.password}
+                                        onChange={e => setProfile({ ...profile, password: e.target.value })}
+                                    />
+                                </div>
+                            </div>
                         </div>
                     </section>
 
