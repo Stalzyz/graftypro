@@ -173,8 +173,11 @@ export default function BrandingPage() {
                             <InputModule
                                 label="Business / Brand Name"
                                 placeholder="Brand Name"
-                                value={profile.business_name}
-                                onChange={(v: string) => setProfile({ ...profile, business_name: v })}
+                                value={config.brand_name || profile.business_name}
+                                onChange={(v: string) => {
+                                    setProfile({ ...profile, business_name: v });
+                                    setConfig({ ...config, brand_name: v });
+                                }}
                                 icon={<Building size={14} />}
                             />
                         </div>
