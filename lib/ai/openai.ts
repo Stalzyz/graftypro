@@ -62,6 +62,67 @@ export class AIService {
             const openai = getOpenAI();
             if (!openai) throw new Error("OpenAI Client not initialized");
 
+            // ── Determine if the file is a PDF ────────────────────────────
+            const isPdf = /\.pdf($|\?)/i.test(imageUrl);
+
+            if (isPdf) {
+                // ── PDF FLOW: Extract text and verify via GPT text prompt ─
+                const imgRes = await fetch(imageUrl);
+                if (!imgRes.ok) throw new Error(`Failed to fetch PDF: ${imgRes.status}`);
+                const buffer = Buffer.from(await imgRes.arrayBuffer());
+
+                // Dynamically require pdf-parse to avoid SSR bundling issues
+                // eslint-disable-next-line @typescript-eslint/no-var-requires
+                const pdfParse = require('pdf-parse');
+                const pdfData = await pdfParse(buffer);
+                const extractedText = pdfData.text?.trim() || "";
+
+                if (!extractedText || extractedText.length < 30) {
+                    return { success: false, score: 0, reason: "Document is empty or unreadable." };
+                }
+
+                const response = await openai.chat.completions.create({
+                    model: "gpt-4o-mini",
+                    messages: [
+                        {
+                            role: "system",
+                            content: `You are an expert KYC document verification engine for India.
+                            Analyze the provided TEXT extracted from a document and determine if it is a legitimate ${type}.
+                            
+                            Criteria:
+                            1. For GST Registration: look for "GST", "GSTIN", "Form GST REG-06", "Government of India", or a valid 15-digit GSTIN number.
+                            2. For PAN Card: look for "Income Tax Department", "PAN", and a 10-character alphanumeric PAN number.
+                            3. For Aadhar Card: look for "UIDAI", "Unique Identification Authority" or a 12-digit Aadhar number.
+                            4. Reject clearly irrelevant content (invoices, bank statements, news articles, etc.) unless they match the requested document type.
+                            5. A valid digital certificate with government branding MUST be accepted.
+                            
+                            Return JSON format:
+                            {
+                              "is_valid": boolean,
+                              "confidence_score": number (0-1),
+                              "extracted_info": { "id_name": string, "id_number": string },
+                              "rejection_reason": string | null
+                            }`
+                        },
+                        {
+                            role: "user",
+                            content: `Analyze this text extracted from a ${type} document and validate it:\n\n${extractedText.substring(0, 3000)}`
+                        }
+                    ],
+                    max_tokens: 300,
+                    response_format: { type: "json_object" }
+                });
+
+                const result = JSON.parse(response.choices[0].message.content || "{}");
+                return {
+                    success: result.is_valid,
+                    score: result.confidence_score,
+                    extracted_data: result.extracted_info,
+                    reason: result.rejection_reason
+                };
+            }
+
+            // ── IMAGE FLOW: Vision-based verification ─────────────────────
             // OpenAI Vision cannot access private/VPS-hosted URLs.
             // We fetch the image from our own server and convert to base64 data URL.
             let imageContent: string = imageUrl;
@@ -128,6 +189,7 @@ export class AIService {
             return { success: false, score: 0, reason: "AI Engine Processing Fault: " + error.message };
         }
     }
+
 
     static async generateFlowScript(prompt: string) {
         if (!process.env.OPENAI_API_KEY) {
