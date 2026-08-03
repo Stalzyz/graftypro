@@ -298,7 +298,7 @@ export async function middleware(request: NextRequest) {
         requestHeaders.set("x-partner-role", pRole);
 
         if (pRole === "AFFILIATE") {
-            const platformOnlyPaths = ["/partner/settings", "/partner/vendors", "/partner/subscriptions", "/partner/domain", "/partner/email"];
+            const platformOnlyPaths = ["/partner/vendors", "/partner/subscriptions", "/partner/domain", "/partner/email"];
             if (platformOnlyPaths.some(p => path.startsWith(p))) {
                 return NextResponse.redirect(new URL(`${protocol}://${host}/partner/dashboard?error=access_denied`));
             }
