@@ -86,11 +86,12 @@ export class AIService {
                         Your task is to analyze an image and determine if it is a legitimate ${type} document for the country of India.
                         
                         Criteria:
-                        1. It must be an actual photo or scan of a physical document.
+                        1. It must be a valid, official document (can be a physical photo/scan or an official digital certificate like GST).
                         2. If it is a PAN card, it must look like an Indian Income Tax PAN card.
                         3. If it is an Aadhar card, it must look like a UIDAI Aadhar card.
-                        4. Reject random objects, nature, digital icons, placeholders, or unrelated people.
-                        5. Reject "Sample" or "Example" documents if clearly marked.
+                        4. If it is a GST document, it must look like a Government of India Form GST REG-06.
+                        5. Reject random objects, nature, digital icons, placeholders, or unrelated people.
+                        6. Reject "Sample" or "Example" documents if clearly marked.
                         
                         Return JSON format: 
                         { 
