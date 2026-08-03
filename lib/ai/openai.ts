@@ -62,12 +62,19 @@ export class AIService {
             const openai = getOpenAI();
             if (!openai) throw new Error("OpenAI Client not initialized");
 
+            // Convert relative URLs to absolute so node fetch() works
+            let absoluteUrl = imageUrl;
+            if (absoluteUrl.startsWith('/')) {
+                // In production Docker, nextjs runs on port 3000
+                absoluteUrl = `http://localhost:3000${absoluteUrl}`;
+            }
+
             // ── Determine if the file is a PDF ────────────────────────────
-            const isPdf = /\.pdf($|\?)/i.test(imageUrl);
+            const isPdf = /\.pdf($|\?)/i.test(absoluteUrl);
 
             if (isPdf) {
                 // ── PDF FLOW: Extract text and verify via GPT text prompt ─
-                const imgRes = await fetch(imageUrl);
+                const imgRes = await fetch(absoluteUrl);
                 if (!imgRes.ok) throw new Error(`Failed to fetch PDF: ${imgRes.status}`);
                 const buffer = Buffer.from(await imgRes.arrayBuffer());
 
@@ -125,17 +132,19 @@ export class AIService {
             // ── IMAGE FLOW: Vision-based verification ─────────────────────
             // OpenAI Vision cannot access private/VPS-hosted URLs.
             // We fetch the image from our own server and convert to base64 data URL.
-            let imageContent: string = imageUrl;
+            let imageContent: string = imageUrl; // fallback to original if absolute fetch fails
             try {
-                const imgRes = await fetch(imageUrl);
+                const imgRes = await fetch(absoluteUrl);
                 if (imgRes.ok) {
                     const buffer = await imgRes.arrayBuffer();
                     const base64 = Buffer.from(buffer).toString('base64');
                     const contentType = imgRes.headers.get('content-type') || 'image/jpeg';
                     imageContent = `data:${contentType};base64,${base64}`;
+                } else {
+                    console.warn(`Could not fetch image for base64 conversion (status ${imgRes.status})`);
                 }
             } catch (fetchErr) {
-                console.warn("Could not fetch image for base64 conversion, using URL directly:", fetchErr);
+                console.warn("Could not fetch image for base64 conversion:", fetchErr);
             }
             
             const response = await openai.chat.completions.create({
