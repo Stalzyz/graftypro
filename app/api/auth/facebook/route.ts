@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { SystemConfigService } from "../../../../lib/services/system-config-service";
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: Request) {
     try {
         const config = await SystemConfigService.getPublicConfig();

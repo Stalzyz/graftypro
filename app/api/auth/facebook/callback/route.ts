@@ -3,6 +3,8 @@ import { prisma } from "../../../../../lib/db";
 import { signToken } from "../../../../../lib/auth";
 import { SystemConfigService } from "../../../../../lib/services/system-config-service";
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const code = searchParams.get("code");
