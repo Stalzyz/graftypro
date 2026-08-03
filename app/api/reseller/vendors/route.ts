@@ -133,3 +133,65 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "Failed to create vendor" }, { status: 500 });
     }
 }
+
+export async function PUT(req: Request) {
+    try {
+        const session = await getResellerSession();
+        if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+        const reseller = await prisma.reseller.findUnique({
+            where: { id: session.userId }
+        });
+
+        if (!reseller || reseller.role !== "PLATFORM") {
+            return NextResponse.json({ error: "Only Platform Partners can modify vendors." }, { status: 403 });
+        }
+
+        const { workspaceId, business_name, password } = await req.json();
+
+        if (!workspaceId) {
+            return NextResponse.json({ error: "Workspace ID is required" }, { status: 400 });
+        }
+
+        // Validate that this workspace belongs to the logged-in reseller
+        const existingWorkspace = await prisma.workspace.findFirst({
+            where: { id: workspaceId, reseller_id: reseller.id }
+        });
+
+        if (!existingWorkspace) {
+            return NextResponse.json({ error: "Workspace not found or unauthorized access" }, { status: 404 });
+        }
+
+        await prisma.$transaction(async (tx) => {
+            if (business_name) {
+                await tx.workspace.update({
+                    where: { id: workspaceId },
+                    data: {
+                        name: business_name,
+                        business_name: business_name
+                    }
+                });
+            }
+
+            if (password) {
+                const hash = await bcrypt.hash(password, 10);
+                await tx.user.updateMany({
+                    where: { 
+                        workspace_id: workspaceId,
+                        role: "OWNER"
+                    },
+                    data: {
+                        password_hash: hash
+                    }
+                });
+            }
+        });
+
+        return NextResponse.json({ success: true, message: "Vendor details updated successfully" });
+
+    } catch (error: any) {
+        console.error("Reseller Vendor Update Error:", error);
+        return NextResponse.json({ error: "Failed to update vendor: " + error.message }, { status: 500 });
+    }
+}
+

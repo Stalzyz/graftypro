@@ -19,7 +19,8 @@ import {
     Building,
     Mail,
     RefreshCw,
-    X
+    X,
+    Edit2
 } from 'lucide-react';
 import { safeToLocaleString, formatCurrency, ensureNumber } from '@/lib/utils/number-format';
 
@@ -38,6 +39,13 @@ export default function MyVendors() {
     const [newMapping, setNewMapping] = useState({ workspaceId: "", description: "" });
     const [formData, setFormData] = useState({ business_name: "", email: "", password: "", plan: "FREE" });
     const [formError, setFormError] = useState("");
+    
+    // Edit Vendor States
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [editingVendor, setEditingVendor] = useState<any>(null);
+    const [editFormData, setEditFormData] = useState({ business_name: "", password: "" });
+    const [updating, setUpdating] = useState(false);
+    const [editError, setEditError] = useState("");
 
     useEffect(() => {
         fetchInitialData();
@@ -120,6 +128,45 @@ export default function MyVendors() {
             setFormError("Network Error");
         } finally {
             setCreating(false);
+        }
+    };
+
+    const handleOpenEditModal = (vendor: any) => {
+        setEditingVendor(vendor);
+        setEditFormData({
+            business_name: vendor.business_name || vendor.name,
+            password: ""
+        });
+        setEditError("");
+        setIsEditModalOpen(true);
+    };
+
+    const handleEditVendor = async (e: any) => {
+        e.preventDefault();
+        setUpdating(true);
+        setEditError("");
+        try {
+            const res = await fetch("/api/reseller/vendors", {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    workspaceId: editingVendor.id,
+                    business_name: editFormData.business_name,
+                    password: editFormData.password || undefined
+                })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                setIsEditModalOpen(false);
+                fetchVendors();
+            } else {
+                setEditError(data.error || "Update Failed");
+            }
+        } catch (e) {
+            console.error(e);
+            setEditError("Network Error");
+        } finally {
+            setUpdating(false);
         }
     };
 
@@ -264,6 +311,15 @@ export default function MyVendors() {
                                     </td>
                                     <td className="px-8 py-6 text-right">
                                         <div className="flex justify-end gap-2 text-slate-400">
+                                            {isPlatform && (
+                                                <button 
+                                                    onClick={() => handleOpenEditModal(v)}
+                                                    className="p-2 hover:bg-slate-100 hover:text-slate-900 rounded-lg transition-all border border-transparent hover:border-slate-200"
+                                                    title="Edit Vendor"
+                                                >
+                                                    <Edit2 size={18} />
+                                                </button>
+                                            )}
                                             <button className="p-2 hover:bg-slate-100 hover:text-slate-900 rounded-lg transition-all border border-transparent hover:border-slate-200">
                                                 <ExternalLink size={18} />
                                             </button>
@@ -432,6 +488,72 @@ export default function MyVendors() {
                     </div>
                 </div>
             )}
+
+            {/* Edit Modal */}
+            {isEditModalOpen && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300">
+                    <div className="bg-white border border-slate-200 w-full max-w-xl rounded-[2.5rem] shadow-2xl relative overflow-hidden animate-in zoom-in-95 duration-300">
+                        <div className="p-10 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+                            <div>
+                                <h2 className="text-2xl font-black text-slate-900 tracking-tight italic uppercase">Edit Vendor</h2>
+                                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">Modify vendor workspace name and credentials</p>
+                            </div>
+                            <button onClick={() => setIsEditModalOpen(false)} className="w-12 h-12 bg-white border border-slate-200 rounded-2xl flex items-center justify-center text-slate-400 shadow-sm hover:text-rose-500 transition-all">
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        {editError && (
+                            <div className="mx-10 mt-6 bg-rose-50 border border-rose-100 p-4 rounded-2xl text-rose-600 text-[10px] font-black uppercase tracking-widest flex items-center gap-3">
+                                <AlertCircle size={16} /> {editError}
+                            </div>
+                        )}
+
+                        <form onSubmit={handleEditVendor} className="p-10 space-y-6">
+                            <div className="space-y-4">
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest px-1">Workspace / Business Name</label>
+                                    <div className="relative">
+                                        <Building className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={16} />
+                                        <input
+                                            required
+                                            type="text"
+                                            placeholder="Workspace Name"
+                                            value={editFormData.business_name}
+                                            onChange={(e) => setEditFormData({ ...editFormData, business_name: e.target.value })}
+                                            className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-4 pl-12 pr-6 text-sm font-bold text-slate-900 focus:bg-white focus:border-blue-600 outline-none transition-all placeholder:text-slate-300"
+                                        />
+                                    </div>
+                                </div>
+                                
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest px-1">New Password (Leave blank to keep current)</label>
+                                    <div className="relative">
+                                        <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={16} />
+                                        <input
+                                            type="password"
+                                            placeholder="••••••••"
+                                            value={editFormData.password}
+                                            onChange={(e) => setEditFormData({ ...editFormData, password: e.target.value })}
+                                            className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-4 pl-12 pr-6 text-sm font-bold text-slate-900 focus:bg-white focus:border-blue-600 outline-none transition-all placeholder:text-slate-300"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button
+                                type="submit"
+                                disabled={updating}
+                                className="w-full py-4 bg-slate-900 text-white hover:bg-black rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-black/10 active:scale-95 transition-all flex items-center justify-center gap-3 mt-4"
+                            >
+                                {updating ? <RefreshCw size={18} className="animate-spin" /> : <Save size={18} />}
+                                Save Changes
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
+
