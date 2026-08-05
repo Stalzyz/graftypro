@@ -26,11 +26,17 @@ export async function GET(request: Request) {
         }
 
         const userEmail = AuthSecurityService.normalizeEmail(dbUser.email);
-        const isFreePlanId = workspace.current_plan_id && workspace.plan === 'FREE';
-        const isNegativeStatus = workspace.subscription_status && ['halted', 'cancelled', 'expired', 'past_due', 'inactive'].includes(workspace.subscription_status.toLowerCase());
-        const hasPaidPlan = ((!!workspace.current_plan_id && !isFreePlanId) || (workspace.plan && workspace.plan !== 'FREE')) && !isNegativeStatus;
         
-        console.log(`[TRIAL_DEBUG] workspaceId=${workspace.id}, current_plan_id=${workspace.current_plan_id}, plan=${workspace.plan}, isFreePlanId=${isFreePlanId}, hasPaidPlan=${hasPaidPlan}`);
+        // Correctly check if the linked SubscriptionPlan is actually 'Free'
+        // If they have plan_details, use its name. Otherwise fallback to the legacy enum 'plan'
+        const planName = (workspace.plan_details?.name || workspace.plan || '').toUpperCase();
+        const isFreePlanId = planName === 'FREE';
+        
+        const isNegativeStatus = workspace.subscription_status && ['halted', 'cancelled', 'expired', 'past_due', 'inactive'].includes(workspace.subscription_status.toLowerCase());
+        
+        const hasPaidPlan = ((!!workspace.current_plan_id && !isFreePlanId) || (!isFreePlanId)) && !isNegativeStatus;
+        
+        console.log(`[TRIAL_DEBUG] workspaceId=${workspace.id}, current_plan_id=${workspace.current_plan_id}, planName=${planName}, isFreePlanId=${isFreePlanId}, hasPaidPlan=${hasPaidPlan}`);
 
         let trialEnd = workspace.trial_ends_at;
 
