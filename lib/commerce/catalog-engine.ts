@@ -50,8 +50,43 @@ export class CatalogEngine {
 
         const token = decrypt(waba.access_token);
         const catalogId = store.catalog_id;
+
+        // ── PRE-FLIGHT: Validate catalog access before attempting batch sync ──
+        try {
+            const checkRes = await axios.get(`${BASE_URL}/${catalogId}`, {
+                params: { fields: 'id,name,product_count', access_token: token }
+            });
+            console.log(`[CatalogEngine] ✅ Catalog verified: "${checkRes.data.name}" (${checkRes.data.product_count ?? '?'} products in Meta)`);
+        } catch (preflightErr: any) {
+            const metaMsg = preflightErr.response?.data?.error?.message || preflightErr.message;
+            const metaCode = preflightErr.response?.data?.error?.code;
+
+            // Provide actionable guidance based on the error code
+            if (metaCode === 100 || metaMsg?.includes('does not exist')) {
+                throw new Error(
+                    `❌ Catalog ID "${catalogId}" not found in Meta.\n\n` +
+                    `How to fix:\n` +
+                    `1. Go to business.facebook.com → Commerce Manager\n` +
+                    `2. Open your catalog → Settings → find the Catalog ID (a 15-16 digit number)\n` +
+                    `3. Update the Catalog ID in Grafty Commerce Settings\n\n` +
+                    `Note: This is NOT your Business ID, Phone Number ID, or WABA ID.`
+                );
+            }
+            if (metaCode === 200 || metaCode === 190 || metaMsg?.includes('permission')) {
+                throw new Error(
+                    `🔐 Your access token doesn't have "catalog_management" permission for this catalog.\n\n` +
+                    `How to fix:\n` +
+                    `1. Go to Meta Business Manager → System Users\n` +
+                    `2. Edit your System User → Add "catalog_management" permission for this catalog\n` +
+                    `3. Generate a new token and update it in Grafty WhatsApp Settings`
+                );
+            }
+            throw new Error(`Meta Catalog pre-flight failed: ${metaMsg}`);
+        }
+
         const errors: string[] = [];
         let synced = 0;
+
 
         for (const product of store.products) {
             try {
