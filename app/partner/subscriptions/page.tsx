@@ -86,8 +86,12 @@ export default function SubscriptionsPage() {
             const res = await fetch(`/api/reseller/subscriptions?id=${id}`, { method: "DELETE" });
             if (res.ok) {
                 setPlans(plans.filter(p => p.id !== id));
+            } else {
+                const data = await res.json();
+                alert(data.error || "Failed to delete plan");
             }
-        } catch (e) {
+        } catch (e: any) {
+            alert(e.message || "An error occurred");
             console.error(e);
         }
     };

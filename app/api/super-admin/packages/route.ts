@@ -69,8 +69,17 @@ export async function GET(req: NextRequest) {
         const session = await getAdminSession();
         if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+        const { searchParams } = new URL(req.url);
+        const includeHidden = searchParams.get("include_hidden") === "true";
+
         const packages = await prisma.subscriptionPlan.findMany({
-            where: { OR: [{ reseller_id: null }, { reseller_id: "" }] },
+            where: {
+                OR: [{ reseller_id: null }, { reseller_id: "" }],
+                // Only exclude soft-deleted plans unless explicitly requested
+                ...(includeHidden ? {} : {
+                    NOT: { AND: [{ is_active: false }, { hidden_plan: true }] }
+                })
+            },
             orderBy: { sort_order: "asc" },
         });
 

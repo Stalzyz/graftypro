@@ -132,10 +132,26 @@ export async function DELETE(req: Request) {
 
         if (!plan) return NextResponse.json({ error: "Plan not found" }, { status: 404 });
 
-        await prisma.subscriptionPlan.delete({ where: { id: planId } });
-        return NextResponse.json({ success: true });
+        // Ensure no workspaces are currently using this plan
+        const usageCount = await prisma.workspace.count({ where: { current_plan_id: planId } });
+        if (usageCount > 0) {
+            // Soft-delete: hide it so no new vendors can subscribe, existing ones are grandfathered
+            await prisma.subscriptionPlan.update({
+                where: { id: planId },
+                data: { is_active: false, hidden_plan: true, is_public: false }
+            });
+            return NextResponse.json({
+                success: true,
+                soft_deleted: true,
+                message: `Plan deactivated. ${usageCount} existing subscriber(s) are grandfathered.`
+            });
+        }
 
-    } catch (error) {
-        return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+        await prisma.subscriptionPlan.delete({ where: { id: planId } });
+        return NextResponse.json({ success: true, soft_deleted: false });
+
+    } catch (error: any) {
+        console.error("[RESELLER_PLAN_DELETE_ERROR]:", error);
+        return NextResponse.json({ error: error.message || "Internal Server Error" }, { status: 500 });
     }
 }

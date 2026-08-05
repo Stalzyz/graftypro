@@ -103,17 +103,30 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
         if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
         const usageCount = await prisma.workspace.count({ where: { current_plan_id: params.id } });
+
         if (usageCount > 0) {
-            return NextResponse.json(
-                { error: `Cannot delete: ${usageCount} active workspace(s) are on this package.` },
-                { status: 400 }
-            );
+            // Soft-delete: workspaces are using this plan, so we can't hard delete.
+            // Mark it hidden and inactive so it disappears from UI and cannot be subscribed to.
+            await prisma.subscriptionPlan.update({
+                where: { id: params.id },
+                data: {
+                    is_active: false,
+                    hidden_plan: true,
+                    is_public: false,
+                }
+            });
+            return NextResponse.json({
+                success: true,
+                soft_deleted: true,
+                message: `Plan hidden and deactivated. ${usageCount} existing workspace(s) are grandfathered and won't be affected.`
+            });
         }
 
+        // No workspaces on this plan — safe to hard delete
         await prisma.subscriptionPlan.delete({ where: { id: params.id } });
-        return NextResponse.json({ success: true });
+        return NextResponse.json({ success: true, soft_deleted: false });
     } catch (error: any) {
         console.error("[PACKAGES_DELETE]", error);
-        return NextResponse.json({ error: "Failed to delete package." }, { status: 500 });
+        return NextResponse.json({ error: error.message || "Failed to delete package." }, { status: 500 });
     }
 }
