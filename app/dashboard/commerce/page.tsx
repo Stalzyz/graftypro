@@ -86,6 +86,7 @@ export default function CommercePage() {
         description: "",
         price: "",
         compare_at_price: "",
+        stock: "100",
         store_id: "",
         image_urls: ["", "", ""],
         variants: [] as Variant[]
@@ -107,6 +108,7 @@ export default function CommercePage() {
     const [isFetchingRecoveries, setIsFetchingRecoveries] = useState(false);
     const [recoveringId, setRecoveringId] = useState<string | null>(null);
     const [isMetaSyncing, setIsMetaSyncing] = useState<string | null>(null);
+    const [updatingStockId, setUpdatingStockId] = useState<string | null>(null);
 
     useEffect(() => {
         init();
@@ -246,6 +248,7 @@ export default function CommercePage() {
                     ...newProduct,
                     price: parseFloat(newProduct.price),
                     compare_at_price: newProduct.compare_at_price ? parseFloat(newProduct.compare_at_price) : null,
+                    stock: parseInt(newProduct.stock) || 100,
                     image_urls: newProduct.image_urls.filter(url => url.trim() !== ""),
                     variants: newProduct.variants.map(v => ({
                         ...v,
@@ -302,7 +305,10 @@ export default function CommercePage() {
             });
             if (res.ok) {
                 const data = await res.json();
-                alert(`☢️ Nuclear Sync Successful: ${data.synced} products pushed to Meta!`);
+                const errorSummary = data.errors?.length > 0
+                    ? `\n⚠️ ${data.errors.length} product(s) failed:\n${data.errors.slice(0, 3).join('\n')}`
+                    : '';
+                alert(`☢️ Nuclear Sync Complete!\n✅ ${data.synced} products pushed to Meta!${errorSummary}`);
                 await fetchStores();
             } else {
                 const err = await res.json();
@@ -350,6 +356,25 @@ export default function CommercePage() {
             if (res.ok) fetchProducts();
         } catch (err) {
             alert("Delete failed");
+        }
+    };
+
+    const handleAdjustStock = async (productId: string, delta: number) => {
+        setUpdatingStockId(productId);
+        try {
+            const res = await fetch(`/api/commerce/products/${productId}/stock`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ delta, reason: "MANUAL_ADJUSTMENT" })
+            });
+            const json = await res.json();
+            if (json.success && json.data) {
+                setProducts(prev => prev.map(p => p.id === productId ? { ...p, stock: json.data.stock } : p));
+            }
+        } catch (err) {
+            console.error("Failed to adjust stock:", err);
+        } finally {
+            setUpdatingStockId(null);
         }
     };
 
@@ -663,7 +688,57 @@ export default function CommercePage() {
                                                     )}
                                                 </div>
                                             </td>
-                                            <td className="px-8 py-5 text-slate-500 font-bold text-sm">{product.stock} Units</td>
+                                            <td className="px-8 py-5">
+                                                <div className="flex flex-col gap-2">
+                                                    <div>
+                                                        {product.stock === 0 ? (
+                                                            <span className="inline-flex items-center gap-1 text-[10px] font-black bg-rose-50 text-rose-600 px-2 py-0.5 rounded-md border border-rose-200">
+                                                                <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse"></span>
+                                                                Out of Stock
+                                                            </span>
+                                                        ) : product.stock <= 5 ? (
+                                                            <span className="inline-flex items-center gap-1 text-[10px] font-black bg-amber-50 text-amber-600 px-2 py-0.5 rounded-md border border-amber-200">
+                                                                <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                                                                Low Stock ({product.stock})
+                                                            </span>
+                                                        ) : (
+                                                            <span className="inline-flex items-center gap-1 text-[10px] font-black bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded-md border border-emerald-200">
+                                                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                                                In Stock ({product.stock})
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex items-center gap-1">
+                                                        <button
+                                                            disabled={product.stock <= 0 || updatingStockId === product.id}
+                                                            onClick={() => handleAdjustStock(product.id, -1)}
+                                                            className="w-6 h-6 flex items-center justify-center rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-black text-xs disabled:opacity-40 disabled:cursor-not-allowed transition-all border border-slate-200"
+                                                            title="Decrement 1"
+                                                        >
+                                                            -
+                                                        </button>
+                                                        <span className="text-xs font-black text-slate-800 px-1 min-w-[24px] text-center">
+                                                            {product.stock}
+                                                        </span>
+                                                        <button
+                                                            disabled={updatingStockId === product.id}
+                                                            onClick={() => handleAdjustStock(product.id, 1)}
+                                                            className="w-6 h-6 flex items-center justify-center rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-black text-xs disabled:opacity-40 transition-all border border-slate-200"
+                                                            title="Increment 1"
+                                                        >
+                                                            +
+                                                        </button>
+                                                        <button
+                                                            disabled={updatingStockId === product.id}
+                                                            onClick={() => handleAdjustStock(product.id, 10)}
+                                                            className="text-[9px] font-black bg-blue-50 hover:bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded border border-blue-200 transition-all ml-1"
+                                                            title="Add 10 items"
+                                                        >
+                                                            +10
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </td>
                                             <td className="px-8 py-5 text-right">
                                                 <div className="flex items-center justify-end gap-3">
                                                     <button
@@ -674,6 +749,7 @@ export default function CommercePage() {
                                                                 description: product.description || "",
                                                                 price: String(product.price),
                                                                 compare_at_price: product.compare_at_price ? String(product.compare_at_price) : "",
+                                                                stock: String(product.stock ?? 100),
                                                                 store_id: product.store_id,
                                                                 image_urls: product.image_urls.concat(["", "", ""]).slice(0, 3),
                                                                 variants: product.variants || []
@@ -848,6 +924,14 @@ export default function CommercePage() {
                                                 type="number" placeholder="0.00"
                                                 className="w-full bg-white border border-slate-200 rounded-2xl px-5 py-4 text-sm font-bold text-slate-400 outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/5 transition-all"
                                                 value={newProduct.compare_at_price} onChange={e => setNewProduct({ ...newProduct, compare_at_price: e.target.value })}
+                                            />
+                                        </div>
+                                        <div className="flex-1">
+                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Stock Inventory</label>
+                                            <input
+                                                type="number" placeholder="100"
+                                                className="w-full bg-white border border-slate-200 rounded-2xl px-5 py-4 text-sm font-bold text-emerald-600 outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/5 transition-all"
+                                                value={newProduct.stock} onChange={e => setNewProduct({ ...newProduct, stock: e.target.value })}
                                             />
                                         </div>
                                     </div>

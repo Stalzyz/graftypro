@@ -28,11 +28,19 @@ export class CatalogEngine {
     static async syncCatalogToMeta(workspaceId: string): Promise<{ synced: number; errors: string[] }> {
         const store = await prisma.commerceStore.findFirst({
             where: { workspace_id: workspaceId },
-            include: { products: { where: { is_active: true }, include: { variants: true } } }
+            // NOTE: Do NOT filter by is_active here — sync ALL products regardless of active flag.
+            // Meta's "availability" field (in stock / out of stock) controls visibility on their end.
+            // Filtering by is_active:true would silently skip products with is_active=false/null.
+            include: { products: { include: { variants: true } } }
         });
 
         if (!store) throw new Error("No store found for this workspace");
         if (!store.catalog_id) throw new Error("No Meta Catalog ID configured. Link your catalog in Commerce Settings.");
+
+        if (store.products.length === 0) {
+            console.warn(`[CatalogEngine] ⚠️ No products found in store ${store.id} — nothing to sync.`);
+            return { synced: 0, errors: ["No products found in your store."] };
+        }
 
         const waba = await prisma.whatsAppAccount.findUnique({
             where: { workspace_id: workspaceId },
@@ -131,7 +139,7 @@ export class CatalogEngine {
             where: { workspace_id: workspaceId },
             include: {
                 products: {
-                    where: { is_active: true, stock: { gt: 0 } },
+                    where: { is_active: true },
                     include: { category: true },
                     take: 30, // Meta MPM limit per section
                     orderBy: { created_at: "desc" }
