@@ -61,7 +61,28 @@ export class CatalogEngine {
             const metaMsg = preflightErr.response?.data?.error?.message || preflightErr.message;
             const metaCode = preflightErr.response?.data?.error?.code;
 
-            // Provide actionable guidance based on the error code
+            // IMPORTANT: Meta returns code 100 for BOTH "ID doesn't exist" AND "no permission".
+            // The message text is the only way to distinguish them.
+            // Check for permission issues FIRST (before the generic code-100 check).
+            const isPermissionError = (
+                metaCode === 200 || metaCode === 190 ||
+                metaMsg?.includes('missing permissions') ||
+                metaMsg?.includes('permission') ||
+                metaMsg?.includes('OAuthException')
+            );
+
+            if (isPermissionError) {
+                throw new Error(
+                    `🔐 Catalog ID "${catalogId}" exists but your access token doesn't have "catalog_management" permission.\n\n` +
+                    `How to fix:\n` +
+                    `1. Go to Meta Business Manager → System Users\n` +
+                    `2. Click your system user → "Add Assets" → Catalogs → select your catalog\n` +
+                    `3. Set permission to "Manage catalog"\n` +
+                    `4. Click "Generate New Token" with scopes: catalog_management, business_management, whatsapp_business_management\n` +
+                    `5. Paste the new token in Grafty → Settings → WhatsApp Integration`
+                );
+            }
+
             if (metaCode === 100 || metaMsg?.includes('does not exist')) {
                 throw new Error(
                     `❌ Catalog ID "${catalogId}" not found in Meta.\n\n` +
@@ -72,16 +93,8 @@ export class CatalogEngine {
                     `Note: This is NOT your Business ID, Phone Number ID, or WABA ID.`
                 );
             }
-            if (metaCode === 200 || metaCode === 190 || metaMsg?.includes('permission')) {
-                throw new Error(
-                    `🔐 Your access token doesn't have "catalog_management" permission for this catalog.\n\n` +
-                    `How to fix:\n` +
-                    `1. Go to Meta Business Manager → System Users\n` +
-                    `2. Edit your System User → Add "catalog_management" permission for this catalog\n` +
-                    `3. Generate a new token and update it in Grafty WhatsApp Settings`
-                );
-            }
-            throw new Error(`Meta Catalog pre-flight failed: ${metaMsg}`);
+
+            throw new Error(`Meta Catalog pre-flight failed (code ${metaCode}): ${metaMsg}`);
         }
 
         const errors: string[] = [];

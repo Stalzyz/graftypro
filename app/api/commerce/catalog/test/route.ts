@@ -78,6 +78,32 @@ export async function GET(req: Request) {
             const code = err.response?.data?.error?.code;
             const msg  = err.response?.data?.error?.message || err.message;
 
+            // IMPORTANT: Meta returns code 100 for BOTH "ID doesn't exist" AND "no permission".
+            // Must check the message text first — "missing permissions" distinguishes them.
+            const isPermissionError = (
+                code === 200 || code === 190 ||
+                msg?.includes("missing permissions") ||
+                msg?.includes("permission") ||
+                msg?.includes("OAuthException")
+            );
+
+            if (isPermissionError) {
+                return NextResponse.json({
+                    ok: false,
+                    step: "token_permissions",
+                    catalogId: store.catalog_id,
+                    message: `Catalog ID "${store.catalog_id}" exists ✅ but your token is missing 'catalog_management' permission.`,
+                    metaError: msg,
+                    fix: [
+                        "Go to Meta Business Manager → System Users",
+                        "Click your system user → 'Add Assets' → Catalogs → select your catalog",
+                        "Set permission to 'Manage catalog' (full control)",
+                        "Click 'Generate New Token' with scopes: catalog_management, business_management, whatsapp_business_management",
+                        "Paste the new token in Grafty → Settings → WhatsApp Integration"
+                    ]
+                });
+            }
+
             if (code === 100 || msg?.includes("does not exist")) {
                 return NextResponse.json({
                     ok: false,
@@ -86,28 +112,11 @@ export async function GET(req: Request) {
                     message: `Catalog ID "${store.catalog_id}" was NOT found in Meta.`,
                     metaError: msg,
                     fix: [
-                        "1. Open business.facebook.com → Commerce Manager",
-                        "2. Select your catalog → Settings tab",
-                        "3. Copy the Catalog ID (15-16 digit number at the top)",
-                        "4. Paste it in Grafty → Commerce → Edit Store → Catalog ID",
+                        "Open business.facebook.com → Commerce Manager",
+                        "Select your catalog → Settings tab",
+                        "Copy the Catalog ID (15-16 digit number at the top)",
+                        "Paste it in Grafty → Commerce → Edit Store → Catalog ID",
                         "⚠️ This must be the Product Catalog ID, NOT your Business ID or WABA ID."
-                    ]
-                });
-            }
-
-            if (code === 200 || code === 190 || msg?.includes("permission") || msg?.includes("OAuthException")) {
-                return NextResponse.json({
-                    ok: false,
-                    step: "token_permissions",
-                    catalogId: store.catalog_id,
-                    message: "Your access token does not have 'catalog_management' permission for this catalog.",
-                    metaError: msg,
-                    fix: [
-                        "1. Go to Meta Business Manager → System Users",
-                        "2. Click your system user → 'Add Assets' → Catalogs → select your catalog",
-                        "3. Set permission to 'Manage catalog'",
-                        "4. Generate a New Token with these scopes: catalog_management, business_management, whatsapp_business_management",
-                        "5. Paste the new token in Grafty → Settings → WhatsApp Integration"
                     ]
                 });
             }
