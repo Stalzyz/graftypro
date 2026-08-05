@@ -27,8 +27,8 @@ export async function GET(request: Request) {
 
         const userEmail = AuthSecurityService.normalizeEmail(dbUser.email);
         const isFreePlanId = workspace.current_plan_id && workspace.plan === 'FREE';
-        const isActiveOrLegacy = !workspace.subscription_status || workspace.subscription_status.toLowerCase() === 'active';
-        const hasPaidPlan = ((!!workspace.current_plan_id && !isFreePlanId) || (workspace.plan && workspace.plan !== 'FREE')) && isActiveOrLegacy;
+        const isNegativeStatus = workspace.subscription_status && ['halted', 'cancelled', 'expired', 'past_due', 'inactive'].includes(workspace.subscription_status.toLowerCase());
+        const hasPaidPlan = ((!!workspace.current_plan_id && !isFreePlanId) || (workspace.plan && workspace.plan !== 'FREE')) && !isNegativeStatus;
         
         console.log(`[TRIAL_DEBUG] workspaceId=${workspace.id}, current_plan_id=${workspace.current_plan_id}, plan=${workspace.plan}, isFreePlanId=${isFreePlanId}, hasPaidPlan=${hasPaidPlan}`);
 
