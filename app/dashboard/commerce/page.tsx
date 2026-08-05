@@ -68,6 +68,9 @@ export default function CommercePage() {
     const [products, setProducts] = useState<Product[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isSyncing, setIsSyncing] = useState<string | null>(null);
+    const [isMetaSyncing, setIsMetaSyncing] = useState<string | null>(null);
+    const [isTestingCatalog, setIsTestingCatalog] = useState(false);
+    const [catalogTestResult, setCatalogTestResult] = useState<any>(null);
     const [isConnectModalOpen, setIsConnectModalOpen] = useState(false);
     const [isProductModalOpen, setIsProductModalOpen] = useState(false);
     const [connecting, setConnecting] = useState(false);
@@ -107,7 +110,6 @@ export default function CommercePage() {
     const [recoveries, setRecoveries] = useState<any[]>([]);
     const [isFetchingRecoveries, setIsFetchingRecoveries] = useState(false);
     const [recoveringId, setRecoveringId] = useState<string | null>(null);
-    const [isMetaSyncing, setIsMetaSyncing] = useState<string | null>(null);
     const [updatingStockId, setUpdatingStockId] = useState<string | null>(null);
 
     useEffect(() => {
@@ -296,6 +298,20 @@ export default function CommercePage() {
         }
     };
     
+    const handleTestCatalog = async () => {
+        setIsTestingCatalog(true);
+        setCatalogTestResult(null);
+        try {
+            const res = await fetch("/api/commerce/catalog/test");
+            const data = await res.json();
+            setCatalogTestResult(data);
+        } catch {
+            setCatalogTestResult({ ok: false, step: 'network', message: 'Network error — could not reach the server.' });
+        } finally {
+            setIsTestingCatalog(false);
+        }
+    };
+
     const handleMetaSync = async (storeId: string) => {
         setIsMetaSyncing(storeId);
         try {
@@ -592,14 +608,25 @@ export default function CommercePage() {
                                                     {isSyncing === store.id ? 'Syncing...' : 'Sync Products'}
                                                 </button>
                                             ) : (
-                                                <button
-                                                    onClick={() => handleMetaSync(store.id)}
-                                                    disabled={isMetaSyncing === store.id}
-                                                    className="p-3 bg-emerald-50 border border-emerald-100 rounded-xl text-emerald-600 hover:bg-emerald-600 hover:text-white transition-all flex items-center gap-2 text-[10px] font-black uppercase tracking-widest outline-none disabled:opacity-50 shadow-sm"
-                                                >
-                                                    <RefreshCw size={14} className={isMetaSyncing === store.id ? "animate-spin" : ""} />
-                                                    {isMetaSyncing === store.id ? 'Syncing Meta...' : 'Sync to Meta ☢️'}
-                                                </button>
+                                                <div className="flex items-center gap-2">
+                                                    <button
+                                                        onClick={handleTestCatalog}
+                                                        disabled={isTestingCatalog}
+                                                        title="Test if your Catalog ID and token are valid"
+                                                        className="p-3 bg-blue-50 border border-blue-100 rounded-xl text-blue-600 hover:bg-blue-600 hover:text-white transition-all flex items-center gap-2 text-[10px] font-black uppercase tracking-widest outline-none disabled:opacity-50 shadow-sm"
+                                                    >
+                                                        <Search size={14} className={isTestingCatalog ? "animate-pulse" : ""} />
+                                                        {isTestingCatalog ? 'Testing...' : 'Test Catalog'}
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleMetaSync(store.id)}
+                                                        disabled={isMetaSyncing === store.id}
+                                                        className="p-3 bg-emerald-50 border border-emerald-100 rounded-xl text-emerald-600 hover:bg-emerald-600 hover:text-white transition-all flex items-center gap-2 text-[10px] font-black uppercase tracking-widest outline-none disabled:opacity-50 shadow-sm"
+                                                    >
+                                                        <RefreshCw size={14} className={isMetaSyncing === store.id ? "animate-spin" : ""} />
+                                                        {isMetaSyncing === store.id ? 'Syncing Meta...' : 'Sync to Meta ☢️'}
+                                                    </button>
+                                                </div>
                                             )}
                                         </div>
                                     </div>
@@ -1062,6 +1089,110 @@ export default function CommercePage() {
                                 {savingProduct ? <RefreshCw className="animate-spin" size={16} /> : <CheckCircle2 size={16} />}
                                 {savingProduct ? 'Deploying...' : 'Seal Product'}
                             </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Catalog Test Result Modal */}
+            {catalogTestResult && (
+                <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white w-full max-w-lg rounded-[2rem] border border-slate-200 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+                        {/* Header */}
+                        <div className={`p-6 ${catalogTestResult.ok ? 'bg-emerald-50 border-b border-emerald-100' : 'bg-rose-50 border-b border-rose-100'}`}>
+                            <div className="flex items-start justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className={`w-10 h-10 rounded-2xl flex items-center justify-center text-xl ${catalogTestResult.ok ? 'bg-emerald-100' : 'bg-rose-100'}`}>
+                                        {catalogTestResult.ok ? '✅' : '❌'}
+                                    </div>
+                                    <div>
+                                        <h3 className="font-black text-slate-900 text-lg">
+                                            {catalogTestResult.ok ? 'Catalog Connected!' : 'Catalog Issue Detected'}
+                                        </h3>
+                                        <p className="text-xs text-slate-500 mt-0.5">
+                                            {catalogTestResult.ok ? 'Your catalog is properly configured and ready to sync.' : `Problem: ${catalogTestResult.step?.replace('_', ' ')}`}
+                                        </p>
+                                    </div>
+                                </div>
+                                <button onClick={() => setCatalogTestResult(null)} className="text-slate-400 hover:text-slate-900 transition-colors p-1">
+                                    <Plus className="rotate-45" size={20} />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Body */}
+                        <div className="p-6 space-y-4">
+                            {/* Success details */}
+                            {catalogTestResult.ok && (
+                                <div className="space-y-3">
+                                    <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
+                                        <span className="text-xs text-slate-500 font-semibold">Catalog ID</span>
+                                        <code className="text-xs font-mono bg-white border border-slate-200 px-2 py-1 rounded-lg">{catalogTestResult.catalogId}</code>
+                                    </div>
+                                    <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
+                                        <span className="text-xs text-slate-500 font-semibold">Catalog Name</span>
+                                        <span className="text-xs font-bold text-slate-800">{catalogTestResult.catalogName}</span>
+                                    </div>
+                                    <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
+                                        <span className="text-xs text-slate-500 font-semibold">Products in Meta</span>
+                                        <span className="text-xs font-bold text-emerald-600">{catalogTestResult.productCountInMeta}</span>
+                                    </div>
+                                    {catalogTestResult.missingScopes?.length > 0 && (
+                                        <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl">
+                                            <p className="text-xs font-bold text-amber-800 mb-1">⚠️ Token may be missing scopes:</p>
+                                            {catalogTestResult.missingScopes.map((s: string) => (
+                                                <code key={s} className="block text-xs font-mono text-amber-700">{s}</code>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Error details */}
+                            {!catalogTestResult.ok && (
+                                <div className="space-y-4">
+                                    <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl">
+                                        <p className="text-xs font-bold text-rose-800">{catalogTestResult.message}</p>
+                                        {catalogTestResult.metaError && (
+                                            <p className="text-[10px] text-rose-600 mt-1 font-mono">{catalogTestResult.metaError}</p>
+                                        )}
+                                    </div>
+                                    {catalogTestResult.fix && (
+                                        <div className="space-y-2">
+                                            <p className="text-xs font-black text-slate-700 uppercase tracking-wider">How to fix:</p>
+                                            <ol className="space-y-2">
+                                                {(Array.isArray(catalogTestResult.fix) ? catalogTestResult.fix : [catalogTestResult.fix]).map((step: string, i: number) => (
+                                                    <li key={i} className="flex gap-2 text-xs text-slate-600 leading-relaxed">
+                                                        <span className="shrink-0 w-5 h-5 bg-slate-100 rounded-full flex items-center justify-center text-[10px] font-black text-slate-500 mt-0.5">{i + 1}</span>
+                                                        <span>{step.replace(/^\d+\.\s/, '')}</span>
+                                                    </li>
+                                                ))}
+                                            </ol>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Footer */}
+                        <div className="px-6 pb-6 flex gap-3">
+                            <a
+                                href="https://business.facebook.com/commerce/catalogs"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex-1 py-3 bg-[#1877F2] text-white text-xs font-black uppercase tracking-widest rounded-xl text-center hover:bg-[#1565d8] transition-colors flex items-center justify-center gap-2"
+                            >
+                                <ExternalLink size={13} />
+                                Open Meta Commerce Manager
+                            </a>
+                            {catalogTestResult.ok && (
+                                <button
+                                    onClick={() => { setCatalogTestResult(null); }}
+                                    className="flex-1 py-3 bg-emerald-600 text-white text-xs font-black uppercase tracking-widest rounded-xl hover:bg-emerald-700 transition-colors"
+                                >
+                                    ✅ Ready — Close
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>
