@@ -106,7 +106,7 @@ export async function POST(request: Request) {
                 orderBy: { sort_order: 'asc' }
             });
 
-            // Create Workspace with partner attribution and package linkage
+            // Create Workspace — new signups always start on FREE, no plan pre-assigned
             const workspace = await tx.workspace.create({
                 data: {
                     name: businessName,
@@ -116,8 +116,8 @@ export async function POST(request: Request) {
                     reseller_id: partner?.reseller_id || null, // Link to partner if detected
                     referral_code: referralCode,
                     referred_by_id: referredByWorkspaceId,
-                    current_plan_id: defaultPlan?.id || null,
-                    plan: defaultPlan ? (["FREE", "PRO", "ENTERPRISE"].includes(defaultPlan.name.toUpperCase()) ? defaultPlan.name.toUpperCase() as any : "PRO") : "FREE"
+                    current_plan_id: null, // No plan pre-assigned — user must subscribe
+                    plan: "FREE" // Legacy enum — always starts FREE
                 }
             });
 

@@ -15,25 +15,44 @@ export async function GET(req: Request) {
             include: { plan_details: true }
         });
 
-        // Legacy/Default limits if no plan_details linked
+        // ✅ FIX: Use plan_details.name as the canonical plan name.
+        // The legacy `workspace.plan` enum (FREE/PRO/ENTERPRISE) is NOT the source of truth.
+        // `plan_details` is the actual linked SubscriptionPlan record.
         // @ts-ignore
-        const details = workspace?.plan_details || {
-            name: workspace?.plan || "FREE",
-            max_contacts: workspace?.plan === "PRO" ? 10000 : 100,
-            max_flows: workspace?.plan === "PRO" ? 100 : 3,
-            max_campaigns: workspace?.plan === "PRO" ? 999 : 1,
-            max_messages: workspace?.plan === "PRO" ? 100000 : 500,
-            crm_access: true,
-            api_access: workspace?.plan === "PRO",
-            flow_builder_access: true,
-            drip_campaign_access: workspace?.plan === "PRO",
-        };
+        const details = workspace?.plan_details || null;
 
-        return NextResponse.json({
-            plan: workspace?.plan || "FREE",
-            status: workspace?.subscription_status,
-            details
-        });
+        // Determine if this is a genuinely active paid subscription
+        // 'created' = payment initiated but not completed, should NOT be treated as active
+        const ACTIVE_STATUSES = ['active', 'authenticated'];
+        const isReallyActive = ACTIVE_STATUSES.includes((workspace?.subscription_status || '').toLowerCase());
+
+        // The plan name to show — if truly active, use plan_details.name; otherwise show FREE
+        const resolvedPlanName = (isReallyActive && details?.name) ? details.name : "FREE";
+
+        return NextResponse.json(
+            {
+                plan: resolvedPlanName,
+                status: workspace?.subscription_status,
+                details: details || {
+                    name: "FREE",
+                    max_contacts: 100,
+                    max_flows: 3,
+                    max_campaigns: 1,
+                    max_messages: 500,
+                    crm_access: false,
+                    api_access: false,
+                    flow_builder_access: true,
+                    drip_campaign_access: false,
+                }
+            },
+            {
+                headers: {
+                    'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+                    'Pragma': 'no-cache',
+                    'Expires': '0',
+                }
+            }
+        );
 
     } catch (error) {
         return NextResponse.json({ error: "Error fetching status" }, { status: 500 });
