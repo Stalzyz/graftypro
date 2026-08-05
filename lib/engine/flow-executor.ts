@@ -113,6 +113,9 @@ async function executeNode(ctx: ExecutionContext, node: any, edges: any[], depth
         case 'end':
             await closeSession(session.id, 'FLOW_COMPLETED_END_NODE');
             break;
+        case 'collect_input':
+            await runCollectInputNode(ctx, node);
+            break;
         case 'order_tracking':
             await runOrderTrackingNode(ctx, node, edges, depth);
             break;
@@ -259,6 +262,39 @@ async function runGoalNode(ctx: ExecutionContext, node: any): Promise<void> {
 
 async function runActionNode(ctx: ExecutionContext, node: any): Promise<void> {
     const data = node.data || {};
+
+    // ── set_variable: save a static or resolved value into session state ──
+    if (data.actionType === 'set_variable') {
+        const key = data.variableKey;
+        const rawValue = data.variableValue ?? '';
+        if (key) {
+            const resolved = resolveVariables(String(rawValue), ctx.session.state, ctx.contact);
+            const newState = await updateSessionState(ctx.session.id, ctx.session.state, { [key]: resolved });
+            ctx.session.state = newState;
+        }
+        return;
+    }
+
+    // ── compute: evaluate a simple math expression (supports + - * /) ──
+    if (data.actionType === 'compute') {
+        const key = data.variableKey;
+        const rawExpr = data.expression ?? '';
+        if (key && rawExpr) {
+            try {
+                const expr = resolveVariables(rawExpr, ctx.session.state, ctx.contact);
+                // Safe eval: only allow numbers + basic operators
+                const sanitized = expr.replace(/[^0-9+\-*/.() ]/g, '');
+                // eslint-disable-next-line no-new-func
+                const result = Function(`"use strict"; return (${sanitized})`)();
+                const newState = await updateSessionState(ctx.session.id, ctx.session.state, { [key]: String(Math.round(result)) });
+                ctx.session.state = newState;
+            } catch (e: any) {
+                console.error(`[FlowEngine] compute node failed: ${e.message}`);
+            }
+        }
+        return;
+    }
+
     if (data.actionType === 'start_drip' || data.actionType === 'drip') {
         await runDripNode(ctx, node);
     } else if (data.actionType === 'stop_drip') {
@@ -414,6 +450,7 @@ async function runCatalogNode(ctx: ExecutionContext, node: any): Promise<void> {
     for (const prod of products) {
         const absUrl = getAbsoluteMediaUrl(prod.image);
         const bodyText = `🏷️ *${(prod.name || 'Product').toUpperCase()}*\n\n${prod.text || 'Selection'}\n\n*Price: ₹${prod.price || 'N/A'}*`;
+        const btnTitle = (data.buttonTitle || prod.buttonTitle || 'Buy Now').substring(0, 20);
         const payload = {
             to: contact.phone,
             type: 'interactive',
@@ -421,7 +458,7 @@ async function runCatalogNode(ctx: ExecutionContext, node: any): Promise<void> {
                 type: 'button',
                 header: absUrl ? { type: 'image', image: { link: absUrl } } : undefined,
                 body: { text: bodyText.substring(0, 1024) },
-                action: { buttons: [{ type: 'reply', reply: { id: `buy_${prod.id || 'none'}`, title: 'Interested' } }] }
+                action: { buttons: [{ type: 'reply', reply: { id: `buy_${prod.id || 'none'}`, title: btnTitle } }] }
             }
         };
         try {
@@ -436,6 +473,13 @@ async function runPaymentNode(ctx: ExecutionContext, node: any): Promise<void> {
     const { waba, contact, session } = ctx;
     const data = node.data || {};
     if (!data.amount) return;
+    // Resolve dynamic amount — supports {{total}}, {{price}} etc.
+    const resolvedAmountStr = resolveVariables(String(data.amount), session.state, contact);
+    const resolvedAmount = parseFloat(resolvedAmountStr);
+    if (isNaN(resolvedAmount) || resolvedAmount <= 0) {
+        console.error(`[PaymentNode] Invalid resolved amount: "${resolvedAmountStr}" from template "${data.amount}"`);
+        return;
+    }
 
     try {
         const provider = data.paymentProvider || 'Razorpay';
@@ -443,15 +487,15 @@ async function runPaymentNode(ctx: ExecutionContext, node: any): Promise<void> {
         if (provider === 'PhonePe') {
             const { PhonePeManager } = await import('../payments/phonepe');
             const txnId = `FLOW_${session.id}_${Date.now()}`;
-            const result = await PhonePeManager.createPaymentLinkForWorkspace(contact.workspace_id, parseFloat(data.amount), txnId, `usr_${contact.id}`, `${process.env.NEXT_PUBLIC_APP_URL}/api/webhooks/phonepe`, `${process.env.NEXT_PUBLIC_APP_URL}/payment-success?txnId=${txnId}`, contact.phone);
+            const result = await PhonePeManager.createPaymentLinkForWorkspace(contact.workspace_id, resolvedAmount, txnId, `usr_${contact.id}`, `${process.env.NEXT_PUBLIC_APP_URL}/api/webhooks/phonepe`, `${process.env.NEXT_PUBLIC_APP_URL}/payment-success?txnId=${txnId}`, contact.phone);
             shortUrl = result.redirectUrl;
         } else {
             const { RazorpayManager } = await import('../payments/razorpay');
             const res = await RazorpayManager.createPaymentLink(
                 contact.workspace_id,
-                parseFloat(data.amount),
+                resolvedAmount,
                 'INR',
-                data.paymentTitle || 'Payment',
+                resolveVariables(data.paymentTitle || 'Payment', session.state, contact),
                 {
                     name: contact.name || 'Customer',
                     contact: contact.phone,
@@ -695,6 +739,34 @@ async function trackAnalytics(flowId: string, nodeId: string): Promise<void> {
 
 function sleep(ms: number): Promise<void> { return new Promise(r => setTimeout(r, ms)); }
 
+/**
+ * collect_input: Sends a text prompt and WAITS for user reply.
+ * When the user replies, handleUserInput saves reply to session state under data.variableName,
+ * then proceeds to the next node.
+ */
+async function runCollectInputNode(ctx: ExecutionContext, node: any): Promise<void> {
+    const { waba, contact, session } = ctx;
+    const data = node.data || {};
+    const prompt = resolveVariables(data.text || 'Please provide the information:', session.state, contact);
+    const payload = { to: contact.phone, type: 'text', text: { body: prompt } };
+    try {
+        const metaId = await sendMessageDirect({
+            phoneNumberId: waba.phone_number_id,
+            accessToken: waba.access_token,
+            payload,
+            sessionId: session.id,
+            nodeId: node.id,
+            workspaceId: session.workspace_id,
+            contactId: contact.id,
+        });
+        await saveOutboundMessage(waba, contact, metaId, payload);
+    } catch (e: any) {
+        console.error(`[CollectInput] Send failed: ${e.message}`);
+    }
+    // The node stays interactive (waits for reply) — handleUserInput will save the reply
+    // to session state under data.variableName and advance the session.
+}
+
 export async function handleUserInput(session: FlowSessionData, waba: any, contact: any, inputValue: string): Promise<void> {
     const nodes: any[] = session.flow.nodes || [];
     const edges: any[] = session.flow.edges || [];
@@ -748,8 +820,22 @@ export async function handleUserInput(session: FlowSessionData, waba: any, conta
         }
     }
 
-    const matchedEdge = edges.find((e: any) => e.source === currentNodeId && ((e.sourceHandle || '').toLowerCase() === (inputValue || '').toLowerCase() || (e.sourceHandle || '').toLowerCase() === `button-${(inputValue || '').toLowerCase()}`));
+    const matchedEdge = edges.find((e: any) => e.source === currentNodeId && (
+        (e.sourceHandle || '').toLowerCase() === (inputValue || '').toLowerCase() ||
+        (e.sourceHandle || '').toLowerCase() === `button-${(inputValue || '').toLowerCase()}` ||
+        (e.sourceHandle || '').toLowerCase() === `item-${(inputValue || '').toLowerCase()}`
+    ));
     if (matchedEdge) return executeFrom(session, waba, contact, currentNodeId, matchedEdge.target, 0);
+
+    // collect_input: save user reply to named variable, then advance
+    if (currentNode.type === 'collect_input') {
+        const varName = currentNode.data?.variableName;
+        if (varName) {
+            const newState = await updateSessionState(session.id, session.state, { [varName]: inputValue });
+            session.state = newState;
+        }
+        return executeFrom(session, waba, contact, currentNodeId, null, 0);
+    }
 
     if (['message', 'list', 'meta_flow', 'appointment', 'payment', 'catalog', 'location'].includes(currentNode.type)) return;
     await executeFrom(session, waba, contact, currentNodeId, null, 0);

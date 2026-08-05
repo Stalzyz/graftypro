@@ -608,10 +608,27 @@ export default function FlowPropertiesPanel({ selectedNode, onChange, onClose, o
                 )}
 
                 {selectedNode.type === 'catalog' && (
-                    <div>
-                        <div className="flex justify-between items-center mb-1">
-                            <label className="block text-sm font-medium text-gray-700">Sequence / Carousel Products</label>
-                            <span className="text-[10px] font-bold text-purple-600 bg-purple-100 px-2 py-0.5 rounded-full">Max 10</span>
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
+                                Reply Button Title
+                            </label>
+                            <input
+                                type="text"
+                                maxLength={20}
+                                placeholder="Buy Now"
+                                value={selectedNode.data.buttonTitle || ''}
+                                onChange={(e) => onChange(selectedNode.id, { ...selectedNode.data, buttonTitle: e.target.value })}
+                                className="w-full border border-gray-300 rounded-lg p-2 text-sm bg-white font-medium focus:ring-2 focus:ring-purple-400 outline-none"
+                            />
+                            <p className="text-[10px] text-gray-400 mt-1">Default: <strong>Buy Now</strong> (Max 20 chars allowed by WhatsApp).</p>
+                        </div>
+
+                        <div>
+                            <div className="flex justify-between items-center mb-1">
+                                <label className="block text-sm font-medium text-gray-700">Sequence / Carousel Products</label>
+                                <span className="text-[10px] font-bold text-purple-600 bg-purple-100 px-2 py-0.5 rounded-full">Max 10</span>
+                            </div>
                         </div>
                         <select
                             value=""
@@ -723,10 +740,10 @@ export default function FlowPropertiesPanel({ selectedNode, onChange, onClose, o
                         )}
 
                         <p className="text-xs text-gray-400 mt-2">
-                            The bot will send this product as an interactive message with an &quot;Interested&quot; button. Connect the output handle to the next step.
+                            The bot will send each product as an interactive message with a reply button (default: Buy Now). Connect the output handle to the next step.
                         </p>
                     </div>
-                )}
+            )}
 
                 {selectedNode.type === 'payment' && (
                     <div className="space-y-4">
