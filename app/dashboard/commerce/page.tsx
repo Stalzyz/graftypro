@@ -69,6 +69,7 @@ export default function CommercePage() {
     const [isLoading, setIsLoading] = useState(true);
     const [isSyncing, setIsSyncing] = useState<string | null>(null);
     const [isMetaSyncing, setIsMetaSyncing] = useState<string | null>(null);
+    const [isSyncingFromMeta, setIsSyncingFromMeta] = useState<string | null>(null);
     const [isTestingCatalog, setIsTestingCatalog] = useState(false);
     const [catalogTestResult, setCatalogTestResult] = useState<any>(null);
     const [isConnectModalOpen, setIsConnectModalOpen] = useState(false);
@@ -334,6 +335,30 @@ export default function CommercePage() {
             alert("Network error during Meta sync");
         } finally {
             setIsMetaSyncing(null);
+        }
+    };
+
+    const handleSyncFromMeta = async (storeId: string) => {
+        setIsSyncingFromMeta(storeId);
+        try {
+            const res = await fetch("/api/commerce/stores/sync", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ storeId })
+            });
+            if (res.ok) {
+                const data = await res.json();
+                alert(`✅ ${data.message}`);
+                await fetchProducts(); // Refresh products list
+                await fetchStores(); // Refresh store counts
+            } else {
+                const err = await res.json();
+                alert(err.error || "Failed to sync from Meta Catalog.");
+            }
+        } catch (err) {
+            alert("Network error during sync from Meta.");
+        } finally {
+            setIsSyncingFromMeta(null);
         }
     };
 
@@ -617,6 +642,16 @@ export default function CommercePage() {
                                                     >
                                                         <Search size={14} className={isTestingCatalog ? "animate-pulse" : ""} />
                                                         {isTestingCatalog ? 'Testing...' : 'Test Catalog'}
+                                                    </button>
+                                                    
+                                                    <button
+                                                        onClick={() => handleSyncFromMeta(store.id)}
+                                                        disabled={isSyncingFromMeta === store.id}
+                                                        title="Pull products from Meta Catalog into Grafty"
+                                                        className="p-3 bg-emerald-50 border border-emerald-100 rounded-xl text-emerald-600 hover:bg-emerald-600 hover:text-white transition-all flex items-center gap-2 text-[10px] font-black uppercase tracking-widest outline-none disabled:opacity-50 shadow-sm"
+                                                    >
+                                                        <RefreshCw size={14} className={isSyncingFromMeta === store.id ? "animate-spin" : ""} />
+                                                        {isSyncingFromMeta === store.id ? 'Pulling...' : 'Pull from Meta'}
                                                     </button>
                                                     <button
                                                         onClick={() => handleMetaSync(store.id)}
