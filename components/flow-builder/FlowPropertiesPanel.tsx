@@ -23,7 +23,9 @@ export default function FlowPropertiesPanel({ selectedNode, onChange, onClose, o
 
     // Catalog Data
     const [productId, setProductId] = useState("");
+    const [storeId, setStoreId] = useState("");
     const [products, setProducts] = useState<any[]>([]);
+    const [stores, setStores] = useState<any[]>([]);
     const [templates, setTemplates] = useState<any[]>([]);
 
     // Payment Data
@@ -121,6 +123,8 @@ export default function FlowPropertiesPanel({ selectedNode, onChange, onClose, o
 
             if (selectedNode.type === 'catalog') {
                 setProductId(selectedNode.data.productId || "");
+                setStoreId(selectedNode.data.storeId || "");
+                fetch('/api/commerce/stores').then(r => r.json()).then(res => setStores(res.data || []));
                 fetch('/api/commerce/products').then(r => r.json()).then(res => setProducts(res.data || []));
             }
 
@@ -625,6 +629,29 @@ export default function FlowPropertiesPanel({ selectedNode, onChange, onClose, o
                         </div>
 
                         <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Commerce Store</label>
+                            <select
+                                value={selectedNode.data.storeId || ''}
+                                onChange={(e) => {
+                                    const newStoreId = e.target.value;
+                                    // Clear existing selected products if the store changes
+                                    onChange(selectedNode.id, { 
+                                        ...selectedNode.data, 
+                                        storeId: newStoreId,
+                                        carouselProducts: [] // Reset selected products
+                                    });
+                                }}
+                                className="w-full border border-gray-300 rounded-lg p-2 text-sm bg-white focus:ring-2 focus:ring-purple-400 outline-none"
+                            >
+                                <option value="">+ Choose a Store...</option>
+                                {stores.map((s: any) => (
+                                    <option key={s.id} value={s.id}>{s.name} {s.catalog_id ? '(Native Meta Catalog)' : ''}</option>
+                                ))}
+                            </select>
+                            <p className="text-[10px] text-gray-500 mt-1">If the store has a Native Meta Catalog, a native product list message is sent. Otherwise, a generic fallback carousel is sent.</p>
+                        </div>
+
+                        <div>
                             <div className="flex justify-between items-center mb-1">
                                 <label className="block text-sm font-medium text-gray-700">Sequence / Carousel Products</label>
                                 <span className="text-[10px] font-bold text-purple-600 bg-purple-100 px-2 py-0.5 rounded-full">Max 10</span>
@@ -632,6 +659,7 @@ export default function FlowPropertiesPanel({ selectedNode, onChange, onClose, o
                         </div>
                         <select
                             value=""
+                            disabled={!selectedNode.data.storeId}
                             onChange={(e) => {
                                 const val = e.target.value;
                                 if (!val) return;
@@ -663,10 +691,10 @@ export default function FlowPropertiesPanel({ selectedNode, onChange, onClose, o
                                 delete newData.productId; delete newData.productName; delete newData.productPrice; delete newData.productImage;
                                 onChange(selectedNode.id, newData);
                             }}
-                            className="w-full border border-gray-300 rounded-lg p-2 text-sm bg-white"
+                            className={`w-full border border-gray-300 rounded-lg p-2 text-sm ${!selectedNode.data.storeId ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
                         >
-                            <option value="">+ Add a product...</option>
-                            {products.map((p: any) => (
+                            <option value="">{selectedNode.data.storeId ? "+ Add a product..." : "Please select a store first"}</option>
+                            {products.filter((p: any) => p.store_id === selectedNode.data.storeId).map((p: any) => (
                                 <option key={p.id} value={p.id}>{p.name} (₹{p.price})</option>
                             ))}
                         </select>

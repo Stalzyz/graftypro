@@ -5,7 +5,7 @@
 
 import { prisma } from '../db';
 import { FlowSessionData, advanceSession, closeSession, pauseSession, updateSessionState } from './session-manager';
-import { buildNodePayload, buildTextPayload, buildProductListPayload } from './payload-builder';
+import { buildNodePayload, buildTextPayload, buildProductListPayload, buildCarouselPayload } from './payload-builder';
 import { enqueueMessage, sendMessageDirect } from './flow-queue';
 import { EmailService } from '../email/service';
 import { decrypt } from '../security/encryption';
@@ -450,7 +450,10 @@ async function runCatalogNode(ctx: ExecutionContext, node: any): Promise<void> {
     try {
         // Fetch store to check for native catalog integration
         const store = await prisma.commerceStore.findFirst({
-            where: { workspace_id: session.workspace_id },
+            where: { 
+                workspace_id: session.workspace_id,
+                ...(data.storeId ? { id: data.storeId } : {})
+            },
             select: { catalog_id: true, name: true }
         });
 
@@ -495,28 +498,30 @@ async function runCatalogNode(ctx: ExecutionContext, node: any): Promise<void> {
         console.error(`[CatalogNode] Native catalog check failed: ${err.message}`);
     }
 
-    // Fallback: Send separate interactive messages if no catalog_id or payload generation failed
-    for (const prod of products) {
+    // Fallback: Send generic WhatsApp Carousel (Cards) if no catalog_id or payload generation failed
+    const cards = products.slice(0, 10).map((prod: any) => {
         const absUrl = getAbsoluteMediaUrl(prod.image);
         const resolvedProdName = resolveVariables(prod.name || 'Product', session.state, contact);
         const resolvedProdText = resolveVariables(prod.text || 'Selection', session.state, contact);
-        const bodyText = `🏷️ *${resolvedProdName.toUpperCase()}*\n\n${resolvedProdText}\n\n*Price: ₹${prod.price || 'N/A'}*`;
         const btnTitle = resolveVariables((data.buttonTitle || prod.buttonTitle || 'Buy Now').substring(0, 20), session.state, contact);
-        const payload = {
-            to: contact.phone,
-            type: 'interactive',
-            interactive: {
-                type: 'button',
-                header: absUrl ? { type: 'image', image: { link: absUrl } } : undefined,
-                body: { text: bodyText.substring(0, 1024) },
-                action: { buttons: [{ type: 'reply', reply: { id: `buy_${prod.id || 'none'}`, title: btnTitle } }] }
-            }
+        
+        return {
+            id: prod.id || 'none',
+            title: resolvedProdName,
+            description: `${resolvedProdText}\n\nPrice: ₹${prod.price || 'N/A'}`,
+            imageUrl: absUrl,
+            buttonTitle: btnTitle
         };
+    });
+
+    const payload = buildCarouselPayload(contact.phone, cards);
+    if (payload) {
         try {
             const metaId = await sendMessageDirect({ phoneNumberId: waba.phone_number_id, accessToken: waba.access_token, payload, sessionId: session.id, nodeId: node.id, workspaceId: session.workspace_id, contactId: contact.id });
             if (metaId) await saveOutboundMessage(waba, contact, metaId, payload);
-        } catch { }
-        if (products.length > 1) await sleep(800);
+        } catch (err: any) {
+            console.error(`[CatalogNode] Generic carousel dispatch failed: ${err.message}`);
+        }
     }
 }
 

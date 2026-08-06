@@ -5,7 +5,7 @@ set REMOTE    "/root/grafty_bsp"
 set timeout   600
 
 puts "\n🚀 \[1/2\] Pulling from Git on VPS..."
-spawn ssh -o StrictHostKeyChecking=no -o PubkeyAuthentication=no $SERVER "cd $REMOTE && git reset --hard && git pull origin main"
+spawn ssh -o StrictHostKeyChecking=no -o PubkeyAuthentication=no $SERVER "cd $REMOTE && git clean -fd && git reset --hard && git pull origin main"
 expect {
     "password:" { send "$PASS\r"; exp_continue }
     eof

@@ -444,6 +444,99 @@ export function buildLocationRequestPayload(
 }
 
 // -----------------------------------------------------------------------
+// GENERIC CAROUSEL
+// -----------------------------------------------------------------------
+export function buildCarouselPayload(
+    to: string,
+    cards: {
+        id: string;
+        title: string;
+        description?: string;
+        imageUrl?: string;
+        buttonTitle: string;
+    }[]
+): any | null {
+    const errors: ValidationError[] = [];
+    if (!to) errors.push({ field: 'to', message: 'Phone required' });
+    if (!cards || cards.length === 0) errors.push({ field: 'cards', message: 'At least one card required' });
+    if (cards.length > 10) errors.push({ field: 'cards', message: 'Max 10 cards allowed' });
+    if (!validate(errors)) return null;
+
+    const formattedCards = cards.map(c => {
+        const card: any = {
+            components: []
+        };
+        
+        if (c.imageUrl) {
+            card.components.push({
+                type: 'header',
+                parameters: [
+                    {
+                        type: 'image',
+                        image: { link: c.imageUrl }
+                    }
+                ]
+            });
+        }
+        
+        card.components.push({
+            type: 'body',
+            parameters: [
+                {
+                    type: 'text',
+                    text: sanitizeText(c.description || 'Details', 'Details').substring(0, 160)
+                }
+            ]
+        });
+        
+        card.components.push({
+            type: 'button',
+            sub_type: 'quick_reply',
+            index: '0',
+            parameters: [
+                {
+                    type: 'payload',
+                    payload: `buy_${c.id}`
+                }
+            ]
+        });
+
+        // WhatsApp interactive carousel card structure
+        const interactiveCard: any = {
+            header: c.imageUrl ? { type: 'image', image: { link: c.imageUrl } } : undefined,
+            body: { text: `*${sanitizeText(c.title, 'Item').substring(0, 80)}*\n\n${sanitizeText(c.description || '', '').substring(0, 80)}` },
+            action: {
+                buttons: [
+                    {
+                        type: 'reply',
+                        reply: {
+                            id: `buy_${c.id}`,
+                            title: sanitizeText(c.buttonTitle, 'Buy Now').substring(0, 20)
+                        }
+                    }
+                ]
+            }
+        };
+
+        // Remove undefined header
+        if (!interactiveCard.header) delete interactiveCard.header;
+
+        return interactiveCard;
+    });
+
+    return {
+        to,
+        type: 'interactive',
+        interactive: {
+            type: 'carousel',
+            carousel: {
+                cards: formattedCards
+            }
+        }
+    };
+}
+
+// -----------------------------------------------------------------------
 // SMART BUILDER — called by Flow Executor with raw node data
 // Resolves the best payload type from a node's data automatically.
 // -----------------------------------------------------------------------
