@@ -445,7 +445,11 @@ async function runDripNode(ctx: ExecutionContext, node: any): Promise<void> {
 async function runCatalogNode(ctx: ExecutionContext, node: any): Promise<void> {
     const { waba, contact, session } = ctx;
     const data = node.data || {};
-    const products = data.carouselProducts && data.carouselProducts.length > 0 ? data.carouselProducts : [{ name: data.productName || 'Product', price: data.productPrice || 'N/A', text: data.text || 'View this item!', image: data.productImage || '', id: data.productId || 'none' }];
+    const products = data.carouselProducts && data.carouselProducts.length > 0 
+        ? data.carouselProducts 
+        : [{ name: data.productName || 'Product', price: data.productPrice || 'N/A', text: data.text || 'View this item!', image: data.productImage || '', id: data.productId || 'none' }];
+
+    const productIds = products.map((p: any) => p.id).filter((id: string) => id && id !== 'none' && id !== 'manual');
 
     try {
         // Fetch store to check for native catalog integration
@@ -454,51 +458,81 @@ async function runCatalogNode(ctx: ExecutionContext, node: any): Promise<void> {
                 workspace_id: session.workspace_id,
                 ...(data.storeId ? { id: data.storeId } : {})
             },
-            select: { catalog_id: true, name: true }
+            select: { id: true, catalog_id: true, name: true }
         });
 
-        if (store && store.catalog_id && products.length > 0 && products[0].id !== 'none' && products[0].id !== 'manual') {
+        console.log(`[CatalogNode] store=${store?.id}, catalog_id=${store?.catalog_id}, productIds=[${productIds.join(',')}]`);
+
+        if (store && store.catalog_id && productIds.length > 0) {
             // Fetch actual product_retailer_ids from DB for these specific products
             const dbProducts = await prisma.commerceProduct.findMany({
                 where: {
-                    id: { in: products.map((p: any) => p.id) },
-                    store: { workspace_id: session.workspace_id }
+                    id: { in: productIds },
+                    store_id: store.id
                 },
-                select: { id: true, retailer_id: true, sku: true }
+                select: { id: true, retailer_id: true, external_id: true, sku: true, name: true }
             });
 
-            // Map UI products to their Meta retailer IDs
-            const retailerIds = products.map((p: any) => {
-                const dbp = dbProducts.find(dp => dp.id === p.id);
+            console.log(`[CatalogNode] Found ${dbProducts.length} products in DB out of ${productIds.length} requested`);
+            dbProducts.forEach((dp: any) => {
+                console.log(`[CatalogNode] Product ${dp.id}: retailer_id=${dp.retailer_id}, external_id=${dp.external_id}, sku=${dp.sku}`);
+            });
+
+            // Map UI products to their Meta retailer IDs — ONLY include products with valid retailer_ids
+            // A valid Meta retailer_id must NOT be a UUID (it's the product's SKU/key in Facebook catalog)
+            const retailerIds: string[] = [];
+            for (const p of products) {
+                const dbp = dbProducts.find((dp: any) => dp.id === p.id);
                 if (dbp) {
-                    return dbp.retailer_id || dbp.sku || dbp.id;
+                    // Priority: retailer_id (from Meta sync) > external_id > sku
+                    // We explicitly do NOT fall back to dbp.id (UUID) — that would be invalid for Meta
+                    const rid = dbp.retailer_id || dbp.external_id || dbp.sku;
+                    if (rid) {
+                        retailerIds.push(rid);
+                    } else {
+                        console.warn(`[CatalogNode] ⚠️ Product ${dbp.id} ("${dbp.name}") has no retailer_id/external_id/sku — skipping from native catalog`);
+                    }
+                } else {
+                    console.warn(`[CatalogNode] ⚠️ Product ${p.id} not found in DB for store ${store.id}`);
                 }
-                return p.id;
-            });
+            }
 
-            const payload = buildProductListPayload(
-                contact.phone,
-                store.catalog_id,
-                resolveVariables(data.label || store.name || 'Catalog', session.state, contact),
-                resolveVariables(data.text || 'Browse our products below:', session.state, contact),
-                'View Catalog',
-                [{
-                    title: 'Selected Products',
-                    product_retailer_ids: retailerIds.slice(0, 30) // Max 30 per section
-                }]
-            );
+            console.log(`[CatalogNode] Final retailer_ids to send: [${retailerIds.join(', ')}]`);
 
-            if (payload) {
-                const metaId = await sendMessageDirect({ phoneNumberId: waba.phone_number_id, accessToken: waba.access_token, payload, sessionId: session.id, nodeId: node.id, workspaceId: session.workspace_id, contactId: contact.id });
-                if (metaId) await saveOutboundMessage(waba, contact, metaId, payload);
-                return; // Exit early since native payload was successfully dispatched
+            if (retailerIds.length > 0) {
+                const payload = buildProductListPayload(
+                    contact.phone,
+                    store.catalog_id,
+                    resolveVariables(data.label || store.name || 'Catalog', session.state, contact),
+                    resolveVariables(data.text || 'Browse our products below:', session.state, contact),
+                    'View Catalog',
+                    [{
+                        title: resolveVariables(data.sectionTitle || 'Selected Products', session.state, contact),
+                        product_retailer_ids: retailerIds.slice(0, 30) // Max 30 per section
+                    }]
+                );
+
+                if (payload) {
+                    console.log(`[CatalogNode] ✅ Sending native product_list for catalog ${store.catalog_id}`);
+                    try {
+                        const metaId = await sendMessageDirect({ phoneNumberId: waba.phone_number_id, accessToken: waba.access_token, payload, sessionId: session.id, nodeId: node.id, workspaceId: session.workspace_id, contactId: contact.id });
+                        if (metaId) await saveOutboundMessage(waba, contact, metaId, payload);
+                        return; // Exit early since native payload was successfully dispatched
+                    } catch (sendErr: any) {
+                        console.error(`[CatalogNode] ❌ Native product_list send failed: ${sendErr.message}`);
+                        // Fall through to carousel fallback
+                    }
+                }
+            } else {
+                console.warn(`[CatalogNode] ⚠️ No valid retailer_ids found — falling back to carousel. Run "Pull from Meta" in Commerce settings to sync product IDs.`);
             }
         }
     } catch (err: any) {
         console.error(`[CatalogNode] Native catalog check failed: ${err.message}`);
     }
 
-    // Fallback: Send generic WhatsApp Carousel (Cards) if no catalog_id or payload generation failed
+    // Fallback: Send generic WhatsApp Carousel (Cards) if no catalog_id or no valid retailer IDs
+    console.log(`[CatalogNode] Falling back to generic carousel for ${products.length} products`);
     const cards = products.slice(0, 10).map((prod: any) => {
         const absUrl = getAbsoluteMediaUrl(prod.image);
         const resolvedProdName = resolveVariables(prod.name || 'Product', session.state, contact);
