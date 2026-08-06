@@ -36,6 +36,9 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: "No Meta Catalog ID is configured for this store." }, { status: 400 });
         }
 
+        // Trim whitespace that may have been entered accidentally when saving the catalog ID
+        const catalogId = store.catalog_id.trim();
+
         const waba = await prisma.whatsAppAccount.findUnique({
             where: { workspace_id: user.workspaceId },
             select: { access_token: true }
@@ -55,7 +58,7 @@ export async function POST(req: Request) {
         // Fetch products from Meta Catalog API
         let products: any[] = [];
         try {
-            const res = await axios.get(`${BASE}/${store.catalog_id}/products`, {
+            const res = await axios.get(`${BASE}/${catalogId}/products`, {
                 params: { 
                     fields: "id,name,description,price,currency,image_url,retailer_id,availability,condition", 
                     access_token: token,

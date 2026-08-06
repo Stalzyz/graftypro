@@ -71,7 +71,7 @@ export class CommerceService {
         const data: any = {
             name: storeName,
             status: "ACTIVE",
-            catalog_id: credentials.catalogId || null,
+            catalog_id: credentials.catalogId ? credentials.catalogId.trim() : null,
             updated_at: new Date()
         };
 

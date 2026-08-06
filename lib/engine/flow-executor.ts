@@ -463,6 +463,11 @@ async function runCatalogNode(ctx: ExecutionContext, node: any): Promise<void> {
 
         console.log(`[CatalogNode] store=${store?.id}, catalog_id=${store?.catalog_id}, productIds=[${productIds.join(',')}]`);
 
+        // CRITICAL: Trim catalog_id — a leading/trailing space will cause Meta to return "Invalid catalog_id"
+        if (store?.catalog_id) {
+            store.catalog_id = store.catalog_id.trim();
+        }
+
         if (store && store.catalog_id && productIds.length > 0) {
             // Fetch actual product_retailer_ids from DB for these specific products
             const dbProducts = await prisma.commerceProduct.findMany({
@@ -502,7 +507,7 @@ async function runCatalogNode(ctx: ExecutionContext, node: any): Promise<void> {
             if (retailerIds.length > 0) {
                 const payload = buildProductListPayload(
                     contact.phone,
-                    store.catalog_id,
+                    store.catalog_id.trim(), // trim defensively in case of any whitespace
                     resolveVariables(data.label || store.name || 'Catalog', session.state, contact),
                     resolveVariables(data.text || 'Browse our products below:', session.state, contact),
                     'View Catalog',
