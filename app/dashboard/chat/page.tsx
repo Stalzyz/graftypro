@@ -894,7 +894,7 @@ function SharedInboxContent() {
 
                                                     if (typeof obj === 'object') {
                                                         // 3. Direct Keys
-                                                        const keys = ['link', 'url', 'media_url', 'image_url', 'thumbnail_url', 'image', 'video', 'document'];
+                                                        const keys = ['link', 'url', 'media_url', 'image_url', 'thumbnail_url', 'image', 'video', 'document', 'header'];
                                                         for (const k of keys) {
                                                             if (obj[k] && typeof obj[k] === 'string') {
                                                                 let url = obj[k].trim();
@@ -1129,6 +1129,7 @@ function SharedInboxContent() {
                                                                         content.button_reply?.title || content.list_reply?.title ||
                                                                         content.body || content.text || content.caption ||
                                                                         content.raw?.interactive?.body?.text ||
+                                                                        content.interactive?.body?.text ||
                                                                         content.raw?.text?.body ||
                                                                         (type === 'INTERACTIVE' ? <span className="text-[10px] italic opacity-50">Interactive Meta Workflow Message</span> : "");
                                                                 })()}
