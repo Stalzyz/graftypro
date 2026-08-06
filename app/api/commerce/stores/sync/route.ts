@@ -53,13 +53,13 @@ export async function POST(req: Request) {
         }
 
         // Fetch products from Meta Catalog API
-        let products = [];
+        let products: any[] = [];
         try {
             const res = await axios.get(`${BASE}/${store.catalog_id}/products`, {
                 params: { 
                     fields: "id,name,description,price,currency,image_url,retailer_id,availability,condition", 
                     access_token: token,
-                    limit: 100 // Handle pagination if necessary later, just keeping it simple for now
+                    limit: 100
                 }
             });
             products = res.data?.data || [];
@@ -73,11 +73,12 @@ export async function POST(req: Request) {
             return NextResponse.json({ message: "No products found in Meta Catalog.", count: 0 });
         }
 
-        // Upsert products into Grafty database
+        // Upsert products into Grafty database using the @@unique([store_id, external_id]) constraint
         let syncedCount = 0;
         for (const mp of products) {
-            const retailerId = mp.retailer_id || mp.id; // Fallback to id if retailer_id is somehow missing
-            
+            const retailerId = mp.retailer_id || mp.id;
+            const externalId = mp.id; // Meta's global product ID
+
             // Format price: Meta returns price as a string like "100.00 INR", we need the numeric part
             let numericPrice = 0;
             if (mp.price) {
@@ -85,37 +86,46 @@ export async function POST(req: Request) {
                 if (match) numericPrice = parseFloat(match[0]);
             }
 
-            await (prisma as any).commerceProduct.upsert({
-                where: { 
-                    // Using retailer_id and store_id as a composite key if possible, but since we might not have a unique constraint,
-                    // we'll try to find first or create.
-                    id: mp.id // Meta product ID is unique globally
-                },
-                update: {
-                    name: mp.name,
-                    description: mp.description || "",
-                    price: numericPrice,
-                    currency: mp.currency || "INR",
-                    image_urls: mp.image_url ? [mp.image_url] : [],
-                    retailer_id: retailerId,
-                    status: mp.availability === "in stock" ? "ACTIVE" : "DRAFT"
-                },
-                create: {
-                    id: mp.id, // Force ID to be the Meta Product ID to avoid duplicates across syncs
-                    store_id: store.id,
-                    name: mp.name,
-                    description: mp.description || "",
-                    price: numericPrice,
-                    currency: mp.currency || "INR",
-                    image_urls: mp.image_url ? [mp.image_url] : [],
-                    retailer_id: retailerId,
-                    status: mp.availability === "in stock" ? "ACTIVE" : "DRAFT"
-                }
-            });
-            syncedCount++;
+            try {
+                await (prisma as any).commerceProduct.upsert({
+                    where: { 
+                        // Use the composite unique key defined in schema: @@unique([store_id, external_id])
+                        store_id_external_id: {
+                            store_id: store.id,
+                            external_id: externalId,
+                        }
+                    },
+                    update: {
+                        name: mp.name || "Unnamed Product",
+                        description: mp.description || "",
+                        price: numericPrice || 0,
+                        image_urls: mp.image_url ? [mp.image_url] : [],
+                        retailer_id: retailerId,
+                        external_id: externalId,
+                        is_active: mp.availability === "in stock",
+                    },
+                    create: {
+                        store_id: store.id,
+                        name: mp.name || "Unnamed Product",
+                        description: mp.description || "",
+                        price: numericPrice || 0,
+                        image_urls: mp.image_url ? [mp.image_url] : [],
+                        retailer_id: retailerId,
+                        external_id: externalId,
+                        is_active: mp.availability === "in stock",
+                    }
+                });
+                syncedCount++;
+            } catch (upsertErr: any) {
+                console.error(`[CatalogSync] Failed to upsert product ${externalId}:`, upsertErr.message);
+                // Continue syncing other products even if one fails
+            }
         }
 
-        return NextResponse.json({ message: `Successfully synced ${syncedCount} products from Meta.`, count: syncedCount });
+        return NextResponse.json({ 
+            message: `Successfully synced ${syncedCount} of ${products.length} products from Meta.`, 
+            count: syncedCount 
+        });
 
     } catch (error: any) {
         console.error("[CatalogSync] Error:", error);
