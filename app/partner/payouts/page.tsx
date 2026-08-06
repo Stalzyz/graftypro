@@ -25,6 +25,7 @@ export default function PayoutsPage() {
     });
     const [bankSaving, setBankSaving] = useState(false);
     const [request, setRequest] = useState({ amount: "", paymentMethod: "BANK_TRANSFER", paymentDetails: "" });
+    const [invoiceFile, setInvoiceFile] = useState<File | null>(null);
     const [submitting, setSubmitting] = useState(false);
 
     useEffect(() => {
@@ -88,15 +89,43 @@ export default function PayoutsPage() {
 
     const handleSubmit = async (e: any) => {
         e.preventDefault();
+        
+        if (!invoiceFile) {
+            alert("Please upload your GST invoice to request a payout.");
+            return;
+        }
+
         setSubmitting(true);
         try {
+            // 1. Upload Invoice File
+            const formData = new FormData();
+            formData.append("file", invoiceFile);
+            
+            const uploadRes = await fetch("/api/media/upload", {
+                method: "POST",
+                body: formData
+            });
+
+            if (!uploadRes.ok) {
+                throw new Error("Failed to upload invoice");
+            }
+            const uploadData = await uploadRes.json();
+            const invoiceUrl = uploadData.url;
+
+            // 2. Submit Payout Request
+            const payload = {
+                ...request,
+                invoice_url: invoiceUrl
+            };
+
             const res = await fetch("/api/reseller/payouts", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(request)
+                body: JSON.stringify(payload)
             });
             if (res.ok) {
                 setIsModalOpen(false);
+                setInvoiceFile(null);
                 fetchData();
             } else {
                 const err = await res.json();
@@ -399,8 +428,22 @@ export default function PayoutsPage() {
                                 </div>
                             </div>
 
+                            <div className="space-y-3">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] ml-1">GST Invoice (PDF/Image) *</label>
+                                <div className="relative">
+                                    <input
+                                        type="file"
+                                        required
+                                        accept=".pdf,image/*"
+                                        onChange={(e) => setInvoiceFile(e.target.files?.[0] || null)}
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-[2rem] px-6 py-4 text-sm font-bold text-slate-900 outline-none focus:border-[#27954D] focus:bg-white transition-all file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-[#27954D]/10 file:text-[#27954D] hover:file:bg-[#27954D]/20 cursor-pointer"
+                                    />
+                                    <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-2 ml-2">Required for Input Tax Credit processing.</p>
+                                </div>
+                            </div>
+
                             <button
-                                disabled={submitting || !request.amount || Number(request.amount) > stats?.wallet.balance}
+                                disabled={submitting || !request.amount || !invoiceFile || Number(request.amount) > stats?.wallet.balance}
                                 type="submit"
                                 className="w-full py-6 bg-slate-900 text-white font-black text-[10px] uppercase tracking-[0.4em] rounded-[2rem] flex items-center justify-center gap-3 hover:bg-black transition-all shadow-2xl active:scale-[0.98] disabled:opacity-50"
                             >

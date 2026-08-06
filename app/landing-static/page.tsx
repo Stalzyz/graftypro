@@ -30,7 +30,7 @@ const TICKER_ITEMS = [
     "📢 Bulk WhatsApp Messages — Send to 10K+ contacts",
     "💬 Live Chat Inbox — Multi-agent team support",
     "🛒 E-commerce — Sell directly on WhatsApp",
-    "🤖 AI Automation — Smart drip sequences",
+    "⚙️ Smart Automation — Powerful drip sequences",
     "📊 CRM Engine — Kanban lead management",
     "💳 Credit Wallet — Pay-as-you-go billing",
     "📋 GST Invoicing — Auto-generated invoices",
@@ -60,7 +60,7 @@ const PRODUCT_TABS = [
     {
         id: "ai",
         label: "AI Autopilot",
-        icon: <Bot size={16} />,
+        icon: <Zap size={16} />,
         image: "/screens/ai.jpg",
         title: "Train your AI salesperson in seconds",
         desc: "Upload PDFs, Docs, or URLs to create a domain-expert AI. Automate lead qualification and FAQ handling with 100% accuracy.",
@@ -140,7 +140,7 @@ const STATS = [
 
 const MODULES = [
     {
-        title: "AI Knowledge Engine", icon: <Sparkles size={22} className="text-indigo-600" />,
+        title: "Smart Knowledge Engine", icon: <Zap size={22} className="text-indigo-600" />,
         desc: "Train AI on your business data. Handle complex customer queries automatically using GPT-4 and your own PDFs.",
         bg: "bg-indigo-50", border: "border-indigo-100",
         tags: ["Knowledge Base", "AI Autopilot", "PDF Training", "GPT-4"],
@@ -244,7 +244,7 @@ export default function StaticLandingPage({ branding }: { branding?: any }) {
     }, []);
 
     return (
-        <main className="g-body min-h-screen bg-white overflow-x-hidden">
+        <main className="g-body min-h-screen bg-blueprint overflow-x-hidden">
             {branding && (
                 <style dangerouslySetInnerHTML={{ __html: `
                     :root {
@@ -279,54 +279,42 @@ export default function StaticLandingPage({ branding }: { branding?: any }) {
             </div>
 
             {/* ─── HERO ─── */}
-            <section ref={heroRef} className="pt-36 pb-28 px-6 max-w-7xl mx-auto relative overflow-hidden">
-                {/* Gradient orbs */}
-                <div className="absolute -top-40 -left-40 w-[700px] h-[700px] bg-green-100 rounded-full blur-[120px] opacity-40 pointer-events-none" />
-                <div className="absolute -top-40 -right-40 w-[600px] h-[600px] bg-blue-100 rounded-full blur-[120px] opacity-40 pointer-events-none" />
-
+            <section ref={heroRef} className="pt-36 pb-28 px-6 max-w-7xl mx-auto relative overflow-hidden border-b-2 border-slate-900">
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
                     <div className={`relative z-10 transition-all duration-700 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}>
                         {/* Badge */}
-                        <div className="inline-flex items-center gap-2 bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 text-green-700 text-xs font-black uppercase tracking-[0.12em] px-5 py-2.5 rounded-full mb-8 shadow-sm">
-                            <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
-                            Official WhatsApp Business API Platform
-                            <Sparkles size={12} className="text-green-500" />
+                        <div className="inline-flex items-center gap-2 bg-white border-2 border-slate-900 text-slate-900 text-xs font-mono font-bold uppercase px-4 py-2 mb-8 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                            <span className="w-2 h-2 bg-slate-900" />
+                            Official Platform
                         </div>
 
                         {/* Headline */}
-                        <h1 className="text-5xl md:text-7xl font-black text-slate-900 leading-[1.05] tracking-tight mb-6">
+                        <h1 className="text-5xl md:text-7xl font-serif font-black text-slate-900 leading-[1.05] tracking-tight mb-6">
                             Stop Losing Customers<br />
-                            to <span className="relative inline-block">
-                                <span className="bg-gradient-to-r from-[#27954D] via-[#0EA5E9] to-[#042F94] bg-clip-text text-transparent">
-                                    Slow Replies
-                                </span>
-                                <svg className="absolute -bottom-2 left-0 w-full" viewBox="0 0 300 12" fill="none">
-                                    <path d="M2 8 Q75 2 150 8 Q225 14 298 8" stroke="#27954D" strokeWidth="3" strokeLinecap="round" fill="none" opacity="0.4" />
-                                </svg>
-                            </span>
+                            to <span className="bg-slate-900 text-white px-2">Slow Replies.</span>
                         </h1>
 
-                        <p className="text-xl text-slate-500 leading-relaxed mb-4">
-                            {platformName} automates your WhatsApp — so every lead is captured, every customer is followed up, and every sale closes faster. <strong className="text-slate-700">Zero manual work.</strong>
+                        <p className="text-xl text-slate-700 leading-relaxed mb-4 border-l-4 border-slate-900 pl-4 bg-white/50 py-2">
+                            {platformName} automates your communication — so every lead is captured, every customer is followed up, and every sale closes faster. <strong className="text-slate-900">Zero manual work.</strong>
                         </p>
-                        <p className="text-sm text-slate-400 font-medium mb-10">
-                            Used by 500+ businesses across India&nbsp;·&nbsp;Powered by Meta Official API
+                        <p className="text-sm font-mono text-slate-600 font-medium mb-10 uppercase tracking-widest">
+                            Used by 500+ businesses · Powered by Meta
                         </p>
 
                         {/* CTAs */}
-                        <div className="flex flex-col sm:flex-row items-center gap-4 mb-10">
+                        <div className="flex flex-col sm:flex-row items-center gap-6 mb-10">
                             <Link
                                 href="/register"
-                                className="group flex items-center gap-2 bg-[#27954D] hover:bg-[#1f7a3f] text-white font-bold px-8 py-4 rounded-xl transition-all shadow-xl shadow-green-200/60 text-base active:scale-95"
+                                className="g-btn-primary"
                             >
                                 Start Free Trial
-                                <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                                <ArrowRight size={18} className="ml-2 group-hover:translate-x-1 transition-transform" />
                             </Link>
                             <Link
                                 href="/how-to-use"
-                                className="flex items-center gap-2 bg-white text-slate-700 font-bold px-8 py-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition-all text-base"
+                                className="g-btn-outline"
                             >
-                                <PlayCircle size={18} className="text-green-500" />
+                                <PlayCircle size={18} className="mr-2" />
                                 Watch Demo
                             </Link>
                         </div>
@@ -335,7 +323,7 @@ export default function StaticLandingPage({ branding }: { branding?: any }) {
                         <div className="flex items-center gap-6">
                             <div className="flex -space-x-2">
                                 {["RM", "PS", "AN", "KV", "SR"].map((init, i) => (
-                                    <div key={i} className={`w-8 h-8 rounded-full border-2 border-white flex items-center justify-center text-[10px] font-black text-white ${["bg-green-500", "bg-blue-500", "bg-violet-500", "bg-amber-500", "bg-rose-500"][i]}`}>
+                                    <div key={i} className={`w-8 h-8 border-2 border-slate-900 bg-white flex items-center justify-center text-[10px] font-black text-slate-900 relative z-[${10-i}] shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]`}>
                                         {init}
                                     </div>
                                 ))}
@@ -349,10 +337,8 @@ export default function StaticLandingPage({ branding }: { branding?: any }) {
                         </div>
                     </div>
 
-                    <div className="relative flex justify-center lg:justify-end">
+                    <div className="relative flex justify-center lg:justify-end border-4 border-slate-900 bg-white p-4 shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] max-w-sm ml-auto">
                         <BSP_Animation />
-                        {/* Glow effect */}
-                        <div className="absolute -bottom-10 -right-10 w-64 h-64 bg-green-400/10 rounded-full blur-3xl pointer-events-none" />
                     </div>
                 </div>
             </section>
@@ -486,11 +472,11 @@ export default function StaticLandingPage({ branding }: { branding?: any }) {
                         </p>
                     </div>
 
-                    <div className="bg-gradient-to-br from-green-50 to-blue-50 rounded-3xl border border-green-100 p-10">
-                        <span className="text-xs font-black uppercase tracking-[0.15em] text-green-600 block mb-6">✨ With {platformName}:</span>
+                    <div className="bg-white rounded-none border-4 border-slate-900 shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] p-10">
+                        <span className="text-xs font-mono font-black uppercase tracking-[0.15em] text-green-600 block mb-6">With {platformName}:</span>
                         <div className="grid grid-cols-2 gap-3">
-                            {["Leads auto-captured", "Instant bot replies", "Payments on WhatsApp", "Full customer history", "Bulk broadcasts", "Team inbox", "GST invoices auto-sent", "Real-time analytics"].map((item, i) => (
-                                <div key={i} className="flex items-center gap-3 bg-white rounded-xl px-4 py-3 border border-white shadow-sm">
+                            {["Leads auto-captured", "Instant smart replies", "Payments directly", "Full customer history", "Bulk broadcasts", "Team inbox", "GST invoices auto-sent", "Real-time analytics"].map((item, i) => (
+                                <div key={i} className="flex items-center gap-3 bg-white rounded-none px-4 py-3 border-2 border-slate-900 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
                                     <CheckCircle2 size={15} className="text-green-500 flex-shrink-0" />
                                     <span className="text-slate-700 font-semibold text-sm">{item}</span>
                                 </div>
@@ -504,8 +490,8 @@ export default function StaticLandingPage({ branding }: { branding?: any }) {
             {/* ─── HOW IT HELPS YOU SCALE ─── */}
             <section className="py-28 px-6 bg-slate-50">
                 <div className="max-w-7xl mx-auto">
-                    <div className="text-center mb-20">
-                        <span className="text-xs font-black uppercase tracking-[0.15em] text-slate-400 block mb-4">Growth Engine</span>
+                    <div className="text-center mb-20 border-y-2 border-slate-900 py-10 bg-white shadow-[0px_8px_0px_0px_rgba(0,0,0,1)]">
+                        <span className="text-xs font-mono font-black uppercase tracking-[0.15em] text-slate-400 block mb-4">Growth Engine</span>
                         <h2 className="text-4xl font-black text-slate-900 leading-tight">How {platformName} Helps You Scale</h2>
                     </div>
                     <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -515,9 +501,9 @@ export default function StaticLandingPage({ branding }: { branding?: any }) {
                             { num: "03", title: "Convert Customers Faster", desc: "Send payment links, offers, and product catalogs directly inside WhatsApp. Customers buy faster.", color: "text-violet-500" },
                             { num: "04", title: "Track Business Growth", desc: "Monitor leads, sales, campaign performance, message costs, and revenue. Make decisions based on data.", color: "text-amber-500" },
                         ].map((step, i) => (
-                            <div key={i} className="bg-white rounded-2xl border border-slate-100 p-8 shadow-sm hover:shadow-lg hover:border-green-100 transition-all group">
-                                <div className={`text-5xl font-black ${step.color} opacity-20 group-hover:opacity-40 transition-opacity mb-6`}>{step.num}</div>
-                                <h3 className="text-lg font-black text-slate-900 mb-3">{step.title}</h3>
+                            <div key={i} className="g-card group">
+                                <div className={`text-5xl font-serif font-black ${step.color} opacity-20 group-hover:opacity-40 transition-opacity mb-6`}>{step.num}</div>
+                                <h3 className="text-lg font-black text-slate-900 mb-3 uppercase tracking-tight">{step.title}</h3>
                                 <p className="text-slate-500 text-sm leading-relaxed">{step.desc}</p>
                             </div>
                         ))}
@@ -528,21 +514,21 @@ export default function StaticLandingPage({ branding }: { branding?: any }) {
             {/* ─── CORE MODULES ─── */}
             <section className="py-28 px-6 max-w-7xl mx-auto">
                 <div className="text-center mb-20">
-                    <span className="text-xs font-black uppercase tracking-[0.15em] text-slate-400 block mb-4">Platform Modules</span>
-                    <h2 className="text-4xl font-black text-slate-900 leading-tight">Everything Your Business Needs</h2>
+                    <span className="text-xs font-mono font-black uppercase tracking-[0.15em] text-slate-400 block mb-4">Platform Modules</span>
+                    <h2 className="text-4xl font-serif font-black text-slate-900 leading-tight">Everything Your Business Needs</h2>
                     <p className="text-slate-500 mt-4 text-lg max-w-2xl mx-auto">One platform. Complete control. Every tool to grow on WhatsApp.</p>
                 </div>
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {MODULES.map((mod, i) => (
-                        <div key={i} className={`${mod.bg} rounded-2xl border ${mod.border} hover:border-slate-200 p-8 hover:shadow-lg transition-all group`}>
-                            <div className="p-3 bg-white rounded-xl inline-flex mb-5 shadow-sm group-hover:scale-110 transition-transform">
+                        <div key={i} className={`g-card ${mod.bg}`}>
+                            <div className="p-3 bg-white border-2 border-slate-900 inline-flex mb-5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] group-hover:-translate-y-1 transition-transform">
                                 {mod.icon}
                             </div>
                             <h3 className="text-xl font-black text-slate-900 mb-3">{mod.title}</h3>
                             <p className="text-slate-600 text-sm leading-relaxed mb-5">{mod.desc}</p>
                             <div className="flex flex-wrap gap-2">
                                 {mod.tags.map((tag, j) => (
-                                    <span key={j} className="bg-white text-slate-500 text-[11px] font-bold uppercase tracking-wider px-3 py-1 rounded-full border border-slate-200">
+                                    <span key={j} className="bg-white text-slate-700 font-mono text-[10px] font-bold uppercase tracking-widest px-3 py-1 border-2 border-slate-900 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
                                         {tag}
                                     </span>
                                 ))}
@@ -566,18 +552,18 @@ export default function StaticLandingPage({ branding }: { branding?: any }) {
                             { title: "Design Automation", desc: "Build omni-channel flows that handle chats, emails, and meetings automatically." },
                             { title: "Start Growing", desc: "Launch campaigns and let the AI autopilot handle enquiries while you close deals." },
                         ].map((step, i) => (
-                            <div key={i} className="text-center group">
-                                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-green-500/20 to-blue-500/10 border border-green-500/30 text-green-400 font-black text-xl flex items-center justify-center mx-auto mb-6 group-hover:border-green-400 transition-colors">
-                                    {i + 1}
+                            <div key={i} className="text-center group p-6 bg-slate-900 border-2 border-white/20">
+                                <div className="w-12 h-12 border-2 border-white text-white font-mono font-black text-xl flex items-center justify-center mx-auto mb-6">
+                                    0{i + 1}
                                 </div>
-                                <h3 className="text-white font-black text-lg mb-3">{step.title}</h3>
+                                <h3 className="text-white font-serif font-black text-lg mb-3">{step.title}</h3>
                                 <p className="text-slate-400 text-sm leading-relaxed">{step.desc}</p>
                             </div>
                         ))}
                     </div>
                     <div className="text-center mt-16">
-                        <Link href="/register" className="inline-flex items-center gap-2 bg-[#27954D] hover:bg-[#1f7a3f] text-white font-bold px-10 py-4 rounded-xl transition-all shadow-xl shadow-green-900/30 text-base">
-                            Start Free Trial <ArrowRight size={18} />
+                        <Link href="/register" className="g-btn-primary">
+                            Start Free Trial <ArrowRight size={18} className="ml-2" />
                         </Link>
                     </div>
                 </div>
@@ -592,18 +578,18 @@ export default function StaticLandingPage({ branding }: { branding?: any }) {
                     </div>
                     <div className="grid md:grid-cols-3 gap-6">
                         {TESTIMONIALS.map((t, i) => (
-                            <div key={i} className="bg-slate-50 rounded-2xl border border-slate-100 p-8 hover:shadow-lg hover:bg-white transition-all">
+                            <div key={i} className="g-card">
                                 <div className="flex items-center gap-1 mb-5">
-                                    {[...Array(t.stars)].map((_, j) => <Star key={j} size={14} className="fill-amber-400 text-amber-400" />)}
+                                    {[...Array(t.stars)].map((_, j) => <Star key={j} size={14} className="fill-slate-900 text-slate-900" />)}
                                 </div>
-                                <p className="text-slate-700 leading-relaxed mb-6 text-[15px]">"{t.text}"</p>
-                                <div className="flex items-center gap-3">
-                                    <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${t.color} flex items-center justify-center text-white font-black text-sm flex-shrink-0`}>
+                                <p className="text-slate-800 font-serif leading-relaxed mb-6 text-[15px]">"{t.text}"</p>
+                                <div className="flex items-center gap-3 border-t-2 border-slate-900 pt-4">
+                                    <div className="w-8 h-8 border-2 border-slate-900 bg-slate-900 text-white flex items-center justify-center font-mono font-black text-xs">
                                         {t.avatar}
                                     </div>
                                     <div>
                                         <p className="font-black text-slate-900 text-sm">{t.name}</p>
-                                        <p className="text-slate-400 text-xs">{t.role}</p>
+                                        <p className="text-slate-500 text-xs font-mono">{t.role}</p>
                                     </div>
                                 </div>
                             </div>
@@ -734,56 +720,55 @@ export default function StaticLandingPage({ branding }: { branding?: any }) {
             </section>
 
             {/* ─── PARTNER CALLOUT ─── */}
-            <section className="py-28 px-6 bg-slate-50">
+            <section className="py-28 px-6 bg-blueprint">
                 <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-8">
-                    <div className="bg-gradient-to-br from-green-50 to-blue-50 border border-green-100 rounded-3xl p-12">
-                        <span className="text-xs font-black uppercase tracking-[0.15em] text-green-600 block mb-4">For Marketers & Agencies</span>
-                        <h3 className="text-3xl font-black text-slate-900 leading-tight mb-4">Become an Affiliate Partner</h3>
+                    <div className="bg-white border-4 border-slate-900 p-12 shadow-[12px_12px_0px_0px_rgba(0,0,0,1)]">
+                        <span className="text-xs font-mono font-black uppercase tracking-[0.15em] text-slate-500 block mb-4">For Marketers & Agencies</span>
+                        <h3 className="text-3xl font-serif font-black text-slate-900 leading-tight mb-4">Become an Affiliate Partner</h3>
                         <p className="text-slate-600 mb-8 leading-relaxed">Earn recurring commission by recommending {platformName}. No technical knowledge required.</p>
                         <div className="flex flex-wrap gap-3 mb-8">
                             {["Recurring Commission", "Auto Wallet Credit", "Bank Withdrawal", "No Limit"].map((t, i) => (
-                                <span key={i} className="bg-white text-slate-600 text-[11px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-full border border-slate-200">{t}</span>
+                                <span key={i} className="bg-white text-slate-900 font-mono text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 border-2 border-slate-900 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">{t}</span>
                             ))}
                         </div>
-                        <SmartPartnerLink destinationType="affiliate" className="inline-flex items-center gap-2 bg-[#27954D] text-white font-bold px-7 py-3.5 rounded-xl hover:bg-[#1f7a3f] transition-all text-sm">
-                            Become an Affiliate <ArrowRight size={16} />
+                        <SmartPartnerLink destinationType="affiliate" className="g-btn-primary text-sm">
+                            Become an Affiliate <ArrowRight size={16} className="ml-2" />
                         </SmartPartnerLink>
                     </div>
 
-                    <div className="bg-gradient-to-br from-slate-900 to-[#042F94] rounded-3xl p-12 text-white">
-                        <span className="text-xs font-black uppercase tracking-[0.15em] text-blue-300 block mb-4">For Builders & Tech Companies</span>
-                        <h3 className="text-3xl font-black leading-tight mb-4">Launch Your Own WhatsApp Platform</h3>
+                    <div className="bg-slate-900 border-4 border-slate-900 p-12 text-white shadow-[12px_12px_0px_0px_rgba(0,0,0,1)]">
+                        <span className="text-xs font-mono font-black uppercase tracking-[0.15em] text-slate-400 block mb-4">For Builders & Tech Companies</span>
+                        <h3 className="text-3xl font-serif font-black leading-tight mb-4">Launch Your Own WhatsApp Platform</h3>
                         <p className="text-slate-300 mb-8 leading-relaxed">Own a branded WhatsApp BSP platform. Custom domain. Custom pricing. Full white-label control.</p>
                         <div className="flex flex-wrap gap-3 mb-8">
                             {["Custom Branding", "Custom Domain", "Vendor Management", "Revenue Dashboard"].map((t, i) => (
-                                <span key={i} className="bg-white/10 text-white/80 text-[11px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-full border border-white/20">{t}</span>
+                                <span key={i} className="bg-slate-800 text-white font-mono text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 border border-white/20">{t}</span>
                             ))}
                         </div>
-                        <Link href="/platform-partner" className="inline-flex items-center gap-2 bg-white text-slate-900 font-bold px-7 py-3.5 rounded-xl hover:bg-slate-100 transition-all text-sm">
-                            Launch Your Platform <ArrowRight size={16} />
+                        <Link href="/platform-partner" className="g-btn-outline text-slate-900 text-sm">
+                            Launch Your Platform <ArrowRight size={16} className="ml-2" />
                         </Link>
                     </div>
                 </div>
             </section>
 
             {/* ─── FINAL CTA ─── */}
-            <section className="py-28 px-6 bg-[#0F172A] relative overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-br from-green-900/20 to-blue-900/20 pointer-events-none" />
+            <section className="py-28 px-6 bg-slate-900 border-t-4 border-slate-900 relative overflow-hidden">
                  <div className="max-w-4xl mx-auto text-center relative z-10">
-                    <div className="inline-block bg-white/5 border border-white/10 rounded-2xl px-6 py-3 text-sm text-slate-300 font-medium mb-8">
-                        {platformName} is not just a WhatsApp tool. It is scalable business infrastructure.
+                    <div className="inline-block bg-white border-2 border-white px-4 py-2 text-xs font-mono font-bold text-slate-900 mb-8 uppercase tracking-widest shadow-[4px_4px_0px_0px_rgba(255,255,255,0.2)]">
+                        Enterprise Infrastructure
                     </div>
-                     <h2 className="text-5xl font-black text-white leading-tight mb-6">
+                     <h2 className="text-5xl font-serif font-black text-white leading-tight mb-6">
                         Ready to Automate Your<br />WhatsApp Business?
                     </h2>
-                    <p className="text-slate-400 text-xl leading-relaxed mb-12 max-w-xl mx-auto">
+                    <p className="text-slate-300 text-xl leading-relaxed mb-12 max-w-xl mx-auto">
                         Join 500+ businesses, agencies, institutes, and ecommerce brands growing on {platformName}.
                     </p>
-                    <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                        <Link href="/register" className="flex items-center gap-2 bg-[#27954D] hover:bg-[#1f7a3f] text-white font-bold px-10 py-4 rounded-xl transition-all shadow-xl shadow-green-900/40 text-base">
-                            Start Free Trial <ArrowRight size={18} />
+                    <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
+                        <Link href="/register" className="g-btn-primary">
+                            Start Free Trial <ArrowRight size={18} className="ml-2" />
                         </Link>
-                        <Link href="/pricing" className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white font-bold px-10 py-4 rounded-xl border border-white/20 transition-all text-base">
+                        <Link href="/pricing" className="g-btn-outline bg-white text-slate-900">
                             View Pricing
                         </Link>
                     </div>

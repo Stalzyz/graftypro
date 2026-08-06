@@ -1,0 +1,12 @@
+#!/usr/bin/expect -f
+
+set SERVER "root@72.61.231.187"
+set PASS "Photoshop09@"
+set timeout 60
+
+puts "==> Finding Pummy's workspace..."
+spawn ssh -o StrictHostKeyChecking=no $SERVER {docker exec grafty_postgres psql -U user -d wabot_bsp -c "SELECT w.id, w.name, w.business_name, w.created_at FROM workspaces w WHERE LOWER(w.name) LIKE '%pummy%' OR LOWER(w.business_name) LIKE '%pummy%' LIMIT 5;"}
+expect {
+    "assphrase" { send "$PASS\r"; exp_continue }
+    eof
+}

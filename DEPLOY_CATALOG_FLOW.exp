@@ -1,0 +1,35 @@
+#!/usr/bin/expect -f
+# DEPLOY ECOMMERCE CATALOG NODE FLOW
+
+set SERVER "root@72.61.231.187"
+set PASS "Photoshop09@"
+set timeout 300
+
+puts "==> Step 1: Uploading updated CatalogNode.tsx + insert_catalog_flow.ts..."
+spawn scp -o StrictHostKeyChecking=no components/flow-builder/nodes/CatalogNode.tsx $SERVER:/root/grafty_bsp/components/flow-builder/nodes/CatalogNode.tsx
+expect {
+    "assphrase" { send "$PASS\r"; exp_continue }
+    eof
+}
+
+spawn scp -o StrictHostKeyChecking=no scripts/insert_catalog_flow.ts $SERVER:/root/grafty_bsp/scripts/insert_catalog_flow.ts
+expect {
+    "assphrase" { send "$PASS\r"; exp_continue }
+    eof
+}
+
+puts "==> Step 2: Executing insert_catalog_flow.ts inside container..."
+spawn ssh -o StrictHostKeyChecking=no $SERVER {docker cp /root/grafty_bsp/scripts/insert_catalog_flow.ts grafty_bsp-web-1:/app/scripts/insert_catalog_flow.ts && docker exec grafty_bsp-web-1 npx tsx scripts/insert_catalog_flow.ts}
+expect {
+    "assphrase" { send "$PASS\r"; exp_continue }
+    eof
+}
+
+puts "==> Step 3: Rebuilding containers for frontend updates..."
+spawn ssh -o StrictHostKeyChecking=no $SERVER {cd /root/grafty_bsp && docker compose -f docker-compose.prod.yml up -d --build 2>&1 | tail -20}
+expect {
+    "assphrase" { send "$PASS\r"; exp_continue }
+    eof
+}
+
+puts "DONE: CATALOG FLOW DEPLOY COMPLETE"

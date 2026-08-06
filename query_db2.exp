@@ -1,0 +1,9 @@
+#!/usr/bin/expect -f
+set SERVER "root@72.61.231.187"
+set PASS "Photoshop09@"
+set timeout 20
+spawn ssh -o StrictHostKeyChecking=no -o PubkeyAuthentication=no $SERVER "cd /root/grafty_bsp && docker compose -f docker-compose.prod.yml exec -T web node -e \"const { PrismaClient } = require('@prisma/client'); const prisma = new PrismaClient(); async function main() { const plans = await prisma.subscriptionPlan.findMany({ select: { id: true, name: true, price: true } }); console.log(JSON.stringify(plans)); } main().finally(() => prisma.\\\$disconnect());\""
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}

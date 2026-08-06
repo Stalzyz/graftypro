@@ -1,0 +1,9 @@
+#!/usr/bin/expect -f
+set SERVER "root@72.61.231.187"
+set PASS "Photoshop09@"
+set timeout 15
+spawn ssh -o StrictHostKeyChecking=no -o PubkeyAuthentication=no $SERVER "grep -i 'PACKAGES_DELETE' /root/grafty_bsp/web.log || echo 'Not Found'"
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}

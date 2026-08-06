@@ -109,37 +109,44 @@ export default function AdminPayoutsPage() {
                                         <div className="text-[10px] text-zinc-500 truncate max-w-[150px]">{JSON.stringify(p.payment_details)}</div>
                                     </td>
                                     <td className="px-6 py-4">
-                                        <div className="flex items-center gap-2">
-                                            <div className={`px-2 py-0.5 rounded-full text-[10px] font-black tracking-widest uppercase border ${
-                                                p.risk_score > 70 ? 'bg-red-500/20 text-red-400 border-red-500/30 animate-pulse' :
-                                                p.risk_score > 40 ? 'bg-orange-500/20 text-orange-400 border-orange-500/30' :
-                                                'bg-zinc-800 text-zinc-500 border-zinc-700'
-                                            }`}>
-                                                Risk {p.risk_score}%
-                                            </div>
-                                            {p.risk_flags && p.risk_flags.length > 0 && (
-                                                <div className="flex items-center gap-1 group/flags relative">
-                                                    <div className="w-2 h-2 rounded-full bg-blue-500 animate-ping absolute -top-0.5 -right-0.5" />
-                                                    <AlertTriangle size={12} className={p.risk_score > 70 ? 'text-red-400' : 'text-orange-400'} />
-                                                    <div className="text-[8px] text-zinc-600 font-black cursor-help hover:text-blue-400 transition-colors">
-                                                        {p.risk_flags.length} Signal(s)
-                                                    </div>
-                                                    
-                                                    {/* Tooltip on hover */}
-                                                    <div className="absolute bottom-full left-0 mb-2 w-48 bg-zinc-950 border border-zinc-800 p-3 rounded-xl shadow-2xl opacity-0 invisible group-hover/flags:opacity-100 group-hover/flags:visible transition-all z-20 pointer-events-none">
-                                                        <p className="text-[8px] font-black uppercase tracking-widest text-zinc-500 mb-2 border-b border-zinc-900 pb-1">Fraud Signals</p>
-                                                        <div className="space-y-1.5">
-                                                            {p.risk_flags.map((f: any, i: number) => (
-                                                                <div key={i} className="flex justify-between items-start gap-2">
-                                                                    <span className="text-[8px] font-bold text-zinc-300 italic">#{f.flag}</span>
-                                                                    <span className={`text-[7px] font-black px-1 rounded uppercase ${
-                                                                        f.severity === 'HIGH' ? 'text-red-400 bg-red-400/10' : 'text-orange-400 bg-orange-400/10'
-                                                                    }`}>{f.severity}</span>
-                                                                </div>
-                                                            ))}
+                                        <div className="flex flex-col gap-2">
+                                            <div className="flex items-center gap-2">
+                                                <div className={`px-2 py-0.5 rounded-full text-[10px] font-black tracking-widest uppercase border ${
+                                                    p.risk_score > 70 ? 'bg-red-500/20 text-red-400 border-red-500/30 animate-pulse' :
+                                                    p.risk_score > 40 ? 'bg-orange-500/20 text-orange-400 border-orange-500/30' :
+                                                    'bg-zinc-800 text-zinc-500 border-zinc-700'
+                                                }`}>
+                                                    Risk {p.risk_score}%
+                                                </div>
+                                                {p.risk_flags && p.risk_flags.length > 0 && (
+                                                    <div className="flex items-center gap-1 group/flags relative">
+                                                        <div className="w-2 h-2 rounded-full bg-blue-500 animate-ping absolute -top-0.5 -right-0.5" />
+                                                        <AlertTriangle size={12} className={p.risk_score > 70 ? 'text-red-400' : 'text-orange-400'} />
+                                                        <div className="text-[8px] text-zinc-600 font-black cursor-help hover:text-blue-400 transition-colors">
+                                                            {p.risk_flags.length} Signal(s)
+                                                        </div>
+                                                        
+                                                        {/* Tooltip on hover */}
+                                                        <div className="absolute bottom-full left-0 mb-2 w-48 bg-zinc-950 border border-zinc-800 p-3 rounded-xl shadow-2xl opacity-0 invisible group-hover/flags:opacity-100 group-hover/flags:visible transition-all z-20 pointer-events-none">
+                                                            <p className="text-[8px] font-black uppercase tracking-widest text-zinc-500 mb-2 border-b border-zinc-900 pb-1">Fraud Signals</p>
+                                                            <div className="space-y-1.5">
+                                                                {p.risk_flags.map((f: any, i: number) => (
+                                                                    <div key={i} className="flex justify-between items-start gap-2">
+                                                                        <span className="text-[8px] font-bold text-zinc-300 italic">#{f.flag}</span>
+                                                                        <span className={`text-[7px] font-black px-1 rounded uppercase ${
+                                                                            f.severity === 'HIGH' ? 'text-red-400 bg-red-400/10' : 'text-orange-400 bg-orange-400/10'
+                                                                        }`}>{f.severity}</span>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
                                                         </div>
                                                     </div>
-                                                </div>
+                                                )}
+                                            </div>
+                                            {p.invoice_url && (
+                                                <a href={p.invoice_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[9px] font-black uppercase text-blue-400 hover:text-blue-300 transition-colors w-max">
+                                                    <ExternalLink size={10} /> View Invoice
+                                                </a>
                                             )}
                                         </div>
                                     </td>

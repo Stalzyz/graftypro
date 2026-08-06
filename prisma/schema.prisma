@@ -332,6 +332,10 @@ model CommerceProduct {
   weight_grams  Int                @default(0)
   is_cod_available Boolean         @default(true)
 
+  // Inventory Control
+  low_stock_threshold Int           @default(5)
+  track_inventory     Boolean       @default(true)
+
   is_active     Boolean            @default(true)
   created_at    DateTime           @default(now())
   updated_at    DateTime           @updatedAt
@@ -340,10 +344,27 @@ model CommerceProduct {
   category      CommerceCategory?  @relation(fields: [category_id], references: [id])
   variants      CommerceProductVariant[]
   order_items   CommerceOrderItem[]
+  inventory_logs CommerceInventoryLog[]
 
   @@unique([store_id, external_id])
   @@index([store_id])
   @@map("commerce_products")
+}
+
+model CommerceInventoryLog {
+  id           String          @id @default(uuid())
+  product_id   String
+  variant_id   String?
+  change       Int             // Positive for restock, negative for sale
+  new_stock    Int
+  reason       String          // SALE, RESTOCK, ADJUSTMENT, RETURN
+  reference_id String?         // Order ID, Admin ID, or System
+  created_at   DateTime        @default(now())
+
+  product      CommerceProduct @relation(fields: [product_id], references: [id], onDelete: Cascade)
+
+  @@index([product_id])
+  @@map("commerce_inventory_logs")
 }
 
 model CommerceProductVariant {
@@ -1937,6 +1958,7 @@ model ResellerPayoutRequest {
   // Payment Details
   payment_method  String?             // RAZORPAY, BANK_TRANSFER, etc.
   payment_details Json?               // VPA or Bank details
+  invoice_url     String?             // Uploaded GST invoice
   admin_notes     String?
   
   // Fraud Detection

@@ -133,7 +133,7 @@ export class CommerceService {
             description: cleanData.description || "",
             price: parseFloat(cleanData.price) || 0,
             compare_at_price: cleanData.compare_at_price ? parseFloat(cleanData.compare_at_price) : null,
-            stock: parseInt(cleanData.stock) || 0,
+            stock: cleanData.stock !== undefined && cleanData.stock !== null && !isNaN(parseInt(cleanData.stock)) ? parseInt(cleanData.stock) : 100,
             image_urls: cleanData.image_urls || [],
             sku: cleanData.sku || null,
             store_id: storeId,
@@ -462,5 +462,33 @@ export class CommerceService {
             config.password = decrypt(config.password);
         }
         return config;
+    }
+
+    /**
+     * Atomically adjust product stock and record inventory movement log
+     */
+    static async adjustStock(productId: string, delta: number, reason: string = "ADJUSTMENT", referenceId?: string) {
+        return await prisma.$transaction(async (tx) => {
+            const product = await tx.commerceProduct.findUnique({ where: { id: productId } });
+            if (!product) throw new Error("Product not found");
+
+            const newStock = Math.max(0, product.stock + delta);
+            const updated = await tx.commerceProduct.update({
+                where: { id: productId },
+                data: { stock: newStock }
+            });
+
+            await (tx as any).commerceInventoryLog.create({
+                data: {
+                    product_id: productId,
+                    change: delta,
+                    new_stock: newStock,
+                    reason,
+                    reference_id: referenceId || null
+                }
+            });
+
+            return updated;
+        });
     }
 }

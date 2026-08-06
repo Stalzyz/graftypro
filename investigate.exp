@@ -1,0 +1,13 @@
+#!/usr/bin/expect -f
+set SERVER "root@72.61.231.187"
+set PASS "Photoshop09@"
+set timeout 10
+spawn ssh -o StrictHostKeyChecking=no -o PubkeyAuthentication=no $SERVER "docker compose -f /root/grafty_bsp/docker-compose.prod.yml exec -T postgres psql -U user -d wabot_bsp -c \"
+SELECT w.id, w.plan, w.subscription_status, w.current_plan_id, sp.name as plan_name, sp.is_active, sp.hidden_plan
+FROM workspaces w
+LEFT JOIN subscription_plans sp ON w.current_plan_id = sp.id
+WHERE w.id = '3b04fc39-771d-4add-b3aa-bd4373dc84f7';\""
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}

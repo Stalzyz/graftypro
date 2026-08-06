@@ -52,6 +52,7 @@ const nodeTypes = {
     order_summary: OrderSummaryNode,
     meta_template: MetaTemplateNode,
     location: LocationNode,
+    collect_input: MessageNode,
 };
 
 // ── Default Canvas ───────────────────────────────────────────────────────────

@@ -96,7 +96,8 @@ export async function POST(req: Request) {
                     source: "grafty_bsp_saas", 
                     plan: planName, 
                     cycle,
-                    coupon: couponCode || "none"
+                    coupon: couponCode || "none",
+                    source_workspace_id: user.workspaceId
                 }
             });
         } catch (subErr: any) {
@@ -139,7 +140,8 @@ export async function POST(req: Request) {
                         source: "grafty_bsp_saas", 
                         plan: planName, 
                         cycle,
-                        coupon: couponCode || "none"
+                        coupon: couponCode || "none",
+                        source_workspace_id: user.workspaceId
                     }
                 });
             } else {

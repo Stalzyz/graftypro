@@ -1,0 +1,24 @@
+#!/usr/bin/expect -f
+
+set SERVER "root@72.61.231.187"
+set PASS "Photoshop09@"
+set REMOTE "/root/grafty_bsp"
+set timeout -1
+
+puts "==> Uploading deploy_ecommerce.tar.gz..."
+spawn scp -o StrictHostKeyChecking=no deploy_ecommerce.tar.gz $SERVER:$REMOTE/deploy_ecommerce.tar.gz
+expect {
+    "assword:" { send "$PASS\r"; exp_continue }
+    "assphrase" { send "$PASS\r"; exp_continue }
+    eof
+}
+
+puts "==> Extracting, Updating Database, and Rebuilding Container..."
+spawn ssh -o StrictHostKeyChecking=no $SERVER "cd $REMOTE && tar -xzf deploy_ecommerce.tar.gz && docker exec grafty_bsp-web-1 npx prisma db push --skip-generate && docker exec grafty_bsp-web-1 npx ts-node scripts/fix-existing-product-stock.ts || true && docker compose -f docker-compose.prod.yml down && docker compose -f docker-compose.prod.yml up -d --build"
+expect {
+    "assword:" { send "$PASS\r"; exp_continue }
+    "assphrase" { send "$PASS\r"; exp_continue }
+    eof
+}
+
+puts "✅ ECOMMERCE DEPLOYMENT & STOCK FIX COMPLETE"

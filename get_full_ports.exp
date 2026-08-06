@@ -1,0 +1,9 @@
+#!/usr/bin/expect -f
+set SERVER "root@72.61.231.187"
+set PASS "Photoshop09@"
+set timeout 30
+spawn ssh -o StrictHostKeyChecking=no -o PubkeyAuthentication=no $SERVER "pm2 list && docker ps --format '{{.Names}}: {{.Ports}}' && grep -r proxy_pass /etc/nginx/sites-enabled/ && netstat -tulpn | grep LISTEN"
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}

@@ -1,0 +1,10 @@
+#!/usr/bin/expect -f
+set SERVER "root@72.61.231.187"
+set PASS "Photoshop09@"
+set timeout 10
+spawn ssh -o StrictHostKeyChecking=no -o PubkeyAuthentication=no $SERVER "docker compose -f /root/grafty_bsp/docker-compose.prod.yml exec -T postgres psql -U user -d wabot_bsp -c \"
+SELECT id, brand_name, domain, home_page_type, custom_home_html FROM brandings WHERE domain LIKE '%grekam.in%';\""
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}

@@ -1,0 +1,9 @@
+#!/usr/bin/expect -f
+set SERVER "root@72.61.231.187"
+set PASS "Photoshop09@"
+set timeout 30
+spawn ssh -o StrictHostKeyChecking=no -o PubkeyAuthentication=no $SERVER "sed -i 's/proxy_pass http:\\/\\/localhost:3000;/proxy_pass http:\\/\\/localhost:5050;/g' /etc/nginx/sites-available/grekam.in && nginx -t && systemctl reload nginx"
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}

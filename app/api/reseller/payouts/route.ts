@@ -31,7 +31,7 @@ export async function POST(req: Request) {
         const session = await getResellerSession();
         if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-        const { amount, method, account_details } = await req.json();
+        const { amount, method, account_details, invoice_url } = await req.json();
 
         // Check for bank details
         const reseller = await prisma.reseller.findUnique({
@@ -48,7 +48,7 @@ export async function POST(req: Request) {
         const request = await ResellerService.requestPayout(
             session.userId,
             Number(amount),
-            account_details || {}
+            { ...account_details, invoiceUrl: invoice_url }
         );
 
         return NextResponse.json({ 

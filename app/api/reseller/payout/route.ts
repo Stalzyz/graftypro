@@ -11,7 +11,7 @@ export async function POST(req: Request) {
         const resellerId = headers().get("x-reseller-id");
         if (!resellerId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-        const { amount, payment_method, payment_details } = await req.json();
+        const { amount, payment_method, payment_details, invoice_url } = await req.json();
 
         if (!amount || amount <= 0) {
             return NextResponse.json({ error: "Invalid amount" }, { status: 400 });
@@ -20,7 +20,8 @@ export async function POST(req: Request) {
         // Use the refined service to request payout (includes fraud checks)
         const payout = await ResellerService.requestPayout(resellerId, amount, {
             method: payment_method,
-            details: payment_details
+            details: payment_details,
+            invoiceUrl: invoice_url
         });
 
         return NextResponse.json({

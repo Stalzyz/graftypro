@@ -1,0 +1,12 @@
+#!/usr/bin/expect -f
+set SERVER "root@72.61.231.187"
+set PASS "Photoshop09@"
+set timeout 10
+spawn ssh -o StrictHostKeyChecking=no -o PubkeyAuthentication=no $SERVER "docker compose -f /root/grafty_bsp/docker-compose.prod.yml exec -T postgres psql -U user -d wabot_bsp -c \"
+SELECT d.domain, r.home_page_type, substring(r.custom_home_html for 50) as custom_html 
+FROM partner_domains d
+JOIN resellers r ON d.reseller_id = r.id;\""
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}

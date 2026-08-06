@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect } from 'react';
-import { MessageCircle, X, Send, Sparkles } from 'lucide-react';
+import { MessageCircle, X, Send } from 'lucide-react';
 
 interface WhatsAppWidgetProps {
     branding?: any;
@@ -103,9 +103,6 @@ export function WhatsAppWidget({ branding }: WhatsAppWidgetProps) {
             >
                 {isOpen ? <X size={28} /> : (
                     <>
-                        <div className="absolute -top-2 -right-2 bg-slate-900 text-white p-1 rounded-lg animate-bounce border-2 border-white">
-                            <Sparkles size={12} />
-                        </div>
                         <MessageCircle size={32} />
                     </>
                 )}

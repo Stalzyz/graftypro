@@ -1,0 +1,50 @@
+#!/usr/bin/expect -f
+# =====================================================================
+# HOTFIX DEPLOYMENT SCRIPT
+# Pushes the trial status and Razorpay bug fixes to the VPS
+# =====================================================================
+
+set SERVER "root@72.61.231.187"
+set PASS "Photoshop09@"
+set REMOTE "/root/grafty_bsp"
+set timeout -1
+
+puts "\n============================================="
+puts "🚀 DEPLOYING HOTFIX TO PRODUCTION 🚀"
+puts "=============================================\n"
+
+puts "==> \[1/4\] Uploading patched app/api/auth/trial-status/route.ts..."
+spawn scp -o StrictHostKeyChecking=no app/api/auth/trial-status/route.ts $SERVER:$REMOTE/app/api/auth/trial-status/route.ts
+expect {
+    "assword:" { send "$PASS\r"; exp_continue }
+    "assphrase" { send "$PASS\r"; exp_continue }
+    eof
+}
+
+puts "==> \[2/4\] Uploading patched app/api/dashboard/stats/route.ts..."
+spawn scp -o StrictHostKeyChecking=no app/api/dashboard/stats/route.ts $SERVER:$REMOTE/app/api/dashboard/stats/route.ts
+expect {
+    "assword:" { send "$PASS\r"; exp_continue }
+    "assphrase" { send "$PASS\r"; exp_continue }
+    eof
+}
+
+puts "==> \[3/4\] Uploading patched app/api/billing/subscription/route.ts..."
+spawn scp -o StrictHostKeyChecking=no app/api/billing/subscription/route.ts $SERVER:$REMOTE/app/api/billing/subscription/route.ts
+expect {
+    "assword:" { send "$PASS\r"; exp_continue }
+    "assphrase" { send "$PASS\r"; exp_continue }
+    eof
+}
+
+puts "\n==> \[4/4\] Rebuilding Production Docker Container..."
+spawn ssh -o StrictHostKeyChecking=no $SERVER "cd $REMOTE && docker compose -f docker-compose.prod.yml down && docker compose -f docker-compose.prod.yml up -d --build"
+expect {
+    "assword:" { send "$PASS\r"; exp_continue }
+    "assphrase" { send "$PASS\r"; exp_continue }
+    eof
+}
+
+puts "\n======================================================="
+puts "✅ HOTFIX DEPLOYMENT COMPLETE."
+puts "=======================================================\n"

@@ -52,25 +52,31 @@
     color: var(--text-muted);
 }
 
-/* Buttons */
+/* Brutalist Buttons */
 .g-btn-primary {
-    background: var(--brand-gradient);
+    background: var(--brand-dark);
     color: white;
     padding: 1rem 2rem;
-    font-weight: 600;
-    border-radius: var(--radius);
-    transition: all 0.3s ease;
+    font-family: var(--font-mono), monospace;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    border: 2px solid #000;
+    border-radius: 0;
+    transition: all 0.1s ease;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    border: none;
     cursor: pointer;
-    box-shadow: 0 10px 15px -3px rgba(34, 133, 87, 0.2);
+    box-shadow: 4px 4px 0px 0px rgba(0,0,0,1);
+}
+
+.g-btn-primary:active {
+    transform: translate(4px, 4px);
+    box-shadow: 0px 0px 0px 0px rgba(0,0,0,1);
 }
 
 .g-btn-primary:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 20px 25px -5px rgba(34, 133, 87, 0.3);
     filter: brightness(1.1);
 }
 
@@ -78,18 +84,26 @@
     background: white;
     color: var(--text-main);
     padding: 1rem 2rem;
-    font-weight: 600;
-    border-radius: var(--radius);
-    border: 1px solid #E2E8F0;
-    transition: all 0.2s ease;
+    font-family: var(--font-mono), monospace;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    border-radius: 0;
+    border: 2px solid #000;
+    transition: all 0.1s ease;
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    box-shadow: 4px 4px 0px 0px rgba(0,0,0,1);
+}
+
+.g-btn-outline:active {
+    transform: translate(4px, 4px);
+    box-shadow: 0px 0px 0px 0px rgba(0,0,0,1);
 }
 
 .g-btn-outline:hover {
     background: #F8FAFC;
-    border-color: #CBD5E1;
 }
 
 /* Layout Units */
@@ -106,26 +120,23 @@
 .g-card {
     background: white;
     padding: 2rem;
-    border-radius: var(--radius);
-    box-shadow: var(--card-shadow);
-    border: 1px solid #F1F5F9;
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    border-radius: 0;
+    box-shadow: 6px 6px 0px 0px rgba(0,0,0,1);
+    border: 2px solid #000;
+    transition: all 0.2s ease;
 }
 
 .g-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05);
+    transform: translate(-2px, -2px);
+    box-shadow: 8px 8px 0px 0px rgba(0,0,0,1);
 }
 
-/* Hero Special */
-.hero-gradient {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 600px;
-    background: radial-gradient(circle at 50% 0%, rgba(34, 133, 87, 0.05) 0%, transparent 70%);
-    z-index: -1;
+/* Blueprint Background */
+.bg-blueprint {
+    background-color: #faf9f6;
+    background-image: linear-gradient(#e5e7eb 1px, transparent 1px),
+    linear-gradient(90deg, #e5e7eb 1px, transparent 1px);
+    background-size: 20px 20px;
 }
 
 /* Mobile-First Adjustments */
@@ -215,5 +226,5 @@
 }
 
 .dark .hero-gradient {
-    background: radial-gradient(circle at 50% 0%, rgba(34, 133, 87, 0.1) 0%, transparent 70%);
+    display: none;
 }

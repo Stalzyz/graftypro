@@ -78,13 +78,19 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
             const p = await prisma.subscriptionPlan.findUnique({ where: { id: current_plan_id } });
             if (p) {
                 updateData.plan = normalizePlan(p.name);
+                if (updateData.plan !== 'FREE') updateData.subscription_status = 'active';
             }
         } else if (plan) {
             const p = await prisma.subscriptionPlan.findFirst({ where: { name: { equals: plan, mode: 'insensitive' } } });
             if (p) {
                 updateData.current_plan_id = p.id;
+            } else {
+                updateData.current_plan_id = null;
             }
             updateData.plan = normalizePlan(plan);
+            if (updateData.plan !== 'FREE') {
+                updateData.subscription_status = 'active';
+            }
         }
 
         if (status) updateData.status = status;

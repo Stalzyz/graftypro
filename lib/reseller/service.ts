@@ -559,6 +559,7 @@ export class ResellerService {
                     amount: amount,
                     status: "PENDING",
                     payment_details: paymentDetails,
+                    invoice_url: paymentDetails.invoiceUrl || null,
                     risk_score: riskAssessment.score,
                     risk_flags: riskAssessment.flags
                 }

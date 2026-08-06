@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, Send, ShoppingBag, Star, Bot, Sparkles } from "lucide-react";
+import { Check, Send, ShoppingBag, Star, Server } from "lucide-react";
 
 const STAGES = [
     { id: "START", duration: 1000 },
@@ -37,11 +37,11 @@ export default function BSP_Animation() {
             {/* Chat Header */}
             <div className="bg-[#075E54] p-4 flex items-center gap-3 shadow-md">
                 <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-white">
-                    <Bot size={20} />
+                    <Server size={20} />
                 </div>
                 <div>
                     <div className="text-white font-bold text-sm flex items-center gap-2">
-                        Grafty Autopilot <Sparkles size={12} className="text-yellow-400" />
+                        Grafty System <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse ml-2" />
                     </div>
                     <div className="text-white/60 text-[10px] uppercase tracking-widest font-black">Always Online</div>
                 </div>

@@ -5,7 +5,7 @@
 
 import { prisma } from '../db';
 import { FlowSessionData, advanceSession, closeSession, pauseSession, updateSessionState } from './session-manager';
-import { buildNodePayload, buildTextPayload } from './payload-builder';
+import { buildNodePayload, buildTextPayload, buildProductListPayload } from './payload-builder';
 import { enqueueMessage, sendMessageDirect } from './flow-queue';
 import { EmailService } from '../email/service';
 import { decrypt } from '../security/encryption';
@@ -447,10 +447,61 @@ async function runCatalogNode(ctx: ExecutionContext, node: any): Promise<void> {
     const data = node.data || {};
     const products = data.carouselProducts && data.carouselProducts.length > 0 ? data.carouselProducts : [{ name: data.productName || 'Product', price: data.productPrice || 'N/A', text: data.text || 'View this item!', image: data.productImage || '', id: data.productId || 'none' }];
 
+    try {
+        // Fetch store to check for native catalog integration
+        const store = await prisma.commerceStore.findFirst({
+            where: { workspace_id: session.workspace_id },
+            select: { catalog_id: true, name: true }
+        });
+
+        if (store && store.catalog_id && products.length > 0 && products[0].id !== 'none' && products[0].id !== 'manual') {
+            // Fetch actual product_retailer_ids from DB for these specific products
+            const dbProducts = await prisma.commerceProduct.findMany({
+                where: {
+                    id: { in: products.map((p: any) => p.id) },
+                    store: { workspace_id: session.workspace_id }
+                },
+                select: { id: true, retailer_id: true, sku: true }
+            });
+
+            // Map UI products to their Meta retailer IDs
+            const retailerIds = products.map((p: any) => {
+                const dbp = dbProducts.find(dp => dp.id === p.id);
+                if (dbp) {
+                    return dbp.retailer_id || dbp.sku || dbp.id;
+                }
+                return p.id;
+            });
+
+            const payload = buildProductListPayload(
+                contact.phone,
+                store.catalog_id,
+                resolveVariables(data.label || store.name || 'Catalog', session.state, contact),
+                resolveVariables(data.text || 'Browse our products below:', session.state, contact),
+                'View Catalog',
+                [{
+                    title: 'Selected Products',
+                    product_retailer_ids: retailerIds.slice(0, 30) // Max 30 per section
+                }]
+            );
+
+            if (payload) {
+                const metaId = await sendMessageDirect({ phoneNumberId: waba.phone_number_id, accessToken: waba.access_token, payload, sessionId: session.id, nodeId: node.id, workspaceId: session.workspace_id, contactId: contact.id });
+                if (metaId) await saveOutboundMessage(waba, contact, metaId, payload);
+                return; // Exit early since native payload was successfully dispatched
+            }
+        }
+    } catch (err: any) {
+        console.error(`[CatalogNode] Native catalog check failed: ${err.message}`);
+    }
+
+    // Fallback: Send separate interactive messages if no catalog_id or payload generation failed
     for (const prod of products) {
         const absUrl = getAbsoluteMediaUrl(prod.image);
-        const bodyText = `🏷️ *${(prod.name || 'Product').toUpperCase()}*\n\n${prod.text || 'Selection'}\n\n*Price: ₹${prod.price || 'N/A'}*`;
-        const btnTitle = (data.buttonTitle || prod.buttonTitle || 'Buy Now').substring(0, 20);
+        const resolvedProdName = resolveVariables(prod.name || 'Product', session.state, contact);
+        const resolvedProdText = resolveVariables(prod.text || 'Selection', session.state, contact);
+        const bodyText = `🏷️ *${resolvedProdName.toUpperCase()}*\n\n${resolvedProdText}\n\n*Price: ₹${prod.price || 'N/A'}*`;
+        const btnTitle = resolveVariables((data.buttonTitle || prod.buttonTitle || 'Buy Now').substring(0, 20), session.state, contact);
         const payload = {
             to: contact.phone,
             type: 'interactive',
@@ -535,7 +586,18 @@ async function runMetaFlowNode(ctx: ExecutionContext, node: any): Promise<void> 
     const { waba, contact } = ctx;
     const data = node.data || {};
     const { buildMetaFlowPayload } = await import('./payload-builder');
-    const p = buildMetaFlowPayload(contact.phone, data.flowId, data.flowCTA || 'Open', data.flowHeader || '', data.text || '', data.flowFooter || '', data.initialScreen || 'QUESTION_1', data.flowToken || `tk_${Date.now()}`, data.headerType || 'text', getAbsoluteMediaUrl(data.headerUrl));
+    const p = buildMetaFlowPayload(
+        contact.phone,
+        data.flowId,
+        resolveVariables(data.flowCTA || 'Open', ctx.session.state, contact),
+        resolveVariables(data.flowHeader || '', ctx.session.state, contact),
+        resolveVariables(data.text || '', ctx.session.state, contact),
+        resolveVariables(data.flowFooter || '', ctx.session.state, contact),
+        data.initialScreen || 'QUESTION_1',
+        data.flowToken || `tk_${Date.now()}`,
+        data.headerType || 'text',
+        getAbsoluteMediaUrl(data.headerUrl)
+    );
     if (p) {
         const metaId = await sendMessageDirect({ phoneNumberId: waba.phone_number_id, accessToken: waba.access_token, payload: p, sessionId: ctx.session.id, nodeId: node.id, workspaceId: ctx.session.workspace_id, contactId: contact.id });
         if (metaId) await saveOutboundMessage(waba, contact, metaId, p);
@@ -575,7 +637,7 @@ async function runAppointmentNode(ctx: ExecutionContext, node: any, edges: any[]
     try {
         const { AppointmentService } = await import('../services/appointment-service');
         await AppointmentService.bookSlot(contact.workspace_id, contact.id, slotId, `Booked via Flow: ${session.flow.name}`);
-        const p = buildTextPayload(contact.phone, node.data?.text || '✅ *Appointment Confirmed!*');
+        const p = buildTextPayload(contact.phone, resolveVariables(node.data?.text || '✅ *Appointment Confirmed!*', session.state, contact));
         if (p) {
             const metaId = await sendMessageDirect({ phoneNumberId: waba.phone_number_id, accessToken: waba.access_token, payload: p, sessionId: session.id, nodeId: node.id, workspaceId: session.workspace_id, contactId: contact.id });
             if (metaId) await saveOutboundMessage(waba, contact, metaId, p);
@@ -596,8 +658,9 @@ async function runOrderSummaryNode(ctx: ExecutionContext, node: any): Promise<vo
     try {
         const order = await prisma.order.findFirst({ where: { workspace_id: contact.workspace_id, contact_id: contact.id, status: 'PENDING' }, include: { items: { include: { product: true } } }, orderBy: { created_at: 'desc' } });
         if (order && order.items.length > 0) {
+            const customText = resolveVariables(node.data?.text || '📋 *Order Summary*', session.state, contact);
             const lines = order.items.map((i: any) => `• ${i.product?.name || 'Item'} x${i.quantity} — ₹${i.total_price}`);
-            const msg = `📋 *Order Summary*\n\n${lines.join('\n')}\n\n*Total: ₹${order.total_amount}*`;
+            const msg = `${customText}\n\n${lines.join('\n')}\n\n*Total: ₹${order.total_amount}*`;
             const p = buildTextPayload(contact.phone, msg);
             if (p) {
                 const metaId = await sendMessageDirect({ phoneNumberId: waba.phone_number_id, accessToken: waba.access_token, payload: p, sessionId: session.id, nodeId: node.id, workspaceId: session.workspace_id, contactId: contact.id });

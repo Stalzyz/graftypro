@@ -1,0 +1,62 @@
+#!/usr/bin/expect -f
+
+set SERVER "root@72.61.231.187"
+set PASS "Photoshop09@"
+set REMOTE "/root/grafty_bsp"
+set timeout -1
+
+puts "\n============================================="
+puts "🚀 DEPLOYING BILLING HOTFIX 🚀"
+puts "=============================================\n"
+
+puts "==> \[1/5\] Uploading patched app/api/finance/razorpay/webhook/route.ts..."
+spawn scp -o StrictHostKeyChecking=no app/api/finance/razorpay/webhook/route.ts $SERVER:$REMOTE/app/api/finance/razorpay/webhook/route.ts
+expect {
+    "assword:" { send "$PASS\r"; exp_continue }
+    "assphrase" { send "$PASS\r"; exp_continue }
+    eof
+}
+
+puts "==> \[2/5\] Uploading patched app/api/credits/recharge/verify/route.ts..."
+spawn scp -o StrictHostKeyChecking=no app/api/credits/recharge/verify/route.ts $SERVER:$REMOTE/app/api/credits/recharge/verify/route.ts
+expect {
+    "assword:" { send "$PASS\r"; exp_continue }
+    "assphrase" { send "$PASS\r"; exp_continue }
+    eof
+}
+
+puts "==> \[3/5\] Uploading patched app/api/super-admin/vendors/\[id\]/route.ts..."
+spawn scp -o StrictHostKeyChecking=no app/api/super-admin/vendors/\\\[id\\\]/route.ts $SERVER:$REMOTE/app/api/super-admin/vendors/\\\[id\\\]/route.ts
+expect {
+    "assword:" { send "$PASS\r"; exp_continue }
+    "assphrase" { send "$PASS\r"; exp_continue }
+    eof
+}
+
+puts "==> \[4/5\] Uploading patched app/api/auth/me/route.ts..."
+spawn scp -o StrictHostKeyChecking=no app/api/auth/me/route.ts $SERVER:$REMOTE/app/api/auth/me/route.ts
+expect {
+    "assword:" { send "$PASS\r"; exp_continue }
+    "assphrase" { send "$PASS\r"; exp_continue }
+    eof
+}
+
+puts "==> \[5/5\] Uploading patched app/api/billing/status/route.ts..."
+spawn scp -o StrictHostKeyChecking=no app/api/billing/status/route.ts $SERVER:$REMOTE/app/api/billing/status/route.ts
+expect {
+    "assword:" { send "$PASS\r"; exp_continue }
+    "assphrase" { send "$PASS\r"; exp_continue }
+    eof
+}
+
+puts "\n==> \[3/3\] Rebuilding Production Docker Container..."
+spawn ssh -o StrictHostKeyChecking=no $SERVER "cd $REMOTE && docker compose -f docker-compose.prod.yml down && docker compose -f docker-compose.prod.yml up -d --build"
+expect {
+    "assword:" { send "$PASS\r"; exp_continue }
+    "assphrase" { send "$PASS\r"; exp_continue }
+    eof
+}
+
+puts "\n======================================================="
+puts "✅ BILLING HOTFIX DEPLOYMENT COMPLETE."
+puts "=======================================================\n"

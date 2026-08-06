@@ -1,0 +1,34 @@
+#!/usr/bin/expect -f
+# DEPLOY E-COMMERCE FLOW + ENGINE UPGRADE
+
+set SERVER "root@72.61.231.187"
+set PASS "Photoshop09@"
+set timeout 600
+
+puts "==> Step 1: Packaging engine + scripts..."
+exec tar -czf /tmp/ecommerce_flow_deploy.tar.gz \
+    lib/engine/flow-executor.ts \
+    scripts/insert_ecommerce_flow.ts
+
+puts "==> Step 2: Uploading to server..."
+spawn scp -o StrictHostKeyChecking=no /tmp/ecommerce_flow_deploy.tar.gz $SERVER:/root/grafty_bsp/ecommerce_flow_deploy.tar.gz
+expect {
+    "assphrase" { send "$PASS\r"; exp_continue }
+    eof
+}
+
+puts "==> Step 3: Extracting + running flow insert script..."
+spawn ssh -o StrictHostKeyChecking=no $SERVER {cd /root/grafty_bsp && tar -xzf ecommerce_flow_deploy.tar.gz && docker exec grafty_bsp-web-1 npx tsx scripts/insert_ecommerce_flow.ts}
+expect {
+    "assphrase" { send "$PASS\r"; exp_continue }
+    eof
+}
+
+puts "==> Step 4: Rebuilding + restarting containers..."
+spawn ssh -o StrictHostKeyChecking=no $SERVER {cd /root/grafty_bsp && docker compose -f docker-compose.prod.yml up -d --build 2>&1 | tail -30}
+expect {
+    "assphrase" { send "$PASS\r"; exp_continue }
+    eof
+}
+
+puts "DONE: E-COMMERCE FLOW DEPLOY COMPLETE"

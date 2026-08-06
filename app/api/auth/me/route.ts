@@ -96,9 +96,16 @@ export async function GET(req: Request) {
         // @ts-ignore
         delete formattedUser.workspace.plan_details;
 
-        return NextResponse.json({
-            user: formattedUser
-        });
+        return NextResponse.json(
+            { user: formattedUser },
+            {
+                headers: {
+                    'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+                    'Pragma': 'no-cache',
+                    'Expires': '0',
+                }
+            }
+        );
 
     } catch (error) {
         return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });

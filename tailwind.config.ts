@@ -15,6 +15,10 @@ const config: Config = {
             },
             colors: {
                 // We will add our custom palette here later
+            },
+            fontFamily: {
+                serif: ['var(--font-playfair)', 'serif'],
+                mono: ['var(--font-mono)', 'monospace'],
             }
         },
     },

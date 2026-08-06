@@ -72,7 +72,7 @@ export async function GET(req: Request) {
             }),
             prisma.workspace.findUnique({
                 where: { id: workspaceId },
-                select: { trial_ends_at: true, plan: true, current_plan_id: true }
+                select: { trial_ends_at: true, plan: true, current_plan_id: true, subscription_status: true }
             }),
             prisma.user.findUnique({
                 where: { id: user.userId },
@@ -83,7 +83,8 @@ export async function GET(req: Request) {
         let trialDaysLeft = null;
         if (workspace) {
             const isFreePlanId = workspace.current_plan_id && workspace.plan === 'FREE';
-            const hasPaidPlan = (!!workspace.current_plan_id && !isFreePlanId) || (workspace.plan && workspace.plan !== 'FREE');
+            const isSubscriptionActive = workspace.subscription_status === 'active';
+            const hasPaidPlan = ((!!workspace.current_plan_id && !isFreePlanId) || (workspace.plan && workspace.plan !== 'FREE')) && isSubscriptionActive;
             
             if (!hasPaidPlan && dbUser?.email) {
                 let trialEnd = workspace.trial_ends_at;

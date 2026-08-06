@@ -55,6 +55,7 @@ export async function POST(req: Request) {
                 amount: finalCredits,
                 balance_before: Number(wallet.current_balance) - finalCredits,
                 balance_after: Number(wallet.current_balance),
+                related_payment_id: razorpay_payment_id,
                 description: `Credit Purchase via Razorpay (${razorpay_payment_id})`
             }
         });

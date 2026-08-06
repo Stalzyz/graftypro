@@ -28,8 +28,14 @@ export async function POST(req: Request) {
             const payment = payload.payment.entity;
             const order_id = payment.order_id;
             const amount = payment.amount / 100; // Convert back to main unit
-            const notes = payment.notes;
-            const workspace_id = notes.workspace_id;
+            const notes = payment.notes || {};
+            const workspace_id = notes.workspace_id || notes.workspaceId;
+
+            // Strict check to prevent "Free Credits" bug for non-recharge payments
+            if (notes.type !== "CREDIT_PURCHASE") {
+                console.log(`[Webhook] Ignoring payment.captured for non-credit purchase (type: ${notes.type})`);
+                return NextResponse.json({ status: "ignored" });
+            }
 
             console.log(`💰 Payment Captured: ${amount} for Workspace ${workspace_id}`);
 

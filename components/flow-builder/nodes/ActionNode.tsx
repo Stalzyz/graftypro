@@ -30,7 +30,9 @@ const ActionNode = ({ data, isConnectable, selected }: NodeProps) => {
                                 data.actionType === 'save_to_crm' ? 'Sync to CRM (Lead)' :
                                     data.actionType === 'google_sheet' ? 'Append to Google Sheet' :
                                         data.actionType === 'send_email' ? 'Send Notification Email' :
-                                            'Select Action'}
+                                            data.actionType === 'set_variable' ? `Set: ${data.variableKey} = ${data.variableValue}` :
+                                                data.actionType === 'compute' ? `Compute: ${data.variableKey} = ${data.expression}` :
+                                                    data.label || 'Select Action'}
                 </div>
                 {data.actionType === 'start_drip' && data.dripName && (
                     <div className="text-[10px] bg-amber-100 text-amber-800 px-2 py-1 rounded mt-1 truncate">

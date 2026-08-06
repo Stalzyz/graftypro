@@ -1,6 +1,6 @@
 
 import type { Metadata } from "next";
-import { Inter, Noto_Sans } from "next/font/google";
+import { Inter, Noto_Sans, Playfair_Display, DM_Mono } from "next/font/google";
 import { headers } from "next/headers";
 import { BrandProvider } from "../components/branding/BrandProvider";
 import { SchemaScripts } from "../components/seo/SchemaScripts";
@@ -13,6 +13,18 @@ const noto = Noto_Sans({
     subsets: ["latin"],
     weight: ['400', '700', '900'],
     variable: '--font-noto'
+});
+
+const playfair = Playfair_Display({
+    subsets: ["latin"],
+    weight: ['400', '700', '900'],
+    variable: '--font-playfair'
+});
+
+const dmMono = DM_Mono({
+    subsets: ["latin"],
+    weight: ['400', '500'],
+    variable: '--font-mono'
 });
 
 export const dynamic = "force-dynamic";
@@ -163,7 +175,7 @@ export default async function RootLayout({
                 <link rel="shortcut icon" href={versionedFavicon} />
                 <link rel="apple-touch-icon" href={versionedFavicon} />
             </head>
-            <body className={`${inter.className} ${noto.variable}`}>
+            <body className={`${inter.className} ${noto.variable} ${playfair.variable} ${dmMono.variable}`}>
                 <BrandProvider
                     brandName={brandName}
                     logoUrl={logoUrl}
