@@ -124,7 +124,7 @@ export default function FlowPropertiesPanel({ selectedNode, onChange, onClose, o
             if (selectedNode.type === 'catalog') {
                 setProductId(selectedNode.data.productId || "");
                 setStoreId(selectedNode.data.storeId || "");
-                fetch('/api/commerce/stores').then(r => r.json()).then(res => setStores(res.data || []));
+                fetch('/api/commerce/stores').then(r => r.json()).then(res => setStores(Array.isArray(res) ? res : (res.data || [])));
                 fetch('/api/commerce/products').then(r => r.json()).then(res => setProducts(res.data || []));
             }
 
