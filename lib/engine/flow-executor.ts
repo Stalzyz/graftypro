@@ -5,7 +5,7 @@
 
 import { prisma } from '../db';
 import { FlowSessionData, advanceSession, closeSession, pauseSession, updateSessionState } from './session-manager';
-import { buildNodePayload, buildTextPayload, buildProductListPayload, buildCarouselPayload } from './payload-builder';
+import { buildNodePayload, buildTextPayload, buildProductListPayload, buildCarouselPayload, buildInteractiveListPayload } from './payload-builder';
 import { enqueueMessage, sendMessageDirect } from './flow-queue';
 import { EmailService } from '../email/service';
 import { decrypt } from '../security/encryption';
@@ -121,6 +121,9 @@ async function executeNode(ctx: ExecutionContext, node: any, edges: any[], depth
             break;
         case 'appointment':
             await runAppointmentNode(ctx, node, edges, depth);
+            break;
+        case 'carousel':
+            await runCarouselNode(ctx, node);
             break;
         case 'payment':
         case 'Payment':
@@ -449,7 +452,7 @@ async function runCatalogNode(ctx: ExecutionContext, node: any): Promise<void> {
         ? data.carouselProducts 
         : [{ name: data.productName || 'Product', price: data.productPrice || 'N/A', text: data.text || 'View this item!', image: data.productImage || '', id: data.productId || 'none' }];
 
-    const productIds = products.map((p: any) => p.id).filter((id: string) => id && id !== 'none' && id !== 'manual');
+    const productIds = Array.isArray(data.carouselProducts) ? data.carouselProducts.map((p: any) => p.id) : (Array.isArray(data.products) ? data.products.map((p: any) => p.id) : []);
 
     try {
         // Fetch store to check for native catalog integration
@@ -518,6 +521,13 @@ async function runCatalogNode(ctx: ExecutionContext, node: any): Promise<void> {
                 );
 
                 if (payload) {
+                    // Attach previews so Live Chat UI knows the images for native catalog!
+                    payload._previews = dbProducts.filter((dp: any) => retailerIds.includes(dp.retailer_id || dp.external_id || dp.sku)).map((c: any) => ({
+                        id: c.retailer_id || c.external_id || c.sku,
+                        title: c.name,
+                        image: Array.isArray(c.images) && c.images.length > 0 ? c.images[0] : null
+                    }));
+
                     console.log(`[CatalogNode] ✅ Sending native product_list for catalog ${store.catalog_id}`);
                     try {
                         const metaId = await sendMessageDirect({ phoneNumberId: waba.phone_number_id, accessToken: waba.access_token, payload, sessionId: session.id, nodeId: node.id, workspaceId: session.workspace_id, contactId: contact.id });
@@ -536,31 +546,82 @@ async function runCatalogNode(ctx: ExecutionContext, node: any): Promise<void> {
         console.error(`[CatalogNode] Native catalog check failed: ${err.message}`);
     }
 
-    // Fallback: Send generic WhatsApp Carousel (Cards) if no catalog_id or no valid retailer IDs
-    console.log(`[CatalogNode] Falling back to generic carousel for ${products.length} products`);
-    const cards = products.slice(0, 10).map((prod: any) => {
-        const absUrl = getAbsoluteMediaUrl(prod.image);
-        const resolvedProdName = resolveVariables(prod.name || 'Product', session.state, contact);
-        const resolvedProdText = resolveVariables(prod.text || 'Selection', session.state, contact);
-        const btnTitle = resolveVariables((data.buttonTitle || prod.buttonTitle || 'Buy Now').substring(0, 20), session.state, contact);
-        
+    // Fallback: Send generic WhatsApp List Message if no catalog_id or no valid retailer IDs
+    console.log(`[CatalogNode] Falling back to generic carousel message for ${products.length} products`);
+    const carouselCards = products.slice(0, 10).map((prod: any) => {
+        const resolvedProdName = resolveVariables(prod.name || 'Product', session.state, contact).substring(0, 24);
+        const description = prod.price ? `₹${prod.price} per unit` : 'View Item';
         return {
-            id: prod.id || 'none',
+            id: prod.id,
             title: resolvedProdName,
-            description: `${resolvedProdText}\n\nPrice: ₹${prod.price || 'N/A'}`,
-            imageUrl: absUrl,
-            buttonTitle: btnTitle
+            description: description.substring(0, 72),
+            imageUrl: Array.isArray(prod.images) && prod.images.length > 0 ? prod.images[0] : undefined,
+            buttonTitle: resolveVariables(data.buttonTitle || 'View Details', session.state, contact).substring(0, 20)
         };
     });
 
-    const payload = buildCarouselPayload(contact.phone, cards);
-    if (payload) {
-        try {
-            const metaId = await sendMessageDirect({ phoneNumberId: waba.phone_number_id, accessToken: waba.access_token, payload, sessionId: session.id, nodeId: node.id, workspaceId: session.workspace_id, contactId: contact.id });
-            if (metaId) await saveOutboundMessage(waba, contact, metaId, payload);
-        } catch (err: any) {
-            console.error(`[CatalogNode] Generic carousel dispatch failed: ${err.message}`);
+    if (carouselCards.length > 0) {
+        const payload = buildInteractiveListPayload(
+            contact.phone,
+            "Please select an item:",
+            "View Items",
+            [{
+                title: "Available Items",
+                rows: carouselCards.map((c: any) => ({
+                    id: `sel_${c.id}`,
+                    title: c.title,
+                    description: c.description
+                }))
+            }]
+        );
+
+        if (payload) {
+            try {
+                // Attach previews so Live Chat UI also knows the images!
+                payload._previews = carouselCards.map((c: any) => ({
+                    id: c.id,
+                    title: c.title,
+                    image: c.imageUrl
+                }));
+
+                const metaId = await sendMessageDirect({ phoneNumberId: waba.phone_number_id, accessToken: waba.access_token, payload, sessionId: session.id, nodeId: node.id, workspaceId: session.workspace_id, contactId: contact.id });
+                if (metaId) await saveOutboundMessage(waba, contact, metaId, payload);
+            } catch (err: any) {
+                console.error(`[CatalogNode] Generic list dispatch failed: ${err.message}`, err.response?.data);
+            }
         }
+    }
+}
+
+async function runCarouselNode(ctx: ExecutionContext, node: any): Promise<void> {
+    const { waba, contact, session } = ctx;
+    const data = node.data || {};
+    
+    // We expect data.cards to be an array of { id, title, description, imageUrl }
+    if (!data.cards || !Array.isArray(data.cards) || data.cards.length === 0) {
+        console.warn(`[CarouselNode] No cards provided for node ${node.id}`);
+        return;
+    }
+
+    const payload = buildCarouselPayload(contact.phone, data.cards);
+    if (!payload) {
+        console.error(`[CarouselNode] Failed to build payload for node ${node.id}`);
+        return;
+    }
+
+    try {
+        const metaId = await sendMessageDirect({ 
+            phoneNumberId: waba.phone_number_id, 
+            accessToken: waba.access_token, 
+            payload, 
+            sessionId: session.id, 
+            nodeId: node.id, 
+            workspaceId: session.workspace_id, 
+            contactId: contact.id 
+        });
+        if (metaId) await saveOutboundMessage(waba, contact, metaId, payload);
+    } catch (err: any) {
+        console.error(`[CarouselNode] Dispatch failed: ${err.message}`);
     }
 }
 
@@ -569,7 +630,17 @@ async function runPaymentNode(ctx: ExecutionContext, node: any): Promise<void> {
     const data = node.data || {};
     if (!data.amount) return;
     // Resolve dynamic amount — supports {{total}}, {{price}} etc.
-    const resolvedAmountStr = resolveVariables(String(data.amount), session.state, contact);
+    let resolvedAmountStr = resolveVariables(String(data.amount), session.state, contact);
+    
+    // Evaluate basic math (e.g. "3 * 150") safely
+    if (/^[\d\s\*\+\-\/\.]+$/.test(resolvedAmountStr)) {
+        try {
+            resolvedAmountStr = String(new Function(`return ${resolvedAmountStr}`)());
+        } catch (e) {
+            console.warn(`[PaymentNode] Math evaluation failed for: ${resolvedAmountStr}`);
+        }
+    }
+
     const resolvedAmount = parseFloat(resolvedAmountStr);
     if (isNaN(resolvedAmount) || resolvedAmount <= 0) {
         console.error(`[PaymentNode] Invalid resolved amount: "${resolvedAmountStr}" from template "${data.amount}"`);
@@ -927,10 +998,15 @@ export async function handleUserInput(session: FlowSessionData, waba: any, conta
         }
     }
 
+    let normalizedInput = inputValue || '';
+    if (normalizedInput.startsWith('list_select_id:')) {
+        normalizedInput = normalizedInput.replace('list_select_id:', '');
+    }
+
     const matchedEdge = edges.find((e: any) => e.source === currentNodeId && (
-        (e.sourceHandle || '').toLowerCase() === (inputValue || '').toLowerCase() ||
-        (e.sourceHandle || '').toLowerCase() === `button-${(inputValue || '').toLowerCase()}` ||
-        (e.sourceHandle || '').toLowerCase() === `item-${(inputValue || '').toLowerCase()}`
+        (e.sourceHandle || '').toLowerCase() === normalizedInput.toLowerCase() ||
+        (e.sourceHandle || '').toLowerCase() === `button-${normalizedInput.toLowerCase()}` ||
+        (e.sourceHandle || '').toLowerCase() === `item-${normalizedInput.toLowerCase()}`
     ));
     if (matchedEdge) return executeFrom(session, waba, contact, currentNodeId, matchedEdge.target, 0);
 
@@ -942,6 +1018,68 @@ export async function handleUserInput(session: FlowSessionData, waba: any, conta
             session.state = newState;
         }
         return executeFrom(session, waba, contact, currentNodeId, null, 0);
+    }
+
+    // ── CART SUBMISSION from WhatsApp Catalog (order message type) ──
+    // When a user taps "Add to Cart" on a catalog product, WhatsApp sends an order message.
+    // We extract the first item's retailer_id, quantity, and price, look up the product name,
+    // set session variables (product_name, price, qty, total), then advance the flow.
+    if (currentNode.type === 'catalog' || currentNode.type === 'Catalog' || currentNode.type === 'product_catalog') {
+        // Try to parse cart JSON from the inputValue
+        if (inputValue.includes('cart_submitted') || inputValue.includes('retailer_id')) {
+            try {
+                const cartData = JSON.parse(inputValue);
+                if (cartData.action === 'cart_submitted' && Array.isArray(cartData.items) && cartData.items.length > 0) {
+                    const firstItem = cartData.items[0];
+                    const retailerId = firstItem.retailer_id;
+                    const qty = parseInt(String(firstItem.quantity || 1), 10);
+                    const itemPrice = parseFloat(String(firstItem.price || 0));
+
+                    console.log(`[FlowExecutor] 🛒 Cart order received: retailer_id=${retailerId}, qty=${qty}, price=${itemPrice}`);
+
+                    // Look up product name from DB by retailer_id
+                    let productName = 'Selected Product';
+                    let resolvedPrice = itemPrice;
+
+                    if (retailerId) {
+                        const dbProduct = await prisma.commerceProduct.findFirst({
+                            where: { retailer_id: retailerId },
+                            select: { name: true, price: true }
+                        });
+                        if (dbProduct) {
+                            productName = dbProduct.name;
+                            // Use DB price as authoritative source if item_price not set
+                            if (!resolvedPrice || resolvedPrice <= 0) {
+                                resolvedPrice = parseFloat(dbProduct.price.toString());
+                            }
+                        }
+                    }
+
+                    const total = resolvedPrice * qty;
+
+                    // Set all session variables needed for the rest of the flow
+                    const cartState = await updateSessionState(session.id, session.state, {
+                        product_name: productName,
+                        price: String(resolvedPrice),
+                        qty: String(qty),
+                        total: String(Math.round(total)),
+                        cart_retailer_id: retailerId || '',
+                    });
+                    session.state = cartState;
+
+                    console.log(`[FlowExecutor] ✅ Cart resolved: ${productName} × ${qty} = ₹${total}`);
+
+                    // Advance to the next node after the catalog node (first outgoing edge)
+                    const nextEdge = edges.find((e: any) => e.source === currentNodeId);
+                    if (nextEdge) {
+                        return executeFrom(session, waba, contact, null, nextEdge.target, 0);
+                    }
+                    return closeSession(session.id, 'FLOW_COMPLETED_AFTER_CART');
+                }
+            } catch (cartErr: any) {
+                console.error(`[FlowExecutor] ❌ Cart parse error:`, cartErr.message);
+            }
+        }
     }
 
     if (['message', 'list', 'meta_flow', 'appointment', 'payment', 'catalog', 'location'].includes(currentNode.type)) return;

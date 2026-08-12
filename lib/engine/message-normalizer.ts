@@ -96,7 +96,18 @@ export function normalizeMessage(
         value = rawMessage.document.id;
     } else if (rawMessage.order) {
         type = 'order';
-        value = 'cart_submitted';
+        // Preserve full cart data so the flow engine can extract product + quantity
+        const items = rawMessage.order?.product_items || [];
+        value = JSON.stringify({
+            action: 'cart_submitted',
+            catalog_id: rawMessage.order?.catalog_id || '',
+            items: items.map((i: any) => ({
+                retailer_id: i.product_retailer_id,
+                quantity: i.quantity,
+                price: i.item_price,
+                currency: i.currency
+            }))
+        });
     } else if (rawMessage.location) {
         type = 'location';
         const loc = rawMessage.location;
@@ -109,7 +120,8 @@ export function normalizeMessage(
     return {
         phone,
         type,
-        value: (rawMessage.interactive?.type === 'nfm_reply') ? value.trim() : value.toLowerCase().trim(),
+        // For order (cart) messages, preserve the original case since it's JSON
+        value: (rawMessage.interactive?.type === 'nfm_reply' || rawMessage.order) ? value.trim() : value.toLowerCase().trim(),
         raw: rawMessage,
         metaId,
         timestamp,
