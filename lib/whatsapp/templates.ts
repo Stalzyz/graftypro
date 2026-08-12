@@ -170,7 +170,11 @@ export class MetaTemplateService {
 
             // Map cryptic Meta errors to actionable user feedback
             if (errorMessage.includes("valid URI") || metaError?.error_subcode === 2388041 || errorMessage.includes("header_url")) {
-                errorMessage = "ACTION REQUIRED: The Media URL (Image/Video/Document) in your template Header must be a valid, publicly accessible link starting with 'https://'. Please check the URL and try again.";
+                if (errorMessage.includes("buttons")) {
+                    errorMessage = "ACTION REQUIRED: One of your Button URLs is invalid. Please ensure all button links start with 'https://' and try again.";
+                } else {
+                    errorMessage = "ACTION REQUIRED: The Media URL (Image/Video/Document) in your template Header must be a valid, publicly accessible link starting with 'https://'. Please check the URL and try again.";
+                }
             } else if (errorMessage.includes("Unsupported post request") || errorMessage.includes("does not exist")) {
                 errorMessage = "CONFIGURATION ERROR: Please verify that you have connected the correct 'WhatsApp Business Account ID' (WABA ID) and not your Business Manager ID.";
             } else if (errorMessage.includes("example") || errorMessage.includes("body_text") || errorMessage.includes("header_text")) {
