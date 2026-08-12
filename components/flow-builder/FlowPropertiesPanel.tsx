@@ -6,8 +6,12 @@ import MetaFormSidebar from "./sidebar/MetaFormSidebar";
 import { MetaFormCompiler } from "../../lib/whatsapp/meta-form-compiler";
 import toast from "react-hot-toast";
 import { useEffect, useState, useRef } from "react";
+import { useUser } from "@/hooks/use-user";
 
 export default function FlowPropertiesPanel({ selectedNode, onChange, onClose, onDelete, onDuplicate }: any) {
+    const { user } = useUser();
+    const currentPlan = user?.workspace?.plan?.name?.toUpperCase() || 'STARTER';
+    
     const [label, setLabel] = useState("");
     const [content, setContent] = useState("");
 
@@ -837,10 +841,16 @@ export default function FlowPropertiesPanel({ selectedNode, onChange, onClose, o
                             >
                                 <option value="start_drip">Start Drip Campaign</option>
                                 <option value="stop_drip">Stop Drip Campaign</option>
+                                <option value="set_variable">Set Variable</option>
+                                <option value="compute">Compute Math</option>
                                 <option value="webhook">Trigger Outbound Webhook</option>
-                                <option value="save_to_crm">Sync to Universal CRM</option>
-                                <option value="google_sheet">Append to Google Sheet</option>
-                                <option value="send_email">Send Notification Email</option>
+                                {currentPlan === 'ENTERPRISE' && (
+                                    <>
+                                        <option value="save_to_crm">Sync to Universal CRM</option>
+                                        <option value="google_sheet">Append to Google Sheet</option>
+                                        <option value="send_email">Send Notification Email</option>
+                                    </>
+                                )}
                             </select>
                         </div>
 
