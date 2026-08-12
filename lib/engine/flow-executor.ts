@@ -957,7 +957,7 @@ export async function handleUserInput(session: FlowSessionData, waba: any, conta
     const currentNode = nodes.find((n: any) => n.id === currentNodeId);
     if (!currentNode) return closeSession(session.id, 'NODE_NOT_FOUND');
 
-    if (inputValue.startsWith('{') && inputValue.endsWith('}')) {
+    if ((currentNode.type === 'meta_flow' || currentNode.type === 'MetaFlow') && inputValue.startsWith('{') && inputValue.endsWith('}')) {
         try {
             const flowData = JSON.parse(inputValue);
             console.log(`[FlowExecutor] 📦 Meta Flow Response Captured:`, flowData);
