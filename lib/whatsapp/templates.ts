@@ -17,7 +17,8 @@ export class MetaTemplateService {
         wabaId: string,
         accessToken: string,
         template: any, // The Prisma Template object with include: { variables: true }
-        mediaHandle?: string // OPTIONAL: Provided if media was pre-uploaded via Resumable Upload
+        mediaHandle?: string, // OPTIONAL: Provided if media was pre-uploaded via Resumable Upload
+        carouselMediaHandles: string[] = [] // OPTIONAL: For CAROUSEL template cards
     ) {
         try {
             const url = `${BASE_URL}/${wabaId}/message_templates`;
@@ -102,6 +103,43 @@ export class MetaTemplateService {
                                 };
                             }
                             return btn;
+                        });
+                    }
+
+                    if (c.type === 'CAROUSEL') {
+                        component.cards = c.cards.map((card: any, idx: number) => {
+                            const metaCard: any = { components: [] };
+                            card.components.forEach((cardComp: any) => {
+                                if (cardComp.type === 'HEADER') {
+                                    const headerComp: any = { type: 'HEADER', format: cardComp.format };
+                                    if (carouselMediaHandles[idx]) {
+                                        headerComp.example = { header_handle: [carouselMediaHandles[idx]] };
+                                    } else if (cardComp.media_url) {
+                                        const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://grafty.pro";
+                                        let finalUrl = cardComp.media_url;
+                                        if (finalUrl.startsWith('/')) finalUrl = `${APP_URL}${finalUrl}`;
+                                        headerComp.example = { header_url: [finalUrl] };
+                                    }
+                                    metaCard.components.push(headerComp);
+                                }
+                                if (cardComp.type === 'BODY') {
+                                    const bodyComp: any = { type: 'BODY', text: cardComp.text };
+                                    // Variables in cards not supported natively in this builder yet
+                                    metaCard.components.push(bodyComp);
+                                }
+                                if (cardComp.type === 'BUTTONS') {
+                                    metaCard.components.push({
+                                        type: 'BUTTONS',
+                                        buttons: cardComp.buttons.map((btn: any) => {
+                                            if (btn.type === 'URL' && btn.url.includes('{{1}}')) {
+                                                return { type: 'URL', text: btn.text, url: btn.url, example: [btn.sample_value || "https://grafty.pro"] };
+                                            }
+                                            return btn;
+                                        })
+                                    });
+                                }
+                            });
+                            return metaCard;
                         });
                     }
 

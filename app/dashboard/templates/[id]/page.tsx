@@ -15,6 +15,11 @@ export default function TemplateEditor({ params }: { params: { id: string } }) {
     const [refreshing, setRefreshing] = useState(false);
 
     // Components State
+    const [format, setFormat] = useState("STANDARD"); // STANDARD or CAROUSEL
+    const [cards, setCards] = useState<any[]>([{
+        headerFormat: 'IMAGE', headerUrl: '', bodyText: '', buttons: []
+    }]);
+
     const [headerType, setHeaderType] = useState("NONE"); // NONE, TEXT, IMAGE
     const [headerText, setHeaderText] = useState("");
     const [bodyText, setBodyText] = useState("");
@@ -44,15 +49,36 @@ export default function TemplateEditor({ params }: { params: { id: string } }) {
 
                 // Parse Components JSON to State
                 if (Array.isArray(t.components)) {
-                    t.components.forEach((c: any) => {
-                        if (c.type === 'HEADER') {
-                            setHeaderType(c.format);
-                            if (c.format === 'TEXT') setHeaderText(c.text);
-                        }
-                        if (c.type === 'BODY') setBodyText(c.text);
-                        if (c.type === 'FOOTER') setFooterText(c.text);
-                        if (c.type === 'BUTTONS') setButtons(c.buttons);
-                    });
+                    const carousel = t.components.find((c: any) => c.type === 'CAROUSEL');
+                    if (carousel) {
+                        setFormat("CAROUSEL");
+                        const rootBody = t.components.find((c: any) => c.type === 'BODY');
+                        if (rootBody) setBodyText(rootBody.text);
+                        
+                        setCards(carousel.cards.map((card: any) => {
+                            const cHeader = card.components.find((c: any) => c.type === 'HEADER') || { format: 'IMAGE', media_url: '' };
+                            const cBody = card.components.find((c: any) => c.type === 'BODY') || { text: '' };
+                            const cButtons = card.components.find((c: any) => c.type === 'BUTTONS') || { buttons: [] };
+                            return {
+                                headerFormat: cHeader.format,
+                                headerUrl: cHeader.media_url || '',
+                                bodyText: cBody.text || '',
+                                buttons: cButtons.buttons || []
+                            };
+                        }));
+                    } else {
+                        setFormat("STANDARD");
+                        t.components.forEach((c: any) => {
+                            if (c.type === 'HEADER') {
+                                setHeaderType(c.format);
+                                if (c.format === 'TEXT') setHeaderText(c.text);
+                                else setHeaderText(c.media_url || '');
+                            }
+                            if (c.type === 'BODY') setBodyText(c.text);
+                            if (c.type === 'FOOTER') setFooterText(c.text);
+                            if (c.type === 'BUTTONS') setButtons(c.buttons);
+                        });
+                    }
                 }
 
                 // Load existing samples from variables table
@@ -127,27 +153,40 @@ export default function TemplateEditor({ params }: { params: { id: string } }) {
         if (!silent) setSaving(true);
 
         const components = [];
-        if (headerType !== 'NONE') {
+
+        if (format === 'CAROUSEL') {
+            components.push({ type: 'BODY', text: bodyText });
             components.push({
-                type: 'HEADER',
-                format: headerType,
-                text: headerType === 'TEXT' ? headerText : undefined,
-                // Pass URL for media headers
-                media_url: headerType !== 'TEXT' && headerType !== 'NONE' ? headerText : undefined
+                type: 'CAROUSEL',
+                cards: cards.map(card => {
+                    const cardComps = [];
+                    cardComps.push({
+                        type: 'HEADER',
+                        format: card.headerFormat,
+                        media_url: card.headerUrl
+                    });
+                    if (card.bodyText) cardComps.push({ type: 'BODY', text: card.bodyText });
+                    if (card.buttons && card.buttons.length > 0) {
+                        cardComps.push({ type: 'BUTTONS', buttons: card.buttons });
+                    }
+                    return { components: cardComps };
+                })
             });
+        } else {
+            if (headerType !== 'NONE') {
+                components.push({
+                    type: 'HEADER',
+                    format: headerType,
+                    text: headerType === 'TEXT' ? headerText : undefined,
+                    media_url: headerType !== 'TEXT' && headerType !== 'NONE' ? headerText : undefined
+                });
+            }
+            components.push({ type: 'BODY', text: bodyText });
+            if (footerText) components.push({ type: 'FOOTER', text: footerText });
+            if (buttons.length > 0) components.push({ type: 'BUTTONS', buttons: buttons });
         }
 
-        components.push({ type: 'BODY', text: bodyText });
-
-        if (footerText) {
-            components.push({ type: 'FOOTER', text: footerText });
-        }
-
-        if (buttons.length > 0) {
-            components.push({ type: 'BUTTONS', buttons: buttons });
-        }
-
-        const bodyIndex = headerType !== 'NONE' ? 1 : 0;
+        const bodyIndex = (format === 'STANDARD' && headerType !== 'NONE') ? 1 : 0;
         const variableData = variables.map(v => ({
             component_index: bodyIndex,
             param_index: parseInt(v),
@@ -319,6 +358,23 @@ export default function TemplateEditor({ params }: { params: { id: string } }) {
                 {/* Editor Content */}
                 <div className="flex-1 overflow-y-auto p-4 md:p-6 bg-gray-50">
 
+                    {/* FORMAT SELECTOR */}
+                    <div className="mb-6 bg-white p-4 rounded-xl border border-gray-200">
+                        <label className="text-sm font-bold text-gray-700 block mb-3">TEMPLATE FORMAT</label>
+                        <div className="flex gap-4">
+                            <label className="flex items-center gap-2 cursor-pointer">
+                                <input type="radio" value="STANDARD" checked={format === 'STANDARD'} onChange={() => setFormat('STANDARD')} disabled={!canEdit} className="w-4 h-4 text-blue-600" />
+                                <span className="text-sm font-semibold">Standard</span>
+                            </label>
+                            <label className="flex items-center gap-2 cursor-pointer">
+                                <input type="radio" value="CAROUSEL" checked={format === 'CAROUSEL'} onChange={() => setFormat('CAROUSEL')} disabled={!canEdit} className="w-4 h-4 text-blue-600" />
+                                <span className="text-sm font-semibold">Carousel <span className="text-[10px] bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded ml-1">New</span></span>
+                            </label>
+                        </div>
+                    </div>
+
+                    {format === 'STANDARD' && (
+                        <>
                     <div className="space-y-4">
                         <div className="flex justify-between items-center">
                             <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
@@ -533,6 +589,153 @@ export default function TemplateEditor({ params }: { params: { id: string } }) {
                             ))}
                         </div>
                     </div>
+                </>
+            )}
+
+                    {format === 'CAROUSEL' && (
+                        <div className="space-y-6">
+                            {/* Root Body for Carousel */}
+                            <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+                                <div className="flex justify-between items-center mb-3">
+                                    <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
+                                        MESSAGE BODY
+                                        <span className="text-[10px] text-red-500 font-black">REQUIRED</span>
+                                    </label>
+                                </div>
+                                <textarea
+                                    rows={3}
+                                    placeholder="Enter the text that appears above the carousel cards..."
+                                    value={bodyText}
+                                    onChange={e => setBodyText(e.target.value)}
+                                    disabled={!canEdit}
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none resize-none"
+                                />
+                            </div>
+
+                            {/* Cards Builder */}
+                            <div className="space-y-4">
+                                <div className="flex justify-between items-center">
+                                    <h3 className="font-bold text-gray-900">Carousel Cards ({cards.length}/10)</h3>
+                                    {cards.length < 10 && canEdit && (
+                                        <button 
+                                            onClick={() => setCards([...cards, { headerFormat: 'IMAGE', headerUrl: '', bodyText: '', buttons: cards[0]?.buttons || [] }])}
+                                            className="text-xs font-bold bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg flex items-center gap-1 hover:bg-blue-100"
+                                        >
+                                            <Plus size={14}/> Add Card
+                                        </button>
+                                    )}
+                                </div>
+
+                                <div className="flex gap-4 overflow-x-auto pb-4 snap-x">
+                                    {cards.map((card, idx) => (
+                                        <div key={idx} className="min-w-[300px] bg-white border border-gray-200 rounded-xl p-4 shadow-sm snap-center flex-shrink-0 relative">
+                                            {cards.length > 1 && canEdit && (
+                                                <button onClick={() => setCards(cards.filter((_, i) => i !== idx))} className="absolute top-2 right-2 text-gray-400 hover:text-red-500">
+                                                    <Trash2 size={16}/>
+                                                </button>
+                                            )}
+                                            <div className="font-bold text-xs text-gray-400 mb-3 uppercase">Card {idx + 1}</div>
+                                            
+                                            <div className="space-y-4">
+                                                <div>
+                                                    <label className="text-xs font-bold text-gray-700 mb-1 block">Image Header <span className="text-red-500">*</span></label>
+                                                    <SmartUploader
+                                                        label={`Card ${idx+1} Image`}
+                                                        module="templates"
+                                                        fileType="image"
+                                                        accept="image/jpeg, image/png, image/webp"
+                                                        defaultValue={card.headerUrl}
+                                                        onUploadSuccess={(url: string) => {
+                                                            const newCards = [...cards];
+                                                            newCards[idx].headerUrl = url;
+                                                            setCards(newCards);
+                                                        }}
+                                                    />
+                                                </div>
+                                                
+                                                <div>
+                                                    <label className="text-xs font-bold text-gray-700 mb-1 block">Body Text</label>
+                                                    <textarea 
+                                                        rows={2}
+                                                        maxLength={160}
+                                                        value={card.bodyText}
+                                                        onChange={(e) => {
+                                                            const newCards = [...cards];
+                                                            newCards[idx].bodyText = e.target.value;
+                                                            setCards(newCards);
+                                                        }}
+                                                        disabled={!canEdit}
+                                                        placeholder="Card details..."
+                                                        className="w-full text-xs px-3 py-2 border border-gray-300 rounded-lg outline-none focus:border-blue-500"
+                                                    />
+                                                </div>
+
+                                                {/* Card Buttons */}
+                                                <div>
+                                                    <div className="flex justify-between items-center mb-1">
+                                                        <label className="text-xs font-bold text-gray-700 block">Buttons (Max 2)</label>
+                                                        {(!card.buttons || card.buttons.length < 2) && canEdit && (
+                                                            <div className="flex gap-1">
+                                                                <button onClick={() => {
+                                                                    const newCards = [...cards];
+                                                                    newCards[idx].buttons = [...(newCards[idx].buttons || []), { type: 'QUICK_REPLY', text: '' }];
+                                                                    setCards(newCards);
+                                                                }} className="text-[10px] bg-gray-100 px-2 py-0.5 rounded hover:bg-gray-200">+ QR</button>
+                                                                <button onClick={() => {
+                                                                    const newCards = [...cards];
+                                                                    newCards[idx].buttons = [...(newCards[idx].buttons || []), { type: 'URL', text: '', url: '' }];
+                                                                    setCards(newCards);
+                                                                }} className="text-[10px] bg-gray-100 px-2 py-0.5 rounded hover:bg-gray-200">+ URL</button>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    
+                                                    <div className="space-y-2">
+                                                        {(card.buttons || []).map((btn: any, bIdx: number) => (
+                                                            <div key={bIdx} className="bg-gray-50 border border-gray-200 p-2 rounded relative">
+                                                                <button onClick={() => {
+                                                                    const newCards = [...cards];
+                                                                    newCards[idx].buttons.splice(bIdx, 1);
+                                                                    setCards(newCards);
+                                                                }} className="absolute -top-1 -right-1 text-gray-400 hover:text-red-500 bg-white rounded-full">
+                                                                    <Trash2 size={12}/>
+                                                                </button>
+                                                                <div className="text-[9px] font-bold text-gray-500 mb-1">{btn.type}</div>
+                                                                <input
+                                                                    type="text"
+                                                                    placeholder="Button Text"
+                                                                    value={btn.text}
+                                                                    onChange={(e) => {
+                                                                        const newCards = [...cards];
+                                                                        newCards[idx].buttons[bIdx].text = e.target.value;
+                                                                        setCards(newCards);
+                                                                    }}
+                                                                    className="w-full text-xs px-2 py-1 mb-1 border rounded"
+                                                                />
+                                                                {btn.type === 'URL' && (
+                                                                    <input
+                                                                        type="text"
+                                                                        placeholder="https://..."
+                                                                        value={btn.url || ''}
+                                                                        onChange={(e) => {
+                                                                            const newCards = [...cards];
+                                                                            newCards[idx].buttons[bIdx].url = e.target.value;
+                                                                            setCards(newCards);
+                                                                        }}
+                                                                        className="w-full text-xs px-2 py-1 border rounded"
+                                                                    />
+                                                                )}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                 </div>
             </div>

@@ -33,44 +33,51 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         }
 
         const token = decrypt(waba.access_token);
-        let mediaHandle: string | undefined;
-
         // --- NUCLEAR FIX: Pre-upload local media to Meta ---
+        let mediaHandle: string | undefined;
+        let carouselMediaHandles: string[] = []; // Stores media_handle for each card
+
         const headerComponent = (template.components as any[])?.find(c => c.type === 'HEADER');
+        const carouselComponent = (template.components as any[])?.find(c => c.type === 'CAROUSEL');
+
+        const { join } = await import("path");
+        const { readFile } = await import("fs/promises");
+        const appId = waba.app_id || "754407886477543"; // FALLBACK App ID
+
+        const uploadMedia = async (url: string, filename: string) => {
+            if (!url.includes('/api/media/local/')) return undefined;
+            const relativePath = url.split('/api/media/local/')[1];
+            const filePath = join(process.cwd(), "public", "uploads", relativePath);
+            console.log(`[NUCLEAR_SUBMIT] Attempting pre-upload for: ${filePath}`);
+            const buffer = await readFile(filePath);
+            const ext = filePath.split('.').pop()?.toLowerCase();
+            const mimeMap: any = { 'jpg': 'image/jpeg', 'jpeg': 'image/jpeg', 'png': 'image/png', 'mp4': 'video/mp4', 'pdf': 'application/pdf' };
+            const mimeType = mimeMap[ext!] || "application/octet-stream";
+            return await MetaTemplateService.uploadMediaToMeta(appId, token, buffer, mimeType, filename);
+        };
+
         if (headerComponent && ['IMAGE', 'VIDEO', 'DOCUMENT'].includes(headerComponent.format) && headerComponent.media_url) {
             try {
-                const url = headerComponent.media_url;
-                if (url.includes('/api/media/local/')) {
-                    const { join } = await import("path");
-                    const { readFile } = await import("fs/promises");
-                    
-                    // Resolve physical file path from relative URL
-                    // URL: /api/media/local/vendor/xxx/templates/yyy.png
-                    const relativePath = url.split('/api/media/local/')[1];
-                    const filePath = join(process.cwd(), "public", "uploads", relativePath);
-                    
-                    console.log(`[NUCLEAR_SUBMIT] Attempting pre-upload for: ${filePath}`);
-                    
-                    const buffer = await readFile(filePath);
-                    
-                    // Determine MIME type
-                    const ext = filePath.split('.').pop()?.toLowerCase();
-                    const mimeMap: any = { 'jpg': 'image/jpeg', 'jpeg': 'image/jpeg', 'png': 'image/png', 'mp4': 'video/mp4', 'pdf': 'application/pdf' };
-                    const mimeType = mimeMap[ext!] || "application/octet-stream";
-
-                    // Use app_id if available, fallback to a sensible default or the WABA ID if required by newer APIs
-                    const appId = waba.app_id || "754407886477543"; // FALLBACK: Use a known platform App ID if tenant didn't provide one
-                    
-                    mediaHandle = await MetaTemplateService.uploadMediaToMeta(
-                        appId,
-                        token,
-                        buffer,
-                        mimeType,
-                        url.split('/').pop() || "media_header"
-                    );
-                }
+                mediaHandle = await uploadMedia(headerComponent.media_url, headerComponent.media_url.split('/').pop() || "media_header");
             } catch (uploadErr: any) {
                 console.warn("[NUCLEAR_SUBMIT] Pre-upload failed, falling back to URL method:", uploadErr.message);
+            }
+        } else if (carouselComponent && carouselComponent.cards) {
+            // Process CAROUSEL cards
+            for (let i = 0; i < carouselComponent.cards.length; i++) {
+                const card = carouselComponent.cards[i];
+                const cardHeader = card.components?.find((c: any) => c.type === 'HEADER');
+                if (cardHeader && ['IMAGE', 'VIDEO'].includes(cardHeader.format) && cardHeader.media_url) {
+                    try {
+                        const handle = await uploadMedia(cardHeader.media_url, `card_${i}_media`);
+                        carouselMediaHandles.push(handle || "");
+                    } catch (e: any) {
+                        console.warn(`[NUCLEAR_SUBMIT] Pre-upload failed for card ${i}:`, e.message);
+                        carouselMediaHandles.push("");
+                    }
+                } else {
+                    carouselMediaHandles.push("");
+                }
             }
         }
 
@@ -79,7 +86,8 @@ export async function POST(req: Request, { params }: { params: { id: string } })
             waba.waba_id,
             token,
             template,
-            mediaHandle
+            mediaHandle,
+            carouselMediaHandles
         );
 
         // 3. Update DB Status
