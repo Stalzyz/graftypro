@@ -155,6 +155,25 @@ export async function POST(req: Request) {
             console.error("Automated notifications failed:", notifError);
         }
 
+        // 6. 💰 AFFILIATE COMMISSION: Credit 20% to referring partner wallet
+        try {
+            const paymentAmount = Number((dbPlanRecord as any).monthly_price || (dbPlanRecord as any).price || 0);
+            if (paymentAmount > 0) {
+                const { ResellerService } = await import("@/lib/reseller/service");
+                await prisma.$transaction(async (tx) => {
+                    await ResellerService.processPaymentCommission(
+                        tx,
+                        user.workspaceId,
+                        paymentAmount,
+                        razorpay_payment_id
+                    );
+                });
+                console.log(`[Billing] ✅ Affiliate commission processed for workspace ${user.workspaceId}`);
+            }
+        } catch (commissionError) {
+            console.error("[Billing] ⚠️ Affiliate commission processing failed (non-critical):", commissionError);
+        }
+
         return NextResponse.json({ success: true, plan: newPlan });
 
     } catch (error: any) {

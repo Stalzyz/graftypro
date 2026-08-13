@@ -32,7 +32,9 @@ export async function POST(req: Request) {
         if (event === "subscription.charged") {
             const subEntity = payload.payload.subscription.entity;
             const paymentEntity = payload.payload.payment.entity;
-            const workspaceId = subEntity.notes?.workspaceId;
+            // Try both camelCase and snake_case — Razorpay notes may differ
+            const workspaceId = subEntity.notes?.workspaceId || subEntity.notes?.workspace_id
+                || paymentEntity.notes?.workspaceId || paymentEntity.notes?.workspace_id;
 
             if (workspaceId) {
                 console.log(`🔄 Subscription charged for Workspace ${workspaceId}: ₹${paymentEntity.amount / 100}`);
@@ -147,6 +149,22 @@ export async function POST(req: Request) {
 
                     // 2. Email Invoice
                     await InvoiceService.sendInvoiceEmail(invoice.id);
+
+                    // 💰 Affiliate Commission on Subscription Renewal
+                    try {
+                        const { ResellerService } = await import("@/lib/reseller/service");
+                        await prisma.$transaction(async (commTx) => {
+                            await ResellerService.processPaymentCommission(
+                                commTx,
+                                workspaceId,
+                                totalAmount,
+                                paymentEntity.id
+                            );
+                        });
+                        console.log(`[Razorpay Webhook] ✅ Affiliate commission processed for subscription: ${workspaceId}`);
+                    } catch (commErr: any) {
+                        console.error("[Razorpay Webhook] ⚠️ Affiliate commission failed (non-critical):", commErr.message);
+                    }
                 }
             }
         }
@@ -171,6 +189,7 @@ export async function POST(req: Request) {
                 // A. Credit Purchase
                 if (type === "CREDIT_PURCHASE") {
                     const netAmount = parseInt(payment.notes?.netAmount || "0");
+                    const grossAmount = payment.amount / 100;
                     if (netAmount > 0) {
                         const { CreditService } = await import("@/lib/credits/service");
                         // ... existing credit logic ...
@@ -188,6 +207,19 @@ export async function POST(req: Request) {
                         if (!result.duplicate && result.invoice) {
                             const { InvoiceService } = await import("@/lib/finance/invoice-service");
                             await InvoiceService.sendInvoiceEmail(result.invoice.id);
+                        }
+
+                        // 💰 Affiliate Commission on Credit Purchase
+                        if (!result.duplicate) {
+                            try {
+                                const { ResellerService } = await import("@/lib/reseller/service");
+                                await prisma.$transaction(async (tx) => {
+                                    await ResellerService.processPaymentCommission(tx, workspaceId, grossAmount, payment.id + "_credit");
+                                });
+                                console.log(`[Razorpay Webhook] ✅ Affiliate commission processed for credit purchase: ${workspaceId}`);
+                            } catch (commErr: any) {
+                                console.error("[Razorpay Webhook] ⚠️ Affiliate commission failed (non-critical):", commErr.message);
+                            }
                         }
                     }
                 }
@@ -246,13 +278,12 @@ export async function POST(req: Request) {
         }
 
         if (event === "payment_link.paid") {
-            // ... existing login ...
             const paymentLink = payload.payload.payment_link.entity;
             const workspaceId = paymentLink.notes?.workspaceId;
+            const flowSessionId = paymentLink.notes?.flowSessionId;
             const phone = paymentLink.customer.contact;
             const cleanPhone = phone.replace('+', '');
 
-            // ... contact update logic ...
             const contact = await prisma.contact.findFirst({
                 where: {
                     workspace_id: workspaceId,
@@ -265,6 +296,52 @@ export async function POST(req: Request) {
                 if (!currentTags.includes("Paid_Customer")) {
                     await prisma.contact.update({ where: { id: contact.id }, data: { tags: [...currentTags, "Paid_Customer"] } });
                 }
+
+                // 1. Agent Notification Logic
+                const workspace = await prisma.workspace.findUnique({
+                    where: { id: workspaceId },
+                    select: { settings: true, name: true }
+                });
+
+                if (workspace) {
+                    const settings = (workspace.settings as any) || {};
+                    const emails = settings.payment_notification_emails || [];
+
+                    if (emails.length > 0) {
+                        let flowState = {};
+                        if (flowSessionId) {
+                            const session = await prisma.flowSession.findUnique({ where: { id: flowSessionId } });
+                            if (session) flowState = session.state || {};
+                        }
+
+                        const lastMessages = await prisma.message.findMany({
+                            where: { contact_id: contact.id },
+                            orderBy: { created_at: 'desc' },
+                            take: 5
+                        });
+
+                        const { systemEmailQueue } = await import('../../../../lib/queue');
+                        
+                        for (const email of emails) {
+                            await systemEmailQueue?.add("send-system-email", {
+                                type: "FLOW_PAYMENT_SUCCESS",
+                                payload: {
+                                    to: email,
+                                    vendorName: workspace.name,
+                                    customerPhone: contact.phone,
+                                    customerName: contact.name || 'Customer',
+                                    txnId: paymentLink.id,
+                                    amount: paymentLink.amount ? paymentLink.amount / 100 : 'Unknown',
+                                    gateway: 'Razorpay',
+                                    flowState,
+                                    recentMessages: lastMessages.reverse().map((m: any) => `[${m.type}] ${m.text_body || 'Media'}`).join('\\n')
+                                }
+                            });
+                        }
+                    }
+                }
+
+                // 2. Resume Flow
                 const { FlowRunner } = await import("@/lib/engine/flow-runner");
                 await FlowRunner.processMessage(workspaceId, contact.id, "PAYMENT_SUCCESSFUL_INTERNAL_TRIGGER" as any);
             }
