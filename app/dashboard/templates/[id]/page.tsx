@@ -146,7 +146,8 @@ export default function TemplateEditor({ params }: { params: { id: string } }) {
     const handleSave = async (silent = false) => {
         const error = validateTemplate();
         if (error) {
-            if (!silent) alert(error);
+            // Always show validation errors to prevent silent submission blocks
+            alert(error);
             return false;
         }
 
@@ -200,17 +201,20 @@ export default function TemplateEditor({ params }: { params: { id: string } }) {
                 body: JSON.stringify({ components, variables: variableData })
             });
 
+            // Parse response to extract potential error messages
+            const data = await res.json().catch(() => ({}));
+
             if (res.ok) {
                 if (!silent) alert("Draft saved successfully!");
                 return true;
             } else {
-                if (!silent) alert("Failed to save draft");
+                alert("Failed to save draft: " + (data.error || "Server returned status " + res.status));
                 return false;
             }
 
-        } catch (e) {
+        } catch (e: any) {
             console.error(e);
-            if (!silent) alert("Error saving template");
+            alert("Error saving template: " + (e.message || e));
             return false;
         } finally {
             if (!silent) setSaving(false);
