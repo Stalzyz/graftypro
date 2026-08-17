@@ -959,13 +959,41 @@ function SharedInboxContent() {
                                                 const isDoc = (url: string) => persistentMime.includes('pdf') || persistentMime.includes('document') || persistentMime.includes('application/') || /\.(pdf|doc|docx|xls|xlsx|txt|ppt|pptx)(\?.*)?$/i.test(url) || type === 'DOCUMENT';
                                                 const isAudio = (url: string) => persistentMime.startsWith('audio/') || /\.(mp3|ogg|wav|m4a|weba|opus|aac)(\?.*)?$/i.test(url) || type === 'AUDIO';
 
-                                                const isCarousel = content.interactiveType === 'carousel' || content.type === 'carousel' || content.action?.cards || content.raw?.interactive?.action?.cards;
-                                                const isProduct = type === 'PRODUCT' || type === 'INTERACTIVE' && (content.type?.includes('product') || content.product_reply || content.interactiveType?.includes('product') || content.raw?.interactive?.type?.includes('product')) || content.catalog_id || content.product_retailer_id;
+                                                // ─── Interactive sub-type detection ───────────────────────────────
+                                                // The `interactiveType` field is set by buildContentRecord in flow-executor.
+                                                // Fall back to raw path for older DB records.
+                                                const interactiveSubType: string = (
+                                                    content.interactiveType ||
+                                                    content.raw?.interactive?.type ||
+                                                    content.type ||
+                                                    ''
+                                                ).toLowerCase();
+
+                                                const isInteractiveList  = interactiveSubType === 'list';
+                                                const isInteractiveBtn   = interactiveSubType === 'button';
+                                                const isCarousel = interactiveSubType === 'carousel' || content.action?.cards || content.raw?.interactive?.action?.cards;
+                                                const isProduct  = type === 'PRODUCT' ||
+                                                    (type === 'INTERACTIVE' && (
+                                                        interactiveSubType.includes('product') ||
+                                                        content.product_reply ||
+                                                        content.catalog_id ||
+                                                        content.product_retailer_id
+                                                    ));
 
                                                 if (!link && isProduct && content.raw?._previews && content.raw._previews[0]?.image) {
                                                     link = content.raw._previews[0].image;
                                                 }
-                                                let contentType = isCarousel ? 'CAROUSEL' : isProduct ? 'PRODUCT' : isImage(link) ? 'IMAGE' : isVideo(link) ? 'VIDEO' : isDoc(link) ? 'DOCUMENT' : isAudio(link) ? 'AUDIO' : (content.contentType?.toUpperCase() || '');
+
+                                                // ─── Header image for interactive list/button messages ────────────
+                                                const interactiveHeader = content.header || content.raw?.interactive?.header;
+                                                if (!link && interactiveHeader) {
+                                                    if (interactiveHeader.image?.link) link = interactiveHeader.image.link;
+                                                    else if (interactiveHeader.video?.link) link = interactiveHeader.video.link;
+                                                    else if (interactiveHeader.document?.link) link = interactiveHeader.document.link;
+                                                    else if (typeof interactiveHeader === 'string' && interactiveHeader.startsWith('http')) link = interactiveHeader;
+                                                }
+
+                                                let contentType = isCarousel ? 'CAROUSEL' : isProduct ? 'PRODUCT' : isInteractiveList ? 'LIST' : isInteractiveBtn ? 'IBUTTON' : isImage(link) ? 'IMAGE' : isVideo(link) ? 'VIDEO' : isDoc(link) ? 'DOCUMENT' : isAudio(link) ? 'AUDIO' : (content.contentType?.toUpperCase() || '');
                                                 if (!contentType && link) contentType = 'IMAGE';
 
                                                 const finalMediaUrl = proxyMediaLink(link);
@@ -1067,6 +1095,93 @@ function SharedInboxContent() {
                                                                 </div>
                                                             )}
 
+                                                            {/* ── Interactive List Message Renderer ─────────────────── */}
+                                                            {contentType === 'LIST' && (() => {
+                                                                // Resolve sections from multiple possible storage paths
+                                                                const listSections: any[] = (
+                                                                    content.sections ||
+                                                                    content.action?.sections ||
+                                                                    content.raw?.interactive?.action?.sections ||
+                                                                    []
+                                                                );
+                                                                const listBtn  = content.action?.button || content.raw?.interactive?.action?.button || 'View Options';
+                                                                const headerText = interactiveHeader?.type === 'text' ? (interactiveHeader.text || '') : '';
+                                                                return (
+                                                                    <div className="mb-2 -mx-4 -mt-3 overflow-hidden">
+                                                                        {/* Header */}
+                                                                        {headerText && (
+                                                                            <div className={`px-4 py-2.5 text-[11px] font-black uppercase tracking-widest border-b ${isOutbound ? 'border-white/10 text-white/70' : 'bg-indigo-50 border-indigo-100 text-indigo-700'}`}>
+                                                                                {headerText}
+                                                                            </div>
+                                                                        )}
+                                                                        {/* Header image if present */}
+                                                                        {link && isImage(link) && (
+                                                                            <img src={proxyMediaLink(link)} className="w-full h-28 object-cover" alt="Header" onError={(e) => { (e.target as HTMLImageElement).style.display='none'; }} />
+                                                                        )}
+                                                                        {/* List sections */}
+                                                                        {listSections.length > 0 && (
+                                                                            <div className={`divide-y ${isOutbound ? 'divide-white/10' : 'divide-slate-100'}`}>
+                                                                                {listSections.map((section: any, si: number) => (
+                                                                                    <div key={si}>
+                                                                                        {section.title && (
+                                                                                            <div className={`px-4 pt-2.5 pb-1 text-[9px] font-black uppercase tracking-widest ${isOutbound ? 'text-white/50' : 'text-slate-400'}`}>
+                                                                                                {section.title}
+                                                                                            </div>
+                                                                                        )}
+                                                                                        {(section.rows || []).map((row: any, ri: number) => (
+                                                                                            <div key={ri} className={`flex items-start gap-3 px-4 py-2.5 border-b last:border-0 transition-colors ${isOutbound ? 'border-white/5 hover:bg-white/5' : 'border-slate-50 hover:bg-slate-50'}`}>
+                                                                                                <div className={`mt-0.5 w-4 h-4 rounded-full border-2 flex-shrink-0 ${isOutbound ? 'border-white/30' : 'border-indigo-200'}`} />
+                                                                                                <div className="flex-1 min-w-0">
+                                                                                                    <div className={`text-[12px] font-bold truncate ${isOutbound ? 'text-white' : 'text-slate-800'}`}>{row.title}</div>
+                                                                                                    {row.description && <div className={`text-[10px] mt-0.5 line-clamp-2 ${isOutbound ? 'text-white/60' : 'text-slate-400'}`}>{row.description}</div>}
+                                                                                                </div>
+                                                                                            </div>
+                                                                                        ))}
+                                                                                    </div>
+                                                                                ))}
+                                                                            </div>
+                                                                        )}
+                                                                        {/* List trigger button */}
+                                                                        <div className={`flex items-center justify-center gap-2 px-4 py-2.5 text-[11px] font-black uppercase tracking-wide border-t ${isOutbound ? 'border-white/10 text-white/70' : 'border-slate-100 text-indigo-600 bg-indigo-50/50'}`}>
+                                                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
+                                                                            {listBtn}
+                                                                        </div>
+                                                                    </div>
+                                                                );
+                                                            })()}
+
+                                                            {/* ── Quick-Reply Button Renderer ─────────────────────────── */}
+                                                            {contentType === 'IBUTTON' && (() => {
+                                                                const btnList: any[] = (
+                                                                    content.buttons ||
+                                                                    content.action?.buttons ||
+                                                                    content.raw?.interactive?.action?.buttons ||
+                                                                    []
+                                                                );
+                                                                const iHeaderText = interactiveHeader?.type === 'text' ? (interactiveHeader.text || '') : '';
+                                                                return (
+                                                                    <div className="mb-2 -mx-4 -mt-3 overflow-hidden">
+                                                                        {iHeaderText && (
+                                                                            <div className={`px-4 py-2.5 text-[11px] font-black uppercase tracking-widest border-b ${isOutbound ? 'border-white/10 text-white/70' : 'bg-violet-50 border-violet-100 text-violet-700'}`}>
+                                                                                {iHeaderText}
+                                                                            </div>
+                                                                        )}
+                                                                        {link && isImage(link) && (
+                                                                            <img src={proxyMediaLink(link)} className="w-full h-28 object-cover" alt="Header" onError={(e) => { (e.target as HTMLImageElement).style.display='none'; }} />
+                                                                        )}
+                                                                        {btnList.length > 0 && (
+                                                                            <div className={`divide-y ${isOutbound ? 'divide-white/10' : 'divide-slate-100'}`}>
+                                                                                {btnList.map((btn: any, bi: number) => (
+                                                                                    <div key={bi} className={`flex items-center justify-center gap-2 px-4 py-2.5 text-[11px] font-bold uppercase tracking-wide transition-colors cursor-pointer ${isOutbound ? 'border-white/5 hover:bg-white/10 text-white' : 'hover:bg-violet-50 text-violet-700 border-slate-50'}`}>
+                                                                                        {btn.reply?.title || btn.title || btn}
+                                                                                    </div>
+                                                                                ))}
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                );
+                                                            })()}
+
                                                             {contentType === 'PRODUCT' && (
                                                                 <div className="mb-2 -mx-4 -mt-3 bg-slate-50 border-b overflow-hidden">
                                                                     {link ? (
@@ -1134,7 +1249,8 @@ function SharedInboxContent() {
                                                                 </div>
                                                             )}
 
-                                                            {/* Text Body */}
+                                                            {/* Text Body — hidden for LIST/IBUTTON (body shown inside the widget) */}
+                                                            {contentType !== 'LIST' && contentType !== 'IBUTTON' && (
                                                             <div className="text-[14px] leading-relaxed whitespace-pre-wrap break-words font-medium">
                                                                 {(() => {
                                                                     if (type === 'TEMPLATE' && content.template_name && (!content.body || content.body === "Template Message")) {
@@ -1157,6 +1273,7 @@ function SharedInboxContent() {
                                                                         (type === 'INTERACTIVE' ? <span className="text-[10px] italic opacity-50">Interactive Meta Workflow Message</span> : "");
                                                                 })()}
                                                             </div>
+                                                            )}
 
                                                             {/* Flow Form Submission Data (NFM Reply) */}
                                                             {content.nfm_reply?.response_json && (
@@ -1203,11 +1320,11 @@ function SharedInboxContent() {
                                                                 </div>
                                                             )}
 
-                                                            {/* Interactive Buttons / CTAs */}
-                                                            {(content.buttons || content.interactive?.action?.buttons || content.raw?.interactive?.action?.buttons || content.action?.name === 'cta_url' || content.action?.name === 'call_number') && (
+                                                            {/* Interactive Buttons / CTAs — for non-IBUTTON types that still have buttons */}
+                                                            {contentType !== 'LIST' && contentType !== 'IBUTTON' && (content.buttons || content.action?.buttons || content.interactive?.action?.buttons || content.raw?.interactive?.action?.buttons || content.action?.name === 'cta_url' || content.action?.name === 'call_number') && (
                                                                 <div className="mt-3 space-y-1.5">
                                                                     {/* Standard Buttons */}
-                                                                    {(content.buttons || content.interactive?.action?.buttons || content.raw?.interactive?.action?.buttons || []).map((b: any, bi: number) => (
+                                                                    {(content.buttons || content.action?.buttons || content.interactive?.action?.buttons || content.raw?.interactive?.action?.buttons || []).map((b: any, bi: number) => (
                                                                         <div key={bi} className={`py-1.5 px-3 rounded-lg border text-[10px] font-black uppercase text-center cursor-pointer hover:opacity-80 transition-opacity flex items-center justify-center gap-1 ${isOutbound ? 'bg-white/10 border-white/20' : 'bg-slate-50 border-slate-200 text-slate-700'}`}>
                                                                             {b.reply?.title || b.title || b}
                                                                         </div>

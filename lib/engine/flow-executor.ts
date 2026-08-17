@@ -901,9 +901,24 @@ function buildContentRecord(payload: any): any {
     }
     if (type === 'interactive') {
         const i = payload.interactive || {};
-        return { body: i.body?.text, footer: i.footer?.text, interactiveType: i.type, action: i.action };
+        // ✅ FIX: Store the FULL interactive payload — never strip sections/buttons/header.
+        // The chat UI needs the raw action.sections (list rows), action.buttons (quick-reply),
+        // and header to render rich interactive bubbles. Partial records break rendering.
+        return {
+            body: i.body?.text,
+            footer: i.footer?.text,
+            interactiveType: i.type,          // "list" | "button" | "product_list" | "flow" | "cta_url"
+            header: i.header || null,          // { type: "text"|"image"|"video"|"document", text?, link? }
+            // Sections (list rows) and buttons — keep the full action object intact
+            action: i.action || {},
+            // Also expose top-level shortcuts the UI checks for
+            buttons: i.action?.buttons || null,
+            sections: i.action?.sections || null,
+            // Preserve the raw interactive object for any deep-dive rendering
+            raw: { interactive: i },
+        };
     }
-    if (type === 'template') return { templateName: payload.template?.name };
+    if (type === 'template') return { templateName: payload.template?.name, template_name: payload.template?.name };
     return { raw: payload };
 }
 
