@@ -42,7 +42,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
         const { join } = await import("path");
         const { readFile } = await import("fs/promises");
-        const appId = waba.app_id || "754407886477543"; // FALLBACK App ID
+        const appId = waba.app_id || process.env.META_APP_ID || "1183066783900270"; // Fallback to platform's official App ID
 
         const uploadMedia = async (url: string, filename: string) => {
             if (!url.includes('/api/media/local/')) return undefined;

@@ -175,6 +175,8 @@ export class MetaTemplateService {
                 } else {
                     errorMessage = "ACTION REQUIRED: The Media URL (Image/Video/Document) in your template Header must be a valid, publicly accessible link starting with 'https://'. Please check the URL and try again.";
                 }
+            } else if (metaError?.error_subcode === 2388273 || errorMessage.includes("IMAGE header type") || errorMessage.includes("title type") || errorMessage.includes("header type need")) {
+                errorMessage = "ACTION REQUIRED: The template Header requires a valid media file example. Please check your header image/video upload and try again.";
             } else if (errorMessage.includes("Unsupported post request") || errorMessage.includes("does not exist")) {
                 errorMessage = "CONFIGURATION ERROR: Please verify that you have connected the correct 'WhatsApp Business Account ID' (WABA ID) and not your Business Manager ID.";
             } else if (errorMessage.includes("example") || errorMessage.includes("body_text") || errorMessage.includes("header_text")) {
