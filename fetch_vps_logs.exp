@@ -3,7 +3,7 @@ set SERVER    "root@72.61.231.187"
 set PASS      "Photoshop09@"
 set timeout   60
 
-spawn ssh -o StrictHostKeyChecking=no -o PubkeyAuthentication=no $SERVER {docker ps -a}
+spawn ssh -o StrictHostKeyChecking=no -o PubkeyAuthentication=no $SERVER "cd /root/grafty_bsp && docker compose -f docker-compose.prod.yml logs --tail=200 worker"
 expect {
     "password:" { send "$PASS\r"; exp_continue }
     eof

@@ -534,7 +534,8 @@ async function runCatalogNode(ctx: ExecutionContext, node: any): Promise<void> {
                         if (metaId) await saveOutboundMessage(waba, contact, metaId, payload);
                         return; // Exit early since native payload was successfully dispatched
                     } catch (sendErr: any) {
-                        console.error(`[CatalogNode] ❌ Native product_list send failed: ${sendErr.message}`);
+                        const details = sendErr.response?.data || sendErr.message;
+                        console.error(`[CatalogNode] ❌ Native product_list send failed for workspace ${session.workspace_id}:`, details);
                         // Fall through to carousel fallback
                     }
                 }
@@ -666,7 +667,8 @@ async function runPaymentNode(ctx: ExecutionContext, node: any): Promise<void> {
                     name: contact.name || 'Customer',
                     contact: contact.phone,
                     email: contact.email || 'noreply@grafty.pro'
-                }
+                },
+                { flowSessionId: session.id }
             );
             shortUrl = res.short_url;
         }
@@ -1003,6 +1005,19 @@ export async function handleUserInput(session: FlowSessionData, waba: any, conta
         normalizedInput = normalizedInput.replace('list_select_id:', '');
     }
 
+    // ── FIX #1: For collect_input nodes, ALWAYS save the variable FIRST ──
+    // Previously the matched-edge check ran before this, causing {{qty}} to be
+    // undefined because collect_input nodes with item-specific edges (item-1,
+    // item-2…) would match and return before ever saving the variable.
+    if (currentNode.type === 'collect_input') {
+        const varName = currentNode.data?.variableName;
+        if (varName) {
+            const newState = await updateSessionState(session.id, session.state, { [varName]: normalizedInput });
+            session.state = newState;
+            console.log(`[FlowExecutor] 📝 collect_input saved: ${varName} = "${normalizedInput}"`);
+        }
+    }
+
     const matchedEdge = edges.find((e: any) => e.source === currentNodeId && (
         (e.sourceHandle || '').toLowerCase() === normalizedInput.toLowerCase() ||
         (e.sourceHandle || '').toLowerCase() === `button-${normalizedInput.toLowerCase()}` ||
@@ -1010,13 +1025,23 @@ export async function handleUserInput(session: FlowSessionData, waba: any, conta
     ));
     if (matchedEdge) return executeFrom(session, waba, contact, currentNodeId, matchedEdge.target, 0);
 
-    // collect_input: save user reply to named variable, then advance
+    // ── FIX #2: Global edge fallback ──
+    // If no edge from the current node matched, search ALL edges in the flow.
+    // This handles users interacting with a list/button from a *previous* node
+    // (e.g. they scroll up and choose a different product while the session is
+    // sitting at the Payment node). Without this, the flow closes silently.
+    const globalEdge = edges.find((e: any) => (
+        (e.sourceHandle || '').toLowerCase() === normalizedInput.toLowerCase() ||
+        (e.sourceHandle || '').toLowerCase() === `button-${normalizedInput.toLowerCase()}` ||
+        (e.sourceHandle || '').toLowerCase() === `item-${normalizedInput.toLowerCase()}`
+    ));
+    if (globalEdge) {
+        console.log(`[FlowExecutor] 🔀 Global edge match for "${normalizedInput}" — jumping to node ${globalEdge.target}`);
+        return executeFrom(session, waba, contact, globalEdge.source, globalEdge.target, 0);
+    }
+
+    // collect_input with no matched edge at all: advance via first outgoing edge
     if (currentNode.type === 'collect_input') {
-        const varName = currentNode.data?.variableName;
-        if (varName) {
-            const newState = await updateSessionState(session.id, session.state, { [varName]: inputValue });
-            session.state = newState;
-        }
         return executeFrom(session, waba, contact, currentNodeId, null, 0);
     }
 

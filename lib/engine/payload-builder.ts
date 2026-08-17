@@ -462,8 +462,9 @@ export function buildCarouselPayload(
     if (cards.length > 10) errors.push({ field: 'cards', message: 'Max 10 cards allowed' });
     if (!validate(errors)) return null;
 
-    const formattedCards = cards.map(c => {
+    const formattedCards = cards.map((c, index) => {
         const card: any = {
+            card_index: index,
             components: []
         };
         
@@ -496,32 +497,12 @@ export function buildCarouselPayload(
             parameters: [
                 {
                     type: 'payload',
-                    payload: `buy_${c.id}`
+                    payload: `sel_${c.id}`
                 }
             ]
         });
 
-        // WhatsApp interactive carousel card structure
-        const interactiveCard: any = {
-            header: c.imageUrl ? { type: 'image', image: { link: c.imageUrl } } : undefined,
-            body: { text: `*${sanitizeText(c.title, 'Item').substring(0, 80)}*\n\n${sanitizeText(c.description || '', '').substring(0, 80)}` },
-            action: {
-                buttons: [
-                    {
-                        type: 'reply',
-                        reply: {
-                            id: `buy_${c.id}`,
-                            title: sanitizeText(c.buttonTitle, 'Buy Now').substring(0, 20)
-                        }
-                    }
-                ]
-            }
-        };
-
-        // Remove undefined header
-        if (!interactiveCard.header) delete interactiveCard.header;
-
-        return interactiveCard;
+        return card;
     });
 
     return {
@@ -529,7 +510,8 @@ export function buildCarouselPayload(
         type: 'interactive',
         interactive: {
             type: 'carousel',
-            carousel: {
+            body: { text: 'Swipe to view products' },
+            action: {
                 cards: formattedCards
             }
         }
@@ -617,7 +599,10 @@ export function buildNodePayload(
     try {
         let finalPayload: any = null;
 
-        if (primaryActionType === 'list') {
+        if (data.messageType === 'carousel' && data.cards && data.cards.length > 0) {
+            finalPayload = buildCarouselPayload(to, data.cards);
+            isInteractive = true;
+        } else if (primaryActionType === 'list') {
             const rows = (data.items || [])
                 .filter((i: any) => i.id && i.title)
                 .map((i: any) => ({ id: i.id, title: i.title, description: i.description || '' }));

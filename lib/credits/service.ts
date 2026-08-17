@@ -16,7 +16,10 @@ import { InvoiceService } from "../finance/invoice-service";
 
 export class CreditService {
     private static pricingCache: Map<string, { price: number, expiry: number }> = new Map();
+    private static metaCostCache: Map<string, { cost: number, expiry: number }> = new Map();
+    private static wabaBillingModelCache: Map<string, { model: string | null, expiry: number }> = new Map();
     private static CACHE_TTL = 10 * 60 * 1000; // 10 Minutes
+    private static WABA_CACHE_TTL = 30 * 60 * 1000; // 30 Minutes — billing model rarely changes
     private static PLATFORM_FEE = 0.05; // ₹0.05 Orchestration Fee for DIRECT billing
 
     /**
@@ -235,214 +238,255 @@ export class CreditService {
         countryCode: string,
         description: string
     ) {
-        return await prisma.$transaction(async (tx) => {
-            // 0. Zero-Cost Quick Pass (Refactored to still create a record for tracking)
-            if (amount < 0) {
-                return {
-                    success: false,
-                    error: "INVALID_AMOUNT",
-                    transaction_id: null,
-                    balance_after: 0
-                };
-            }
-
-            // 1. Row-level lock using raw SQL
-            await tx.$executeRaw`
-        SELECT * FROM vendor_wallets 
-        WHERE workspace_id = ${workspaceId} 
-        FOR UPDATE
-      `;
-
-            // 2. Check for duplicate deduction (idempotency)
-            const existing = await tx.creditTransaction.findFirst({
-                where: {
-                    related_message_id: messageId,
-                    type: 'DEDUCTION'
-                }
-            });
-
-            if (existing) {
-                console.log(`[Credit Engine] Duplicate deduction prevented: ${messageId}`);
-                return {
-                    success: false,
-                    error: 'DUPLICATE_DEDUCTION',
-                    transaction_id: existing.id,
-                    balance_after: Number(existing.balance_after)
-                };
-            }
-
-            // 3. Get wallet — Bug #2 Fix: auto-create if it doesn't exist yet.
-            // Previously this threw a hard "Wallet not found" error which silently
-            // blocked all messaging for vendors whose wallet was never created
-            // (e.g. Google OAuth sign-ups before the Bug #7 fix, or super-admin
-            // created accounts that bypassed the normal registration flow).
-            let wallet = await tx.vendorWallet.findUnique({
-                where: { workspace_id: workspaceId }
-            });
-
-            if (!wallet) {
-                console.warn(`[CreditService] ⚠️ Wallet missing for workspace ${workspaceId} — auto-creating with zero balance.`);
-                wallet = await tx.vendorWallet.create({
-                    data: {
-                        workspace_id: workspaceId,
-                        current_balance: 0,
-                        total_purchased: 0,
-                        total_used: 0,
-                    }
-                });
-            }
-
-            if (wallet.is_frozen) {
-                throw new Error(`Wallet frozen: ${wallet.freeze_reason || 'Review required'}`);
-            }
-
-            // 3.5 Check Workspace Status
-            const workspace = await tx.workspace.findUnique({
-                where: { id: workspaceId }
-            });
-
-            if (!workspace || workspace.status === 'SUSPENDED') {
-                throw new Error("Account suspended. Please contact support.");
-            }
-
-            if (wallet.is_automated_blocked) {
-                throw new Error('Automated messaging blocked for security. Please contact support.');
-            }
-
-            // 3.6 Trial Limit Enforcement (100 credits max for unsubscribed users without GST)
-            // Bug #2 Fix: also verify the plan FK actually resolves to a real active plan.
-            // A non-null current_plan_id pointing to a deleted plan (orphaned FK after seed
-            // re-runs) was incorrectly counted as "subscribed" — now we do a real lookup.
-            let hasSubscription = false;
-            if (workspace.current_plan_id) {
-                const planExists = await tx.subscriptionPlan.findFirst({
-                    where: { id: workspace.current_plan_id, is_active: true },
-                    select: { id: true }
-                });
-                hasSubscription = !!planExists;
-            }
-            const hasGST = wallet.gst_registered;
-            if (!hasSubscription && !hasGST) {
-                const totalUsed = Number(wallet.total_used);
-                const TRIAL_LIMIT = 100;
-                if (totalUsed + amount > TRIAL_LIMIT) {
-                    throw new Error(`Trial limit exceeded (${TRIAL_LIMIT} credits max). Please subscribe to a plan or add GST details to continue.`);
-                }
-            }
-
-            const currentBalance = Number(wallet.current_balance);
-            const serviceBonusBalance = Number((wallet as any).service_bonus_balance || 0);
-
-            let bonusDeducted = 0;
-            let walletDeducted = amount;
-
-            // 3.7 Handle Service-Only Bonus Credits
-            if (category === 'SERVICE' && serviceBonusBalance > 0) {
-                if (serviceBonusBalance >= amount) {
-                    bonusDeducted = amount;
-                    walletDeducted = 0;
-                } else {
-                    bonusDeducted = serviceBonusBalance;
-                    walletDeducted = amount - serviceBonusBalance;
-                }
-            }
-
-            if (currentBalance < walletDeducted) {
-                throw new Error('Insufficient balance');
-            }
-
-            // 4. Calculate pricing breakdown
-            const metaCost = await this.getMetaCost(category, countryCode);
-            const ourCharge = amount;
-            const margin = ourCharge - metaCost;
-
-            // 5. Update wallet
-            const balanceAfter = currentBalance - walletDeducted;
-
-            await tx.vendorWallet.update({
-                where: { id: wallet.id },
-                data: {
-                    current_balance: walletDeducted > 0 ? { decrement: walletDeducted } : undefined,
-                    service_bonus_balance: bonusDeducted > 0 ? { decrement: bonusDeducted } : undefined,
-                    total_used: { increment: amount }
-                }
-            });
-
-            // Trigger low balance email if it drops below threshold (e.g. 100)
-            if (balanceAfter <= 100 && currentBalance > 100) {
-                const { systemEmailQueue } = await import('@/lib/queue');
-                const workspace = await tx.workspace.findUnique({ where: { id: workspaceId }, select: { email: true, name: true }});
-                if (workspace?.email) {
-                    await systemEmailQueue?.add("send-system-email", {
-                        type: "LOW_CREDIT_BALANCE",
-                        payload: {
-                            workspaceId: workspaceId,
-                            vendorName: workspace.name,
-                            to: workspace.email,
-                            currentBalance: balanceAfter
-                        }
-                    });
-                }
-            }
-
-
-            // 6. Create ledger entry
-            const transaction = await tx.creditTransaction.create({
-                data: {
-                    workspace_id: workspaceId,
-                    wallet_id: wallet.id,
-                    type: 'DEDUCTION',
-                    amount: -amount,
-                    balance_before: currentBalance, // Note: This snapshot is slightly simplified but useful for audit
-                    balance_after: balanceAfter,
-
-                    // References
-                    related_message_id: messageId,
-                    meta_message_id: metaMessageId,
-
-                    // Message Details
-                    message_category: category,
-                    country_code: countryCode,
-                    meta_cost: metaCost,
-                    our_charge: ourCharge,
-                    margin: margin,
-
-                    // Metadata
-                    description: description,
-                    status: 'COMPLETED',
-                    initiated_by: 'SYSTEM'
-                }
-            });
-
-            // 7. Process reseller commission
-            try {
-                const { ResellerService } = require('@/lib/reseller/service');
-                await ResellerService.processUsageCommission(
-                    tx,
-                    workspaceId,
-                    amount,
-                    messageId
-                );
-            } catch (err) {
-                console.error('[Credit Engine] Reseller commission error:', err);
-            }
-
-            console.log(`[Credit Engine] Credits Deducted: ${amount} from ${workspaceId}. Balance: ${balanceAfter}`);
-
-            // 8. Fraud Detection & Auto Recharge Hooks
-            await this.processPostDeductionHooks(tx, wallet, balanceAfter, amount);
-
+        // ✅ BULLETPROOF SHORT-CIRCUIT FOR FREE/SERVICE MESSAGES (cost = 0)
+        // Bypasses all pre-flight checks, DB locks, and workspace status validations.
+        // This ensures that manual chat replies (which cost 0) can NEVER be blocked
+        // by billing limits, missing wallets, frozen/suspended statuses, or database contention.
+        if (amount === 0) {
             return {
                 success: true,
-                balance_after: balanceAfter,
-                transaction_id: transaction.id,
-                margin: margin
+                balance_after: 0,
+                transaction_id: null,
+                margin: 0
             };
+        }
 
-        }, {
-            isolationLevel: 'ReadCommitted',
-            timeout: 10000
+        if (amount < 0) {
+            return {
+                success: false,
+                error: "INVALID_AMOUNT",
+                transaction_id: null,
+                balance_after: 0
+            };
+        }
+
+        // ☢️ FIX #2: Pre-flight checks moved OUTSIDE the transaction to reduce
+        // contention on the connection pool and avoid hitting the transaction timeout.
+        // These reads are non-mutating and safe to run before locking the wallet.
+
+        // Pre-check 1: Workspace status
+        const workspace = await prisma.workspace.findUnique({
+            where: { id: workspaceId },
+            select: { status: true, current_plan_id: true, name: true, email: true, reseller: true }
         });
+
+        if (!workspace || workspace.status === 'SUSPENDED') {
+            throw new Error("Account suspended. Please contact support.");
+        }
+
+        // Pre-check 2: Subscription / Trial check
+        let hasSubscription = false;
+        if (workspace.current_plan_id) {
+            const planExists = await prisma.subscriptionPlan.findFirst({
+                where: { id: workspace.current_plan_id, is_active: true },
+                select: { id: true }
+            });
+            hasSubscription = !!planExists;
+        }
+
+        // Pre-check 3: Meta pricing cost (uses its own cache — safe outside tx)
+        const metaCost = await this.getMetaCost(category, countryCode);
+
+        // ☢️ FIX #3: Retry loop for PostgreSQL error 40001 (serialization failure).
+        // Under high broadcast concurrency, multiple workers can fight over the same
+        // wallet row. ReadCommitted + FOR UPDATE still causes 40001 during concurrent
+        // increments of total_used. We retry up to 3 times with jittered backoff.
+        const MAX_RETRIES = 3;
+        let lastError: any;
+
+        for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+            try {
+                return await prisma.$transaction(async (tx) => {
+                    // 1. Row-level lock using raw SQL
+                    await tx.$executeRaw`
+                        SELECT id FROM vendor_wallets 
+                        WHERE workspace_id = ${workspaceId} 
+                        FOR UPDATE
+                    `;
+
+                    // 2. Check for duplicate deduction (idempotency)
+                    const existing = await tx.creditTransaction.findFirst({
+                        where: {
+                            related_message_id: messageId,
+                            type: 'DEDUCTION'
+                        }
+                    });
+
+                    if (existing) {
+                        console.log(`[Credit Engine] Duplicate deduction prevented: ${messageId}`);
+                        return {
+                            success: false,
+                            error: 'DUPLICATE_DEDUCTION',
+                            transaction_id: existing.id,
+                            balance_after: Number(existing.balance_after)
+                        };
+                    }
+
+                    // 3. Get wallet — auto-create if it doesn't exist yet.
+                    let wallet = await tx.vendorWallet.findUnique({
+                        where: { workspace_id: workspaceId }
+                    });
+
+                    if (!wallet) {
+                        console.warn(`[CreditService] ⚠️ Wallet missing for workspace ${workspaceId} — auto-creating with zero balance.`);
+                        wallet = await tx.vendorWallet.create({
+                            data: {
+                                workspace_id: workspaceId,
+                                current_balance: 0,
+                                total_purchased: 0,
+                                total_used: 0,
+                            }
+                        });
+                    }
+
+                    if (wallet.is_frozen) {
+                        throw new Error(`Wallet frozen: ${wallet.freeze_reason || 'Review required'}`);
+                    }
+
+                    if (wallet.is_automated_blocked) {
+                        throw new Error('Automated messaging blocked for security. Please contact support.');
+                    }
+
+                    // 3.6 Trial Limit Enforcement (100 credits max for unsubscribed users without GST)
+                    const hasGST = wallet.gst_registered;
+                    if (!hasSubscription && !hasGST) {
+                        const totalUsed = Number(wallet.total_used);
+                        const TRIAL_LIMIT = 100;
+                        if (totalUsed + amount > TRIAL_LIMIT) {
+                            throw new Error(`Trial limit exceeded (${TRIAL_LIMIT} credits max). Please subscribe to a plan or add GST details to continue.`);
+                        }
+                    }
+
+                    const currentBalance = Number(wallet.current_balance);
+                    const serviceBonusBalance = Number((wallet as any).service_bonus_balance || 0);
+
+                    let bonusDeducted = 0;
+                    let walletDeducted = amount;
+
+                    // 3.7 Handle Service-Only Bonus Credits
+                    if (category === 'SERVICE' && serviceBonusBalance > 0) {
+                        if (serviceBonusBalance >= amount) {
+                            bonusDeducted = amount;
+                            walletDeducted = 0;
+                        } else {
+                            bonusDeducted = serviceBonusBalance;
+                            walletDeducted = amount - serviceBonusBalance;
+                        }
+                    }
+
+                    if (currentBalance < walletDeducted) {
+                        throw new Error('Insufficient balance');
+                    }
+
+                    const ourCharge = amount;
+                    const margin = ourCharge - metaCost;
+
+                    // 5. Update wallet
+                    const balanceAfter = currentBalance - walletDeducted;
+
+                    await tx.vendorWallet.update({
+                        where: { id: wallet.id },
+                        data: {
+                            current_balance: walletDeducted > 0 ? { decrement: walletDeducted } : undefined,
+                            service_bonus_balance: bonusDeducted > 0 ? { decrement: bonusDeducted } : undefined,
+                            total_used: { increment: amount }
+                        }
+                    });
+
+                    // Trigger low balance email if it drops below threshold (e.g. 100)
+                    if (balanceAfter <= 100 && currentBalance > 100) {
+                        // Fire-and-forget — do NOT await inside tx (avoids timeout)
+                        import('@/lib/queue').then(({ systemEmailQueue }) => {
+                            if (workspace?.email) {
+                                systemEmailQueue?.add("send-system-email", {
+                                    type: "LOW_CREDIT_BALANCE",
+                                    payload: {
+                                        workspaceId,
+                                        vendorName: workspace.name,
+                                        to: workspace.email,
+                                        currentBalance: balanceAfter
+                                    }
+                                }).catch((e: any) => console.error("[CreditService] Low balance email queue error:", e));
+                            }
+                        }).catch(() => {});
+                    }
+
+                    // 6. Create ledger entry
+                    const transaction = await tx.creditTransaction.create({
+                        data: {
+                            workspace_id: workspaceId,
+                            wallet_id: wallet.id,
+                            type: 'DEDUCTION',
+                            amount: -amount,
+                            balance_before: currentBalance,
+                            balance_after: balanceAfter,
+                            related_message_id: messageId,
+                            meta_message_id: metaMessageId,
+                            message_category: category,
+                            country_code: countryCode,
+                            meta_cost: metaCost,
+                            our_charge: ourCharge,
+                            margin: margin,
+                            description: description,
+                            status: 'COMPLETED',
+                            initiated_by: 'SYSTEM'
+                        }
+                    });
+
+                    console.log(`[Credit Engine] Credits Deducted: ${amount} from ${workspaceId}. Balance: ${balanceAfter}`);
+
+                    return {
+                        success: true,
+                        balance_after: balanceAfter,
+                        transaction_id: transaction.id,
+                        margin: margin,
+                        _wallet: wallet // pass wallet ref for post-hooks below
+                    };
+
+                }, {
+                    isolationLevel: 'ReadCommitted',
+                    timeout: 15000 // Increased from 10s → 15s
+                });
+
+            } catch (err: any) {
+                const pgCode = err?.meta?.code || err?.cause?.code;
+                const is40001 = pgCode === '40001' || err?.message?.includes('could not serialize access');
+                if (is40001 && attempt < MAX_RETRIES) {
+                    const delay = 50 * attempt + Math.random() * 50; // 50-100ms, 100-150ms
+                    console.warn(`[CreditService] ⚠️ Serialization conflict (40001) — retry ${attempt}/${MAX_RETRIES} in ${Math.round(delay)}ms`);
+                    await new Promise(r => setTimeout(r, delay));
+                    lastError = err;
+                    continue;
+                }
+                throw err;
+            }
+        }
+
+        throw lastError;
+    }
+
+    /**
+     * Run post-deduction side-effects (fraud checks, auto-recharge, reseller commission).
+     * Called separately after deductCreditsAtomic so these don't pollute the critical tx.
+     */
+    static async runPostDeductionSideEffects(
+        workspaceId: string,
+        walletId: string,
+        amount: number,
+        messageId: string,
+        balanceAfter: number
+    ) {
+        // Reseller commission (fire-and-forget)
+        try {
+            const { ResellerService } = require('@/lib/reseller/service');
+            const wallet = await prisma.vendorWallet.findUnique({ where: { id: walletId } });
+            if (wallet) {
+                await ResellerService.processUsageCommission(null, workspaceId, amount, messageId);
+                await this.processPostDeductionHooks(null, wallet, balanceAfter, amount);
+            }
+        } catch (err) {
+            console.error('[Credit Engine] Post-deduction side-effects error:', err);
+        }
     }
 
     /**
@@ -600,17 +644,124 @@ export class CreditService {
         return { balanceAfter: result.balance_after };
     }
 
+    /**
+     * Refund credits back to a workspace wallet.
+     * Called when a message is pre-billed but ultimately rejected by Meta.
+     * Creates a REFUND ledger entry and increments the wallet balance atomically.
+     * 
+     * @param workspaceId - The workspace to refund
+     * @param amount - The positive amount to refund (e.g. 1.50)
+     * @param originalTransactionId - The credit_transaction.id of the original deduction
+     * @param reason - Description of why the refund was triggered
+     */
+    static async refundCredits(
+        workspaceId: string,
+        amount: number,
+        originalTransactionId: string,
+        reason: string
+    ): Promise<{ success: boolean; balance_after?: number; error?: string }> {
+        if (amount <= 0) {
+            console.warn(`[CreditService] refundCredits called with non-positive amount: ${amount}`);
+            return { success: false, error: "INVALID_REFUND_AMOUNT" };
+        }
+
+        const MAX_RETRIES = 3;
+        let lastError: any;
+
+        for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+            try {
+                return await prisma.$transaction(async (tx) => {
+                    // Row-level lock
+                    await tx.$executeRaw`
+                        SELECT id FROM vendor_wallets
+                        WHERE workspace_id = ${workspaceId}
+                        FOR UPDATE
+                    `;
+
+                    const wallet = await tx.vendorWallet.findUnique({
+                        where: { workspace_id: workspaceId }
+                    });
+
+                    if (!wallet) {
+                        console.warn(`[CreditService] refundCredits: wallet not found for ${workspaceId}`);
+                        return { success: false, error: "WALLET_NOT_FOUND" };
+                    }
+
+                    const currentBalance = Number(wallet.current_balance);
+                    const balanceAfter = currentBalance + amount;
+
+                    await tx.vendorWallet.update({
+                        where: { id: wallet.id },
+                        data: {
+                            current_balance: { increment: amount },
+                            total_used: { decrement: amount }
+                        }
+                    });
+
+                    await tx.creditTransaction.create({
+                        data: {
+                            workspace_id: workspaceId,
+                            wallet_id: wallet.id,
+                            type: 'REFUND' as any,
+                            amount: amount,
+                            balance_before: currentBalance,
+                            balance_after: balanceAfter,
+                            related_message_id: `refund_for_${originalTransactionId}`,
+                            description: reason,
+                            status: 'COMPLETED',
+                            initiated_by: 'SYSTEM'
+                        }
+                    });
+
+                    console.log(`[CreditService] ✅ Refunded ${amount} credits to ${workspaceId}. New balance: ${balanceAfter}`);
+                    return { success: true, balance_after: balanceAfter };
+                }, {
+                    isolationLevel: 'ReadCommitted',
+                    timeout: 10000
+                });
+            } catch (err: any) {
+                const pgCode = err?.meta?.code || err?.cause?.code;
+                const is40001 = pgCode === '40001' || err?.message?.includes('could not serialize access');
+                if (is40001 && attempt < MAX_RETRIES) {
+                    const delay = 50 * attempt + Math.random() * 50;
+                    console.warn(`[CreditService] Refund serialization conflict — retry ${attempt}/${MAX_RETRIES} in ${Math.round(delay)}ms`);
+                    await new Promise(r => setTimeout(r, delay));
+                    lastError = err;
+                    continue;
+                }
+                throw err;
+            }
+        }
+
+        throw lastError;
+    }
+
     static async getMessageCost(category: string, countryCode: string, workspaceId?: string) {
         // 1. Check for Free Flow (SERVICE) or DIRECT billing model
         if (category === 'SERVICE') return 0; // Flows are always free
 
         if (workspaceId) {
-            const waba = await prisma.whatsAppAccount.findUnique({
-                where: { workspace_id: workspaceId },
-                select: { billing_model: true }
-            });
+            // ☢️ FIX #4: Cache WABA billing model to avoid a DB hit on every single message.
+            // Previously this caused N DB queries for an N-contact broadcast.
+            const wabaCacheKey = `waba_bm:${workspaceId}`;
+            const cachedWaba = this.wabaBillingModelCache.get(wabaCacheKey);
+            let billingModel: string | null = null;
 
-            if ((waba as any)?.billing_model === 'DIRECT') {
+            if (cachedWaba && cachedWaba.expiry > Date.now()) {
+                billingModel = cachedWaba.model;
+            } else {
+                const waba = await prisma.whatsAppAccount.findUnique({
+                    where: { workspace_id: workspaceId },
+                    select: { billing_model: true }
+                });
+                billingModel = (waba as any)?.billing_model ?? null;
+                this.wabaBillingModelCache.set(wabaCacheKey, {
+                    model: billingModel,
+                    expiry: Date.now() + this.WABA_CACHE_TTL
+                });
+            }
+
+            if (billingModel === 'DIRECT') {
                 return 0; // Direct billed users don't pay anything to Grafty
             }
         }
@@ -672,6 +823,11 @@ export class CreditService {
      * Get Meta's cost for a message (what Meta charges us)
      */
     static async getMetaCost(category: string, countryCode: string): Promise<number> {
+        // ☢️ FIX #4b: Cache meta cost lookups — same pricing table is hit repeatedly during broadcasts
+        const cacheKey = `meta_cost:${category}-${countryCode}`;
+        const cached = this.metaCostCache.get(cacheKey);
+        if (cached && cached.expiry > Date.now()) return cached.cost;
+
         const pricing = await prisma.creditPricing.findFirst({
             where: {
                 message_type: category,
@@ -679,6 +835,7 @@ export class CreditService {
             }
         });
 
+        let cost: number;
         if (!pricing) {
             const fallback = await prisma.creditPricing.findFirst({
                 where: {
@@ -686,10 +843,13 @@ export class CreditService {
                     country: "GLOBAL"
                 }
             });
-            return fallback ? Number(fallback.meta_cost) : 0.50;
+            cost = fallback ? Number(fallback.meta_cost) : 0.50;
+        } else {
+            cost = Number(pricing.meta_cost);
         }
 
-        return Number(pricing.meta_cost);
+        this.metaCostCache.set(cacheKey, { cost, expiry: Date.now() + this.CACHE_TTL });
+        return cost;
     }
 
     /**

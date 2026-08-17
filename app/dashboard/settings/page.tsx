@@ -115,6 +115,17 @@ export default function SettingsPage() {
                     borderColor="hover:border-fuchsia-300"
                 />
 
+                {/* Notifications */}
+                <SettingCard
+                    href="/dashboard/settings/notifications"
+                    title="Alerts & Notifications"
+                    desc="Manage agent email alerts for successful payments and flow events."
+                    icon={<Bell size={24} />}
+                    color="text-emerald-600"
+                    bg="bg-emerald-50"
+                    borderColor="hover:border-emerald-300"
+                />
+
                 {/* SMTP / Email Settings */}
                 <SettingCard
                     href="/dashboard/marketing/email/settings"

@@ -1139,6 +1139,116 @@ const systemEmailWorker = new Worker(
                 console.log(`[EmailWorker] ✅ DRIP_DAY_10 email sent to ${to}`);
             }
             
+            if (type === "FLOW_PAYMENT_SUCCESS") {
+                const { 
+                    to, 
+                    vendorName, 
+                    customerPhone, 
+                    customerName, 
+                    txnId, 
+                    amount, 
+                    gateway, 
+                    flowState, 
+                    recentMessages 
+                } = payload;
+
+                // Build flow variables section
+                const flowVarsHtml = flowState && Object.keys(flowState).length > 0
+                    ? `
+                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin: 16px 0;">
+                            <h3 style="margin: 0 0 10px 0; color: #374151; font-size: 14px; text-transform: uppercase; letter-spacing: 0.05em;">📋 Form Details Collected</h3>
+                            <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                                ${Object.entries(flowState as Record<string, any>)
+                                    .filter(([k]) => !k.startsWith('_'))
+                                    .map(([key, value]) => `
+                                        <tr>
+                                            <td style="padding: 6px 0; color: #6b7280; font-weight: 500; width: 40%; text-transform: capitalize;">${key.replace(/_/g, ' ')}</td>
+                                            <td style="padding: 6px 0; color: #111827; font-weight: 600;">${String(value)}</td>
+                                        </tr>
+                                    `).join('')}
+                            </table>
+                        </div>`
+                    : '<p style="color: #9ca3af; font-size: 13px; font-style: italic;">No form data collected.</p>';
+
+                // Build recent messages section
+                const messagesHtml = recentMessages
+                    ? `
+                        <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 16px; margin: 16px 0;">
+                            <h3 style="margin: 0 0 10px 0; color: #166534; font-size: 14px; text-transform: uppercase; letter-spacing: 0.05em;">💬 Last 5 Messages</h3>
+                            <div style="font-family: monospace; font-size: 13px; color: #374151; white-space: pre-wrap; line-height: 1.8;">${recentMessages}</div>
+                        </div>`
+                    : '';
+
+                await resend.emails.send({
+                    from: "Grafty Payments <notifications@grafty.io>",
+                    to: to,
+                    subject: `💰 New Payment Received — ₹${amount} from ${customerName}`,
+                    html: `
+                        <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff;">
+                            <!-- Header -->
+                            <div style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); padding: 32px 32px 24px; border-radius: 12px 12px 0 0;">
+                                <h1 style="margin: 0; color: #ffffff; font-size: 22px; font-weight: 700;">💰 New Payment Received!</h1>
+                                <p style="margin: 8px 0 0 0; color: #94a3b8; font-size: 14px;">A customer just completed a payment via your WhatsApp Flow.</p>
+                            </div>
+
+                            <!-- Amount Hero -->
+                            <div style="background: #f0fdf4; border-left: 4px solid #22c55e; padding: 20px 32px; margin: 0;">
+                                <p style="margin: 0; font-size: 36px; font-weight: 800; color: #15803d;">₹${amount}</p>
+                                <p style="margin: 4px 0 0 0; color: #16a34a; font-size: 14px; font-weight: 500;">Payment Successful via ${gateway}</p>
+                            </div>
+
+                            <!-- Customer Info -->
+                            <div style="padding: 24px 32px 0;">
+                                <h3 style="margin: 0 0 12px 0; color: #374151; font-size: 14px; text-transform: uppercase; letter-spacing: 0.05em;">👤 Customer Details</h3>
+                                <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                                    <tr>
+                                        <td style="padding: 6px 0; color: #6b7280; width: 35%;">Name</td>
+                                        <td style="padding: 6px 0; color: #111827; font-weight: 600;">${customerName}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 6px 0; color: #6b7280;">WhatsApp</td>
+                                        <td style="padding: 6px 0; color: #111827; font-weight: 600;">+${customerPhone}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 6px 0; color: #6b7280;">Gateway</td>
+                                        <td style="padding: 6px 0; color: #111827; font-weight: 600;">${gateway}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 6px 0; color: #6b7280;">Transaction ID</td>
+                                        <td style="padding: 6px 0; color: #6b7280; font-size: 12px; font-family: monospace;">${txnId}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 6px 0; color: #6b7280;">Time</td>
+                                        <td style="padding: 6px 0; color: #111827;">${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' })} IST</td>
+                                    </tr>
+                                </table>
+                            </div>
+
+                            <!-- Flow Variables -->
+                            <div style="padding: 8px 32px 0;">${flowVarsHtml}</div>
+
+                            <!-- Recent Messages -->
+                            <div style="padding: 8px 32px 0;">${messagesHtml}</div>
+
+                            <!-- CTA -->
+                            <div style="padding: 24px 32px 32px; text-align: center;">
+                                <a href="${process.env.NEXT_PUBLIC_APP_URL}/dashboard" 
+                                   style="display: inline-block; background: #2563eb; color: white; padding: 12px 28px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 14px;">
+                                    View in Dashboard →
+                                </a>
+                            </div>
+
+                            <!-- Footer -->
+                            <div style="background: #f9fafb; border-top: 1px solid #e5e7eb; padding: 16px 32px; border-radius: 0 0 12px 12px;">
+                                <p style="margin: 0; color: #9ca3af; font-size: 12px; text-align: center;">
+                                    This notification was sent by ${vendorName}'s Grafty workspace.
+                                </p>
+                            </div>
+                        </div>
+                    `
+                });
+                console.log(`[EmailWorker] ✅ FLOW_PAYMENT_SUCCESS email sent to ${to} (Customer: ${customerName}, Amount: ₹${amount})`);
+            }
         } catch (err: any) {
             console.error(`[EmailWorker] ❌ Failed to send ${type} email:`, err.message);
             throw err; // Trigger BullMQ retry

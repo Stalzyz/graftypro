@@ -39,8 +39,10 @@ export async function POST(req: Request) {
             where: { workspace_id: user.workspaceId }
         });
 
-        if (!waba || !waba.access_token || !waba.phone_number_id) {
-            return NextResponse.json({ error: "WhatsApp account not connected" }, { status: 400 });
+        if (!waba || !waba.access_token || !waba.access_token.trim() || !waba.phone_number_id || !waba.phone_number_id.trim()) {
+            return NextResponse.json({
+                error: "WhatsApp account not connected properly. Please go to Settings → WhatsApp and save your Access Token and Phone Number ID."
+            }, { status: 400 });
         }
 
         const category = type === 'template' ? "MARKETING" : "SERVICE";
@@ -48,7 +50,16 @@ export async function POST(req: Request) {
         // 4. Send Message via Meta API (With pre-flight automatic credit deduction)
         let metaId = null;
         let finalContent = {};
-        const token = decrypt(waba.access_token);
+
+        let token: string;
+        try {
+            token = decrypt(waba.access_token);
+        } catch (decryptErr: any) {
+            console.error("[Vault] Token decryption failed for chats send route:", decryptErr.message);
+            return NextResponse.json({
+                error: decryptErr.message || "Failed to decrypt WhatsApp access credentials. Please re-enter your access token in Settings → WhatsApp."
+            }, { status: 400 });
+        }
 
         try {
             if (type === 'template' && template) {
@@ -140,6 +151,13 @@ export async function POST(req: Request) {
 
     } catch (error: any) {
         console.error("Send Error:", error);
+
+        // Return 402 for billing errors so the frontend can show a top-up prompt
+        if (error?.message?.startsWith("BILLING_ERROR:") || (error as any)?.billingError) {
+            const reason = error.message.replace("BILLING_ERROR: ", "");
+            return NextResponse.json({ error: reason, type: "BILLING_ERROR" }, { status: 402 });
+        }
+
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { WhatsAppService } from "@/lib/whatsapp/service";
+import { decrypt } from "@/lib/security/encryption";
 
 /**
  * 🔐 GRAFTY DIRECT WHATSAPP API (V1 - Multi-Tenant)
@@ -88,12 +89,16 @@ export async function POST(req: Request) {
         // - Credits are deducted from the vendor's wallet
         // - Retries are handled automatically
         // - Messages are logged in Grafty's message history
+        //
+        // ☢️ CRITICAL: access_token is stored encrypted in DB — must decrypt before sending to Meta.
+        const decryptedToken = decrypt(waba.access_token);
+
         const response = await WhatsAppService.sendTemplate(
             waba.phone_number_id,
-            waba.access_token,
+            decryptedToken,
             recipient.phone,
             template.name,
-            template.language || "en",
+            template.language || "en_US", // en_US required for India Meta templates
             components,
             workspace.id,
             "UTILITY", // transactional nudge

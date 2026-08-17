@@ -1,0 +1,75 @@
+#!/usr/bin/expect -f
+# =====================================================================
+# HOTFIX: Native Agent Notifications for Payments
+# Using password auth explicitly (bypassing SSH key passphrase prompt)
+# =====================================================================
+
+set SERVER "root@72.61.231.187"
+set PASS "Photoshop09@"
+set REMOTE "/root/grafty_bsp"
+set timeout 60
+
+proc scp_file {local_path remote_path server pass} {
+    spawn scp -o StrictHostKeyChecking=no -o PubkeyAuthentication=no -o PasswordAuthentication=yes $local_path $server:$remote_path
+    expect {
+        "password:" { send "$pass\r"; exp_continue }
+        "passphrase" { send "$pass\r"; exp_continue }
+        eof
+    }
+    wait
+}
+
+proc ssh_cmd {server pass cmd} {
+    spawn ssh -o StrictHostKeyChecking=no -o PubkeyAuthentication=no -o PasswordAuthentication=yes $server $cmd
+    expect {
+        "password:" { send "$pass\r"; exp_continue }
+        "passphrase" { send "$pass\r"; exp_continue }
+        eof
+    }
+    wait
+}
+
+puts "\n=============================================\n"
+puts "DEPLOYING PAYMENT NOTIFICATIONS HOTFIX\n"
+puts "=============================================\n"
+
+puts "==> \[1/8\] Uploading settings/page.tsx..."
+scp_file "app/dashboard/settings/page.tsx" "$REMOTE/app/dashboard/settings/page.tsx" $SERVER $PASS
+
+puts "==> \[2/8\] Creating notifications UI dir..."
+ssh_cmd $SERVER $PASS "mkdir -p $REMOTE/app/dashboard/settings/notifications"
+
+puts "==> \[2b\] Uploading notifications/page.tsx..."
+scp_file "app/dashboard/settings/notifications/page.tsx" "$REMOTE/app/dashboard/settings/notifications/page.tsx" $SERVER $PASS
+
+puts "==> \[3/8\] Creating notifications API dir..."
+ssh_cmd $SERVER $PASS "mkdir -p $REMOTE/app/api/settings/notifications"
+
+puts "==> \[3b\] Uploading notifications API route.ts..."
+scp_file "app/api/settings/notifications/route.ts" "$REMOTE/app/api/settings/notifications/route.ts" $SERVER $PASS
+
+puts "==> \[4/8\] Uploading webhooks/phonepe/route.ts..."
+scp_file "app/api/webhooks/phonepe/route.ts" "$REMOTE/app/api/webhooks/phonepe/route.ts" $SERVER $PASS
+
+puts "==> \[5/8\] Uploading webhooks/razorpay/route.ts..."
+scp_file "app/api/webhooks/razorpay/route.ts" "$REMOTE/app/api/webhooks/razorpay/route.ts" $SERVER $PASS
+
+puts "==> \[6/8\] Uploading lib/engine/flow-executor.ts..."
+scp_file "lib/engine/flow-executor.ts" "$REMOTE/lib/engine/flow-executor.ts" $SERVER $PASS
+
+puts "==> \[7/8\] Uploading worker.ts..."
+scp_file "worker.ts" "$REMOTE/worker.ts" $SERVER $PASS
+
+puts "==> \[8/8\] Rebuilding Docker..."
+set timeout -1
+spawn ssh -o StrictHostKeyChecking=no -o PubkeyAuthentication=no -o PasswordAuthentication=yes $SERVER "cd $REMOTE && docker compose -f docker-compose.prod.yml down && docker compose -f docker-compose.prod.yml up -d --build"
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    "passphrase" { send "$PASS\r"; exp_continue }
+    eof
+}
+wait
+
+puts "\n=== DEPLOYMENT COMPLETE ==="
+puts "Check: https://grafty.pro/dashboard/settings"
+puts "Navigate to: Settings -> Alerts & Notifications\n"

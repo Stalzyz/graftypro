@@ -5,14 +5,14 @@ set REMOTE    "/root/grafty_bsp"
 set timeout   300
 
 puts "\n🚀 \[1/2\] Syncing local files to VPS via rsync..."
-spawn rsync -avz --exclude="node_modules" --exclude=".git" --exclude=".env" ./ $SERVER:$REMOTE/
+spawn rsync -avz -e "ssh -o StrictHostKeyChecking=no -o PubkeyAuthentication=no" --exclude="node_modules" --exclude=".git" --exclude=".env" ./ $SERVER:$REMOTE/
 expect {
     "password:" { send "$PASS\r"; exp_continue }
     eof
 }
 
 puts "\n🚀 \[2/2\] Rebuilding Docker container on VPS..."
-spawn ssh -o StrictHostKeyChecking=no $SERVER "cd $REMOTE && docker compose -f docker-compose.prod.yml down && docker compose -f docker-compose.prod.yml up -d --build"
+spawn ssh -o StrictHostKeyChecking=no -o PubkeyAuthentication=no $SERVER "cd $REMOTE && docker compose -f docker-compose.prod.yml down && docker compose -f docker-compose.prod.yml up -d --build"
 expect {
     "password:" { send "$PASS\r"; exp_continue }
     eof

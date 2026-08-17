@@ -223,9 +223,17 @@ export class CatalogEngine {
 
         // ====== STRATEGY: Native MPM if catalog_id exists, else List Message ======
 
-        if (store.catalog_id) {
-            // ✅ NATIVE MULTI-PRODUCT MESSAGE
-            return this.sendNativeMPM(phoneId, token, to, store, products, workspaceId);
+        if (store.catalog_id && store.catalog_id.trim()) {
+            // Defensively trim catalog ID
+            store.catalog_id = store.catalog_id.trim();
+            try {
+                // ✅ NATIVE MULTI-PRODUCT MESSAGE
+                return await this.sendNativeMPM(phoneId, token, to, store, products, workspaceId);
+            } catch (err: any) {
+                console.error(`[CatalogEngine] ❌ MPM Dispatch failed for workspace ${workspaceId}:`, err.response?.data || err.message);
+                console.warn(`[CatalogEngine] 🔄 Falling back to Interactive List Message.`);
+                return this.sendListFallback(phoneId, token, to, store, products, workspaceId);
+            }
         } else {
             // ⚠️ FALLBACK: Interactive List Message
             return this.sendListFallback(phoneId, token, to, store, products, workspaceId);

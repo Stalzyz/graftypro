@@ -402,11 +402,20 @@ function SharedInboxContent() {
                 fetchConversations();
             } else {
                 const errData = await res.json();
-                alert(errData.error || "Failed to send message");
+                if (res.status === 402 || errData.type === "BILLING_ERROR") {
+                    // Billing error — show actionable message
+                    alert(`⚠️ Cannot send message: ${errData.error || "Insufficient credits."}\n\nPlease top up your credits in Settings → Billing to continue.`);
+                } else if (res.status === 403) {
+                    // Opt-out or forbidden
+                    alert(`🚫 ${errData.message || errData.error || "This contact cannot be messaged."}`);
+                } else {
+                    // Generic error — show the real reason from the server
+                    alert(errData.error || errData.message || "Failed to send message. Please try again.");
+                }
             }
         } catch (e) {
             console.error(e);
-            alert("Network error while sending message");
+            alert("Network error while sending message. Please check your connection.");
         } finally {
             setSending(false);
         }
@@ -920,7 +929,7 @@ function SharedInboxContent() {
                                                     return "";
                                                 };
 
-                                                const link = persistentUrl || findMediaLink(content);
+                                                let link = persistentUrl || findMediaLink(content);
                                                 const proxyMediaLink = (url: string) => {
                                                     if (!url) return "";
                                                     
@@ -953,6 +962,9 @@ function SharedInboxContent() {
                                                 const isCarousel = content.interactiveType === 'carousel' || content.type === 'carousel' || content.action?.cards || content.raw?.interactive?.action?.cards;
                                                 const isProduct = type === 'PRODUCT' || type === 'INTERACTIVE' && (content.type?.includes('product') || content.product_reply || content.interactiveType?.includes('product') || content.raw?.interactive?.type?.includes('product')) || content.catalog_id || content.product_retailer_id;
 
+                                                if (!link && isProduct && content.raw?._previews && content.raw._previews[0]?.image) {
+                                                    link = content.raw._previews[0].image;
+                                                }
                                                 let contentType = isCarousel ? 'CAROUSEL' : isProduct ? 'PRODUCT' : isImage(link) ? 'IMAGE' : isVideo(link) ? 'VIDEO' : isDoc(link) ? 'DOCUMENT' : isAudio(link) ? 'AUDIO' : (content.contentType?.toUpperCase() || '');
                                                 if (!contentType && link) contentType = 'IMAGE';
 
@@ -1029,15 +1041,26 @@ function SharedInboxContent() {
 
                                                             {contentType === 'CAROUSEL' && (
                                                                 <div className="mb-2 -mx-4 -mt-3 flex overflow-x-auto no-scrollbar gap-2 p-2 bg-slate-50 border-b">
-                                                                    {(content.action?.cards || content.raw?.interactive?.action?.cards || []).map((card: any, idx: number) => {
-                                                                        const cardLink = findMediaLink(card);
+                                                                    {(content.interactive?.carousel?.cards || content.action?.cards || content.raw?.interactive?.action?.cards || content.raw?.interactive?.carousel?.cards || []).map((card: any, idx: number) => {
+                                                                        const cardLink = findMediaLink(card) || card?.header?.image?.link || card?.imageUrl;
                                                                         return (
-                                                                            <div key={idx} className="min-w-[150px] bg-white rounded-lg border shadow-sm overflow-hidden text-slate-800">
-                                                                                {cardLink && <img src={proxyMediaLink(cardLink)} onClick={() => setZoomedImage(proxyMediaLink(cardLink))} className="h-20 w-full object-cover cursor-zoom-in hover:opacity-90 transition-opacity" />}
-                                                                                <div className="p-2">
-                                                                                    <div className="text-[10px] font-bold truncate">{card.title || card.header?.text}</div>
-                                                                                    <div className="text-[8px] text-slate-400 line-clamp-1">{card.description || card.body?.text}</div>
+                                                                            <div key={idx} className="min-w-[150px] bg-white rounded-lg border shadow-sm overflow-hidden text-slate-800 flex flex-col">
+                                                                                <div className="flex-1">
+                                                                                    {cardLink && <img src={proxyMediaLink(cardLink)} onClick={() => setZoomedImage(proxyMediaLink(cardLink))} className="h-20 w-full object-cover cursor-zoom-in hover:opacity-90 transition-opacity" />}
+                                                                                    <div className="p-2">
+                                                                                        <div className="text-[10px] font-bold truncate">{card.title || card.header?.text || card?.body?.text?.split('\n')[0]?.replace(/\*/g, '')}</div>
+                                                                                        <div className="text-[8px] text-slate-400 line-clamp-2">{card.description || card.body?.text}</div>
+                                                                                    </div>
                                                                                 </div>
+                                                                                {card.action?.buttons && card.action.buttons.length > 0 && (
+                                                                                    <div className="p-2 pt-0 flex flex-col gap-1 mt-auto">
+                                                                                        {card.action.buttons.map((btn: any, bIdx: number) => (
+                                                                                            <div key={bIdx} className="text-center bg-indigo-50 text-indigo-600 border border-indigo-100 rounded text-[9px] font-bold py-1.5 px-2 cursor-pointer hover:bg-indigo-100 transition-colors truncate">
+                                                                                                {btn.reply?.title || btn.title || btn.text}
+                                                                                            </div>
+                                                                                        ))}
+                                                                                    </div>
+                                                                                )}
                                                                             </div>
                                                                         );
                                                                     })}
@@ -1061,7 +1084,7 @@ function SharedInboxContent() {
                                                                     )}
                                                                     <div className="p-3">
                                                                         {(content.product_retailer_id || content.product_reply?.product_retailer_id || content.action?.catalog_id) && <div className="text-[9px] font-bold text-slate-400 mb-1">ID: {content.product_retailer_id || content.product_reply?.product_retailer_id || content.action?.catalog_id}</div>}
-                                                                        <div className="text-[12px] font-black text-slate-800">{content.product_reply?.title || content.body || content.text || "View Product"}</div>
+                                                                        <div className="text-[12px] font-black text-slate-800">{content.product_reply?.title || (typeof content.body === 'object' ? content.body?.text : content.body) || content.text || "View Product"}</div>
                                                                     </div>
                                                                 </div>
                                                             )}
@@ -1181,10 +1204,10 @@ function SharedInboxContent() {
                                                             )}
 
                                                             {/* Interactive Buttons / CTAs */}
-                                                            {(content.buttons || content.raw?.interactive?.action?.buttons || content.action?.name === 'cta_url' || content.action?.name === 'call_number') && (
+                                                            {(content.buttons || content.interactive?.action?.buttons || content.raw?.interactive?.action?.buttons || content.action?.name === 'cta_url' || content.action?.name === 'call_number') && (
                                                                 <div className="mt-3 space-y-1.5">
                                                                     {/* Standard Buttons */}
-                                                                    {(content.buttons || content.raw?.interactive?.action?.buttons || []).map((b: any, bi: number) => (
+                                                                    {(content.buttons || content.interactive?.action?.buttons || content.raw?.interactive?.action?.buttons || []).map((b: any, bi: number) => (
                                                                         <div key={bi} className={`py-1.5 px-3 rounded-lg border text-[10px] font-black uppercase text-center cursor-pointer hover:opacity-80 transition-opacity flex items-center justify-center gap-1 ${isOutbound ? 'bg-white/10 border-white/20' : 'bg-slate-50 border-slate-200 text-slate-700'}`}>
                                                                             {b.reply?.title || b.title || b}
                                                                         </div>

@@ -47,6 +47,7 @@ export class WhatsAppService {
         }
 
         let transactionId: string | null = null;
+        let deductedAmount: number = 0;
 
         // ----------------------------------------------------
         // CREDIT ENGINE: Pre-Flight Deduction
@@ -55,7 +56,7 @@ export class WhatsAppService {
             try {
                 const { CreditService } = await import('@/lib/credits/service');
                 const { v4: uuidv4 } = require('uuid');
-                
+
                 // Naive Country Code Extraction (Assumes non-India numbers include full code)
                 let countryCode = "91";
                 if (sanitizedTo.startsWith("1")) countryCode = "1";
@@ -63,26 +64,39 @@ export class WhatsAppService {
                 else if (sanitizedTo.length > 10) countryCode = sanitizedTo.substring(0, sanitizedTo.length - 10);
 
                 const currentCost = await CreditService.getMessageCost(category, countryCode, workspaceId);
-                const localMessageId = `int_${uuidv4()}`;
 
-                const deduction = await CreditService.deductCreditsAtomic(
-                    workspaceId,
-                    currentCost,
-                    localMessageId,
-                    null, // Meta Message ID updated post-flight
-                    category,
-                    countryCode,
-                    description || `WhatsApp ${category} Message`
-                );
+                // ✅ FIX #1: Skip the billing engine entirely when cost is 0.
+                // SERVICE category messages (manual chat replies) are free.
+                // Running the engine on a 0-cost message is wasteful and can
+                // still throw "Account suspended" / "Wallet frozen" errors that
+                // would block legitimate free manual replies.
+                if (currentCost > 0) {
+                    const localMessageId = `int_${uuidv4()}`;
 
-                if (deduction.success) {
-                    transactionId = deduction.transaction_id;
+                    const deduction = await CreditService.deductCreditsAtomic(
+                        workspaceId,
+                        currentCost,
+                        localMessageId,
+                        null, // Meta Message ID updated post-flight
+                        category,
+                        countryCode,
+                        description || `WhatsApp ${category} Message`
+                    );
+
+                    if (deduction.success) {
+                        transactionId = deduction.transaction_id;
+                        deductedAmount = currentCost;
+                    }
+                } else {
+                    console.log(`[WhatsAppService] Zero-cost ${category} message — skipping credit engine.`);
                 }
             } catch (err: any) {
                 console.error("[WhatsAppService] Credit Engine Blocked Message:", err.message);
-                
-                // Construct a standardized error response for the frontend / API
+
+                // ✅ FIX #2: Surface the real billing reason to the caller with a
+                // distinct BILLING_ERROR prefix so routes can return a 402 instead of 500.
                 const error = new Error(`BILLING_ERROR: ${err.message}`);
+                (error as any).billingError = true;
                 (error as any).response = { data: { error: { message: err.message, type: "BillingException" } } };
                 throw error;
             }
@@ -124,12 +138,32 @@ export class WhatsAppService {
 
             return response.data;
         } catch (error: any) {
-            console.error("WhatsApp API Error:", error.response?.data || error.message);
-            console.error("Failed Payload:", JSON.stringify(payload, null, 2));
+            // Don't re-log billing errors — they were already logged before being thrown
+            if (!(error as any).billingError) {
+                console.error("WhatsApp API Error:", error.response?.data || error.message);
+                console.error("Failed Payload:", JSON.stringify(payload, null, 2));
+            }
 
-            // Optional: If transmission failed but credit was deducted, we could trigger an auto-refund here.
-            // For MVP, we maintain the ledger integrity and manual adjustments can be made.
-            
+            // ✅ FIX #3: Auto-refund credits if Meta rejected the message after a
+            // successful pre-flight deduction. Keeps the ledger accurate and prevents
+            // users from losing credits on Meta-side failures (e.g. 131047, 190, 100).
+            if (transactionId && deductedAmount > 0 && !(error as any).billingError) {
+                try {
+                    const { CreditService } = await import('@/lib/credits/service');
+                    await CreditService.refundCredits(
+                        workspaceId!,
+                        deductedAmount,
+                        transactionId,
+                        `Auto-refund: Meta API rejected message (original txn: ${transactionId})`
+                    ).catch((refundErr: any) => {
+                        console.error("[WhatsAppService] Auto-refund failed:", refundErr.message);
+                    });
+                    console.log(`[WhatsAppService] ✅ Auto-refunded ${deductedAmount} credits for failed send (txn: ${transactionId})`);
+                } catch (refundErr: any) {
+                    console.error("[WhatsAppService] Auto-refund error:", refundErr.message);
+                }
+            }
+
             throw error;
         }
     }

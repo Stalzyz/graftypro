@@ -59,7 +59,9 @@ export function validateFlowData(nodes: any[], edges: any[]): ValidationResult {
                 break;
             case 'payment':
             case 'Payment':
-                if (!d.amount || isNaN(parseFloat(d.amount)) || parseFloat(d.amount) <= 0) {
+                const amt = d.amount;
+                const isVar = typeof amt === 'string' && amt.startsWith('{{') && amt.endsWith('}}');
+                if (!isVar && (!amt || isNaN(parseFloat(amt)) || parseFloat(amt) <= 0)) {
                     errors.push(`Payment node ${node.id} requires a valid numeric amount > 0.`);
                 }
                 break;
@@ -103,7 +105,7 @@ export function validateFlowData(nodes: any[], edges: any[]): ValidationResult {
         }
 
         if (validEdgeIds.has(edge.id)) {
-            errors.push(`Duplicate Edge ID: ${edge.id}. Skipping duplicate.`);
+            // Just skip silently, don't throw an error to block saving
             return false;
         }
 

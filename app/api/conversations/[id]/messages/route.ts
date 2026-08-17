@@ -69,9 +69,30 @@ export async function POST(
         }
 
         const waba = conversation.workspace.waba;
-        if (!waba) return NextResponse.json({ error: "WhatsApp account not found" }, { status: 400 });
+        if (!waba || !waba.access_token || !waba.access_token.trim() || !waba.phone_number_id || !waba.phone_number_id.trim()) {
+            return NextResponse.json({
+                error: "WhatsApp account not connected properly. Please go to Settings → WhatsApp and save your Access Token and Phone Number ID."
+            }, { status: 400 });
+        }
 
-        const token = decrypt(waba.access_token);
+        // ✅ FIX: Guard against opted-out contacts (mirrors /api/chats/send behaviour)
+        if (conversation.contact.opt_in === false) {
+            return NextResponse.json({
+                error: "CONTACT_OPT_OUT",
+                message: "This contact has opted out of WhatsApp messages."
+            }, { status: 403 });
+        }
+
+        let token: string;
+        try {
+            token = decrypt(waba.access_token);
+        } catch (decryptErr: any) {
+            console.error("[Vault] Token decryption failed for conversation route:", decryptErr.message);
+            return NextResponse.json({
+                error: decryptErr.message || "Failed to decrypt WhatsApp access credentials. Please re-enter your access token in Settings → WhatsApp."
+            }, { status: 400 });
+        }
+
         let response: any;
         let type: string = "TEXT";
         let content: any = { body: text };
@@ -269,6 +290,14 @@ export async function POST(
 
     } catch (error: any) {
         console.error("Send Message Error:", error);
+
+        // ✅ FIX: Return 402 for billing errors so the frontend can show a
+        // meaningful "top up credits" prompt instead of a generic error.
+        if (error?.message?.startsWith("BILLING_ERROR:") || (error as any)?.billingError) {
+            const reason = error.message.replace("BILLING_ERROR: ", "");
+            return NextResponse.json({ error: reason, type: "BILLING_ERROR" }, { status: 402 });
+        }
+
         return NextResponse.json({ error: error.message || "Failed to send message" }, { status: 500 });
     }
 }

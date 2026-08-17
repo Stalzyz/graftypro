@@ -51,20 +51,25 @@ export function decrypt(cipherText: string): string {
     if (!cipherText) return "";
 
     /**
-     * 🔥 STRICT DECRYPTION MODE
-     * Prevents "Downgrade Attacks" where plain text values could bypass the vault.
-     * All tokens MUST be encrypted in production. 
+     * 🔥 STEALTH/FALLBACK MODE FOR LEGACY/DEV CREDENTIALS
+     * Prevents system failure if credentials in the database are plain text.
+     * Log a warning for administrator visibility to re-save credentials.
      */
     if (!cipherText.includes(":") || cipherText.split(":").length !== 3) {
-        throw new Error("Vault Integrity Violation: Unencrypted Data Detected.");
+        console.warn("[Vault] ⚠️ Legacy plain-text or unencrypted token retrieved. Using direct fallback. Please update/re-save this token in Settings to encrypt it.");
+        return cipherText;
     }
 
     if (!ENCRYPTION_KEY) {
-        throw new Error("Encryption key not configured");
+        console.error("[Vault] ❌ ENCRYPTION_KEY is missing from environment. Cannot decrypt stored credentials.");
+        throw new Error("Vault Decryption Fault: Server encryption key not configured.");
     }
 
     try {
         const key = Buffer.from(ENCRYPTION_KEY, "hex");
+        if (key.length !== 32) {
+            throw new Error("ENCRYPTION_KEY must be a 64-character hex string (32 bytes)");
+        }
 
         const [ivHex, tagHex, encryptedData] = cipherText.split(":");
         const iv = Buffer.from(ivHex, "hex");
@@ -78,8 +83,8 @@ export function decrypt(cipherText: string): string {
 
         return decrypted;
     } catch (error: any) {
-        console.error("[Vault] Decryption failed — integrity key may be invalid.");
-        throw new Error("Vault Decryption Fault");
+        console.error("[Vault] ❌ Decryption failed — integrity key may be invalid or mismatched:", error.message);
+        throw new Error("Vault Decryption Fault: The stored WhatsApp Access Token could not be decrypted. Please re-enter the token in your WhatsApp integration settings.");
     }
 }
 
