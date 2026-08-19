@@ -1,4 +1,3 @@
-
 import { NextResponse } from "next/server";
 import { prisma } from "../../../../lib/db";
 import { getCurrentUser } from "../../../../lib/auth";
@@ -56,6 +55,30 @@ export async function POST(req: Request) {
                     const phone = String(c.phone).replace(/\D/g, ''); // Strip non-digits
                     if (!phone) { stats.failed++; continue; }
 
+                    const existing = await prisma.contact.findUnique({
+                        where: {
+                            workspace_id_phone: {
+                                workspace_id: user.workspaceId,
+                                phone: phone
+                            }
+                        },
+                        select: { tags: true }
+                    });
+
+                    const existingTags: string[] = existing?.tags || [];
+
+                    // Sanitize incoming tags: CSV parser may give a string ("vip,lead")
+                    // or an already-split array. Normalize to a clean string[].
+                    const incomingTags: string[] = Array.isArray(c.tags)
+                        ? c.tags.map((t: any) => String(t).trim()).filter(Boolean)
+                        : typeof c.tags === "string"
+                            ? c.tags.split(",").map((t: string) => t.trim()).filter(Boolean)
+                            : [];
+
+                    // BUG FIX: Merge existing + incoming + segment tags so existing
+                    // tags are never wiped when re-importing an existing contact.
+                    const mergedTags = Array.from(new Set([...existingTags, ...incomingTags, ...additionalTags]));
+
                     const result = await prisma.contact.upsert({
                         where: {
                             workspace_id_phone: {
@@ -66,10 +89,7 @@ export async function POST(req: Request) {
                         update: {
                             name: c.name || undefined,
                             email: c.email || undefined,
-                            // Merge tags — don't wipe existing ones
-                            tags: Array.isArray(c.tags) && c.tags.length > 0 || additionalTags.length > 0
-                                ? { set: Array.from(new Set([...(Array.isArray(c.tags) ? c.tags : []), ...additionalTags])) }
-                                : undefined,
+                            tags: mergedTags,
                             attributes: c.attributes ? { ...(c.attributes || {}) } : undefined,
                             // Bug #3 Fix: also opt-in existing contacts on re-import
                             opt_in: true,
@@ -79,16 +99,19 @@ export async function POST(req: Request) {
                             phone: phone,
                             name: c.name || null,
                             email: c.email || null,
-                            tags: Array.from(new Set([...(Array.isArray(c.tags) ? c.tags : []), ...additionalTags])),
+                            tags: mergedTags,
                             attributes: c.attributes || {},
                             opt_in: true, // Bug #3 Fix: imported contacts must be opted-in
                         },
                         select: { id: true }
                     });
 
-                    // Prisma upsert doesn't tell us if it was create or update;
-                    // track by checking if the contact was just created.
-                    stats.created++; // conservative: count all as created for simplicity
+                    // Accurate tracking: existing contact = update, new contact = create
+                    if (existing) {
+                        stats.updated++;
+                    } else {
+                        stats.created++;
+                    }
                 } catch (err) {
                     console.error("Failed to import contact:", c, err);
                     stats.failed++;
@@ -96,8 +119,7 @@ export async function POST(req: Request) {
             }
         }
 
-        // Adjust: subtract failed from created
-        stats.created = Math.max(0, stats.created - stats.failed);
+        // Note: stats.created and stats.updated are now tracked accurately above.
 
         return NextResponse.json({ success: true, stats });
     } catch (error: any) {
