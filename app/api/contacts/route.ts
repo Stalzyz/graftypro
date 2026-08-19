@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "../../../lib/db";
 import { getCurrentUser } from "../../../lib/auth";
 import { triggerWelcomeEmail } from "@/lib/email/automations";
+import { ensureSegmentsForTags } from "../../../lib/segments/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -120,6 +121,11 @@ export async function POST(req: Request) {
                 opt_in: true,
             },
         });
+
+        // Auto-ensure segments exist for contact tags
+        if (Array.isArray(tags) && tags.length > 0) {
+            await ensureSegmentsForTags(user.workspaceId, tags);
+        }
 
         // 🛰️ AUTOMATION: Royal Welcome
         // Fire-and-forget — never blocks the API response

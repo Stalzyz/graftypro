@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "../../../../lib/db";
 import { getCurrentUser } from "../../../../lib/auth";
+import { ensureSegmentsForTags } from "../../../../lib/segments/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -19,13 +20,11 @@ export async function POST(req: Request) {
         }
 
         let updatedCount = 0;
-        // Upsert tags directly (Prisma does not have a native "array_append" for updateMany)
-        // We will fetch existing, merge tags, and update individually for maximum safety.
         for (const id of ids) {
             const contact = await prisma.contact.findFirst({
                 where: { id: id, workspace_id: user.workspaceId }
             });
-            
+
             if (contact) {
                 const combinedTags = Array.from(new Set([...contact.tags, ...tags]));
                 await prisma.contact.updateMany({
@@ -34,6 +33,10 @@ export async function POST(req: Request) {
                 });
                 updatedCount++;
             }
+        }
+
+        if (tags.length > 0) {
+            await ensureSegmentsForTags(user.workspaceId, tags);
         }
 
         return NextResponse.json({ success: true, count: updatedCount });

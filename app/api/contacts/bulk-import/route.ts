@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "../../../../lib/db";
 import { getCurrentUser } from "../../../../lib/auth";
+import { ensureSegmentsForTags } from "../../../../lib/segments/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -37,12 +38,8 @@ export async function POST(req: Request) {
         }
 
         const stats = { created: 0, updated: 0, failed: 0 };
+        const allImportedTagsSet = new Set<string>();
 
-        // Bug #3 Fix: CSV-imported contacts must also be opted-in, otherwise broadcasts
-        // find 0 recipients. The worker filter is: { opt_in: true, blocked: false }.
-        //
-        // Performance fix: replaced N sequential findFirst+update/create calls with
-        // chunked upserts — far faster for large imports.
         const CHUNK_SIZE = 100;
 
         for (let i = 0; i < contacts.length; i += CHUNK_SIZE) {
@@ -79,7 +76,10 @@ export async function POST(req: Request) {
                     // tags are never wiped when re-importing an existing contact.
                     const mergedTags = Array.from(new Set([...existingTags, ...incomingTags, ...additionalTags]));
 
-                    const result = await prisma.contact.upsert({
+                    // Accumulate tags for auto-segment creation
+                    mergedTags.forEach(t => allImportedTagsSet.add(t));
+
+                    await prisma.contact.upsert({
                         where: {
                             workspace_id_phone: {
                                 workspace_id: user.workspaceId,
@@ -91,7 +91,6 @@ export async function POST(req: Request) {
                             email: c.email || undefined,
                             tags: mergedTags,
                             attributes: c.attributes ? { ...(c.attributes || {}) } : undefined,
-                            // Bug #3 Fix: also opt-in existing contacts on re-import
                             opt_in: true,
                         },
                         create: {
@@ -101,12 +100,11 @@ export async function POST(req: Request) {
                             email: c.email || null,
                             tags: mergedTags,
                             attributes: c.attributes || {},
-                            opt_in: true, // Bug #3 Fix: imported contacts must be opted-in
+                            opt_in: true,
                         },
                         select: { id: true }
                     });
 
-                    // Accurate tracking: existing contact = update, new contact = create
                     if (existing) {
                         stats.updated++;
                     } else {
@@ -119,7 +117,11 @@ export async function POST(req: Request) {
             }
         }
 
-        // Note: stats.created and stats.updated are now tracked accurately above.
+        // Auto-create Segment records for all tags present in this import
+        const importedTagsArray = Array.from(allImportedTagsSet);
+        if (importedTagsArray.length > 0) {
+            await ensureSegmentsForTags(user.workspaceId, importedTagsArray);
+        }
 
         return NextResponse.json({ success: true, stats });
     } catch (error: any) {
