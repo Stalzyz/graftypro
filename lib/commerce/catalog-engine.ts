@@ -241,6 +241,41 @@ export class CatalogEngine {
     }
 
     /**
+     * Send a cart recovery Multi-Product Message containing specific abandoned items.
+     */
+    static async sendCartRecoveryMessage(
+        phoneId: string,
+        token: string,
+        to: string,
+        workspaceId: string,
+        productRetailerIds: string[]
+    ): Promise<any> {
+        const store = await prisma.commerceStore.findFirst({
+            where: { workspace_id: workspaceId }
+        });
+
+        if (!store || !store.catalog_id) {
+            console.warn(`[CatalogEngine] Cannot send cart recovery native MPM: No catalog ID configured for workspace ${workspaceId}.`);
+            return;
+        }
+
+        return WhatsAppService.sendMultiProductMessage(
+            phoneId, token, to,
+            store.catalog_id,
+            "Hi there! We noticed you left some items in your cart. Ready to complete your purchase?",
+            [
+                {
+                    title: "Your Cart Items",
+                    product_retailer_ids: productRetailerIds
+                }
+            ],
+            workspaceId,
+            "MARKETING",
+            "Cart Recovery"
+        );
+    }
+
+    /**
      * Send native Meta Multi-Product Message using catalog_id.
      */
     private static async sendNativeMPM(

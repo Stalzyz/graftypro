@@ -138,6 +138,8 @@ model Workspace {
   edu_forms        EduForm[]
   edu_leads        EduLead[]
   feedbacks        Feedback[]
+  carts            Cart[]
+  store_locations  StoreLocation[]
 
   // --- SALES CONVERSION SYSTEM (Profiling) ---
   industry          String?
@@ -976,6 +978,7 @@ model Contact {
   commerce_orders CommerceOrder[]
   internal_notes   InternalNote[]
   crm_leads        UniversalCrmLead[]
+  carts            Cart[]
 
   @@unique([workspace_id, phone])
   @@map("contacts")
@@ -3087,4 +3090,49 @@ model WorkspaceAddon {
   
   @@unique([workspace_id, addon_id])
   @@map("workspace_addons")
+}
+
+// --------------------------------------
+// Advanced Cart & Location Routing
+// --------------------------------------
+
+model Cart {
+  id              String      @id @default(uuid())
+  workspaceId     String
+  customerId      String?
+  customerPhone   String?
+  status          String      @default("ACTIVE") // ACTIVE, ABANDONED, RECOVERED, COMPLETED
+  recoverySent    Boolean     @default(false)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  workspace       Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  customer        Contact?    @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  items           CartItem[]
+
+  @@map("carts")
+}
+
+model CartItem {
+  id              String      @id @default(uuid())
+  cartId          String
+  productId       String
+  quantity        Int         @default(1)
+  
+  cart            Cart        @relation(fields: [cartId], references: [id], onDelete: Cascade)
+
+  @@map("cart_items")
+}
+
+model StoreLocation {
+  id              String      @id @default(uuid())
+  workspaceId     String
+  name            String
+  address         String?
+  latitude        Float?
+  longitude       Float?
+
+  workspace       Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@map("store_locations")
 }

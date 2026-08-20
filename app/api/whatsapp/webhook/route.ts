@@ -149,6 +149,9 @@ async function handleIngestion(account: any, msg: any, metaContact: any) {
     }
     else if (msg.interactive) content = msg.interactive;
     else if (msg.button) content = { button_text: msg.button.text, button_payload: msg.button.payload };
+    else if (msg.location) {
+        content = { location: { latitude: msg.location.latitude, longitude: msg.location.longitude, name: msg.location.name, address: msg.location.address } };
+    }
     else content = { raw: msg[type] || "Unsupported Type" };
 
     // 3. Contact Sync
@@ -198,6 +201,21 @@ async function handleIngestion(account: any, msg: any, metaContact: any) {
     // 6. Flow Engine Path
     FlowRunner.processMessage(workspaceId, contact.id, normalizeMessage(msg, { metadata: { phone_number_id: account.phone_number_id }, contacts: [metaContact] }))
         .catch(e => console.error("Flow Error:", e));
+
+    // 7. Location Routing Path
+    if (type === "location" && msg.location) {
+        try {
+            const { LocationRouter } = await import("../../../../lib/engine/location-router");
+            await LocationRouter.routeByLocation(
+                workspaceId,
+                contact.phone,
+                msg.location.latitude,
+                msg.location.longitude
+            );
+        } catch (e) {
+            console.error("Location Routing Error:", e);
+        }
+    }
 
     // 🎯 EXPERT HARDENING: Conversion Tracking (Replied)
     // If this is an inbound message from a contact who was recently sent a broadcast

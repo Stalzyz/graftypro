@@ -137,6 +137,31 @@ export class MetaFlowService {
         }
     }
 
+    /**
+     * 🛒 GENERATE RE-ORDER FLOW PAYLOAD
+     * Injects past orders into a flow payload for immediate repurchase.
+     */
+    static buildReorderFlowPayload(flowId: string, flowToken: string, pastOrders: any[]) {
+        return {
+            flow_message_version: "3",
+            flow_token: flowToken,
+            flow_id: flowId,
+            flow_cta: "Re-order Past Items",
+            flow_action: "navigate", // Changed from data_exchange to navigate to trigger screen opening with data
+            flow_action_payload: {
+                screen: "ORDER_HISTORY",
+                data: {
+                    past_orders: pastOrders.map(o => ({
+                        id: o.id,
+                        title: o.title,
+                        price: o.price,
+                        date: o.date
+                    }))
+                }
+            }
+        };
+    }
+
     private static async getAccount(workspaceId: string) {
         const account = await (prisma as any).whatsAppAccount.findUnique({
             where: { workspace_id: workspaceId }

@@ -33,12 +33,16 @@ export class MetaTemplateService {
             });
 
             // Transform our DB structure to Meta's strict API payload
-            const payload = {
+            const payload: any = {
                 name: template.name,
                 category: template.category, // UTILITY, MARKETING, AUTHENTICATION
                 language: template.language,
                 components: sortedComponents.map((c: any) => {
                     const component: any = { type: c.type };
+
+                    if (template.category === 'AUTHENTICATION' && c.type === 'BODY') {
+                        component.add_security_recommendation = template.add_security_recommendation || false;
+                    }
 
                     if (c.type === 'HEADER') {
                         component.format = c.format; // TEXT, IMAGE, VIDEO, DOCUMENT
@@ -94,13 +98,26 @@ export class MetaTemplateService {
 
                     if (c.type === 'BUTTONS') {
                         component.buttons = c.buttons.map((btn: any) => {
-                            if (btn.type === 'URL' && btn.url.includes('{{1}}')) {
+                            if (btn.type === 'URL' && btn.url && btn.url.includes('{{1}}')) {
                                 return {
                                     type: 'URL',
                                     text: btn.text,
                                     url: btn.url,
                                     example: [btn.sample_value || "https://grafty.pro"]
                                 };
+                            }
+                            if (btn.type === 'OTP') {
+                                const otpBtn: any = {
+                                    type: 'OTP',
+                                    otp_type: btn.otp_type || 'COPY_CODE',
+                                    text: btn.text,
+                                };
+                                if (otpBtn.otp_type === 'ONE_TAP') {
+                                    otpBtn.autofill_text = btn.autofill_text || "Autofill";
+                                    otpBtn.package_name = btn.package_name;
+                                    otpBtn.signature_hash = btn.signature_hash;
+                                }
+                                return otpBtn;
                             }
                             return btn;
                         });
