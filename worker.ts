@@ -405,6 +405,18 @@ setInterval(async () => {
 }, 2 * 60 * 1000);
 
 // ---------------------------------------------------------
+// PERIODIC SALES & ACTIVATION DROPOFF SWEEPER (Runs every 4 hours)
+// ---------------------------------------------------------
+setInterval(async () => {
+    try {
+        const { SalesAutomationEngine } = await import("./lib/email/sales-automations");
+        await SalesAutomationEngine.runActivationAndDropoffSweeper();
+    } catch (e: any) {
+        console.error("[SalesAutomationSweeper] Error in sales automation loop:", e.message);
+    }
+}, 4 * 60 * 60 * 1000);
+
+// ---------------------------------------------------------
 // 2. CAMPAIGN DISPATCHER (The Unroller)
 // ---------------------------------------------------------
 const campaignWorker = new Worker(
