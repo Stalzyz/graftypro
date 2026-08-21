@@ -630,7 +630,7 @@ function SharedInboxContent() {
         }
     };
     return (
-        <div className="flex h-screen bg-white overflow-hidden relative font-inter border-l border-slate-100 animate-in fade-in duration-700">
+        <div className="flex h-[100dvh] md:h-screen w-full bg-white overflow-hidden relative font-inter border-l border-slate-100 animate-in fade-in duration-700">
 
 
             {/* 2️⃣ MIDDLE PANEL: Intelligent Chat List */}
@@ -824,7 +824,14 @@ function SharedInboxContent() {
                             {/* Chat Header */}
                             <div className="h-[72px] bg-white border-b border-gray-100 px-6 flex items-center justify-between shrink-0 shadow-sm">
                                 <div className="flex items-center gap-4">
-                                    <button onClick={() => setIsMobileListOpen(true)} className="md:hidden p-2 -ml-2 text-gray-400"><ChevronRight className="rotate-180" /></button>
+                                    <button 
+                                        onClick={() => setIsMobileListOpen(true)} 
+                                        className="md:hidden p-2 text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-all flex items-center gap-1 font-bold text-xs shrink-0"
+                                        title="Back to Conversations"
+                                    >
+                                        <ChevronRight className="rotate-180" size={16} />
+                                        <span>Inbox</span>
+                                    </button>
                                     <div className="w-12 h-12 bg-gradient-to-br from-green-600 to-green-800 rounded-2xl flex items-center justify-center text-white font-black text-xl shadow-lg shadow-green-100 overflow-hidden relative group">
                                         {activeConversation?.contact?.avatar_url ? (
                                             <img src={activeConversation.contact.avatar_url} alt="" className="w-full h-full object-cover" />
@@ -1132,7 +1139,7 @@ function SharedInboxContent() {
                                                 const finalMediaUrl = proxyMediaLink(link);
 
                                                 return (
-                                                    <div className={`max-w-[75%] relative flex flex-col ${isOutbound ? 'items-end' : 'items-start'}`}>
+                                                    <div className={`max-w-[92%] sm:max-w-[80%] lg:max-w-[75%] relative flex flex-col ${isOutbound ? 'items-end' : 'items-start'}`}>
                                                         {/* Hover Action Toolbar */}
                                                         <div className={`absolute top-0 flex items-center gap-1 opacity-0 group-hover/msg:opacity-100 transition-all z-50 ${isOutbound ? '-left-[80px]' : '-right-[40px]'}`}>
                                                             {!isOutbound && (
@@ -1479,6 +1486,64 @@ function SharedInboxContent() {
                                                                 </div>
                                                             )}
 
+                                                            {/* Meta Approved Template Buttons Renderer */}
+                                                            {type === 'TEMPLATE' && (() => {
+                                                                const tObj = templates.find((t: any) => t.name === content.template_name);
+                                                                if (!tObj) return null;
+                                                                let comps: any[] = [];
+                                                                try {
+                                                                    comps = typeof tObj.components === 'string' ? JSON.parse(tObj.components) : (tObj.components || []);
+                                                                } catch (e) {}
+                                                                const btnComp = comps.find((c: any) => c.type === 'BUTTONS');
+                                                                if (!btnComp?.buttons?.length) return null;
+                                                                return (
+                                                                    <div className="mt-3 space-y-1.5 border-t border-white/10 pt-2">
+                                                                        {btnComp.buttons.map((btn: any, bi: number) => (
+                                                                            <div key={bi} className={`py-1.5 px-3 rounded-lg border text-[10px] font-black uppercase text-center flex items-center justify-center gap-1.5 ${isOutbound ? 'bg-white/10 border-white/20 text-white' : 'bg-slate-50 border-slate-200 text-slate-700'}`}>
+                                                                                {btn.type === 'URL' && <ExternalLink size={10} />}
+                                                                                {btn.type === 'PHONE_NUMBER' && <Phone size={10} />}
+                                                                                <span>{btn.text}</span>
+                                                                            </div>
+                                                                        ))}
+                                                                    </div>
+                                                                );
+                                                            })()}
+
+                                                            {/* Payment Node / Payment Link Renderer */}
+                                                            {(() => {
+                                                                const rawText = String(content.body || content.text || content.caption || '');
+                                                                const isPaymentNode = rawText.toLowerCase().includes('razorpay') || rawText.includes('/checkout') || rawText.includes('/pay/') || rawText.includes('upi://') || rawText.toLowerCase().includes('payment link') || rawText.toLowerCase().includes('invoice');
+                                                                if (isPaymentNode) {
+                                                                    const paymentUrlMatch = rawText.match(/(https?:\/\/[^\s]+|upi:\/\/[^\s]+)/i);
+                                                                    const paymentUrl = paymentUrlMatch ? paymentUrlMatch[0] : null;
+                                                                    return (
+                                                                        <div className={`mt-2.5 p-3 rounded-xl border flex items-center justify-between gap-2.5 ${isOutbound ? 'bg-white/10 border-white/20 text-white' : 'bg-emerald-50 border-emerald-200 text-emerald-950'}`}>
+                                                                            <div className="flex items-center gap-2 min-w-0">
+                                                                                <div className="p-2 rounded-lg bg-emerald-600 text-white shrink-0 shadow-sm">
+                                                                                    <CreditCard size={14} />
+                                                                                </div>
+                                                                                <div className="min-w-0 flex-1">
+                                                                                    <div className="text-[10px] font-black uppercase tracking-wider">Payment Node</div>
+                                                                                    <div className="text-[9px] opacity-80 truncate">{paymentUrl || "Secure Payment Link"}</div>
+                                                                                </div>
+                                                                            </div>
+                                                                            {paymentUrl && (
+                                                                                <a
+                                                                                    href={paymentUrl}
+                                                                                    target="_blank"
+                                                                                    rel="noopener noreferrer"
+                                                                                    className="shrink-0 px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[9px] font-black uppercase tracking-wider shadow-sm flex items-center gap-1"
+                                                                                >
+                                                                                    <span>Pay Now</span>
+                                                                                    <ExternalLink size={9} />
+                                                                                </a>
+                                                                            )}
+                                                                        </div>
+                                                                    );
+                                                                }
+                                                                return null;
+                                                            })()}
+
                                                             {/* Status line */}
                                                             <div className="mt-1 flex items-center justify-end gap-1 opacity-60">
                                                                 <span className="text-[9px] font-bold">{safeFormat(msg.created_at, "HH:mm")}</span>
@@ -1645,158 +1710,231 @@ function SharedInboxContent() {
                         </div>
 
                         {/* CRM SIDE PANEL: Perfil & Detalhes */}
+                        {/* CRM SIDE PANEL: Perfil & Detalhes */}
                         {
                             showCRM && (
-                                <div className="hidden xl:flex w-[340px] bg-white border-l border-slate-100 flex flex-col overflow-y-auto no-scrollbar shrink-0 relative animate-in slide-in-from-right-10 duration-700 shadow-[20px_0_40px_rgba(0,0,0,0.02)]">
-                                    <div className="p-8 space-y-8">
-                                        {/* CRM Header */}
-                                        <div className="text-center space-y-4">
-                                            <div className="w-24 h-24 mx-auto bg-white rounded-[2.5rem] shadow-xl shadow-gray-200/50 flex items-center justify-center relative group">
-                                                {activeConversation?.contact?.avatar_url ? (
-                                                    <img src={activeConversation.contact.avatar_url} alt="" className="w-full h-full object-cover rounded-[2.5rem]" />
-                                                ) : (
-                                                    <User size={40} className="text-gray-200" />
-                                                )}
-                                                <button className="absolute -right-2 -bottom-2 p-2.5 bg-green-600 text-white rounded-2xl shadow-lg border-2 border-white hover:scale-110 transition-all opacity-0 group-hover:opacity-100">
-                                                    <Camera size={16} />
-                                                </button>
-                                            </div>
-                                            <div className="space-y-1">
-                                                <h4 className="text-xl font-black text-gray-900 tracking-tight">{activeConversation?.contact?.name || activeConversation?.contact?.phone || "Contact"}</h4>
-                                                <div className="flex justify-center">
-                                                    <LeadScoreBadge score={85} />
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {/* Info Grid */}
-                                        <div className="space-y-4">
-                                            <h5 className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
-                                                <Info size={14} /> Contact Information
-                                            </h5>
-                                            <div className="grid gap-3">
-                                                {[
-                                                    { icon: Phone, label: 'WhatsApp', value: activeConversation?.contact?.phone || '—' },
-                                                    { icon: Mail, label: 'Email', value: activeConversation?.contact?.email || '—' },
-                                                    { icon: LayoutDashboard, label: 'Workspace', value: 'Default Workspace' },
-                                                    { icon: Clock, label: 'Created', value: safeFormat(activeConversation?.contact?.created_at, "MMM d, yyyy", '—') },
-                                                ].map((field, idx) => (
-                                                    <div key={idx} className="bg-white px-5 py-4 rounded-2xl border border-gray-100 flex items-center gap-4 hover:border-green-100 transition-colors shadow-sm">
-                                                        <field.icon size={16} className="text-gray-400" />
-                                                        <div className="flex-1 min-w-0">
-                                                            <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{field.label}</p>
-                                                            <p className="text-[12px] font-bold text-gray-800 truncate">{field.value}</p>
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-
-                                        {/* Tags / Labels */}
-                                        <div className="space-y-4">
-                                            <div className="flex justify-between items-center">
-                                                <h5 className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
-                                                    <Tag size={14} /> Labels & Segmentation
-                                                </h5>
-                                                <button className="text-[9px] font-black text-green-600 hover:bg-green-50 px-2 py-1 rounded-lg">EDIT</button>
-                                            </div>
-                                            <div className="flex flex-wrap gap-2">
-                                                {activeConversation?.contact?.tags?.map((tag: any, i: number) => (
-                                                    <span key={i} className="px-3 py-1.5 bg-white border border-gray-200 text-gray-600 text-[10px] font-bold rounded-xl shadow-sm hover:border-green-600 hover:text-green-600 cursor-pointer transition-all">
-                                                        {tag}
-                                                    </span>
-                                                ))}
-                                                <button className="w-8 h-8 rounded-xl border-2 border-dashed border-gray-200 flex items-center justify-center text-gray-300 hover:text-green-600 hover:border-green-600 transition-all">
-                                                    <PlusCircle size={14} />
-                                                </button>
-                                            </div>
-                                        </div>
-
-                                        {/* Internal Notes */}
-                                        <div className="space-y-4">
-                                            <h5 className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
-                                                <FileText size={14} /> Internal Notes
-                                            </h5>
-                                            <div className="space-y-3">
-                                                <div className="relative">
-                                                    <textarea
-                                                        value={newNote}
-                                                        onChange={e => setNewNote(e.target.value)}
-                                                        placeholder="Add a private note..."
-                                                        className="w-full bg-white border border-gray-100 rounded-2xl px-4 py-3 text-xs font-medium outline-none focus:border-green-600/30 transition-all resize-none shadow-sm"
-                                                        rows={2}
-                                                    />
-                                                    <button
-                                                        onClick={handleAddNote}
-                                                        disabled={savingNote || !newNote.trim()}
-                                                        className="absolute right-2 bottom-2 p-1.5 bg-green-600 text-white rounded-xl hover:bg-slate-900 transition-all disabled:opacity-50"
-                                                    >
-                                                        {savingNote ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+                                <>
+                                    {/* Desktop Side Column */}
+                                    <div className="hidden xl:flex w-[340px] bg-white border-l border-slate-100 flex flex-col overflow-y-auto no-scrollbar shrink-0 relative animate-in slide-in-from-right-10 duration-700 shadow-[20px_0_40px_rgba(0,0,0,0.02)]">
+                                        <div className="p-8 space-y-8">
+                                            {/* CRM Header */}
+                                            <div className="text-center space-y-4">
+                                                <div className="w-24 h-24 mx-auto bg-white rounded-[2.5rem] shadow-xl shadow-gray-200/50 flex items-center justify-center relative group">
+                                                    {activeConversation?.contact?.avatar_url ? (
+                                                        <img src={activeConversation.contact.avatar_url} alt="" className="w-full h-full object-cover rounded-[2.5rem]" />
+                                                    ) : (
+                                                        <User size={40} className="text-gray-200" />
+                                                    )}
+                                                    <button className="absolute -right-2 -bottom-2 p-2.5 bg-green-600 text-white rounded-2xl shadow-lg border-2 border-white hover:scale-110 transition-all opacity-0 group-hover:opacity-100">
+                                                        <Camera size={16} />
                                                     </button>
                                                 </div>
-                                                <div className="space-y-2 max-h-[200px] overflow-y-auto no-scrollbar">
-                                                    {contactNotes.map((note, i) => (
-                                                        <div key={i} className="bg-gray-50/50 p-3 rounded-2xl border border-gray-100/50">
-                                                            <p className="text-[11px] text-gray-700 font-medium leading-relaxed">{note.content}</p>
-                                                            <div className="flex justify-between items-center mt-2">
-                                                                <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{note.user?.first_name || 'Agent'}</span>
-                                                                <span className="text-[9px] text-gray-400 font-bold">{safeFormat(note.created_at, "MMM d, HH:mm", "...")}</span>
+                                                <div className="space-y-1">
+                                                    <h4 className="text-xl font-black text-gray-900 tracking-tight">{activeConversation?.contact?.name || activeConversation?.contact?.phone || "Contact"}</h4>
+                                                    <div className="flex justify-center">
+                                                        <LeadScoreBadge score={85} />
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Info Grid */}
+                                            <div className="space-y-4">
+                                                <h5 className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                                                    <Info size={14} /> Contact Information
+                                                </h5>
+                                                <div className="grid gap-3">
+                                                    {[
+                                                        { icon: Phone, label: 'WhatsApp', value: activeConversation?.contact?.phone || '—' },
+                                                        { icon: Mail, label: 'Email', value: activeConversation?.contact?.email || '—' },
+                                                        { icon: LayoutDashboard, label: 'Workspace', value: 'Default Workspace' },
+                                                        { icon: Clock, label: 'Created', value: safeFormat(activeConversation?.contact?.created_at, "MMM d, yyyy", '—') },
+                                                    ].map((field, idx) => (
+                                                        <div key={idx} className="bg-white px-5 py-4 rounded-2xl border border-gray-100 flex items-center gap-4 hover:border-green-100 transition-colors shadow-sm">
+                                                            <field.icon size={16} className="text-gray-400" />
+                                                            <div className="flex-1 min-w-0">
+                                                                <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{field.label}</p>
+                                                                <p className="text-[12px] font-bold text-gray-800 truncate">{field.value}</p>
                                                             </div>
                                                         </div>
                                                     ))}
                                                 </div>
                                             </div>
-                                        </div>
 
-                                        {/* Follow Up Section */}
-                                        <div className="space-y-4">
-                                            <h5 className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
-                                                <Calendar size={14} /> Follow Up
-                                            </h5>
-                                            {contactFollowUps.length > 0 ? (
-                                                contactFollowUps.filter(f => f.status === "PENDING").map((fu, i) => (
-                                                    <div key={i} className="bg-green-600 rounded-[1.5rem] p-5 text-white shadow-xl shadow-green-100 relative overflow-hidden group hover:scale-[1.02] transition-all cursor-pointer">
-                                                        <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-white/10 rounded-full group-hover:scale-125 transition-transform" />
-                                                        <div className="relative">
-                                                            <p className="text-[10px] font-bold opacity-80 uppercase tracking-widest mb-1">Next Contact</p>
-                                                            <h4 className="text-lg font-black tracking-tight">{safeFormat(fu.scheduled_at, "MMM d, yyyy", "TBD")}</h4>
-                                                            <p className="text-[11px] font-medium opacity-90 mt-2">“{fu.notes || 'No notes'}”</p>
-                                                        </div>
-                                                    </div>
-                                                ))
-                                            ) : (
-                                                <div onClick={() => setShowFollowUpModal(true)} className="bg-white border-2 border-dashed border-gray-200 rounded-[1.5rem] p-6 text-center group cursor-pointer hover:border-green-600 transition-all">
-                                                    <Calendar className="mx-auto text-gray-300 group-hover:text-green-600 transition-colors mb-2" size={24} />
-                                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest group-hover:text-green-600">No Follow Up Scheduled</p>
+                                            {/* Tags / Labels */}
+                                            <div className="space-y-4">
+                                                <div className="flex justify-between items-center">
+                                                    <h5 className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                                                        <Tag size={14} /> Labels & Segmentation
+                                                    </h5>
+                                                    <button className="text-[9px] font-black text-green-600 hover:bg-green-50 px-2 py-1 rounded-lg">EDIT</button>
                                                 </div>
-                                            )}
-                                        </div>
-
-                                        {/* Active Automation */}
-                                        <div className="space-y-4 pb-20">
-                                            <h5 className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
-                                                <Zap size={14} /> Automation Activity
-                                            </h5>
-                                            <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm space-y-4">
-                                                <div className="flex items-center justify-between">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="w-10 h-10 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-500 shadow-sm"><Zap size={20} /></div>
-                                                        <div>
-                                                            <p className="text-[11px] font-black text-gray-800">Drip: Onboarding v2</p>
-                                                            <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Active • Step 3/5</p>
-                                                        </div>
-                                                    </div>
-                                                    <button className="p-2.5 bg-gray-50 text-gray-400 hover:text-red-500 rounded-xl transition-all">
-                                                        <Trash2 size={16} />
+                                                <div className="flex flex-wrap gap-2">
+                                                    {activeConversation?.contact?.tags?.map((tag: any, i: number) => (
+                                                        <span key={i} className="px-3 py-1.5 bg-white border border-gray-200 text-gray-600 text-[10px] font-bold rounded-xl shadow-sm hover:border-green-600 hover:text-green-600 cursor-pointer transition-all">
+                                                            {tag}
+                                                        </span>
+                                                    ))}
+                                                    <button className="w-8 h-8 rounded-xl border-2 border-dashed border-gray-200 flex items-center justify-center text-gray-300 hover:text-green-600 hover:border-green-600 transition-all">
+                                                        <PlusCircle size={14} />
                                                     </button>
                                                 </div>
-                                                <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                                                    <div className="w-[60%] h-full bg-indigo-500" />
+                                            </div>
+
+                                            {/* Internal Notes */}
+                                            <div className="space-y-4">
+                                                <h5 className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                                                    <FileText size={14} /> Internal Notes
+                                                </h5>
+                                                <div className="space-y-3">
+                                                    <div className="relative">
+                                                        <textarea
+                                                            value={newNote}
+                                                            onChange={e => setNewNote(e.target.value)}
+                                                            placeholder="Add a private note..."
+                                                            className="w-full bg-white border border-gray-100 rounded-2xl px-4 py-3 text-xs font-medium outline-none focus:border-green-600/30 transition-all resize-none shadow-sm"
+                                                            rows={2}
+                                                        />
+                                                        <button
+                                                            onClick={handleAddNote}
+                                                            disabled={savingNote || !newNote.trim()}
+                                                            className="absolute right-2 bottom-2 p-1.5 bg-green-600 text-white rounded-xl hover:bg-slate-900 transition-all disabled:opacity-50"
+                                                        >
+                                                            {savingNote ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+                                                        </button>
+                                                    </div>
+                                                    <div className="space-y-2 max-h-[200px] overflow-y-auto no-scrollbar">
+                                                        {contactNotes.map((note, i) => (
+                                                            <div key={i} className="bg-gray-50/50 p-3 rounded-2xl border border-gray-100/50">
+                                                                <p className="text-[11px] text-gray-700 font-medium leading-relaxed">{note.content}</p>
+                                                                <div className="flex justify-between items-center mt-2">
+                                                                    <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{note.user?.first_name || 'Agent'}</span>
+                                                                    <span className="text-[9px] text-gray-400 font-bold">{safeFormat(note.created_at, "MMM d, HH:mm", "...")}</span>
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Follow Up Section */}
+                                            <div className="space-y-4">
+                                                <h5 className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                                                    <Calendar size={14} /> Follow Up
+                                                </h5>
+                                                {contactFollowUps.length > 0 ? (
+                                                    contactFollowUps.filter(f => f.status === "PENDING").map((fu, i) => (
+                                                        <div key={i} className="bg-green-600 rounded-[1.5rem] p-5 text-white shadow-xl shadow-green-100 relative overflow-hidden group hover:scale-[1.02] transition-all cursor-pointer">
+                                                            <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-white/10 rounded-full group-hover:scale-125 transition-transform" />
+                                                            <div className="relative">
+                                                                <p className="text-[10px] font-bold opacity-80 uppercase tracking-widest mb-1">Next Contact</p>
+                                                                <h4 className="text-lg font-black tracking-tight">{safeFormat(fu.scheduled_at, "MMM d, yyyy", "TBD")}</h4>
+                                                                <p className="text-[11px] font-medium opacity-90 mt-2">“{fu.notes || 'No notes'}”</p>
+                                                            </div>
+                                                        </div>
+                                                    ))
+                                                ) : (
+                                                    <div onClick={() => setShowFollowUpModal(true)} className="bg-white border-2 border-dashed border-gray-200 rounded-[1.5rem] p-6 text-center group cursor-pointer hover:border-green-600 transition-all">
+                                                        <Calendar className="mx-auto text-gray-300 group-hover:text-green-600 transition-colors mb-2" size={24} />
+                                                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest group-hover:text-green-600">No Follow Up Scheduled</p>
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            {/* Active Automation */}
+                                            <div className="space-y-4 pb-20">
+                                                <h5 className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                                                    <Zap size={14} /> Automation Activity
+                                                </h5>
+                                                <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm space-y-4">
+                                                    <div className="flex items-center justify-between">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-10 h-10 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-500 shadow-sm"><Zap size={20} /></div>
+                                                            <div>
+                                                                <p className="text-[11px] font-black text-gray-800">Drip: Onboarding v2</p>
+                                                                <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Active • Step 3/5</p>
+                                                            </div>
+                                                        </div>
+                                                        <button className="p-2.5 bg-gray-50 text-gray-400 hover:text-red-500 rounded-xl transition-all">
+                                                            <Trash2 size={16} />
+                                                        </button>
+                                                    </div>
+                                                    <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                                        <div className="w-[60%] h-full bg-indigo-500" />
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
+
+                                    {/* Mobile Slide-Up Bottom Sheet Drawer */}
+                                    <div className="xl:hidden fixed inset-0 z-[200] flex items-end justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setShowCRM(false)}>
+                                        <div className="bg-white w-full max-h-[85vh] rounded-t-[2.5rem] shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-6 duration-300" onClick={(e) => e.stopPropagation()}>
+                                            <div className="p-4 border-b border-slate-100 flex items-center justify-between shrink-0 bg-slate-50/50">
+                                                <div className="flex items-center gap-2">
+                                                    <Info size={18} className="text-emerald-600" />
+                                                    <span className="text-sm font-black text-slate-900 uppercase tracking-wide">Lead Profile & CRM Details</span>
+                                                </div>
+                                                <button onClick={() => setShowCRM(false)} className="p-2 rounded-xl bg-white border border-slate-200 text-slate-500 hover:text-slate-900 transition-colors">
+                                                    <X size={18} />
+                                                </button>
+                                            </div>
+                                            <div className="p-6 space-y-6 overflow-y-auto custom-scrollbar">
+                                                {/* CRM Header */}
+                                                <div className="text-center space-y-3">
+                                                    <div className="w-20 h-20 mx-auto bg-white rounded-3xl shadow-lg border border-slate-100 flex items-center justify-center overflow-hidden">
+                                                        {activeConversation?.contact?.avatar_url ? (
+                                                            <img src={activeConversation.contact.avatar_url} alt="" className="w-full h-full object-cover" />
+                                                        ) : (
+                                                            <User size={36} className="text-slate-300" />
+                                                        )}
+                                                    </div>
+                                                    <div>
+                                                        <h4 className="text-lg font-black text-slate-900 tracking-tight">{activeConversation?.contact?.name || activeConversation?.contact?.phone || "Contact"}</h4>
+                                                        <p className="text-xs text-slate-400 font-bold tracking-widest mt-0.5">{activeConversation?.contact?.phone || "No Phone"}</p>
+                                                        <div className="flex justify-center mt-2">
+                                                            <LeadScoreBadge score={85} />
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {/* Assignment */}
+                                                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between">
+                                                    <span className="text-xs font-bold text-slate-500">Assigned Agent</span>
+                                                    <select
+                                                        value={activeConversation?.assigned_to || ""}
+                                                        onChange={(e) => handleAssign(e.target.value)}
+                                                        className="bg-white border border-slate-200 text-xs font-bold text-slate-700 rounded-xl px-3 py-1.5 outline-none"
+                                                    >
+                                                        <option value="">Unassigned</option>
+                                                        {agents.map(a => <option key={a.id} value={a.id}>{a.first_name || a.email}</option>)}
+                                                    </select>
+                                                </div>
+
+                                                {/* Contact Details */}
+                                                <div className="space-y-3">
+                                                    <h5 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Contact Details</h5>
+                                                    <div className="space-y-2 text-xs">
+                                                        <div className="flex justify-between py-1.5 border-b border-slate-100">
+                                                            <span className="text-slate-400 font-bold">Email</span>
+                                                            <span className="text-slate-800 font-semibold">{activeConversation?.contact?.email || "--"}</span>
+                                                        </div>
+                                                        <div className="flex justify-between py-1.5 border-b border-slate-100">
+                                                            <span className="text-slate-400 font-bold">Status</span>
+                                                            <span className="text-emerald-600 font-black uppercase">{activeConversation?.status || "OPEN"}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <button
+                                                    onClick={() => setShowCRM(false)}
+                                                    className="w-full py-3.5 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-black transition-colors"
+                                                >
+                                                    Close Profile
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </>
                             )
                         }
                     </div>

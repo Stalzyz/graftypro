@@ -1,0 +1,41 @@
+{
+  "name": "Grafty BSP - Live Chat & Automation",
+  "short_name": "Grafty Chat",
+  "description": "Enterprise Bulk WhatsApp Messaging & Live Chat Automation Platform",
+  "start_url": "/dashboard/chat",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#27954D",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/grafty_fav.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/grafty_new_logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": [
+    "business",
+    "productivity",
+    "utilities"
+  ],
+  "shortcuts": [
+    {
+      "name": "Live Chat",
+      "url": "/dashboard/chat",
+      "description": "Open Live Inbox"
+    },
+    {
+      "name": "Broadcasts",
+      "url": "/dashboard/campaigns",
+      "description": "Manage Campaigns"
+    }
+  ]
+}

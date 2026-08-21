@@ -170,6 +170,30 @@ export default async function RootLayout({
                 )}
                 {/* End Meta Pixel Code */}
                 
+                {/* PWA & Mobile Standalone Configuration */}
+                <link rel="manifest" href="/manifest.json" />
+                <meta name="theme-color" content="#27954D" />
+                <meta name="apple-mobile-web-app-capable" content="yes" />
+                <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+                <meta name="apple-mobile-web-app-title" content={brandName} />
+                <meta name="mobile-web-app-capable" content="yes" />
+
+                {/* Service Worker Registration Script */}
+                <script dangerouslySetInnerHTML={{ __html: `
+                    if ('serviceWorker' in navigator) {
+                        window.addEventListener('load', function() {
+                            navigator.serviceWorker.register('/sw.js').then(
+                                function(registration) {
+                                    console.log('PWA ServiceWorker registered with scope:', registration.scope);
+                                },
+                                function(err) {
+                                    console.log('PWA ServiceWorker registration failed:', err);
+                                }
+                            );
+                        });
+                    }
+                ` }} />
+
                 {/* MONSTER FIX: Explicit Favicon Injection with HTTPS Force */}
                 <link rel="icon" href={versionedFavicon} />
                 <link rel="shortcut icon" href={versionedFavicon} />
