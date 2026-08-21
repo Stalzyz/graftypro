@@ -110,6 +110,7 @@ function SharedInboxContent() {
 
     // 🚀 Phase 1: Live Chat Enhancements
     const [composerMode, setComposerMode] = useState<'REPLY' | 'NOTE'>('REPLY');
+    const [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
 
     const getCustomerWindowInfo = () => {
         if (!messages || messages.length === 0) return { active: true, expired: false, hours: 24, minutes: 0, text: "24h Window Active" };
@@ -1691,14 +1692,75 @@ function SharedInboxContent() {
 
                                 <div className="flex items-end gap-3 w-full">
                                     <div className="flex items-center gap-1 pb-1">
-                                        <button
-                                            title="Attach file"
-                                            onClick={() => fileInputRef.current?.click()}
-                                            className="p-3 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-2xl transition-all active:scale-90"
-                                        >
-                                            <Paperclip size={22} className={uploading ? "animate-spin" : ""} />
-                                            <input type="file" className="hidden" ref={fileInputRef} onChange={handleFileUpload} />
-                                        </button>
+                                        <div className="relative">
+                                            <button
+                                                title="Attach file or action"
+                                                onClick={() => setShowAttachmentMenu(!showAttachmentMenu)}
+                                                className="p-3 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-2xl transition-all active:scale-95 touch-manipulation"
+                                            >
+                                                <Paperclip size={22} className={uploading ? "animate-spin" : ""} />
+                                                <input type="file" className="hidden" ref={fileInputRef} onChange={handleFileUpload} />
+                                            </button>
+
+                                            {showAttachmentMenu && (
+                                                <div className="absolute bottom-16 left-0 z-50 bg-white rounded-3xl p-4 shadow-2xl border border-slate-100 animate-in slide-in-from-bottom-4 duration-200 grid grid-cols-3 gap-3 text-center w-72">
+                                                    <button
+                                                        onClick={() => { setShowAttachmentMenu(false); fileInputRef.current?.click(); }}
+                                                        className="flex flex-col items-center gap-1.5 p-2 rounded-2xl hover:bg-slate-50 transition-all group active:scale-95 touch-manipulation"
+                                                    >
+                                                        <div className="w-12 h-12 rounded-full bg-purple-500 text-white flex items-center justify-center shadow-md group-hover:scale-105 transition-transform">
+                                                            <FileText size={20} />
+                                                        </div>
+                                                        <span className="text-[10px] font-black text-slate-700 uppercase tracking-tight">Document</span>
+                                                    </button>
+                                                    <button
+                                                        onClick={() => { setShowAttachmentMenu(false); fileInputRef.current?.click(); }}
+                                                        className="flex flex-col items-center gap-1.5 p-2 rounded-2xl hover:bg-slate-50 transition-all group active:scale-95 touch-manipulation"
+                                                    >
+                                                        <div className="w-12 h-12 rounded-full bg-pink-500 text-white flex items-center justify-center shadow-md group-hover:scale-105 transition-transform">
+                                                            <Camera size={20} />
+                                                        </div>
+                                                        <span className="text-[10px] font-black text-slate-700 uppercase tracking-tight">Media</span>
+                                                    </button>
+                                                    <button
+                                                        onClick={() => { setShowAttachmentMenu(false); setShowTemplateModal(true); fetchTemplates(); }}
+                                                        className="flex flex-col items-center gap-1.5 p-2 rounded-2xl hover:bg-slate-50 transition-all group active:scale-95 touch-manipulation"
+                                                    >
+                                                        <div className="w-12 h-12 rounded-full bg-violet-600 text-white flex items-center justify-center shadow-md group-hover:scale-105 transition-transform">
+                                                            <FilePlus size={20} />
+                                                        </div>
+                                                        <span className="text-[10px] font-black text-slate-700 uppercase tracking-tight">Template</span>
+                                                    </button>
+                                                    <button
+                                                        onClick={() => { setShowAttachmentMenu(false); fetchAISuggestions(); }}
+                                                        className="flex flex-col items-center gap-1.5 p-2 rounded-2xl hover:bg-slate-50 transition-all group active:scale-95 touch-manipulation"
+                                                    >
+                                                        <div className="w-12 h-12 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-md group-hover:scale-105 transition-transform">
+                                                            <Sparkles size={20} />
+                                                        </div>
+                                                        <span className="text-[10px] font-black text-slate-700 uppercase tracking-tight">AI Reply</span>
+                                                    </button>
+                                                    <button
+                                                        onClick={() => { setShowAttachmentMenu(false); setShowFollowUpModal(true); }}
+                                                        className="flex flex-col items-center gap-1.5 p-2 rounded-2xl hover:bg-slate-50 transition-all group active:scale-95 touch-manipulation"
+                                                    >
+                                                        <div className="w-12 h-12 rounded-full bg-blue-500 text-white flex items-center justify-center shadow-md group-hover:scale-105 transition-transform">
+                                                            <Calendar size={20} />
+                                                        </div>
+                                                        <span className="text-[10px] font-black text-slate-700 uppercase tracking-tight">Follow Up</span>
+                                                    </button>
+                                                    <button
+                                                        onClick={() => { setShowAttachmentMenu(false); setShowDripModal(true); }}
+                                                        className="flex flex-col items-center gap-1.5 p-2 rounded-2xl hover:bg-slate-50 transition-all group active:scale-95 touch-manipulation"
+                                                    >
+                                                        <div className="w-12 h-12 rounded-full bg-amber-500 text-white flex items-center justify-center shadow-md group-hover:scale-105 transition-transform">
+                                                            <Zap size={20} fill="currentColor" />
+                                                        </div>
+                                                        <span className="text-[10px] font-black text-slate-700 uppercase tracking-tight">Drip</span>
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
                                         <button
                                             title="AI Suggestion"
                                             onClick={fetchAISuggestions}
