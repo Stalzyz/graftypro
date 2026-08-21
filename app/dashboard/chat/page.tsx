@@ -108,6 +108,41 @@ function SharedInboxContent() {
     const [showScrollButton, setShowScrollButton] = useState(false);
     const [hasNewMessages, setHasNewMessages] = useState(false);
 
+    // 🚀 Phase 1: Live Chat Enhancements
+    const [composerMode, setComposerMode] = useState<'REPLY' | 'NOTE'>('REPLY');
+
+    const getCustomerWindowInfo = () => {
+        if (!messages || messages.length === 0) return { active: true, expired: false, hours: 24, minutes: 0, text: "24h Window Active" };
+        const inboundMessages = messages.filter(m => m.direction === 'INBOUND' && !m._deleted);
+        if (inboundMessages.length === 0) return { active: false, expired: true, text: "No Customer Message" };
+        const lastInbound = inboundMessages[inboundMessages.length - 1];
+        const lastTime = new Date(lastInbound.created_at || lastInbound.timestamp).getTime();
+        const elapsedMs = Date.now() - lastTime;
+        const windowMs = 24 * 60 * 60 * 1000;
+        if (elapsedMs >= windowMs) {
+            return { active: false, expired: true, text: "24h Window Expired" };
+        }
+        const remainingMs = windowMs - elapsedMs;
+        const hours = Math.floor(remainingMs / (1000 * 60 * 60));
+        const minutes = Math.floor((remainingMs % (1000 * 60 * 60)) / (1000 * 60));
+        return { active: true, expired: false, hours, minutes, text: `${hours}h ${minutes}m left in 24h Window` };
+    };
+
+    const renderNoteWithMentions = (text: string) => {
+        if (!text) return "";
+        const parts = text.split(/(@[a-zA-Z0-9_.-]+)/g);
+        return parts.map((part, idx) => {
+            if (part.startsWith("@")) {
+                return (
+                    <span key={idx} className="bg-purple-100 text-purple-800 px-1.5 py-0.5 rounded-md font-bold text-[11px] mx-0.5 border border-purple-200">
+                        {part}
+                    </span>
+                );
+            }
+            return part;
+        });
+    };
+
     // -- Modal States --
     const [showDripModal, setShowDripModal] = useState(false);
     const [showFollowUpModal, setShowFollowUpModal] = useState(false);
@@ -376,6 +411,33 @@ function SharedInboxContent() {
     const handleSend = async (e?: any) => {
         if (e) e.preventDefault();
         if ((!replyText.trim() && !attachedFile) || !selectedId) return;
+
+        if (composerMode === 'NOTE') {
+            if (!replyText.trim() || !activeConversation?.contact_id) return;
+            setSavingNote(true);
+            try {
+                const res = await fetch("/api/crm/notes", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        contactId: activeConversation.contact_id,
+                        content: replyText
+                    })
+                });
+                if (res.ok) {
+                    setReplyText("");
+                    if (activeConversation?.contact_id) {
+                        fetchCRMData(activeConversation.contact_id);
+                    }
+                    toast.success("Internal note saved!");
+                }
+            } catch (e) {
+                console.error(e);
+            } finally {
+                setSavingNote(false);
+            }
+            return;
+        }
 
         setSending(true);
         try {
@@ -774,6 +836,31 @@ function SharedInboxContent() {
                                 </div>
 
                                 <div className="flex items-center gap-4">
+                                    {/* 24-Hour Window Badge */}
+                                    {(() => {
+                                        const win = getCustomerWindowInfo();
+                                        if (win.expired) {
+                                            return (
+                                                <div className="hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-50 border border-red-200 text-red-700 text-[10px] font-bold">
+                                                    <AlertCircle size={12} className="text-red-600" />
+                                                    <span>24h Window Expired</span>
+                                                    <button
+                                                        onClick={() => { setShowTemplateModal(true); fetchTemplates(); }}
+                                                        className="ml-1 text-[9px] bg-red-600 text-white px-2 py-0.5 rounded-full hover:bg-red-700 font-black uppercase transition-all shadow-sm"
+                                                    >
+                                                        + Template
+                                                    </button>
+                                                </div>
+                                            );
+                                        }
+                                        return (
+                                            <div className="hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[10px] font-bold">
+                                                <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+                                                <span>{win.text}</span>
+                                            </div>
+                                        );
+                                    })()}
+
                                     {/* Assignment Quick Dropdown */}
                                     <div className="hidden lg:flex items-center gap-2 bg-gray-50 border border-gray-100 rounded-xl px-3 py-1.5 hover:bg-gray-100 transition-all cursor-pointer">
                                         <UserPlus size={14} className="text-gray-400" />
@@ -856,12 +943,49 @@ function SharedInboxContent() {
                                 className="flex-1 overflow-y-auto p-6 space-y-4 bg-slate-50/50 backdrop-blur-sm no-scrollbar relative scroll-smooth"
                             >
                                 <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-[0.02] pointer-events-none" />
-                                {messages.filter(m => !m._deleted).map((msg, i) => {
-                                    const isOutbound = msg.direction === "OUTBOUND";
-                                    const isTemplate = msg.type === "TEMPLATE";
+                                {(() => {
+                                    const timelineMessages = messages.filter(m => !m._deleted).map(m => ({
+                                        ...m,
+                                        itemType: 'MESSAGE',
+                                        timestamp: new Date(m.created_at || m.timestamp).getTime()
+                                    }));
+                                    const timelineNotes = contactNotes.map(n => ({
+                                        ...n,
+                                        itemType: 'INTERNAL_NOTE',
+                                        timestamp: new Date(n.created_at).getTime()
+                                    }));
+                                    const timeline = [...timelineMessages, ...timelineNotes].sort((a, b) => a.timestamp - b.timestamp);
 
-                                    return (
-                                        <div key={msg.id} id={`msg-${msg.id}`} className={`flex flex-col mb-4 relative group/msg ${isOutbound ? 'items-end pr-2' : 'items-start pl-2 animate-in slide-in-from-left-4'}`}>
+                                    return timeline.map((item: any) => {
+                                        if (item.itemType === 'INTERNAL_NOTE') {
+                                            return (
+                                                <div key={`note-${item.id}`} className="my-3 mx-auto w-full max-w-xl animate-in fade-in slide-in-from-top-2 duration-300">
+                                                    <div className="bg-amber-50/90 border border-amber-200/80 rounded-2xl p-4 text-amber-950 shadow-sm relative overflow-hidden">
+                                                        <div className="flex justify-between items-center mb-2 border-b border-amber-200/60 pb-2">
+                                                            <div className="flex items-center gap-1.5 text-[10px] font-black text-amber-800 uppercase tracking-widest">
+                                                                <FileText size={13} className="text-amber-600" />
+                                                                <span>🔒 Internal Agent Note</span>
+                                                            </div>
+                                                            <div className="flex items-center gap-2 text-[10px] font-bold text-amber-700/80">
+                                                                <span>By {item.user?.first_name || item.user?.email || 'Agent'}</span>
+                                                                <span>&middot;</span>
+                                                                <span>{safeFormat(item.created_at, "MMM d, HH:mm", "--:--")}</span>
+                                                            </div>
+                                                        </div>
+                                                        <div className="text-xs font-semibold text-amber-950 leading-relaxed whitespace-pre-wrap">
+                                                            {renderNoteWithMentions(item.content)}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        }
+
+                                        const msg = item;
+                                        const isOutbound = msg.direction === "OUTBOUND";
+                                        const isTemplate = msg.type === "TEMPLATE";
+
+                                        return (
+                                            <div key={msg.id} id={`msg-${msg.id}`} className={`flex flex-col mb-4 relative group/msg ${isOutbound ? 'items-end pr-2' : 'items-start pl-2 animate-in slide-in-from-left-4'}`}>
                                             {(() => {
                                                 const type = msg.type?.toUpperCase();
                                                 const rawContent = msg.content;
@@ -1357,7 +1481,8 @@ function SharedInboxContent() {
                                             })()}
                                         </div>
                                     );
-                                })}
+                                });
+                            })()}
                                 <div ref={messagesEndRef} />
 
                                 {/* New Message / Scroll to Bottom Button */}
@@ -1421,6 +1546,31 @@ function SharedInboxContent() {
                                     </div>
                                 )}
 
+                                {/* Mode Selector Bar */}
+                                <div className="mb-3 flex items-center justify-between">
+                                    <div className="flex gap-1 bg-slate-100 p-1 rounded-xl">
+                                        <button
+                                            onClick={() => setComposerMode('REPLY')}
+                                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${composerMode === 'REPLY' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-900'}`}
+                                        >
+                                            <MessageSquare size={14} className="text-emerald-600" />
+                                            WhatsApp Reply
+                                        </button>
+                                        <button
+                                            onClick={() => setComposerMode('NOTE')}
+                                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${composerMode === 'NOTE' ? 'bg-amber-500 text-white shadow-sm' : 'text-slate-500 hover:text-slate-900'}`}
+                                        >
+                                            <FileText size={14} />
+                                            🔒 Internal Note
+                                        </button>
+                                    </div>
+                                    {composerMode === 'NOTE' && (
+                                        <span className="text-[10px] text-amber-800 font-bold bg-amber-50 px-3 py-1 rounded-full border border-amber-200 animate-pulse">
+                                            Visible ONLY to team &middot; Use @name to mention
+                                        </span>
+                                    )}
+                                </div>
+
                                 <div className="flex items-end gap-3 w-full">
                                     <div className="flex items-center gap-1 pb-1">
                                         <button
@@ -1444,7 +1594,7 @@ function SharedInboxContent() {
                                         </button>
                                     </div>
 
-                                    <div className="flex-1 bg-slate-100/80 border border-slate-200 focus-within:bg-white focus-within:border-emerald-500/30 rounded-[1.25rem] flex items-end transition-all shadow-sm relative group overflow-hidden">
+                                    <div className={`flex-1 rounded-[1.25rem] flex items-end transition-all shadow-sm relative group overflow-hidden border ${composerMode === 'NOTE' ? 'bg-amber-50/70 border-amber-300 focus-within:border-amber-500' : 'bg-slate-100/80 border-slate-200 focus-within:bg-white focus-within:border-emerald-500/30'}`}>
                                         <textarea
                                             id="chat-composer"
                                             rows={1}
@@ -1455,7 +1605,7 @@ function SharedInboxContent() {
                                                 e.target.style.height = Math.min(e.target.scrollHeight, 150) + 'px';
                                             }}
                                             onKeyDown={onKeyDown}
-                                            placeholder="Type your message here..."
+                                            placeholder={composerMode === 'NOTE' ? "Type a private note for your team... Use @name to mention." : "Type your message here..."}
                                             className="w-full bg-transparent border-none px-6 py-4 text-[14px] focus:ring-0 outline-none resize-none font-medium placeholder:text-gray-400"
                                         />
                                         <div className="absolute right-4 bottom-3 opacity-30 group-focus-within:opacity-100 transition-opacity">
@@ -1465,10 +1615,10 @@ function SharedInboxContent() {
 
                                     <button
                                         onClick={handleSend}
-                                        disabled={sending || (!replyText.trim() && !attachedFile)}
-                                        className="bg-emerald-600 text-white p-4 rounded-xl hover:bg-emerald-700 active:bg-emerald-800 transition-all flex items-center justify-center shadow-lg shadow-emerald-200 disabled:bg-slate-200 disabled:shadow-none h-14 w-14 shrink-0 group"
+                                        disabled={sending || savingNote || (!replyText.trim() && !attachedFile)}
+                                        className={`text-white p-4 rounded-xl transition-all flex items-center justify-center shadow-lg disabled:bg-slate-200 disabled:shadow-none h-14 w-14 shrink-0 group ${composerMode === 'NOTE' ? 'bg-amber-500 hover:bg-amber-600 shadow-amber-200' : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200'}`}
                                     >
-                                        {sending ? <Loader2 size={24} className="animate-spin" /> : <Send size={22} fill="currentColor" className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />}
+                                        {(sending || savingNote) ? <Loader2 size={24} className="animate-spin" /> : <Send size={22} fill="currentColor" className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />}
                                     </button>
                                 </div>
                                 <div className="mt-4 flex flex-wrap gap-2.5 items-center justify-center sm:justify-start border-t border-slate-50 pt-4">
