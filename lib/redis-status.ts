@@ -15,7 +15,11 @@ let redisClient: Redis | null = null;
 
 export function getRedisClient(): Redis {
     if (!redisClient) {
-        redisClient = new Redis(getRedisConfig() as any);
+        const config = getRedisConfig();
+        redisClient = new Redis((typeof config === 'string' ? config : config) as any);
+        redisClient.on("error", (err) => {
+            // Suppress connection errors when Redis is temporarily offline or in build environment
+        });
     }
     return redisClient;
 }
