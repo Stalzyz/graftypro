@@ -656,7 +656,7 @@ function SharedInboxContent() {
                             placeholder="Search leads, tags or messages..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full bg-slate-100/80 border-2 border-transparent focus:border-emerald-500/20 focus:bg-white rounded-[1.25rem] pl-12 pr-4 py-3.5 text-[13px] font-bold text-slate-700 outline-none transition-all placeholder:text-slate-400 shadow-inner"
+                            className="w-full bg-slate-100/80 border-2 border-transparent focus:border-emerald-500/20 focus:bg-white rounded-[1.25rem] pl-12 pr-4 py-3.5 text-[16px] md:text-[13px] font-bold text-slate-700 outline-none transition-all placeholder:text-slate-400 shadow-inner"
                         />
                     </div>
 
@@ -1786,7 +1786,7 @@ function SharedInboxContent() {
                                             }}
                                             onKeyDown={onKeyDown}
                                             placeholder={composerMode === 'NOTE' ? "Type a private note for your team... Use @name to mention." : "Type a message..."}
-                                            className="w-full bg-transparent border-none px-4 py-2.5 text-[14px] focus:ring-0 outline-none resize-none font-normal placeholder:text-slate-400"
+                                            className="w-full bg-transparent border-none px-4 py-2.5 text-[16px] md:text-[14px] focus:ring-0 outline-none resize-none font-normal placeholder:text-slate-400"
                                         />
                                         <div className="absolute right-4 bottom-3 opacity-30 group-focus-within:opacity-100 transition-opacity">
                                             <Command size={14} className="text-gray-400" />

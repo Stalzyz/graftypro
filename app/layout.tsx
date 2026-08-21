@@ -1,5 +1,5 @@
 
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, Noto_Sans, Playfair_Display, DM_Mono } from "next/font/google";
 import { headers } from "next/headers";
 import { BrandProvider } from "../components/branding/BrandProvider";
@@ -7,6 +7,15 @@ import { SchemaScripts } from "../components/seo/SchemaScripts";
 import { WhatsAppWidget } from "../components/landing-new/WhatsAppWidget";
 import { Toaster } from "react-hot-toast";
 import "./globals.css";
+
+export const viewport: Viewport = {
+    width: "device-width",
+    initialScale: 1,
+    maximumScale: 1,
+    userScalable: false,
+    viewportFit: "cover",
+    themeColor: "#27954D",
+};
 
 const inter = Inter({ subsets: ["latin"] });
 const noto = Noto_Sans({
@@ -171,6 +180,7 @@ export default async function RootLayout({
                 {/* End Meta Pixel Code */}
                 
                 {/* PWA & Mobile Standalone Configuration */}
+                <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
                 <link rel="manifest" href="/manifest.json" />
                 <meta name="theme-color" content="#27954D" />
                 <meta name="apple-mobile-web-app-capable" content="yes" />
