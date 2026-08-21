@@ -517,35 +517,47 @@ export default function TemplateEditor({ params }: { params: { id: string } }) {
 
                     {/* Buttons */}
                     <div className="space-y-4 pt-4 border-t border-gray-100">
-                        <div className="flex justify-between items-center">
+                        <div className="flex justify-between items-center flex-wrap gap-2">
                             <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
                                 BUTTONS
                                 <span className="text-[10px] text-gray-400 font-medium">MAX 3</span>
                             </label>
 
-                            <div className="flex gap-2">
-                                <button
-                                    onClick={() => addButton("QUICK_REPLY")}
-                                    disabled={!canEdit}
-                                    className="px-4 py-2 rounded-xl bg-indigo-50 text-indigo-600 text-[10px] font-bold uppercase hover:bg-indigo-100 transition-colors disabled:opacity-50"
-                                >
-                                    + Quick Reply
-                                </button>
-                                <button
-                                    onClick={() => addButton("URL")}
-                                    disabled={!canEdit}
-                                    className="px-4 py-2 rounded-xl bg-orange-50 text-orange-600 text-[10px] font-bold uppercase hover:bg-orange-100 transition-colors disabled:opacity-50"
-                                >
-                                    + Web Link
-                                </button>
-                                <button
-                                    onClick={() => addButton("PHONE_NUMBER")}
-                                    disabled={!canEdit}
-                                    className="px-4 py-2 rounded-xl bg-green-50 text-green-600 text-[10px] font-bold uppercase hover:bg-green-100 transition-colors disabled:opacity-50"
-                                >
-                                    + Call Button
-                                </button>
-                            </div>
+                            {(() => {
+                                const hasQuickReply = buttons.some(b => b.type === 'QUICK_REPLY');
+                                const hasCallToAction = buttons.some(b => b.type === 'URL' || b.type === 'PHONE_NUMBER');
+                                const hasPhoneButton = buttons.some(b => b.type === 'PHONE_NUMBER');
+                                const isMaxButtons = buttons.length >= 3;
+
+                                return (
+                                    <div className="flex gap-2 flex-wrap">
+                                        <button
+                                            onClick={() => addButton("QUICK_REPLY")}
+                                            disabled={!canEdit || isMaxButtons || hasCallToAction}
+                                            title={hasCallToAction ? "Meta does not allow mixing Quick Replies with Web/Call buttons" : isMaxButtons ? "Maximum 3 buttons reached" : ""}
+                                            className="px-3 py-1.5 rounded-xl bg-indigo-50 text-indigo-600 text-[10px] font-bold uppercase hover:bg-indigo-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                                        >
+                                            + Quick Reply
+                                        </button>
+                                        <button
+                                            onClick={() => addButton("URL")}
+                                            disabled={!canEdit || isMaxButtons || hasQuickReply}
+                                            title={hasQuickReply ? "Meta does not allow mixing Web buttons with Quick Replies" : isMaxButtons ? "Maximum 3 buttons reached" : ""}
+                                            className="px-3 py-1.5 rounded-xl bg-orange-50 text-orange-600 text-[10px] font-bold uppercase hover:bg-orange-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                                        >
+                                            + Web Link
+                                        </button>
+                                        <button
+                                            onClick={() => addButton("PHONE_NUMBER")}
+                                            disabled={!canEdit || isMaxButtons || hasQuickReply || hasPhoneButton}
+                                            title={hasQuickReply ? "Meta does not allow mixing Call buttons with Quick Replies" : hasPhoneButton ? "Maximum 1 Call Button allowed" : isMaxButtons ? "Maximum 3 buttons reached" : ""}
+                                            className="px-3 py-1.5 rounded-xl bg-green-50 text-green-600 text-[10px] font-bold uppercase hover:bg-green-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                                        >
+                                            + Call Button
+                                        </button>
+                                    </div>
+                                );
+                            })()}
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
