@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 import { MessageCircle, X, Send } from 'lucide-react';
 
 interface WhatsAppWidgetProps {
@@ -7,6 +8,7 @@ interface WhatsAppWidgetProps {
 }
 
 export function WhatsAppWidget({ branding }: WhatsAppWidgetProps) {
+    const pathname = usePathname();
     const [isOpen, setIsOpen] = useState(false);
     const [scrolled, setScrolled] = useState(false);
     const [whatsappNumber, setWhatsappNumber] = useState('919789359407'); // Default fallback
@@ -34,6 +36,7 @@ export function WhatsAppWidget({ branding }: WhatsAppWidgetProps) {
         return () => window.removeEventListener('scroll', handleScroll);
     }, [branding]);
 
+    if (pathname?.startsWith('/dashboard')) return null;
     if (!scrolled) return null;
 
     // Use dynamic branding labels

@@ -106,11 +106,11 @@ export default function DashboardPage() {
                         )}
                     </div>
                 </div>
-                <div className="flex items-center gap-3 flex-shrink-0">
+                <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap justify-end w-full sm:w-auto mt-3 sm:mt-0">
                     {/* Wallet Balance Display */}
-                    <div className="flex flex-col items-end mr-2">
+                    <div className="flex flex-col items-start sm:items-end mr-1 shrink-0">
                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Credits</span>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1.5">
                             <span className="text-sm font-black text-slate-800">₹{stats.walletBalance?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) ?? "0.00"}</span>
                             <Link href="/dashboard/credits" className="text-[10px] font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 px-1.5 py-0.5 rounded transition-colors">Top Up</Link>
                         </div>
@@ -119,11 +119,11 @@ export default function DashboardPage() {
                     <div className="h-8 w-px bg-slate-200 hidden sm:block mx-1"></div>
 
                     <Link href="/dashboard/commerce"
-                        className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:border-[#27954D]/40 hover:text-[#27954D] hover:shadow-sm transition-all">
+                        className="flex items-center gap-1.5 px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:border-[#27954D]/40 hover:text-[#27954D] transition-all shrink-0">
                         <ShoppingBag size={14} /> Commerce
                     </Link>
                     <Link href="/dashboard/campaigns"
-                        className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-[#27954D] to-emerald-500 text-white rounded-xl text-xs font-bold shadow-md shadow-green-200 hover:shadow-lg hover:shadow-green-300 hover:-translate-y-0.5 transition-all">
+                        className="flex items-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-[#27954D] to-emerald-500 text-white rounded-xl text-xs font-bold shadow-md shadow-green-200 hover:shadow-lg transition-all shrink-0">
                         <Send size={13} /> New Broadcast
                     </Link>
                 </div>

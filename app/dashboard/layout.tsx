@@ -47,6 +47,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const pathname = usePathname();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
+    // Auto-close mobile sidebar when user selects any menu link
+    useEffect(() => {
+        setIsMobileMenuOpen(false);
+    }, [pathname]);
+
     // ⛔ Suspension Gate: If workspace is suspended, block the entire UI
     if (user?.workspace?.status === "SUSPENDED") {
         return (

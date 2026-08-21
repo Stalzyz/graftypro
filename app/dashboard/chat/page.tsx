@@ -140,9 +140,25 @@ function SharedInboxContent() {
                     </span>
                 );
             }
-            return part;
         });
     };
+
+    // 📲 PWA Home Screen Icon Notification Badge & Live App Notifications
+    useEffect(() => {
+        const totalUnread = (conversations || []).reduce((sum, c) => sum + (c.unreadCount || 0), 0);
+        if (typeof navigator !== 'undefined' && 'setAppBadge' in navigator) {
+            if (totalUnread > 0) {
+                // @ts-ignore
+                navigator.setAppBadge(totalUnread).catch(() => {});
+            } else {
+                // @ts-ignore
+                navigator.clearAppBadge().catch(() => {});
+            }
+        }
+        if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
+            Notification.requestPermission();
+        }
+    }, [conversations]);
 
     // -- Modal States --
     const [showDripModal, setShowDripModal] = useState(false);
@@ -472,6 +488,10 @@ function SharedInboxContent() {
                 setSuggestions([]);
                 fetchMessages(selectedId);
                 fetchConversations();
+                if (typeof document !== 'undefined') {
+                    (document.activeElement as HTMLElement)?.blur();
+                    window.scrollTo(0, 0);
+                }
             } else {
                 const errData = await res.json();
                 if (res.status === 402 || errData.type === "BILLING_ERROR") {
