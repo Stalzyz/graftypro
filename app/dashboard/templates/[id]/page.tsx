@@ -671,17 +671,6 @@ export default function TemplateEditor({ params }: { params: { id: string } }) {
                                 </div>
                             ))}
                         </div>
-                                                placeholder="+1234567890 (no spaces or dashes)"
-                                                value={btn.phone_number}
-                                                onChange={e => updateButton(idx, 'phone_number', e.target.value)}
-                                                disabled={!canEdit}
-                                                className="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg outline-none disabled:bg-gray-50"
-                                            />
-                                        )}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
                     </div>
                 </>
             )}
