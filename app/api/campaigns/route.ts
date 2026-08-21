@@ -13,6 +13,27 @@ export async function POST(req: Request) {
 
         const { name, templateName, flowId, segmentId, scheduledAt, variableMapping, headerMediaUrl, retargeting } = await req.json();
 
+        // 0. Pre-flight Validation
+        if (templateName) {
+            const template = await prisma.template.findFirst({
+                where: { workspace_id: user.workspaceId, name: templateName }
+            });
+
+            if (!template) {
+                return NextResponse.json({ error: `Template '${templateName}' not found in workspace.` }, { status: 400 });
+            }
+            if (template.status !== 'APPROVED') {
+                return NextResponse.json({ error: `Template '${templateName}' is not APPROVED (status: ${template.status}).` }, { status: 400 });
+            }
+
+            // Check Header Media Requirement
+            const components = Array.isArray(template.components) ? template.components : [];
+            const headerComp = components.find((c: any) => c.type === "HEADER");
+            if (headerComp && ["IMAGE", "VIDEO", "DOCUMENT"].includes(headerComp.format) && !headerMediaUrl) {
+                return NextResponse.json({ error: `Header Required: Template '${templateName}' requires a ${headerComp.format} header media file.` }, { status: 400 });
+            }
+        }
+
         // 1. Create Campaign Record
         const campaign = await prisma.campaign.create({
             data: {

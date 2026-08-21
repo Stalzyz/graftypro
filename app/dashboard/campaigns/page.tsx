@@ -108,8 +108,42 @@ export default function CampaignsPage() {
         }
     };
 
+    const getCampaignValidationError = () => {
+        if (!name.trim()) return "Please enter a campaign name.";
+
+        if (targetType === 'TEMPLATE') {
+            if (!templateName) return "Please select an approved template.";
+            if (selectedTemplate && selectedTemplate.status !== 'APPROVED') {
+                return `Template '${selectedTemplate.name}' is not APPROVED by Meta (status: ${selectedTemplate.status}).`;
+            }
+            const isMediaHeader = hasHeader && ['IMAGE', 'VIDEO', 'DOCUMENT'].includes(headerFormat);
+            if (isMediaHeader && !headerMediaUrl) {
+                return `Header Required: Template '${templateName}' requires a ${headerFormat} header image/media. Please upload a file before launching.`;
+            }
+            for (const vNum of detectedVars) {
+                const mappedVal = variableMapping[String(vNum)];
+                if (!mappedVal || mappedVal === "static:") {
+                    return `Variable Unmapped: Please map variable {{${vNum}}} to a contact field or enter static text.`;
+                }
+            }
+        }
+
+        if (targetType === 'FLOW' && !flowId) {
+            return "Please select a Flow to launch.";
+        }
+
+        return null;
+    };
+
     const handleCreate = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        const validationError = getCampaignValidationError();
+        if (validationError) {
+            toast.error(validationError);
+            return;
+        }
+
         setSending(true);
         try {
             const res = await fetch("/api/campaigns", {
@@ -129,14 +163,16 @@ export default function CampaignsPage() {
             });
 
             if (res.ok) {
+                toast.success("Campaign queued successfully!");
                 setShowModal(false);
                 resetForm();
                 fetchData();
             } else {
-                alert("Failed to launch campaign");
+                const errData = await res.json().catch(() => ({}));
+                toast.error(errData.error || "Failed to launch campaign");
             }
         } catch (e) {
-            alert("Error launching campaign");
+            toast.error("Error launching campaign");
         } finally {
             setSending(false);
         }
@@ -537,10 +573,25 @@ export default function CampaignsPage() {
                                 </div>
                             </div>
 
+                            {/* Live Pre-Flight Validation Alert Banner */}
+                            {targetType === 'TEMPLATE' && templateName && getCampaignValidationError() && (
+                                <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-2xl flex items-start gap-3 text-amber-800 text-xs font-medium">
+                                    <AlertTriangle size={16} className="text-amber-600 shrink-0 mt-0.5" />
+                                    <div className="flex-1">
+                                        <p className="font-bold text-amber-900">Pre-Launch Check Warning</p>
+                                        <p className="text-[11px] text-amber-700 mt-0.5">{getCampaignValidationError()}</p>
+                                    </div>
+                                </div>
+                            )}
+
                             {/* Actions */}
                             <div className="flex gap-4 pt-2">
                                 <button type="button" onClick={() => setShowModal(false)} className="btn-secondary flex-1 py-4">Discard</button>
-                                <button disabled={sending} type="submit" className="btn-primary flex-[2] py-4 shadow-xl shadow-green-100">
+                                <button
+                                    disabled={sending || (targetType === 'TEMPLATE' && !!getCampaignValidationError())}
+                                    type="submit"
+                                    className="btn-primary flex-[2] py-4 shadow-xl shadow-green-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
                                     {sending ? 'Launching...' : 'Launch Campaign'} <ArrowRight size={18} />
                                 </button>
                             </div>
