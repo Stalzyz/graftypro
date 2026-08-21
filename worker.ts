@@ -258,7 +258,7 @@ const metaApiWorker = new Worker(
                     || err.response?.status === 401;
                 
                 if (isFatal) {
-                    const isBillingError = metaErrorCode === 131031 || metaErrorCode === 131999 || err.response?.status === 402;
+                    const isBillingError = metaErrorCode === 131042 || metaErrorCode === 131031 || metaErrorCode === 131999 || err.response?.status === 402;
                     
                     console.error(`[MetaAPIWorker] 🔴 FATAL ERROR for Campaign ${payload.campaignId}: [${metaErrorCode}] ${metaErrorMessage}`);
                     
@@ -268,6 +268,38 @@ const metaApiWorker = new Worker(
 
                     if (isBillingError) {
                         console.warn(`[MetaAPIWorker] 💳 ☢️ PRO-TIP: This looks like a Meta Billing/Payment issue. Please check your Payment Method in WhatsApp Business Manager!`);
+                    }
+
+                    // 📧 Dispatch Must-Have Email Alerts to Workspace Admin
+                    try {
+                        const campaign = await prisma.campaign.findUnique({
+                            where: { id: payload.campaignId },
+                            include: { workspace: { include: { users: { where: { role: 'ADMIN' }, take: 1 } } } }
+                        });
+                        const adminUser = campaign?.workspace?.users[0];
+                        if (campaign && adminUser?.email) {
+                            const { EmailService } = await import("./lib/email/service");
+                            if (isBillingError) {
+                                await EmailService.sendMetaBillingFailureAlert(
+                                    campaign.workspace_id,
+                                    adminUser.email,
+                                    adminUser.first_name || 'Admin'
+                                ).catch(e => console.error("[MetaAPIWorker] Billing email send failed:", e.message));
+                            } else {
+                                await EmailService.sendCampaignFailureAlert(
+                                    campaign.workspace_id,
+                                    adminUser.email,
+                                    {
+                                        campaignName: campaign.name || 'Broadcast',
+                                        reason: metaErrorMessage || 'Meta API returned fatal error',
+                                        failedCount: 1,
+                                        totalCount: 1
+                                    }
+                                ).catch(e => console.error("[MetaAPIWorker] Campaign failure email send failed:", e.message));
+                            }
+                        }
+                    } catch (emailErr: any) {
+                        console.error("[MetaAPIWorker] Failed to dispatch failure email alert:", emailErr.message);
                     }
 
                     await prisma.campaign.update({

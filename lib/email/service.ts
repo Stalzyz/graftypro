@@ -516,4 +516,135 @@ export class EmailService {
             console.error("Failed to send partner referral alert:", e.message);
         }
     }
+
+    /**
+     * Send Meta Billing Failure Alert (Error 131042)
+     */
+    static async sendMetaBillingFailureAlert(workspaceId: string, toEmail: string, name: string) {
+        await this.sendBrandedEmail(workspaceId, {
+            to: toEmail,
+            subject: "💳 [ACTION REQUIRED] Campaign Blocked: Meta Payment Issue",
+            templateName: "META_BILLING_FAILURE",
+            context: {
+                body_content: `
+                    <div style="text-align: center;">
+                        <div style="width: 64px; height: 64px; background: #FEF2F2; border-radius: 32px; display: inline-block; line-height: 64px; margin-bottom: 20px;">
+                            <span style="font-size: 28px;">💳</span>
+                        </div>
+                        <h1 style="color: #991B1B; font-size: 22px; margin-bottom: 12px;">Meta Billing Issue Detected</h1>
+                        <p style="color: #475569; font-size: 15px; line-height: 1.6; margin-bottom: 24px;">
+                            Hi <b>${name}</b>, Meta rejected your recent WhatsApp outbound messages due to a payment issue with your WhatsApp Business Account.
+                        </p>
+                        <div style="background: #FEF2F2; border: 1px solid #FCA5A5; border-radius: 16px; padding: 20px; text-align: left; margin-bottom: 24px; color: #991B1B; font-size: 13px;">
+                            <b>Meta Error 131042:</b> <i>Business eligibility payment issue</i>.<br>
+                            Meta requires a valid credit card or payment method on file in Meta Business Manager to process marketing messages.
+                        </div>
+                        <a href="https://business.facebook.com/billing_hub" target="_blank" style="background-color: #DC2626; color: white; padding: 14px 28px; border-radius: 50px; text-decoration: none; font-weight: bold; font-size: 14px; display: inline-block; box-shadow: 0 4px 6px rgba(220, 38, 38, 0.2);">Update Payment in Meta →</a>
+                    </div>
+                `
+            }
+        });
+    }
+
+    /**
+     * Send Campaign Failure Alert
+     */
+    static async sendCampaignFailureAlert(workspaceId: string, toEmail: string, options: {
+        campaignName: string;
+        reason: string;
+        failedCount: number;
+        totalCount: number;
+    }) {
+        await this.sendBrandedEmail(workspaceId, {
+            to: toEmail,
+            subject: `⚠️ Campaign Failure Alert: ${options.campaignName}`,
+            templateName: "CAMPAIGN_FAILURE",
+            context: {
+                body_content: `
+                    <div style="text-align: center;">
+                        <div style="width: 64px; height: 64px; background: #FFFBEB; border-radius: 32px; display: inline-block; line-height: 64px; margin-bottom: 20px;">
+                            <span style="font-size: 28px;">⚠️</span>
+                        </div>
+                        <h1 style="color: #92400E; font-size: 22px; margin-bottom: 12px;">Campaign Halted</h1>
+                        <p style="color: #475569; font-size: 15px; line-height: 1.6; margin-bottom: 24px;">
+                            Your broadcast campaign <b>"${options.campaignName}"</b> encountered errors during dispatch and was halted.
+                        </p>
+                        <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 16px; padding: 20px; text-align: left; margin-bottom: 24px; font-size: 13px;">
+                            <p style="margin: 0 0 8px 0; color: #64748B;"><b>Error Detail:</b> ${options.reason}</p>
+                            <p style="margin: 0; color: #64748B;"><b>Failed Contacts:</b> ${options.failedCount} / ${options.totalCount}</p>
+                        </div>
+                        <a href="${process.env.NEXT_PUBLIC_APP_URL}/dashboard/campaigns" style="background-color: #27954D; color: white; padding: 14px 28px; border-radius: 50px; text-decoration: none; font-weight: bold; font-size: 14px; display: inline-block;">View Diagnostics →</a>
+                    </div>
+                `
+            }
+        });
+    }
+
+    /**
+     * Send New WhatsApp Flow / Catalog Order Email
+     */
+    static async sendWhatsAppFlowOrderEmail(workspaceId: string, toEmail: string, options: {
+        orderNumber: string;
+        customerName: string;
+        customerPhone: string;
+        amount: number;
+        paymentMethod: string;
+        itemsSummary: string;
+    }) {
+        const amountStr = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(options.amount);
+
+        await this.sendBrandedEmail(workspaceId, {
+            to: toEmail,
+            subject: `🛒 New WhatsApp Order #${options.orderNumber} from +${options.customerPhone} (${amountStr})`,
+            templateName: "NEW_FLOW_ORDER",
+            context: {
+                body_content: `
+                    <div>
+                        <h1 style="color: #0F172A; font-size: 22px; margin-bottom: 8px;">🛒 New WhatsApp Order Received</h1>
+                        <p style="color: #64748B; font-size: 14px; margin-bottom: 24px;">Order #${options.orderNumber} was placed directly via WhatsApp.</p>
+                        
+                        <table width="100%" cellpadding="0" cellspacing="0" style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 16px; padding: 20px; margin-bottom: 24px; font-size: 13px;">
+                            <tr><td style="color: #64748B; padding: 6px 0;">Customer Name</td><td align="right" style="font-weight: bold; color: #0F172A;">${options.customerName}</td></tr>
+                            <tr><td style="color: #64748B; padding: 6px 0;">WhatsApp Phone</td><td align="right" style="font-weight: bold; color: #0F172A;">+${options.customerPhone}</td></tr>
+                            <tr><td style="color: #64748B; padding: 6px 0;">Total Amount</td><td align="right" style="font-weight: bold; color: #16A34A; font-size: 15px;">${amountStr}</td></tr>
+                            <tr><td style="color: #64748B; padding: 6px 0;">Payment Status</td><td align="right" style="font-weight: bold; color: #0F172A;">${options.paymentMethod}</td></tr>
+                            <tr><td colspan="2" style="padding-top: 12px; border-top: 1px solid #E2E8F0; color: #475569;"><b>Items Ordered:</b><br>${options.itemsSummary}</td></tr>
+                        </table>
+
+                        <div style="text-align: center;">
+                            <a href="${process.env.NEXT_PUBLIC_APP_URL}/dashboard/crm" style="background-color: #2563EB; color: white; padding: 14px 28px; border-radius: 50px; text-decoration: none; font-weight: bold; font-size: 14px; display: inline-block;">Manage Order in Dashboard →</a>
+                        </div>
+                    </div>
+                `
+            }
+        });
+    }
+
+    /**
+     * Send Low Credits Warning Email
+     */
+    static async sendLowCreditsWarningEmail(workspaceId: string, toEmail: string, remainingCredits: number) {
+        await this.sendBrandedEmail(workspaceId, {
+            to: toEmail,
+            subject: `⚠️ Low Balance Warning: ${remainingCredits} Messaging Credits Remaining`,
+            templateName: "LOW_CREDITS_WARNING",
+            context: {
+                body_content: `
+                    <div style="text-align: center;">
+                        <div style="width: 64px; height: 64px; background: #FFFBEB; border-radius: 32px; display: inline-block; line-height: 64px; margin-bottom: 20px;">
+                            <span style="font-size: 28px;">🪫</span>
+                        </div>
+                        <h1 style="color: #B45309; font-size: 22px; margin-bottom: 12px;">Low Messaging Credits</h1>
+                        <p style="color: #475569; font-size: 15px; line-height: 1.6; margin-bottom: 24px;">
+                            Your credit balance is low. You currently have <b>${remainingCredits} credits</b> remaining.
+                        </p>
+                        <p style="color: #64748B; font-size: 13px; margin-bottom: 24px;">
+                            To prevent automated WhatsApp flows, cart recovery, or scheduled broadcasts from pausing, please top up your credits.
+                        </p>
+                        <a href="${process.env.NEXT_PUBLIC_APP_URL}/dashboard/billing" style="background-color: #27954D; color: white; padding: 14px 28px; border-radius: 50px; text-decoration: none; font-weight: bold; font-size: 14px; display: inline-block;">Recharge Credits Now →</a>
+                    </div>
+                `
+            }
+        });
+    }
 }
