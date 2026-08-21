@@ -383,93 +383,104 @@ export default function TemplateEditor({ params }: { params: { id: string } }) {
                     )}
 
                     {/* FORMAT SELECTOR */}
-                    <div className="mb-6 bg-white p-4 rounded-xl border border-gray-200">
-                        <label className="text-sm font-bold text-gray-700 block mb-3">TEMPLATE FORMAT</label>
-                        <div className="flex gap-4">
-                            <label className="flex items-center gap-2 cursor-pointer">
-                                <input type="radio" value="STANDARD" checked={format === 'STANDARD'} onChange={() => setFormat('STANDARD')} disabled={!canEdit} className="w-4 h-4 text-blue-600" />
-                                <span className="text-sm font-semibold">Standard</span>
-                            </label>
-                            <label className="flex items-center gap-2 cursor-pointer">
-                                <input type="radio" value="CAROUSEL" checked={format === 'CAROUSEL'} onChange={() => setFormat('CAROUSEL')} disabled={!canEdit} className="w-4 h-4 text-blue-600" />
-                                <span className="text-sm font-semibold">Carousel <span className="text-[10px] bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded ml-1">New</span></span>
-                            </label>
+                    {template?.category !== 'AUTHENTICATION' && (
+                        <div className="mb-6 bg-white p-4 rounded-xl border border-gray-200">
+                            <label className="text-sm font-bold text-gray-700 block mb-3">TEMPLATE FORMAT</label>
+                            <div className="flex gap-4">
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                    <input type="radio" value="STANDARD" checked={format === 'STANDARD'} onChange={() => setFormat('STANDARD')} disabled={!canEdit} className="w-4 h-4 text-blue-600" />
+                                    <span className="text-sm font-semibold">Standard</span>
+                                </label>
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                    <input type="radio" value="CAROUSEL" checked={format === 'CAROUSEL'} onChange={() => setFormat('CAROUSEL')} disabled={!canEdit} className="w-4 h-4 text-blue-600" />
+                                    <span className="text-sm font-semibold">Carousel <span className="text-[10px] bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded ml-1">New</span></span>
+                                </label>
+                            </div>
                         </div>
-                    </div>
+                    )}
 
                     {format === 'STANDARD' && (
                         <>
                     <div className="space-y-4">
-                        <div className="flex justify-between items-center">
-                            <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
-                                HEADER
-                                <span className="text-[10px] text-gray-400 font-medium">OPTIONAL</span>
-                            </label>
-                            <select
-                                value={headerType}
-                                onChange={e => setHeaderType(e.target.value)}
-                                disabled={!canEdit}
-                                className="text-xs border border-gray-300 rounded-md px-3 py-1.5 font-semibold bg-white outline-none focus:border-blue-500 transition-colors disabled:bg-gray-50"
-                            >
-                                <option value="NONE">No Header</option>
-                                <option value="TEXT">Text Header</option>
-                                <option value="IMAGE">Image (Upload JPG/PNG)</option>
-                                <option value="VIDEO">Video (Upload MP4)</option>
-                                <option value="DOCUMENT">Document (Upload PDF)</option>
-                            </select>
-                        </div>
-
-                        {headerType === 'TEXT' && (
-                            <div className="relative">
-                                <input
-                                    type="text"
-                                    maxLength={60}
-                                    placeholder="Enter header text"
-                                    value={headerText}
-                                    onChange={e => setHeaderText(e.target.value)}
-                                    disabled={!canEdit}
-                                    className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all pr-12 disabled:bg-gray-50"
-                                />
-                                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] text-gray-400 font-bold">{headerText.length}/60</span>
+                        {template?.category === 'AUTHENTICATION' ? (
+                            <div className="p-3 bg-gray-50 rounded-xl border border-gray-200 flex justify-between items-center text-xs text-gray-500 font-semibold">
+                                <span>HEADER</span>
+                                <span className="text-[10px] bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-bold">PROHIBITED BY META</span>
                             </div>
-                        )}
+                        ) : (
+                            <>
+                                <div className="flex justify-between items-center">
+                                    <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
+                                        HEADER
+                                        <span className="text-[10px] text-gray-400 font-medium">OPTIONAL</span>
+                                    </label>
+                                    <select
+                                        value={headerType}
+                                        onChange={e => setHeaderType(e.target.value)}
+                                        disabled={!canEdit}
+                                        className="text-xs border border-gray-300 rounded-md px-3 py-1.5 font-semibold bg-white outline-none focus:border-blue-500 transition-colors disabled:bg-gray-50"
+                                    >
+                                        <option value="NONE">No Header</option>
+                                        <option value="TEXT">Text Header</option>
+                                        <option value="IMAGE">Image (Upload JPG/PNG)</option>
+                                        <option value="VIDEO">Video (Upload MP4)</option>
+                                        <option value="DOCUMENT">Document (Upload PDF)</option>
+                                    </select>
+                                </div>
 
-                        {headerType === 'IMAGE' && (
-                            <SmartUploader
-                                label="Header Image"
-                                module="templates"
-                                fileType="image"
-                                accept="image/jpeg, image/png, image/webp"
-                                description="PNG, JPG, WebP (Max 5MB)"
-                                defaultValue={headerText} // re-using headerText for storage of media URL
-                                onUploadSuccess={(url: string) => setHeaderText(url)}
-                            />
-                        )}
+                                {headerType === 'TEXT' && (
+                                    <div className="relative">
+                                        <input
+                                            type="text"
+                                            maxLength={60}
+                                            placeholder="Enter header text"
+                                            value={headerText}
+                                            onChange={e => setHeaderText(e.target.value)}
+                                            disabled={!canEdit}
+                                            className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all pr-12 disabled:bg-gray-50"
+                                        />
+                                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] text-gray-400 font-bold">{headerText.length}/60</span>
+                                    </div>
+                                )}
 
-                        {headerType === 'VIDEO' && (
-                            <SmartUploader
-                                label="Header Video"
-                                module="templates"
-                                fileType="video"
-                                accept="video/mp4"
-                                maxSizeMB={16}
-                                description="MP4 only (Max 16MB) - Upload locally"
-                                defaultValue={headerText}
-                                onUploadSuccess={(url: string) => setHeaderText(url)}
-                            />
-                        )}
+                                {headerType === 'IMAGE' && (
+                                    <SmartUploader
+                                        label="Header Image"
+                                        module="templates"
+                                        fileType="image"
+                                        accept="image/jpeg, image/png, image/webp"
+                                        description="PNG, JPG, WebP (Max 5MB)"
+                                        defaultValue={headerText}
+                                        onUploadSuccess={(url: string) => setHeaderText(url)}
+                                    />
+                                )}
 
-                        {headerType === 'DOCUMENT' && (
-                            <SmartUploader
-                                label="Header Document"
-                                module="templates"
-                                fileType="document"
-                                accept="application/pdf"
-                                maxSizeMB={100}
-                                description="PDF only (Max 100MB) - Upload locally"
-                                defaultValue={headerText}
-                                onUploadSuccess={(url: string) => setHeaderText(url)}
-                            />
+                                {headerType === 'VIDEO' && (
+                                    <SmartUploader
+                                        label="Header Video"
+                                        module="templates"
+                                        fileType="video"
+                                        accept="video/mp4"
+                                        maxSizeMB={16}
+                                        description="MP4 only (Max 16MB) - Upload locally"
+                                        defaultValue={headerText}
+                                        onUploadSuccess={(url: string) => setHeaderText(url)}
+                                    />
+                                )}
+
+                                {headerType === 'DOCUMENT' && (
+                                    <SmartUploader
+                                        label="Header Document"
+                                        module="templates"
+                                        fileType="document"
+                                        accept="application/pdf"
+                                        maxSizeMB={100}
+                                        description="PDF only (Max 100MB) - Upload locally"
+                                        defaultValue={headerText}
+                                        onUploadSuccess={(url: string) => setHeaderText(url)}
+                                    />
+                                )}
+                            </>
                         )}
                     </div>
 
@@ -487,7 +498,7 @@ export default function TemplateEditor({ params }: { params: { id: string } }) {
 
                         <textarea
                             rows={8}
-                            placeholder="Type your message here... Use {{1}} for variables."
+                            placeholder={template?.category === 'AUTHENTICATION' ? "{{1}} is your verification code. For your security, do not share this code." : "Type your message here... Use {{1}} for variables."}
                             value={bodyText}
                             onChange={e => setBodyText(e.target.value)}
                             disabled={!canEdit}
@@ -520,19 +531,28 @@ export default function TemplateEditor({ params }: { params: { id: string } }) {
 
                     {/* Footer */}
                     <div className="space-y-4 pt-4 border-t border-gray-100">
-                        <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
-                            FOOTER
-                            <span className="text-[10px] text-gray-400 font-medium">OPTIONAL</span>
-                        </label>
-                        <input
-                            type="text"
-                            maxLength={60}
-                            placeholder="e.g. Not interested? Reply STOP"
-                            value={footerText}
-                            onChange={e => setFooterText(e.target.value)}
-                            disabled={!canEdit}
-                            className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm italic text-gray-500 focus:ring-2 focus:ring-blue-500 outline-none transition-all disabled:bg-gray-50"
-                        />
+                        {template?.category === 'AUTHENTICATION' ? (
+                            <div className="p-3 bg-gray-50 rounded-xl border border-gray-200 flex justify-between items-center text-xs text-gray-500 font-semibold">
+                                <span>FOOTER</span>
+                                <span className="text-[10px] bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-bold">MANAGED BY META</span>
+                            </div>
+                        ) : (
+                            <>
+                                <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
+                                    FOOTER
+                                    <span className="text-[10px] text-gray-400 font-medium">OPTIONAL</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    maxLength={60}
+                                    placeholder="e.g. Not interested? Reply STOP"
+                                    value={footerText}
+                                    onChange={e => setFooterText(e.target.value)}
+                                    disabled={!canEdit}
+                                    className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm italic text-gray-500 focus:ring-2 focus:ring-blue-500 outline-none transition-all disabled:bg-gray-50"
+                                />
+                            </>
+                        )}
                     </div>
 
                     {/* Buttons */}

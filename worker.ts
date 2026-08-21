@@ -308,6 +308,7 @@ const metaApiWorker = new Worker(
         connection: REDIS_CONNECTION,
         limiter: { max: 80, duration: 1000 }, // Global Throttling for Meta API
         concurrency: 20
+    }
 );
 
 metaApiWorker.on("failed", async (job, err) => {
