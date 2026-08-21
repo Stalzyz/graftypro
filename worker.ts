@@ -308,8 +308,68 @@ const metaApiWorker = new Worker(
         connection: REDIS_CONNECTION,
         limiter: { max: 80, duration: 1000 }, // Global Throttling for Meta API
         concurrency: 20
-    }
 );
+
+metaApiWorker.on("failed", async (job, err) => {
+    if (job?.data?.payload?.campaignId) {
+        const campaignId = job.data.payload.campaignId;
+        console.warn(`[MetaAPIWorker] ⚠️ Job ${job.id} failed after retries for campaign ${campaignId}: ${err.message}`);
+        
+        await prisma.campaignStats.update({
+            where: { campaign_id: campaignId },
+            data: { failed: { increment: 1 } }
+        }).catch(() => null);
+
+        const stats = await prisma.campaignStats.findUnique({ where: { campaign_id: campaignId } });
+        if (stats) {
+            const processed = (stats.sent || 0) + (stats.failed || 0);
+            if (stats.total > 0 && processed >= stats.total) {
+                await prisma.campaign.update({
+                    where: { id: campaignId },
+                    data: { status: "COMPLETED" }
+                }).catch(() => null);
+                console.log(`[MetaAPIWorker] 🏁 Campaign ${campaignId} marked COMPLETED via failure handler (${processed}/${stats.total})`);
+            }
+        }
+    }
+});
+
+// ---------------------------------------------------------
+// PERIODIC STUCK CAMPAIGN RECOVERY SWEEPER
+// ---------------------------------------------------------
+setInterval(async () => {
+    try {
+        const processingCampaigns = await prisma.campaign.findMany({
+            where: { status: "PROCESSING" },
+            include: { stats: true }
+        });
+
+        for (const c of processingCampaigns) {
+            if (c.stats) {
+                const processed = (c.stats.sent || 0) + (c.stats.failed || 0);
+                if (c.stats.total > 0 && processed >= c.stats.total) {
+                    await prisma.campaign.update({
+                        where: { id: c.id },
+                        data: { status: "COMPLETED" }
+                    }).catch(() => null);
+                    console.log(`[RecoverySweeper] 🧹 Auto-completed fully processed campaign ${c.id} (${processed}/${c.stats.total})`);
+                } else {
+                    // Stale check: older than 10 minutes without updates
+                    const isStale = (Date.now() - new Date(c.updated_at).getTime()) > 10 * 60 * 1000;
+                    if (isStale) {
+                        await prisma.campaign.update({
+                            where: { id: c.id },
+                            data: { status: "COMPLETED" }
+                        }).catch(() => null);
+                        console.log(`[RecoverySweeper] ⌛ Auto-completed stale campaign ${c.id} after 10m timeout.`);
+                    }
+                }
+            }
+        }
+    } catch (e: any) {
+        console.error("[RecoverySweeper] Error in campaign recovery loop:", e.message);
+    }
+}, 2 * 60 * 1000);
 
 // ---------------------------------------------------------
 // 2. CAMPAIGN DISPATCHER (The Unroller)
