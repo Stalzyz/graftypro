@@ -956,9 +956,9 @@ function SharedInboxContent() {
                             <div 
                                 ref={messagesContainerRef} 
                                 onScroll={handleScroll}
-                                className="flex-1 overflow-y-auto p-6 space-y-4 bg-slate-50/50 backdrop-blur-sm no-scrollbar relative scroll-smooth"
+                                className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-3 bg-[#efeae2] no-scrollbar relative scroll-smooth"
                             >
-                                <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-[0.02] pointer-events-none" />
+                                <div className="absolute inset-0 opacity-[0.06] pointer-events-none bg-[url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')] bg-repeat z-0" />
                                 {(() => {
                                     const timelineMessages = messages.filter(m => !m._deleted).map(m => ({
                                         ...m,
@@ -972,10 +972,36 @@ function SharedInboxContent() {
                                     }));
                                     const timeline = [...timelineMessages, ...timelineNotes].sort((a, b) => a.timestamp - b.timestamp);
 
-                                    return timeline.map((item: any) => {
+                                    return timeline.map((item: any, index: number) => {
+                                        let showDateDivider = false;
+                                        let dateLabel = "";
+                                        if (index === 0) {
+                                            showDateDivider = true;
+                                        } else {
+                                            const prevDate = new Date(timeline[index - 1].timestamp).toDateString();
+                                            const currDate = new Date(item.timestamp).toDateString();
+                                            if (prevDate !== currDate) showDateDivider = true;
+                                        }
+                                        if (showDateDivider && item.timestamp) {
+                                            const d = new Date(item.timestamp);
+                                            const today = new Date().toDateString();
+                                            const yesterday = new Date(Date.now() - 86400000).toDateString();
+                                            if (d.toDateString() === today) dateLabel = "Today";
+                                            else if (d.toDateString() === yesterday) dateLabel = "Yesterday";
+                                            else dateLabel = safeFormat(d, "MMMM d, yyyy", "Date");
+                                        }
+
                                         if (item.itemType === 'INTERNAL_NOTE') {
                                             return (
-                                                <div key={`note-${item.id}`} className="my-3 mx-auto w-full max-w-xl animate-in fade-in slide-in-from-top-2 duration-300">
+                                                <React.Fragment key={`note-wrap-${item.id}`}>
+                                                    {showDateDivider && (
+                                                        <div className="flex justify-center my-3 sticky top-2 z-20 pointer-events-none">
+                                                            <span className="px-3.5 py-1 bg-white/90 text-[#54656f] text-[11px] font-bold rounded-lg shadow-sm border border-slate-200/80 backdrop-blur-md uppercase tracking-wider tabular-nums">
+                                                                {dateLabel}
+                                                            </span>
+                                                        </div>
+                                                    )}
+                                                    <div key={`note-${item.id}`} className="my-3 mx-auto w-full max-w-xl animate-in fade-in slide-in-from-top-2 duration-300">
                                                     <div className="bg-amber-50/90 border border-amber-200/80 rounded-2xl p-4 text-amber-950 shadow-sm relative overflow-hidden">
                                                         <div className="flex justify-between items-center mb-2 border-b border-amber-200/60 pb-2">
                                                             <div className="flex items-center gap-1.5 text-[10px] font-black text-amber-800 uppercase tracking-widest">
@@ -993,6 +1019,7 @@ function SharedInboxContent() {
                                                         </div>
                                                     </div>
                                                 </div>
+                                            </React.Fragment>
                                             );
                                         }
 
@@ -1001,7 +1028,15 @@ function SharedInboxContent() {
                                         const isTemplate = msg.type === "TEMPLATE";
 
                                         return (
-                                            <div key={msg.id} id={`msg-${msg.id}`} className={`flex flex-col mb-4 relative group/msg ${isOutbound ? 'items-end pr-2' : 'items-start pl-2 animate-in slide-in-from-left-4'}`}>
+                                            <React.Fragment key={`msg-wrap-${msg.id}`}>
+                                                {showDateDivider && (
+                                                    <div className="flex justify-center my-3 sticky top-2 z-20 pointer-events-none">
+                                                        <span className="px-3 py-1 bg-white/95 text-[#54656f] text-[11px] font-semibold rounded-lg shadow-sm border border-slate-200/80 backdrop-blur-md uppercase tracking-wider tabular-nums">
+                                                            {dateLabel}
+                                                        </span>
+                                                    </div>
+                                                )}
+                                                <div key={msg.id} id={`msg-${msg.id}`} className={`flex flex-col mb-4 relative group/msg ${isOutbound ? 'items-end pr-2' : 'items-start pl-2 animate-in slide-in-from-left-4'}`}>
                                             {(() => {
                                                 const type = msg.type?.toUpperCase();
                                                 const rawContent = msg.content;
@@ -1169,9 +1204,9 @@ function SharedInboxContent() {
                                                             )}
                                                         </div>
 
-                                                        <div className={`px-4 py-3 rounded-2xl shadow-sm relative overflow-hidden ${isOutbound
-                                                            ? 'bg-gradient-to-br from-emerald-600 to-emerald-700 text-white rounded-tr-none'
-                                                            : 'bg-white border border-slate-200 text-slate-800 rounded-tl-none'
+                                                        <div className={`px-3.5 py-2.5 rounded-2xl relative overflow-hidden shadow-[0_1px_0.5px_rgba(11,20,26,0.13)] ${isOutbound
+                                                            ? 'bg-[#e7ffdb] border border-[#d9fdd3] text-[#111b21] rounded-tr-none'
+                                                            : 'bg-white border border-slate-200/80 text-[#111b21] rounded-tl-none'
                                                             }`}>
 
                                                             {/* Media Rendering */}
@@ -1545,15 +1580,24 @@ function SharedInboxContent() {
                                                             })()}
 
                                                             {/* Status line */}
-                                                            <div className="mt-1 flex items-center justify-end gap-1 opacity-60">
-                                                                <span className="text-[9px] font-bold">{safeFormat(msg.created_at, "HH:mm")}</span>
-                                                                {isOutbound && (msg.status === 'READ' ? <CheckCheck size={10} className="text-blue-200" /> : <Check size={10} />)}
+                                                            <div className="mt-1 flex items-center justify-end gap-1 select-none">
+                                                                <span className="text-[10px] font-medium text-slate-500 tabular-nums">{safeFormat(msg.created_at, "hh:mm a")}</span>
+                                                                {isOutbound && (
+                                                                    msg.status === 'READ' ? (
+                                                                        <CheckCheck size={14} className="text-[#53bdeb]" />
+                                                                    ) : msg.status === 'DELIVERED' ? (
+                                                                        <CheckCheck size={14} className="text-slate-400" />
+                                                                    ) : (
+                                                                        <Check size={14} className="text-slate-400" />
+                                                                    )
+                                                                )}
                                                             </div>
                                                         </div>
                                                     </div>
                                                 );
                                             })()}
                                         </div>
+                                    </React.Fragment>
                                     );
                                 });
                             })()}
@@ -1690,9 +1734,9 @@ function SharedInboxContent() {
                                     <button
                                         onClick={handleSend}
                                         disabled={sending || savingNote || (!replyText.trim() && !attachedFile)}
-                                        className={`text-white p-4 rounded-xl transition-all flex items-center justify-center shadow-lg disabled:bg-slate-200 disabled:shadow-none h-14 w-14 shrink-0 group ${composerMode === 'NOTE' ? 'bg-amber-500 hover:bg-amber-600 shadow-amber-200' : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200'}`}
+                                        className={`text-white p-3.5 rounded-full transition-all flex items-center justify-center shadow-md disabled:bg-slate-300 disabled:shadow-none h-12 w-12 shrink-0 group ${composerMode === 'NOTE' ? 'bg-amber-500 hover:bg-amber-600' : 'bg-[#00a884] hover:bg-[#008f70] shadow-emerald-500/20'}`}
                                     >
-                                        {(sending || savingNote) ? <Loader2 size={24} className="animate-spin" /> : <Send size={22} fill="currentColor" className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />}
+                                        {(sending || savingNote) ? <Loader2 size={20} className="animate-spin" /> : <Send size={20} className="fill-white text-white translate-x-0.5" />}
                                     </button>
                                 </div>
                                 <div className="mt-4 flex flex-wrap gap-2.5 items-center justify-center sm:justify-start border-t border-slate-50 pt-4">
