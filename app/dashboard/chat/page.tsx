@@ -823,17 +823,17 @@ function SharedInboxContent() {
                         {/* Main Chat Thread */}
                         <div className="flex-1 flex flex-col min-w-0">
                             {/* Chat Header */}
-                            <div className="h-[72px] bg-white border-b border-gray-100 px-6 flex items-center justify-between shrink-0 shadow-sm">
-                                <div className="flex items-center gap-4">
+                            <div className="h-[64px] bg-[#f0f2f5] border-b border-slate-200/80 px-4 sm:px-6 flex items-center justify-between shrink-0 shadow-sm z-20">
+                                <div className="flex items-center gap-3">
                                     <button 
                                         onClick={() => setIsMobileListOpen(true)} 
-                                        className="md:hidden p-2 text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-all flex items-center gap-1 font-bold text-xs shrink-0"
+                                        className="md:hidden p-2 text-slate-700 bg-white hover:bg-slate-100 rounded-xl transition-all flex items-center gap-1 font-bold text-xs shrink-0 shadow-sm border border-slate-200/60"
                                         title="Back to Conversations"
                                     >
                                         <ChevronRight className="rotate-180" size={16} />
                                         <span>Inbox</span>
                                     </button>
-                                    <div className="w-12 h-12 bg-gradient-to-br from-green-600 to-green-800 rounded-2xl flex items-center justify-center text-white font-black text-xl shadow-lg shadow-green-100 overflow-hidden relative group">
+                                    <div className="w-10 h-10 bg-[#008069] rounded-full flex items-center justify-center text-white font-bold text-base shadow-sm overflow-hidden relative group shrink-0">
                                         {activeConversation?.contact?.avatar_url ? (
                                             <img src={activeConversation.contact.avatar_url} alt="" className="w-full h-full object-cover" />
                                         ) : (
@@ -1626,7 +1626,7 @@ function SharedInboxContent() {
                             </div>
 
                             {/* Advanced Composer Box */}
-                            <div className="p-6 bg-white border-t border-gray-100 shrink-0">
+                            <div className="p-3 sm:p-4 bg-[#f0f2f5] border-t border-slate-200/80 shrink-0">
 
                                 {/* Suggestion Bar */}
                                 {suggestions.length > 0 && (
@@ -1774,7 +1774,7 @@ function SharedInboxContent() {
                                         </button>
                                     </div>
 
-                                    <div className={`flex-1 rounded-[1.25rem] flex items-end transition-all shadow-sm relative group overflow-hidden border ${composerMode === 'NOTE' ? 'bg-amber-50/70 border-amber-300 focus-within:border-amber-500' : 'bg-slate-100/80 border-slate-200 focus-within:bg-white focus-within:border-emerald-500/30'}`}>
+                                    <div className={`flex-1 rounded-3xl flex items-center transition-all shadow-sm relative group overflow-hidden border ${composerMode === 'NOTE' ? 'bg-amber-50/90 border-amber-300 focus-within:border-amber-500' : 'bg-white border-slate-200/80 focus-within:border-emerald-500'}`}>
                                         <textarea
                                             id="chat-composer"
                                             rows={1}
@@ -1785,8 +1785,8 @@ function SharedInboxContent() {
                                                 e.target.style.height = Math.min(e.target.scrollHeight, 150) + 'px';
                                             }}
                                             onKeyDown={onKeyDown}
-                                            placeholder={composerMode === 'NOTE' ? "Type a private note for your team... Use @name to mention." : "Type your message here..."}
-                                            className="w-full bg-transparent border-none px-6 py-4 text-[14px] focus:ring-0 outline-none resize-none font-medium placeholder:text-gray-400"
+                                            placeholder={composerMode === 'NOTE' ? "Type a private note for your team... Use @name to mention." : "Type a message..."}
+                                            className="w-full bg-transparent border-none px-4 py-2.5 text-[14px] focus:ring-0 outline-none resize-none font-normal placeholder:text-slate-400"
                                         />
                                         <div className="absolute right-4 bottom-3 opacity-30 group-focus-within:opacity-100 transition-opacity">
                                             <Command size={14} className="text-gray-400" />
@@ -1799,17 +1799,6 @@ function SharedInboxContent() {
                                         className={`text-white p-3.5 rounded-full transition-all flex items-center justify-center shadow-md disabled:bg-slate-300 disabled:shadow-none h-12 w-12 shrink-0 group ${composerMode === 'NOTE' ? 'bg-amber-500 hover:bg-amber-600' : 'bg-[#00a884] hover:bg-[#008f70] shadow-emerald-500/20'}`}
                                     >
                                         {(sending || savingNote) ? <Loader2 size={20} className="animate-spin" /> : <Send size={20} className="fill-white text-white translate-x-0.5" />}
-                                    </button>
-                                </div>
-                                <div className="mt-4 flex flex-wrap gap-2.5 items-center justify-center sm:justify-start border-t border-slate-50 pt-4">
-                                    <button onClick={() => setShowDripModal(true)} className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-[#5C5CFF] bg-[#5C5CFF]/5 hover:bg-[#5C5CFF]/10 px-3 py-2 rounded-lg transition-all border border-[#5C5CFF]/10">
-                                        <Zap size={10} fill="currentColor" /> Enroll in Drip
-                                    </button>
-                                    <button onClick={() => setShowFollowUpModal(true)} className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-emerald-600 bg-emerald-50 hover:bg-emerald-100 px-3 py-2 rounded-lg transition-all border border-emerald-100">
-                                        <Calendar size={10} /> Schedule Follow Up
-                                    </button>
-                                    <button onClick={() => { setShowTemplateModal(true); fetchTemplates(); }} className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-violet-600 bg-violet-50 hover:bg-violet-100 px-3 py-2 rounded-lg transition-all border border-violet-100">
-                                        <FilePlus size={10} /> Template
                                     </button>
                                 </div>
                             </div>
