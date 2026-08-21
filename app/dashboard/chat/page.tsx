@@ -439,6 +439,15 @@ function SharedInboxContent() {
             return;
         }
 
+        // 🔒 Guard: Auto-detect 24-Hour Window Expiry and guide agent to Templates
+        const windowInfo = getCustomerWindowInfo();
+        if (windowInfo.expired) {
+            toast.error("🔒 24h Customer Window Expired. Opening Approved Templates...", { duration: 4000 });
+            setShowTemplateModal(true);
+            fetchTemplates();
+            return;
+        }
+
         setSending(true);
         try {
             const fileType = attachedFile?.type || "";

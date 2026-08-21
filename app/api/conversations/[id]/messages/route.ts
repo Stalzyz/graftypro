@@ -291,6 +291,14 @@ export async function POST(
     } catch (error: any) {
         console.error("Send Message Error:", error);
 
+        const metaErr = error?.response?.data?.error;
+        if (metaErr?.code === 131047 || metaErr?.message?.includes("24 hours") || metaErr?.details?.includes("24 hours")) {
+            return NextResponse.json({
+                error: "🔒 24-Hour Customer Window Expired. Meta policy requires using an Approved Template to contact this user.",
+                type: "24h_WINDOW_EXPIRED"
+            }, { status: 400 });
+        }
+
         // ✅ FIX: Return 402 for billing errors so the frontend can show a
         // meaningful "top up credits" prompt instead of a generic error.
         if (error?.message?.startsWith("BILLING_ERROR:") || (error as any)?.billingError) {
