@@ -268,9 +268,19 @@ export default function TemplateEditor({ params }: { params: { id: string } }) {
         }
     };
 
-    const addButton = (type: string) => {
+    const addButton = (type: string, subType?: string) => {
         if (buttons.length >= 3) return alert("Max 3 buttons allowed");
-        setButtons([...buttons, { type, text: "", url: "", phone_number: "" }]);
+        if (type === 'OTP') {
+            setButtons([...buttons, {
+                type: 'OTP',
+                otp_type: subType || 'COPY_CODE',
+                text: subType === 'ONE_TAP' ? 'Autofill' : 'Copy Code',
+                package_name: '',
+                signature_hash: ''
+            }]);
+        } else {
+            setButtons([...buttons, { type, text: "", url: "", phone_number: "" }]);
+        }
     };
 
     const updateButton = (index: number, field: string, val: string) => {
@@ -361,6 +371,16 @@ export default function TemplateEditor({ params }: { params: { id: string } }) {
 
                 {/* Editor Content */}
                 <div className="flex-1 overflow-y-auto p-4 md:p-6 bg-gray-50">
+
+                    {template?.category === 'AUTHENTICATION' && (
+                        <div className="mb-6 bg-purple-50 border border-purple-200 rounded-2xl p-4 flex items-start gap-3 text-purple-900">
+                            <AlertCircle size={18} className="text-purple-600 shrink-0 mt-0.5" />
+                            <div className="space-y-1 text-xs">
+                                <p className="font-bold">🛡️ Authentication Template (OTP) Mode</p>
+                                <p className="text-purple-700">Meta enforces strict security rules for verification templates: Headers & Footers are disabled, the body requires an OTP variable <code className="bg-purple-100 px-1 py-0.5 rounded font-mono text-purple-900">{`{{1}}`}</code>, and special OTP buttons (Copy Code / One-Tap) are used.</p>
+                            </div>
+                        </div>
+                    )}
 
                     {/* FORMAT SELECTOR */}
                     <div className="mb-6 bg-white p-4 rounded-xl border border-gray-200">
@@ -524,10 +544,35 @@ export default function TemplateEditor({ params }: { params: { id: string } }) {
                             </label>
 
                             {(() => {
+                                const isAuth = template?.category === 'AUTHENTICATION';
                                 const hasQuickReply = buttons.some(b => b.type === 'QUICK_REPLY');
                                 const hasCallToAction = buttons.some(b => b.type === 'URL' || b.type === 'PHONE_NUMBER');
                                 const hasPhoneButton = buttons.some(b => b.type === 'PHONE_NUMBER');
+                                const hasOtpButton = buttons.some(b => b.type === 'OTP');
                                 const isMaxButtons = buttons.length >= 3;
+
+                                if (isAuth) {
+                                    return (
+                                        <div className="flex gap-2 flex-wrap">
+                                            <button
+                                                onClick={() => addButton("OTP", "COPY_CODE")}
+                                                disabled={!canEdit || hasOtpButton}
+                                                title={hasOtpButton ? "Only 1 OTP button is allowed per Authentication template" : ""}
+                                                className="px-3 py-1.5 rounded-xl bg-purple-50 text-purple-600 text-[10px] font-bold uppercase hover:bg-purple-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                                            >
+                                                + Copy Code Button
+                                            </button>
+                                            <button
+                                                onClick={() => addButton("OTP", "ONE_TAP")}
+                                                disabled={!canEdit || hasOtpButton}
+                                                title={hasOtpButton ? "Only 1 OTP button is allowed per Authentication template" : ""}
+                                                className="px-3 py-1.5 rounded-xl bg-blue-50 text-blue-600 text-[10px] font-bold uppercase hover:bg-blue-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                                            >
+                                                + One-Tap Autofill
+                                            </button>
+                                        </div>
+                                    );
+                                }
 
                                 return (
                                     <div className="flex gap-2 flex-wrap">
@@ -570,16 +615,38 @@ export default function TemplateEditor({ params }: { params: { id: string } }) {
                                     >
                                         <Trash2 size={12} />
                                     </button>
-                                    <div className="text-[9px] font-black text-gray-400 uppercase mb-3">{btn.type.replace('_', ' ')}</div>
+                                    <div className="text-[9px] font-black text-gray-400 uppercase mb-3">
+                                        {btn.type === 'OTP' ? `OTP (${btn.otp_type || 'COPY_CODE'})` : btn.type.replace('_', ' ')}
+                                    </div>
                                     <div className="space-y-3">
                                         <input
                                             type="text"
-                                            placeholder="Button Text"
+                                            placeholder="Button Label (e.g. Copy Code)"
                                             value={btn.text}
                                             onChange={e => updateButton(idx, 'text', e.target.value)}
                                             disabled={!canEdit}
                                             className="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg outline-none disabled:bg-gray-50"
                                         />
+                                        {btn.type === 'OTP' && btn.otp_type === 'ONE_TAP' && (
+                                            <>
+                                                <input
+                                                    type="text"
+                                                    placeholder="Package Name (e.g. com.mycompany.app)"
+                                                    value={btn.package_name || ""}
+                                                    onChange={e => updateButton(idx, 'package_name', e.target.value)}
+                                                    disabled={!canEdit}
+                                                    className="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg outline-none disabled:bg-gray-50"
+                                                />
+                                                <input
+                                                    type="text"
+                                                    placeholder="Signature Hash (e.g. 4a3b2c...)"
+                                                    value={btn.signature_hash || ""}
+                                                    onChange={e => updateButton(idx, 'signature_hash', e.target.value)}
+                                                    disabled={!canEdit}
+                                                    className="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg outline-none disabled:bg-gray-50"
+                                                />
+                                            </>
+                                        )}
                                         {btn.type === 'URL' && (
                                             <input
                                                 type="text"
@@ -593,6 +660,17 @@ export default function TemplateEditor({ params }: { params: { id: string } }) {
                                         {btn.type === 'PHONE_NUMBER' && (
                                             <input
                                                 type="text"
+                                                placeholder="+1234567890 (no spaces or dashes)"
+                                                value={btn.phone_number}
+                                                onChange={e => updateButton(idx, 'phone_number', e.target.value)}
+                                                disabled={!canEdit}
+                                                className="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg outline-none disabled:bg-gray-50"
+                                            />
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
                                                 placeholder="+1234567890 (no spaces or dashes)"
                                                 value={btn.phone_number}
                                                 onChange={e => updateButton(idx, 'phone_number', e.target.value)}
