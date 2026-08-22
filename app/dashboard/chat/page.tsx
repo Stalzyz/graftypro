@@ -868,37 +868,37 @@ function SharedInboxContent() {
                         {/* Main Chat Thread */}
                         <div className="flex-1 flex flex-col min-w-0">
                             {/* Chat Header */}
-                            <div className="h-[64px] bg-[#f0f2f5] border-b border-slate-200/80 px-3 sm:px-6 flex items-center justify-between shrink-0 shadow-sm z-20">
-                                <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="bg-[#f0f2f5] border-b border-slate-200/80 px-3 sm:px-6 py-2 flex items-center justify-between shrink-0 shadow-sm z-20 pt-[max(0.5rem,env(safe-area-inset-top))]">
+                                <div className="flex items-center gap-2 min-w-0">
                                     <button 
                                         onClick={() => setIsMobileListOpen(true)} 
-                                        className="md:hidden w-9 h-9 bg-white hover:bg-slate-200 text-slate-700 rounded-full flex items-center justify-center shrink-0 shadow-sm border border-slate-200/80 active:scale-95 transition-all"
+                                        className="md:hidden w-8 h-8 bg-white hover:bg-slate-200 text-slate-700 rounded-full flex items-center justify-center shrink-0 shadow-sm border border-slate-200/80 active:scale-95 transition-all"
                                         title="Back to Inbox"
                                     >
-                                        <ArrowLeft size={18} />
+                                        <ArrowLeft size={16} />
                                     </button>
-                                    <div className="w-10 h-10 bg-[#008069] rounded-full flex items-center justify-center text-white font-bold text-base shadow-sm overflow-hidden relative group shrink-0">
+                                    <div className="w-9 h-9 bg-[#008069] rounded-full flex items-center justify-center text-white font-bold text-sm shadow-sm overflow-hidden relative group shrink-0">
                                         {activeConversation?.contact?.avatar_url ? (
                                             <img src={activeConversation.contact.avatar_url} alt="" className="w-full h-full object-cover" />
                                         ) : (
-                                            activeConversation?.contact?.name?.[0] || <User />
+                                            activeConversation?.contact?.name?.[0] || <User size={18} />
                                         )}
                                         <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer">
-                                            <ImageIcon size={16} />
+                                            <ImageIcon size={14} />
                                         </div>
                                     </div>
                                     <div className="min-w-0 flex-1">
-                                        <h3 className="text-[14px] sm:text-[15px] font-black text-gray-900 tracking-tight leading-none mb-1 truncate max-w-[130px] sm:max-w-[320px]">
+                                        <h3 className="text-[13px] sm:text-[15px] font-black text-gray-900 tracking-tight leading-tight truncate max-w-[120px] sm:max-w-[320px]">
                                             {activeConversation?.contact?.name || activeConversation?.contact?.phone || "Contact"}
                                         </h3>
-                                        <div className="flex items-center gap-1.5">
-                                            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.5)] shrink-0" />
-                                            <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest truncate max-w-[120px]">{activeConversation?.contact?.phone || "No Phone"}</p>
+                                        <div className="flex items-center gap-1">
+                                            <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse shadow-[0_0_6px_rgba(34,197,94,0.5)] shrink-0" />
+                                            <p className="text-[9px] sm:text-[10px] text-gray-400 font-bold uppercase tracking-wider truncate max-w-[110px]">{activeConversation?.contact?.phone || "No Phone"}</p>
                                         </div>
                                     </div>
                                 </div>
 
-                                <div className="flex items-center gap-3 shrink-0">
+                                <div className="flex items-center gap-2 shrink-0">
 
                                     {/* Assignment Quick Dropdown */}
                                     <div className="hidden lg:flex items-center gap-2 bg-gray-50 border border-gray-100 rounded-xl px-3 py-1.5 hover:bg-gray-100 transition-all cursor-pointer">
@@ -1201,7 +1201,7 @@ function SharedInboxContent() {
                                                 return (
                                                     <div className={`max-w-[92%] sm:max-w-[80%] lg:max-w-[75%] relative flex flex-col ${isOutbound ? 'items-end' : 'items-start'}`}>
                                                         {/* Hover Action Toolbar */}
-                                                        <div className={`absolute top-0 flex items-center gap-1 opacity-0 group-hover/msg:opacity-100 transition-all z-50 ${isOutbound ? '-left-[80px]' : '-right-[40px]'}`}>
+                                                        <div className={`absolute top-0 hidden lg:flex items-center gap-1 opacity-0 group-hover/msg:opacity-100 transition-all z-50 ${isOutbound ? '-left-[80px]' : '-right-[40px]'}`}>
                                                             <button
                                                                 onClick={() => { setQuotedMessage(msg); document.getElementById('chat-composer')?.focus(); }}
                                                                 className="p-1.5 bg-white border border-slate-200 rounded-full text-slate-400 hover:text-indigo-600 hover:border-indigo-200 shadow-xl transition-all hover:scale-110"
@@ -1640,63 +1640,55 @@ function SharedInboxContent() {
                                 )}
 
                                 {/* Advanced Composer Box */}
-                                <div className="p-3 sm:p-4 bg-[#f0f2f5] border-t border-slate-200/80 shrink-0">
+                                <div className="p-2 sm:p-3 bg-[#f0f2f5] border-t border-slate-200/80 shrink-0 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
 
-                                    {/* 24-Hour Customer Window Expiry Bar (Placed right above message text field) */}
+                                    {/* 24-Hour Customer Window Expiry Bar (Only shown when EXPIRED) */}
                                     {(() => {
                                         const win = getCustomerWindowInfo();
                                         if (win.expired) {
                                             return (
-                                                <div className="mb-3 p-2 px-3.5 bg-rose-50 border border-rose-200/80 rounded-2xl flex items-center justify-between shadow-sm animate-in slide-in-from-bottom-2">
-                                                    <div className="flex items-center gap-2 text-rose-700 font-bold text-xs">
-                                                        <AlertCircle size={15} className="text-rose-600 shrink-0 animate-pulse" />
-                                                        <span>24h Support Window Expired</span>
+                                                <div className="mb-2 p-2 px-3 bg-rose-50 border border-rose-200/80 rounded-xl flex items-center justify-between shadow-sm animate-in slide-in-from-bottom-2">
+                                                    <div className="flex items-center gap-1.5 text-rose-700 font-bold text-[11px]">
+                                                        <AlertCircle size={14} className="text-rose-600 shrink-0 animate-pulse" />
+                                                        <span>24h Window Expired</span>
                                                     </div>
                                                     <button
                                                         onClick={() => { setShowTemplateModal(true); fetchTemplates(); }}
-                                                        className="text-[10px] bg-rose-600 hover:bg-rose-700 text-white px-3 py-1 rounded-xl font-black uppercase tracking-wider shadow-sm transition-all active:scale-95"
+                                                        className="text-[9px] bg-rose-600 hover:bg-rose-700 text-white px-2.5 py-1 rounded-lg font-black uppercase tracking-wider shadow-sm transition-all active:scale-95"
                                                     >
-                                                        + Send Template
+                                                        + Template
                                                     </button>
                                                 </div>
                                             );
                                         }
-                                        return (
-                                            <div className="mb-2 p-1.5 px-3 bg-emerald-50/90 border border-emerald-200/60 rounded-xl flex items-center justify-between">
-                                                <div className="flex items-center gap-1.5 text-emerald-800 font-bold text-[11px]">
-                                                    <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse shrink-0" />
-                                                    <span>{win.text}</span>
-                                                </div>
-                                                <span className="text-[9px] font-black uppercase tracking-widest text-emerald-600">Active Support Session</span>
-                                            </div>
-                                        );
+                                        return null;
                                     })()}
 
                                     {/* Quoted Reply Message Preview */}
                                     {quotedMessage && (
-                                        <div className="mb-3 p-2.5 bg-white border-l-4 border-emerald-500 rounded-r-2xl flex items-center justify-between shadow-sm animate-in slide-in-from-bottom-2">
+                                        <div className="mb-2 p-2 bg-white border-l-4 border-emerald-500 rounded-r-xl flex items-center justify-between shadow-sm animate-in slide-in-from-bottom-2">
                                             <div className="min-w-0 flex-1 pr-2">
-                                                <div className="text-[10px] font-black uppercase text-emerald-700 tracking-wider">Replying to message</div>
-                                                <div className="text-[12px] text-slate-700 truncate font-medium">
+                                                <div className="text-[9px] font-black uppercase text-emerald-700 tracking-wider">Replying to message</div>
+                                                <div className="text-[11px] text-slate-700 truncate font-medium">
                                                     {quotedMessage.content?.text || quotedMessage.content?.body || (typeof quotedMessage.body === 'string' ? quotedMessage.body : '') || "Media message"}
                                                 </div>
                                             </div>
                                             <button onClick={() => setQuotedMessage(null)} className="p-1 text-slate-400 hover:text-rose-500 rounded-full transition-colors">
-                                                <X size={16} />
+                                                <X size={14} />
                                             </button>
                                         </div>
                                     )}
 
                                     {/* Suggestion Bar */}
                                     {suggestions.length > 0 && (
-                                        <div className="mb-3 flex gap-2 overflow-x-auto no-scrollbar py-1">
+                                        <div className="mb-2 flex gap-1.5 overflow-x-auto no-scrollbar py-0.5">
                                             {suggestions.map((s, i) => (
                                                 <button
                                                     key={i}
                                                     onClick={() => setReplyText(s)}
-                                                    className="shrink-0 px-4 py-2 bg-green-50/50 hover:bg-green-100 text-green-700 rounded-2xl text-[12px] font-black uppercase tracking-tight border border-green-100 transition-all flex items-center gap-2 group whitespace-nowrap"
+                                                    className="shrink-0 px-3 py-1 bg-white hover:bg-green-50 text-emerald-800 rounded-full text-[11px] font-bold border border-emerald-200 transition-all flex items-center gap-1.5 shadow-sm whitespace-nowrap"
                                                 >
-                                                    <Sparkles size={12} className="text-green-500 group-hover:animate-spin" /> {s}
+                                                    <Sparkles size={11} className="text-emerald-500" /> {s}
                                                 </button>
                                             ))}
                                         </div>
@@ -1704,144 +1696,137 @@ function SharedInboxContent() {
 
                                     {/* Attachment Preview */}
                                     {attachedFile && (
-                                        <div className="mb-3 p-4 bg-gray-50 rounded-3xl flex items-center justify-between border-2 border-dashed border-gray-200 animate-in slide-in-from-bottom-2 group">
-                                            <div className="flex items-center gap-4">
-                                                <div className="w-14 h-14 bg-white rounded-2xl border border-emerald-100 flex items-center justify-center shadow-md group-hover:scale-105 transition-all">
-                                                    {attachedFile.type.includes('image') ? <ImageIcon size={24} className="text-emerald-500" /> : <FileText size={24} className="text-blue-500" />}
+                                        <div className="mb-2 p-2 px-3 bg-white rounded-2xl flex items-center justify-between border border-slate-200 shadow-sm animate-in slide-in-from-bottom-2">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-9 h-9 bg-emerald-50 rounded-xl flex items-center justify-center text-emerald-600">
+                                                    {attachedFile.type.includes('image') ? <ImageIcon size={18} /> : <FileText size={18} />}
                                                 </div>
-                                                <div>
-                                                    <div className="text-[13px] font-black text-gray-800 truncate max-w-[200px]">{attachedFile.filename}</div>
-                                                    <div className="flex items-center gap-2">
-                                                        <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Waiting to send</div>
-                                                        <div className="w-1 h-1 bg-gray-300 rounded-full" />
-                                                        <div className="text-[10px] text-green-600 font-bold uppercase tracking-widest">Ready</div>
-                                                    </div>
-                                                </div>
+                                                <div className="text-[12px] font-bold text-slate-800 truncate max-w-[180px]">{attachedFile.filename}</div>
                                             </div>
-                                            <button onClick={() => setAttachedFile(null)} className="p-3 bg-white text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-2xl transition-all shadow-sm">
-                                                <X size={20} />
+                                            <button onClick={() => setAttachedFile(null)} className="p-1.5 text-slate-400 hover:text-rose-500 rounded-full transition-colors">
+                                                <X size={16} />
                                             </button>
                                         </div>
                                     )}
 
                                     {composerMode === 'NOTE' && (
-                                        <div className="mb-2 text-[10px] text-amber-800 font-bold bg-amber-50 px-3 py-1 rounded-xl border border-amber-200 flex items-center justify-between">
-                                            <span>🔒 Internal Note Mode &middot; Visible ONLY to team</span>
-                                            <button onClick={() => setComposerMode('REPLY')} className="text-amber-900 underline font-black">Switch to WhatsApp</button>
+                                        <div className="mb-1.5 text-[10px] text-amber-900 font-bold bg-amber-100 px-3 py-1 rounded-lg flex items-center justify-between border border-amber-300">
+                                            <span>🔒 Internal Note Mode</span>
+                                            <button onClick={() => setComposerMode('REPLY')} className="underline font-black">Switch to WhatsApp</button>
                                         </div>
                                     )}
 
-                                    <div className="flex items-end gap-3 w-full">
-                                        <div className="flex items-center gap-1 pb-1">
-                                            <div className="relative">
+                                    {/* 1-Row Authentic WhatsApp Input Bar */}
+                                    <div className="flex items-center gap-2 w-full">
+                                        {/* Main Input Pill Container */}
+                                        <div className={`flex-1 rounded-full flex items-center px-2 py-1 transition-all shadow-sm relative border ${composerMode === 'NOTE' ? 'bg-amber-50 border-amber-300 focus-within:border-amber-500' : 'bg-white border-slate-200/90 focus-within:border-emerald-500'}`}>
+                                            {/* Attachment Paperclip Button */}
+                                            <div className="relative shrink-0">
                                                 <button
                                                     title="Attach file or action"
                                                     onClick={() => setShowAttachmentMenu(!showAttachmentMenu)}
-                                                    className="p-3 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-2xl transition-all active:scale-95 touch-manipulation"
+                                                    className="p-1.5 text-slate-400 hover:text-emerald-600 rounded-full transition-colors active:scale-95 touch-manipulation"
                                                 >
-                                                    <Paperclip size={22} className={uploading ? "animate-spin" : ""} />
+                                                    <Paperclip size={20} className={uploading ? "animate-spin text-emerald-600" : ""} />
                                                     <input type="file" className="hidden" ref={fileInputRef} onChange={handleFileUpload} />
                                                 </button>
 
                                                 {showAttachmentMenu && (
-                                                    <div className="absolute bottom-16 left-0 z-50 bg-white rounded-3xl p-4 shadow-2xl border border-slate-100 animate-in slide-in-from-bottom-4 duration-200 grid grid-cols-3 gap-3 text-center w-72">
+                                                    <div className="absolute bottom-12 left-0 z-50 bg-white rounded-3xl p-3 shadow-2xl border border-slate-100 animate-in slide-in-from-bottom-4 duration-200 grid grid-cols-3 gap-2.5 text-center w-64">
                                                         <button
                                                             onClick={() => { setShowAttachmentMenu(false); fileInputRef.current?.click(); }}
-                                                            className="flex flex-col items-center gap-1.5 p-2 rounded-2xl hover:bg-slate-50 transition-all group active:scale-95 touch-manipulation"
+                                                            className="flex flex-col items-center gap-1 p-2 rounded-2xl hover:bg-slate-50 transition-all group active:scale-95 touch-manipulation"
                                                         >
-                                                            <div className="w-12 h-12 rounded-full bg-purple-500 text-white flex items-center justify-center shadow-md group-hover:scale-105 transition-transform">
-                                                                <FileText size={20} />
+                                                            <div className="w-10 h-10 rounded-full bg-purple-500 text-white flex items-center justify-center shadow-md group-hover:scale-105 transition-transform">
+                                                                <FileText size={18} />
                                                             </div>
-                                                            <span className="text-[10px] font-black text-slate-700 uppercase tracking-tight">Document</span>
+                                                            <span className="text-[9px] font-bold text-slate-700 uppercase">Document</span>
                                                         </button>
                                                         <button
                                                             onClick={() => { setShowAttachmentMenu(false); fileInputRef.current?.click(); }}
-                                                            className="flex flex-col items-center gap-1.5 p-2 rounded-2xl hover:bg-slate-50 transition-all group active:scale-95 touch-manipulation"
+                                                            className="flex flex-col items-center gap-1 p-2 rounded-2xl hover:bg-slate-50 transition-all group active:scale-95 touch-manipulation"
                                                         >
-                                                            <div className="w-12 h-12 rounded-full bg-pink-500 text-white flex items-center justify-center shadow-md group-hover:scale-105 transition-transform">
-                                                                <Camera size={20} />
+                                                            <div className="w-10 h-10 rounded-full bg-pink-500 text-white flex items-center justify-center shadow-md group-hover:scale-105 transition-transform">
+                                                                <Camera size={18} />
                                                             </div>
-                                                            <span className="text-[10px] font-black text-slate-700 uppercase tracking-tight">Media</span>
+                                                            <span className="text-[9px] font-bold text-slate-700 uppercase">Media</span>
                                                         </button>
                                                         <button
                                                             onClick={() => { setShowAttachmentMenu(false); setShowTemplateModal(true); fetchTemplates(); }}
-                                                            className="flex flex-col items-center gap-1.5 p-2 rounded-2xl hover:bg-slate-50 transition-all group active:scale-95 touch-manipulation"
+                                                            className="flex flex-col items-center gap-1 p-2 rounded-2xl hover:bg-slate-50 transition-all group active:scale-95 touch-manipulation"
                                                         >
-                                                            <div className="w-12 h-12 rounded-full bg-violet-600 text-white flex items-center justify-center shadow-md group-hover:scale-105 transition-transform">
-                                                                <FilePlus size={20} />
+                                                            <div className="w-10 h-10 rounded-full bg-violet-600 text-white flex items-center justify-center shadow-md group-hover:scale-105 transition-transform">
+                                                                <FilePlus size={18} />
                                                             </div>
-                                                            <span className="text-[10px] font-black text-slate-700 uppercase tracking-tight">Template</span>
+                                                            <span className="text-[9px] font-bold text-slate-700 uppercase">Template</span>
                                                         </button>
                                                         <button
                                                             onClick={() => { setShowAttachmentMenu(false); fetchAISuggestions(); }}
-                                                            className="flex flex-col items-center gap-1.5 p-2 rounded-2xl hover:bg-slate-50 transition-all group active:scale-95 touch-manipulation"
+                                                            className="flex flex-col items-center gap-1 p-2 rounded-2xl hover:bg-slate-50 transition-all group active:scale-95 touch-manipulation"
                                                         >
-                                                            <div className="w-12 h-12 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-md group-hover:scale-105 transition-transform">
-                                                                <Sparkles size={20} />
+                                                            <div className="w-10 h-10 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-md group-hover:scale-105 transition-transform">
+                                                                <Sparkles size={18} />
                                                             </div>
-                                                            <span className="text-[10px] font-black text-slate-700 uppercase tracking-tight">AI Reply</span>
+                                                            <span className="text-[9px] font-bold text-slate-700 uppercase">AI Reply</span>
                                                         </button>
                                                         <button
                                                             onClick={() => { setShowAttachmentMenu(false); setComposerMode(composerMode === 'NOTE' ? 'REPLY' : 'NOTE'); }}
-                                                            className="flex flex-col items-center gap-1.5 p-2 rounded-2xl hover:bg-slate-50 transition-all group active:scale-95 touch-manipulation"
+                                                            className="flex flex-col items-center gap-1 p-2 rounded-2xl hover:bg-slate-50 transition-all group active:scale-95 touch-manipulation"
                                                         >
-                                                            <div className={`w-12 h-12 rounded-full flex items-center justify-center shadow-md group-hover:scale-105 transition-transform ${composerMode === 'NOTE' ? 'bg-emerald-600 text-white' : 'bg-amber-500 text-white'}`}>
-                                                                <FileText size={20} />
+                                                            <div className={`w-10 h-10 rounded-full flex items-center justify-center shadow-md group-hover:scale-105 transition-transform ${composerMode === 'NOTE' ? 'bg-emerald-600 text-white' : 'bg-amber-500 text-white'}`}>
+                                                                <FileText size={18} />
                                                             </div>
-                                                            <span className="text-[10px] font-black text-slate-700 uppercase tracking-tight">{composerMode === 'NOTE' ? 'WhatsApp' : 'Internal Note'}</span>
+                                                            <span className="text-[9px] font-bold text-slate-700 uppercase">{composerMode === 'NOTE' ? 'WhatsApp' : 'Internal Note'}</span>
                                                         </button>
                                                         <button
                                                             onClick={() => { setShowAttachmentMenu(false); setShowFollowUpModal(true); }}
-                                                            className="flex flex-col items-center gap-1.5 p-2 rounded-2xl hover:bg-slate-50 transition-all group active:scale-95 touch-manipulation"
+                                                            className="flex flex-col items-center gap-1 p-2 rounded-2xl hover:bg-slate-50 transition-all group active:scale-95 touch-manipulation"
                                                         >
-                                                            <div className="w-12 h-12 rounded-full bg-blue-500 text-white flex items-center justify-center shadow-md group-hover:scale-105 transition-transform">
-                                                                <Calendar size={20} />
+                                                            <div className="w-10 h-10 rounded-full bg-blue-500 text-white flex items-center justify-center shadow-md group-hover:scale-105 transition-transform">
+                                                                <Calendar size={18} />
                                                             </div>
-                                                            <span className="text-[10px] font-black text-slate-700 uppercase tracking-tight">Follow Up</span>
+                                                            <span className="text-[9px] font-bold text-slate-700 uppercase">Follow Up</span>
                                                         </button>
                                                     </div>
                                                 )}
                                             </div>
+
+                                            {/* Text Area Input */}
+                                            <textarea
+                                                id="chat-composer"
+                                                rows={1}
+                                                value={replyText}
+                                                onChange={e => {
+                                                    setReplyText(e.target.value);
+                                                    e.target.style.height = 'auto';
+                                                    e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
+                                                }}
+                                                onKeyDown={onKeyDown}
+                                                placeholder={composerMode === 'NOTE' ? "Internal Note..." : "Type a message..."}
+                                                className="flex-1 bg-transparent border-none px-2 py-1 text-[16px] md:text-[14px] focus:ring-0 outline-none resize-none font-normal placeholder:text-slate-400 max-h-[120px]"
+                                            />
+
+                                            {/* AI Help Button inside input pill */}
+                                            <button
+                                                title="AI Suggestion"
+                                                onClick={fetchAISuggestions}
+                                                disabled={fetchingSuggestions}
+                                                className={`p-1.5 rounded-full transition-colors shrink-0 ${fetchingSuggestions ? 'text-emerald-600 animate-pulse' : 'text-slate-400 hover:text-emerald-600'}`}
+                                            >
+                                                <Sparkles size={20} />
+                                            </button>
                                         </div>
+
+                                        {/* Circle WhatsApp Send Button */}
                                         <button
-                                            title="AI Suggestion"
-                                            onClick={fetchAISuggestions}
-                                            disabled={fetchingSuggestions}
-                                            className={`p-3 rounded-2xl transition-all ${fetchingSuggestions ? 'text-green-600 animate-pulse' : 'text-gray-400 hover:text-green-600 hover:bg-green-50'}`}
+                                            onClick={handleSend}
+                                            disabled={sending || savingNote || (!replyText.trim() && !attachedFile)}
+                                            className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-[#00a884] hover:bg-[#008f70] active:scale-95 text-white flex items-center justify-center shadow-md transition-all shrink-0 disabled:opacity-40 disabled:scale-100"
+                                            title="Send message"
                                         >
-                                            <Sparkles size={22} />
-                                        </button>
-                                        <button className="p-3 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-2xl transition-all hidden sm:flex">
-                                            <Mic size={22} />
+                                            {sending || savingNote ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} className="ml-0.5" />}
                                         </button>
                                     </div>
-
-                                    <div className={`flex-1 rounded-3xl flex items-center transition-all shadow-sm relative group overflow-hidden border ${composerMode === 'NOTE' ? 'bg-amber-50/90 border-amber-300 focus-within:border-amber-500' : 'bg-white border-slate-200/80 focus-within:border-emerald-500'}`}>
-                                        <textarea
-                                            id="chat-composer"
-                                            rows={1}
-                                            value={replyText}
-                                            onChange={e => {
-                                                setReplyText(e.target.value);
-                                                e.target.style.height = 'auto';
-                                                e.target.style.height = Math.min(e.target.scrollHeight, 150) + 'px';
-                                            }}
-                                            onKeyDown={onKeyDown}
-                                            placeholder={composerMode === 'NOTE' ? "Type a private note for your team... Use @name to mention." : "Type a message..."}
-                                            className="w-full bg-transparent border-none px-4 py-2.5 text-[16px] md:text-[14px] focus:ring-0 outline-none resize-none font-normal placeholder:text-slate-400"
-                                        />
-                                        <div className="absolute right-4 bottom-3 opacity-30 group-focus-within:opacity-100 transition-opacity">
-                                            <Command size={14} className="text-gray-400" />
-                                        </div>
-                                    </div>
-
-                                    <button
-                                        onClick={handleSend}
-                                        disabled={sending || savingNote || (!replyText.trim() && !attachedFile)}
-                                        className={`text-white p-3.5 rounded-full transition-all flex items-center justify-center shadow-md disabled:bg-slate-300 disabled:shadow-none h-12 w-12 shrink-0 group ${composerMode === 'NOTE' ? 'bg-amber-500 hover:bg-amber-600' : 'bg-[#00a884] hover:bg-[#008f70] shadow-emerald-500/20'}`}
-                                    >
-                                        {(sending || savingNote) ? <Loader2 size={20} className="animate-spin" /> : <Send size={20} className="fill-white text-white translate-x-0.5" />}
-                                    </button>
                                 </div>
                             </div>
                         </div>
