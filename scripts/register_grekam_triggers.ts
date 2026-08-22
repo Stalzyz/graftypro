@@ -1,21 +1,19 @@
 import { prisma } from '../lib/db';
 
 async function main() {
-  const workspace = await prisma.workspace.findFirst({
-    where: {
-      OR: [
-        { name: { contains: 'Grekam', mode: 'insensitive' } },
-        { business_name: { contains: 'Grekam', mode: 'insensitive' } }
-      ]
-    }
+  const EXACT_WORKSPACE_ID = '89b6c788-d842-4bf6-8af9-bc02e84e76d2';
+
+  let workspace = await prisma.workspace.findUnique({
+    where: { id: EXACT_WORKSPACE_ID }
   });
 
   if (!workspace) {
-    console.error('Grekam Academy workspace not found.');
-    return;
+    workspace = await prisma.workspace.findFirst({
+      where: { id: { startsWith: '89b6c788' } }
+    });
   }
 
-  const workspaceId = workspace.id;
+  const workspaceId = workspace ? workspace.id : EXACT_WORKSPACE_ID;
   const flowId = 'grekam-ecommerce-flow-01';
 
   // 1. Create AutoResponder for "Ecommerce"

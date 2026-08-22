@@ -1,47 +1,24 @@
 import { prisma } from '../lib/db';
 
 async function main() {
-  console.log('🚀 Creating E-Commerce Solutions Flow for Grekam Academy...');
+  const EXACT_WORKSPACE_ID = '89b6c788-d842-4bf6-8af9-bc02e84e76d2';
+  console.log(`🚀 Publishing E-Commerce Solutions Flow to Grekam's Workspace (${EXACT_WORKSPACE_ID})...`);
 
-  // 1. Locate or create Grekam Academy workspace
-  let workspace = await prisma.workspace.findFirst({
-    where: {
-      OR: [
-        { id: { startsWith: '89b6c788' } },
-        { name: { contains: 'Grekam', mode: 'insensitive' } },
-        { business_name: { contains: 'Grekam', mode: 'insensitive' } }
-      ]
-    }
+  // Ensure workspace exists or fetch details
+  let workspace = await prisma.workspace.findUnique({
+    where: { id: EXACT_WORKSPACE_ID }
   });
 
   if (!workspace) {
-    const defaultWs = await prisma.workspace.findFirst();
-    if (defaultWs) {
-      workspace = await prisma.workspace.update({
-        where: { id: defaultWs.id },
-        data: {
-          name: 'Grekam Academy',
-          business_name: 'Grekam Academy'
-        }
-      });
-      console.log(`Updated workspace ${defaultWs.id} to Grekam Academy`);
-    } else {
-      workspace = await prisma.workspace.create({
-        data: {
-          id: '89b6c788-b2a1-4e89-a1b2-c3d4e5f67890',
-          name: 'Grekam Academy',
-          business_name: 'Grekam Academy',
-          status: 'ACTIVE'
-        }
-      });
-      console.log(`Created new workspace ${workspace.id} for Grekam Academy`);
-    }
+    workspace = await prisma.workspace.findFirst({
+      where: { id: { startsWith: '89b6c788' } }
+    });
   }
 
-  const workspaceId = workspace.id;
-  console.log(`🎯 Using Workspace ID: ${workspaceId} (${workspace.name})`);
+  const workspaceId = workspace ? workspace.id : EXACT_WORKSPACE_ID;
+  console.log(`🎯 Target Workspace ID: ${workspaceId}`);
 
-  // 2. Define Flow Nodes & Edges
+  // Define Flow Nodes & Edges
   const nodes: any[] = [];
   const edges: any[] = [];
 
@@ -65,7 +42,7 @@ async function main() {
     type: 'start',
     data: {
       text: 'Ecommerce',
-      label: 'Trigger: Keyword "Ecommerce"',
+      label: 'Trigger: Keyword "Ecommerce" / "get quote"',
       keywords: ['Ecommerce', 'ecommerce', 'E-commerce', 'get quote', 'Get Quote']
     },
     position: { x: 100, y: 50 },
@@ -73,7 +50,7 @@ async function main() {
     height: 70
   });
 
-  // NODE 2: Greeting & Lead Form Message
+  // NODE 2: Greeting & Qualification Message
   nodes.push({
     id: 'msg_greeting',
     type: 'message',
@@ -176,7 +153,7 @@ async function main() {
   });
   edges.push(makeEdge('e_call_end', 'msg_call_executive', 'node_end'));
 
-  // 3. Upsert Flow into database
+  // Upsert Flow into database
   const flowId = 'grekam-ecommerce-flow-01';
   const flow = await (prisma as any).flow.upsert({
     where: { id: flowId },
@@ -199,55 +176,7 @@ async function main() {
     }
   });
 
-  console.log(`✅ Flow successfully published in DB! Flow ID: ${flow.id}`);
-
-  // 4. Create Meta Template record for Call Executive Template
-  try {
-    await (prisma as any).whatsappTemplate.upsert({
-      where: {
-        workspace_id_name_language: {
-          workspace_id: workspaceId,
-          name: 'grekam_ecommerce_call_cta',
-          language: 'en'
-        }
-      },
-      update: {
-        category: 'MARKETING',
-        status: 'APPROVED',
-        components: [
-          { type: 'HEADER', format: 'TEXT', text: 'E-Commerce Solutions Quote' },
-          { type: 'BODY', text: 'Thank you for reaching out to Grekam Academy! Click below to speak directly with our tech executive.' },
-          {
-            type: 'BUTTONS',
-            buttons: [
-              { type: 'PHONE_NUMBER', text: 'Call Executive', phone_number: '919789359407' }
-            ]
-          }
-        ]
-      },
-      create: {
-        workspace_id: workspaceId,
-        name: 'grekam_ecommerce_call_cta',
-        language: 'en',
-        category: 'MARKETING',
-        status: 'APPROVED',
-        components: [
-          { type: 'HEADER', format: 'TEXT', text: 'E-Commerce Solutions Quote' },
-          { type: 'BODY', text: 'Thank you for reaching out to Grekam Academy! Click below to speak directly with our tech executive.' },
-          {
-            type: 'BUTTONS',
-            buttons: [
-              { type: 'PHONE_NUMBER', text: 'Call Executive', phone_number: '919789359407' }
-            ]
-          }
-        ]
-      }
-    });
-    console.log(`✅ Created WhatsApp Call Template: grekam_ecommerce_call_cta (+919789359407)`);
-  } catch (e: any) {
-    console.log(`Template creation note: ${e.message}`);
-  }
-
+  console.log(`✅ Flow successfully published in Workspace ID ${workspaceId}! Flow ID: ${flow.id}`);
   await prisma.$disconnect();
 }
 
