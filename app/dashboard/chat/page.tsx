@@ -878,12 +878,12 @@ function SharedInboxContent() {
                                         const win = getCustomerWindowInfo();
                                         if (win.expired) {
                                             return (
-                                                <div className="hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-50 border border-red-200 text-red-700 text-[10px] font-bold">
-                                                    <AlertCircle size={12} className="text-red-600" />
-                                                    <span>24h Window Expired</span>
+                                                <div className="flex items-center gap-1 px-2 py-0.5 sm:px-3 sm:py-1 rounded-full bg-red-50 border border-red-200 text-red-700 text-[9px] sm:text-[10px] font-bold">
+                                                    <AlertCircle size={11} className="text-red-600 shrink-0" />
+                                                    <span className="truncate max-w-[100px] sm:max-w-none">24h Expired</span>
                                                     <button
                                                         onClick={() => { setShowTemplateModal(true); fetchTemplates(); }}
-                                                        className="ml-1 text-[9px] bg-red-600 text-white px-2 py-0.5 rounded-full hover:bg-red-700 font-black uppercase transition-all shadow-sm"
+                                                        className="ml-0.5 text-[8px] sm:text-[9px] bg-red-600 text-white px-1.5 py-0.5 rounded-full hover:bg-red-700 font-black uppercase transition-all shadow-sm shrink-0"
                                                     >
                                                         + Template
                                                     </button>
@@ -891,9 +891,9 @@ function SharedInboxContent() {
                                             );
                                         }
                                         return (
-                                            <div className="hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[10px] font-bold">
-                                                <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-                                                <span>{win.text}</span>
+                                            <div className="flex items-center gap-1.5 px-2 py-0.5 sm:px-3 sm:py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[9px] sm:text-[10px] font-bold">
+                                                <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-emerald-500 rounded-full animate-pulse shrink-0" />
+                                                <span className="truncate max-w-[120px] sm:max-w-none">{win.text}</span>
                                             </div>
                                         );
                                     })()}
@@ -975,9 +975,10 @@ function SharedInboxContent() {
 
                             {/* Messages Container */}
                             <div 
+                                id="chat-messages-container"
                                 ref={messagesContainerRef} 
                                 onScroll={handleScroll}
-                                className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-3 bg-[#efeae2] no-scrollbar relative scroll-smooth"
+                                className="flex-1 overflow-y-auto overscroll-y-contain p-4 sm:p-6 space-y-3 bg-[#efeae2] relative min-h-0 touch-pan-y [webkit-overflow-scrolling:touch]"
                             >
                                 <div className="absolute inset-0 opacity-[0.06] pointer-events-none bg-[url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')] bg-repeat z-0" />
                                 {(() => {
@@ -1304,32 +1305,29 @@ function SharedInboxContent() {
                                                                 const headerText = interactiveHeader?.type === 'text' ? (interactiveHeader.text || '') : '';
                                                                 return (
                                                                     <div className="mb-2 -mx-4 -mt-3 overflow-hidden">
-                                                                        {/* Header */}
                                                                         {headerText && (
-                                                                            <div className={`px-4 py-2.5 text-[11px] font-black uppercase tracking-widest border-b ${isOutbound ? 'border-white/10 text-white/70' : 'bg-indigo-50 border-indigo-100 text-indigo-700'}`}>
+                                                                            <div className={`px-4 py-2.5 text-[11px] font-black uppercase tracking-widest border-b ${isOutbound ? 'border-emerald-600/20 text-emerald-950 bg-emerald-500/10' : 'bg-indigo-50 border-indigo-100 text-indigo-700'}`}>
                                                                                 {headerText}
                                                                             </div>
                                                                         )}
-                                                                        {/* Header image if present */}
                                                                         {link && isImage(link) && (
                                                                             <img src={proxyMediaLink(link)} className="w-full h-28 object-cover" alt="Header" onError={(e) => { (e.target as HTMLImageElement).style.display='none'; }} />
                                                                         )}
-                                                                        {/* List sections */}
                                                                         {listSections.length > 0 && (
-                                                                            <div className={`divide-y ${isOutbound ? 'divide-white/10' : 'divide-slate-100'}`}>
+                                                                            <div className={`divide-y ${isOutbound ? 'divide-emerald-600/20 bg-emerald-500/5' : 'divide-slate-100'}`}>
                                                                                 {listSections.map((section: any, si: number) => (
                                                                                     <div key={si}>
                                                                                         {section.title && (
-                                                                                            <div className={`px-4 pt-2.5 pb-1 text-[9px] font-black uppercase tracking-widest ${isOutbound ? 'text-white/50' : 'text-slate-400'}`}>
+                                                                                            <div className={`px-4 pt-2.5 pb-1 text-[9px] font-black uppercase tracking-widest ${isOutbound ? 'text-emerald-900/80 font-bold' : 'text-slate-400'}`}>
                                                                                                 {section.title}
                                                                                             </div>
                                                                                         )}
                                                                                         {(section.rows || []).map((row: any, ri: number) => (
-                                                                                            <div key={ri} className={`flex items-start gap-3 px-4 py-2.5 border-b last:border-0 transition-colors ${isOutbound ? 'border-white/5 hover:bg-white/5' : 'border-slate-50 hover:bg-slate-50'}`}>
-                                                                                                <div className={`mt-0.5 w-4 h-4 rounded-full border-2 flex-shrink-0 ${isOutbound ? 'border-white/30' : 'border-indigo-200'}`} />
+                                                                                            <div key={ri} className={`flex items-start gap-3 px-4 py-2.5 border-b last:border-0 transition-colors ${isOutbound ? 'border-emerald-600/10 hover:bg-emerald-500/15' : 'border-slate-50 hover:bg-slate-50'}`}>
+                                                                                                <div className={`mt-0.5 w-4 h-4 rounded-full border-2 flex-shrink-0 ${isOutbound ? 'border-emerald-700 bg-white/60' : 'border-indigo-200'}`} />
                                                                                                 <div className="flex-1 min-w-0">
-                                                                                                    <div className={`text-[12px] font-bold truncate ${isOutbound ? 'text-white' : 'text-slate-800'}`}>{row.title}</div>
-                                                                                                    {row.description && <div className={`text-[10px] mt-0.5 line-clamp-2 ${isOutbound ? 'text-white/60' : 'text-slate-400'}`}>{row.description}</div>}
+                                                                                                    <div className={`text-[12px] font-bold truncate ${isOutbound ? 'text-slate-900 font-extrabold' : 'text-slate-800'}`}>{row.title}</div>
+                                                                                                    {row.description && <div className={`text-[10px] mt-0.5 line-clamp-2 ${isOutbound ? 'text-slate-700 font-medium' : 'text-slate-400'}`}>{row.description}</div>}
                                                                                                 </div>
                                                                                             </div>
                                                                                         ))}
@@ -1337,8 +1335,7 @@ function SharedInboxContent() {
                                                                                 ))}
                                                                             </div>
                                                                         )}
-                                                                        {/* List trigger button */}
-                                                                        <div className={`flex items-center justify-center gap-2 px-4 py-2.5 text-[11px] font-black uppercase tracking-wide border-t ${isOutbound ? 'border-white/10 text-white/70' : 'border-slate-100 text-indigo-600 bg-indigo-50/50'}`}>
+                                                                        <div className={`flex items-center justify-center gap-2 px-4 py-2.5 text-[11px] font-black uppercase tracking-wide border-t ${isOutbound ? 'border-emerald-600/20 text-emerald-950 bg-white/80 font-extrabold shadow-sm' : 'border-slate-100 text-indigo-600 bg-indigo-50/50'}`}>
                                                                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
                                                                             {listBtn}
                                                                         </div>
@@ -1358,7 +1355,7 @@ function SharedInboxContent() {
                                                                 return (
                                                                     <div className="mb-2 -mx-4 -mt-3 overflow-hidden">
                                                                         {iHeaderText && (
-                                                                            <div className={`px-4 py-2.5 text-[11px] font-black uppercase tracking-widest border-b ${isOutbound ? 'border-white/10 text-white/70' : 'bg-violet-50 border-violet-100 text-violet-700'}`}>
+                                                                            <div className={`px-4 py-2.5 text-[11px] font-black uppercase tracking-widest border-b ${isOutbound ? 'border-emerald-600/20 text-emerald-950 bg-emerald-500/10' : 'bg-violet-50 border-violet-100 text-violet-700'}`}>
                                                                                 {iHeaderText}
                                                                             </div>
                                                                         )}
@@ -1366,9 +1363,9 @@ function SharedInboxContent() {
                                                                             <img src={proxyMediaLink(link)} className="w-full h-28 object-cover" alt="Header" onError={(e) => { (e.target as HTMLImageElement).style.display='none'; }} />
                                                                         )}
                                                                         {btnList.length > 0 && (
-                                                                            <div className={`divide-y ${isOutbound ? 'divide-white/10' : 'divide-slate-100'}`}>
+                                                                            <div className={`divide-y ${isOutbound ? 'divide-emerald-600/20 bg-white/80 shadow-sm' : 'divide-slate-100'}`}>
                                                                                 {btnList.map((btn: any, bi: number) => (
-                                                                                    <div key={bi} className={`flex items-center justify-center gap-2 px-4 py-2.5 text-[11px] font-bold uppercase tracking-wide transition-colors cursor-pointer ${isOutbound ? 'border-white/5 hover:bg-white/10 text-white' : 'hover:bg-violet-50 text-violet-700 border-slate-50'}`}>
+                                                                                    <div key={bi} className={`flex items-center justify-center gap-2 px-4 py-2.5 text-[11px] font-extrabold uppercase tracking-wide transition-colors cursor-pointer ${isOutbound ? 'border-emerald-600/20 hover:bg-emerald-50 text-emerald-950' : 'hover:bg-violet-50 text-violet-700 border-slate-50'}`}>
                                                                                         {btn.reply?.title || btn.title || btn}
                                                                                     </div>
                                                                                 ))}
