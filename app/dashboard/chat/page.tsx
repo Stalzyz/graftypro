@@ -983,7 +983,7 @@ function SharedInboxContent() {
                                 onClick={() => { if (showAttachmentMenu) setShowAttachmentMenu(false); }}
                                 className="flex-1 overflow-y-auto overscroll-y-contain p-4 sm:p-6 space-y-3 bg-[#efeae2] relative min-h-0 touch-pan-y [webkit-overflow-scrolling:touch]"
                             >
-                                <div className="absolute inset-0 opacity-[0.06] pointer-events-none bg-[url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')] bg-repeat z-0" />
+                                <div className="absolute inset-0 opacity-[0.28] pointer-events-none bg-[url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')] bg-repeat z-0" />
                                 {(() => {
                                     const timelineMessages = messages.filter(m => !m._deleted).map(m => ({
                                         ...m,
@@ -1514,31 +1514,6 @@ function SharedInboxContent() {
                                                                 </div>
                                                             )}
 
-                                                            {/* Interactive Buttons / CTAs — for non-IBUTTON types that still have buttons */}
-                                                            {contentType !== 'LIST' && contentType !== 'IBUTTON' && (content.buttons || content.action?.buttons || content.interactive?.action?.buttons || content.raw?.interactive?.action?.buttons || content.action?.name === 'cta_url' || content.action?.name === 'call_number') && (
-                                                                <div className="mt-3 space-y-1.5">
-                                                                    {/* Standard Buttons */}
-                                                                    {(content.buttons || content.action?.buttons || content.interactive?.action?.buttons || content.raw?.interactive?.action?.buttons || []).map((b: any, bi: number) => (
-                                                                        <div key={bi} className={`py-1.5 px-3 rounded-lg border text-[10px] font-black uppercase text-center cursor-pointer hover:opacity-80 transition-opacity flex items-center justify-center gap-1 ${isOutbound ? 'bg-white/10 border-white/20' : 'bg-slate-50 border-slate-200 text-slate-700'}`}>
-                                                                            {b.reply?.title || b.title || b}
-                                                                        </div>
-                                                                    ))}
-
-                                                                    {/* CTA URL */}
-                                                                    {content.action?.name === 'cta_url' && (
-                                                                        <div className={`py-1.5 px-3 rounded-lg border text-[10px] font-black uppercase text-center cursor-pointer hover:opacity-80 transition-opacity flex items-center justify-center gap-1.5 ${isOutbound ? 'bg-white/10 border-white/20' : 'bg-slate-50 border-slate-200 text-slate-700'}`}>
-                                                                            <ExternalLink size={10} /> {content.action.parameters?.display_text || 'Link'}
-                                                                        </div>
-                                                                    )}
-
-                                                                    {/* CTA Call */}
-                                                                    {content.action?.name === 'call_number' && (
-                                                                        <div className={`py-1.5 px-3 rounded-lg border text-[10px] font-black uppercase text-center cursor-pointer hover:opacity-80 transition-opacity flex items-center justify-center gap-1.5 ${isOutbound ? 'bg-white/10 border-white/20' : 'bg-slate-50 border-slate-200 text-slate-700'}`}>
-                                                                            <Phone size={10} /> {content.action.parameters?.display_text || 'Call'}
-                                                                        </div>
-                                                                    )}
-                                                                </div>
-                                                            )}
 
                                                             {/* Meta Approved Template Buttons Renderer */}
                                                             {type === 'TEMPLATE' && (() => {
@@ -1551,11 +1526,22 @@ function SharedInboxContent() {
                                                                 const btnComp = comps.find((c: any) => c.type === 'BUTTONS');
                                                                 if (!btnComp?.buttons?.length) return null;
                                                                 return (
-                                                                    <div className="mt-3 space-y-1.5 border-t border-white/10 pt-2">
+                                                                    <div className="mt-2.5 space-y-1.5 border-t border-emerald-600/20 pt-2">
                                                                         {btnComp.buttons.map((btn: any, bi: number) => (
-                                                                            <div key={bi} className={`py-1.5 px-3 rounded-lg border text-[10px] font-black uppercase text-center flex items-center justify-center gap-1.5 ${isOutbound ? 'bg-white/10 border-white/20 text-white' : 'bg-slate-50 border-slate-200 text-slate-700'}`}>
-                                                                                {btn.type === 'URL' && <ExternalLink size={10} />}
-                                                                                {btn.type === 'PHONE_NUMBER' && <Phone size={10} />}
+                                                                            <div 
+                                                                                key={bi} 
+                                                                                onClick={() => {
+                                                                                    if (btn.type === 'PHONE_NUMBER' && btn.phone_number) window.open(`tel:${btn.phone_number}`);
+                                                                                    else if (btn.type === 'URL' && btn.url) window.open(btn.url, '_blank');
+                                                                                    else {
+                                                                                        setReplyText(btn.text);
+                                                                                        document.getElementById('chat-composer')?.focus();
+                                                                                    }
+                                                                                }}
+                                                                                className={`py-2 px-3 rounded-xl border text-[11px] font-extrabold uppercase tracking-wide text-center cursor-pointer transition-all flex items-center justify-center gap-1.5 shadow-sm active:scale-98 ${isOutbound ? 'bg-white text-emerald-950 border-emerald-600/30 hover:bg-emerald-50' : 'bg-white text-indigo-700 border-indigo-200 hover:bg-indigo-50'}`}
+                                                                            >
+                                                                                {btn.type === 'URL' && <ExternalLink size={12} className="text-emerald-700 shrink-0" />}
+                                                                                {btn.type === 'PHONE_NUMBER' && <Phone size={12} className="text-emerald-700 shrink-0" />}
                                                                                 <span>{btn.text}</span>
                                                                             </div>
                                                                         ))}
@@ -1571,7 +1557,7 @@ function SharedInboxContent() {
                                                                     const paymentUrlMatch = rawText.match(/(https?:\/\/[^\s]+|upi:\/\/[^\s]+)/i);
                                                                     const paymentUrl = paymentUrlMatch ? paymentUrlMatch[0] : null;
                                                                     return (
-                                                                        <div className={`mt-2.5 p-3 rounded-xl border flex items-center justify-between gap-2.5 ${isOutbound ? 'bg-white/10 border-white/20 text-white' : 'bg-emerald-50 border-emerald-200 text-emerald-950'}`}>
+                                                                        <div className={`mt-2.5 p-3 rounded-xl border flex items-center justify-between gap-2.5 ${isOutbound ? 'bg-white border border-emerald-600/30 text-emerald-950 shadow-sm' : 'bg-emerald-50 border border-emerald-200 text-emerald-950'}`}>
                                                                             <div className="flex items-center gap-2 min-w-0">
                                                                                 <div className="p-2 rounded-lg bg-emerald-600 text-white shrink-0 shadow-sm">
                                                                                     <CreditCard size={14} />
