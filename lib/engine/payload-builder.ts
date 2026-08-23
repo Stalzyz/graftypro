@@ -354,40 +354,45 @@ export function buildMetaFlowPayload(
     if (!flowId) errors.push({ field: 'flowId', message: 'Meta Flow ID required' });
     if (!validate(errors)) return null;
 
-    let interactiveHeader: any;
-    if (headerType === 'image') {
-        if (mediaId) {
-            interactiveHeader = { type: 'image', image: { id: mediaId } };
-        } else if (headerUrl) {
-            interactiveHeader = { type: 'image', image: { link: headerUrl } };
+    let interactiveHeader: any = undefined;
+    if (header && header.trim()) {
+        if (headerType === 'image') {
+            if (mediaId) {
+                interactiveHeader = { type: 'image', image: { id: mediaId } };
+            } else if (headerUrl) {
+                interactiveHeader = { type: 'image', image: { link: headerUrl } };
+            } else {
+                interactiveHeader = { type: 'text', text: sanitizeText(header, 'Form') };
+            }
         } else {
             interactiveHeader = { type: 'text', text: sanitizeText(header, 'Form') };
         }
-    } else {
-        interactiveHeader = { type: 'text', text: sanitizeText(header, 'Form') };
     }
 
-    return {
+    const payload: any = {
         to,
         type: 'interactive',
         interactive: {
             type: 'flow',
-            header: interactiveHeader,
             body: { text: sanitizeText(body, 'Please fill in the details below.') },
-            footer: { text: sanitizeText(footer, '') },
             action: {
                 name: 'flow',
                 parameters: {
                     flow_message_version: '3',
-                    flow_token: flowToken,
+                    flow_token: flowToken || `tk_${Date.now()}`,
                     flow_id: flowId,
-                    flow_cta: sanitizeText(ctaText, 'Open'),
+                    flow_cta: sanitizeText(ctaText, 'Open Form'),
                     flow_action: 'navigate',
-                    flow_action_payload: { screen: initialScreen },
+                    flow_action_payload: { screen: initialScreen || 'QUESTION_1' },
                 },
             },
         },
     };
+
+    if (interactiveHeader) payload.interactive.header = interactiveHeader;
+    if (footer && footer.trim()) payload.interactive.footer = { text: sanitizeText(footer, '') };
+
+    return payload;
 }
 
 // -----------------------------------------------------------------------

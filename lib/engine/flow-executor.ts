@@ -702,15 +702,20 @@ async function runTemplateNode(ctx: ExecutionContext, node: any): Promise<void> 
 async function runMetaFlowNode(ctx: ExecutionContext, node: any): Promise<void> {
     const { waba, contact } = ctx;
     const data = node.data || {};
+    const flowId = data.flowId || data.metaFlowId;
+    if (!flowId) {
+        console.warn(`[FlowExecutor] ⚠️ meta_flow node ${node.id} has no flowId/metaFlowId configured`);
+        return;
+    }
     const { buildMetaFlowPayload } = await import('./payload-builder');
     const p = buildMetaFlowPayload(
         contact.phone,
-        data.flowId,
-        resolveVariables(data.flowCTA || 'Open', ctx.session.state, contact),
-        resolveVariables(data.flowHeader || '', ctx.session.state, contact),
-        resolveVariables(data.text || '', ctx.session.state, contact),
-        resolveVariables(data.flowFooter || '', ctx.session.state, contact),
-        data.initialScreen || 'QUESTION_1',
+        flowId,
+        resolveVariables(data.flowCTA || data.ctaText || 'Open Form', ctx.session.state, contact),
+        resolveVariables(data.flowHeader || data.headerText || '', ctx.session.state, contact),
+        resolveVariables(data.text || data.bodyText || 'Please fill in the form below:', ctx.session.state, contact),
+        resolveVariables(data.flowFooter || data.footerText || '', ctx.session.state, contact),
+        data.initialScreen || data.screen || 'QUESTION_1',
         data.flowToken || `tk_${Date.now()}`,
         data.headerType || 'text',
         getAbsoluteMediaUrl(data.headerUrl)
