@@ -4,7 +4,7 @@ import { InstagramService } from '@/lib/instagram/service';
 
 /**
  * 📸 INSTAGRAM MESSENGER WEBHOOK
- * Real-time processing for Meta Instagram Direct Messages, Story Mentions, and Reel Comments.
+ * Handles Meta Instagram Messaging Webhook Verification & Real-time DM/Comment Events.
  */
 
 // GET: Meta Webhook Verification
@@ -29,54 +29,105 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
     try {
         const body = await req.json();
-        console.log('[InstagramWebhook] Event Received:', JSON.stringify(body).substring(0, 400));
+        console.log('[InstagramWebhook] Event Received:', JSON.stringify(body).substring(0, 500));
 
         if (body.object === 'instagram' || body.object === 'page') {
             for (const entry of body.entry || []) {
                 const igPageId = entry.id;
 
+                // ----------------------------------------------------
+                // 1. Process Direct Messages & Postbacks
+                // ----------------------------------------------------
                 for (const messagingEvent of entry.messaging || []) {
+                    // Skip echo messages sent by the page/account itself
+                    if (messagingEvent.message?.is_echo) {
+                        console.log('[InstagramWebhook] Ignoring outbound echo message');
+                        continue;
+                    }
+
                     const senderId = messagingEvent.sender?.id;
-                    const message = messagingEvent.message;
+                    if (!senderId || senderId === igPageId) continue;
 
-                    if (senderId && message && message.text) {
-                        const incomingText = message.text.toLowerCase().trim();
-                        console.log(`[InstagramWebhook] Inbound message from ${senderId}: "${incomingText}"`);
+                    let incomingText = '';
+                    if (messagingEvent.message?.text) {
+                        incomingText = messagingEvent.message.text.trim();
+                    } else if (messagingEvent.postback?.payload) {
+                        incomingText = messagingEvent.postback.payload.trim();
+                    } else if (messagingEvent.postback?.title) {
+                        incomingText = messagingEvent.postback.title.trim();
+                    }
 
-                        // 1. Fetch integration credentials for this IG Page ID or fallback workspace
-                        let integration = await (prisma as any).integration.findFirst({
-                            where: {
-                                type: 'INSTAGRAM',
-                                is_active: true
-                            }
-                        });
+                    if (incomingText) {
+                        console.log(`[InstagramWebhook] Inbound DM from ${senderId}: "${incomingText}"`);
+                        await handleIncomingInstagramMessage(igPageId, senderId, incomingText);
+                    }
+                }
 
-                        let accessToken = integration?.credentials?.access_token;
-                        let pageId = integration?.credentials?.page_id || igPageId;
+                // ----------------------------------------------------
+                // 2. Process Reel & Post Comments (Feed Changes)
+                // ----------------------------------------------------
+                for (const change of entry.changes || []) {
+                    if (change.field === 'comments' && change.value) {
+                        const commentValue = change.value;
+                        const senderId = commentValue.from?.id;
+                        const commentText = commentValue.text?.trim();
 
-                        // Fallback: Check Workspace Settings JSON
-                        if (!accessToken) {
-                            const workspaces = await prisma.workspace.findMany();
-                            for (const ws of workspaces) {
-                                const igCreds = (ws.settings as any)?.integrations?.INSTAGRAM?.credentials;
-                                if (igCreds?.access_token) {
-                                    accessToken = igCreds.access_token;
-                                    pageId = igCreds.page_id || igPageId;
-                                    break;
-                                }
-                            }
+                        if (senderId && commentText && senderId !== igPageId) {
+                            console.log(`[InstagramWebhook] Inbound Reel Comment from ${senderId}: "${commentText}"`);
+                            await handleIncomingInstagramMessage(igPageId, senderId, commentText);
                         }
+                    }
+                }
+            }
+        }
 
-                        if (!accessToken) {
-                            console.warn(`[InstagramWebhook] No Meta Access Token configured for Page ID ${igPageId}. DM skipped.`);
-                            continue;
-                        }
+        return NextResponse.json({ status: 'EVENT_RECEIVED' });
+    } catch (error: any) {
+        console.error('[InstagramWebhook] Webhook Error:', error.message);
+        return NextResponse.json({ error: 'Webhook processing failed' }, { status: 500 });
+    }
+}
 
-                        // 2. Trigger Flow Matching
-                        const isQuoteOrEcommerce = /quote|ecommerce|price|shopify|atlas|package|info|hi|hello|get quote/i.test(incomingText);
+/**
+ * Executes flow logic for incoming Instagram message / comment
+ */
+async function handleIncomingInstagramMessage(igPageId: string, senderId: string, incomingText: string) {
+    try {
+        // 1. Fetch Instagram Integration Credentials
+        let integration = await (prisma as any).integration.findFirst({
+            where: {
+                type: 'INSTAGRAM',
+                is_active: true
+            }
+        });
 
-                        if (isQuoteOrEcommerce) {
-                            const responseText = `👋 Hello from Grekam Academy!
+        let accessToken = integration?.credentials?.access_token;
+        let pageId = integration?.credentials?.page_id || igPageId;
+
+        // Fallback: Check Workspace Settings JSON
+        if (!accessToken) {
+            const workspaces = await prisma.workspace.findMany();
+            for (const ws of workspaces) {
+                const igCreds = (ws.settings as any)?.integrations?.INSTAGRAM?.credentials;
+                if (igCreds?.access_token) {
+                    accessToken = igCreds.access_token;
+                    pageId = igCreds.page_id || igPageId;
+                    break;
+                }
+            }
+        }
+
+        if (!accessToken) {
+            console.warn(`[InstagramWebhook] No Meta Access Token found for Page ID ${igPageId}. Make sure credentials are saved in Settings > Integrations.`);
+            return;
+        }
+
+        // 2. Trigger Keyword Match
+        const textLower = incomingText.toLowerCase();
+        const isQuoteOrEcommerce = /quote|ecommerce|price|shopify|atlas|package|info|hi|hello|get quote|cost|rates/i.test(textLower);
+
+        if (isQuoteOrEcommerce) {
+            const responseText = `👋 Hello from Grekam Academy!
 
 Here are our official E-Commerce & Web Development packages:
 
@@ -95,35 +146,27 @@ Here are our official E-Commerce & Web Development packages:
 
 📞 Have questions? Call our executive directly at +91 9789359407!`;
 
-                            await InstagramService.sendDirectMessage(
-                                pageId,
-                                accessToken,
-                                senderId,
-                                responseText,
-                                [
-                                    { title: 'Shopify ₹25k', payload: 'SHOPIFY' },
-                                    { title: 'E-Commerce ₹45k', payload: 'ECOMMERCE' },
-                                    { title: 'Atlas Demo', payload: 'ATLAS' }
-                                ]
-                            );
-                        } else {
-                            // Default help message
-                            const defaultReply = `Thanks for reaching out to Grekam Academy! Reply "Get Quote" or "Ecommerce" to view package details and live demos, or call us at +91 9789359407.`;
-                            await InstagramService.sendDirectMessage(
-                                pageId,
-                                accessToken,
-                                senderId,
-                                defaultReply
-                            );
-                        }
-                    }
-                }
-            }
+            await InstagramService.sendDirectMessage(
+                pageId,
+                accessToken,
+                senderId,
+                responseText,
+                [
+                    { title: 'Shopify ₹25k', payload: 'SHOPIFY' },
+                    { title: 'E-Commerce ₹45k', payload: 'ECOMMERCE' },
+                    { title: 'Atlas Demo', payload: 'ATLAS' }
+                ]
+            );
+        } else {
+            const defaultReply = `Thanks for reaching out to Grekam Academy! Reply "Get Quote" or "Ecommerce" to view package details and live demos, or call us at +91 9789359407.`;
+            await InstagramService.sendDirectMessage(
+                pageId,
+                accessToken,
+                senderId,
+                defaultReply
+            );
         }
-
-        return NextResponse.json({ status: 'EVENT_RECEIVED' });
-    } catch (error: any) {
-        console.error('[InstagramWebhook] Error:', error.message);
-        return NextResponse.json({ error: 'Webhook processing failed' }, { status: 500 });
+    } catch (err: any) {
+        console.error(`[InstagramWebhook] Failed to process message from ${senderId}:`, err.message);
     }
 }
