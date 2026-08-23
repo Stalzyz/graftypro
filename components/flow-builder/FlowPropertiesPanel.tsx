@@ -249,9 +249,10 @@ export default function FlowPropertiesPanel({ selectedNode, onChange, onClose, o
         } else if (field === "paymentTitle") {
             setPaymentTitle(val);
             newData.paymentTitle = val;
-        } else if (field === "metaFlowId") {
+        } else if (field === "metaFlowId" || field === "flowId") {
             setMetaFlowId(val);
             newData.flowId = val;
+            newData.metaFlowId = val;
         } else if (field === "metaFlowCTA") {
             setMetaFlowCTA(val);
             newData.flowCTA = val;
@@ -1020,30 +1021,71 @@ export default function FlowPropertiesPanel({ selectedNode, onChange, onClose, o
                     <div className="space-y-4">
                         <div className="bg-indigo-50/80 p-4 rounded-2xl border border-indigo-100">
                             <h4 className="text-sm font-black text-indigo-900 mb-1 tracking-tight flex items-center gap-2">
-                                <span>📱 Meta Flow Configuration</span>
+                                <span>📱 Meta Form Flow Node</span>
                             </h4>
                             <p className="text-[11px] text-indigo-700 font-medium leading-relaxed">
-                                Enter your Meta Flow ID, screen token, and raw JSON spec to send native WhatsApp interactive forms.
+                                Send an interactive native Meta Form inside WhatsApp. Enter your Meta Flow ID below.
                             </p>
                         </div>
 
-                        {/* Meta Flow ID */}
+                        {/* Status Indicator */}
+                        {metaFlowId ? (
+                            <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200 flex items-center gap-2 text-emerald-900">
+                                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                <div className="text-[11px] font-bold">
+                                    Connected Meta Flow ID: <span className="font-mono text-emerald-950">{metaFlowId}</span>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-amber-900 text-[11px] font-medium">
+                                ⚠️ Enter your Meta Flow ID below (e.g. 2482267638938599).
+                            </div>
+                        )}
+
+                        {/* 1. Meta Flow ID */}
                         <div>
                             <label className="block text-[10px] font-black text-slate-700 uppercase tracking-widest mb-1.5 ml-1">Meta Flow ID (Required)</label>
                             <input
                                 type="text"
                                 value={metaFlowId}
-                                onChange={(e) => handleUpdate("metaFlowId", e.target.value)}
+                                onChange={(e) => {
+                                    const v = e.target.value.trim();
+                                    setMetaFlowId(v);
+                                    handleUpdate("metaFlowId", v);
+                                }}
                                 placeholder="e.g. 2482267638938599"
                                 className="w-full border border-slate-200 bg-white rounded-xl p-3 text-sm font-mono font-bold text-slate-900 outline-none focus:ring-4 focus:ring-indigo-100 transition-all shadow-sm"
                             />
-                            <p className="text-[10px] text-slate-700 mt-1 ml-1 font-medium">Unique Flow ID generated in Meta WhatsApp Manager or via Sync.</p>
+                            <p className="text-[10px] text-slate-500 mt-1 ml-1">Copy this ID from Meta WhatsApp Manager &gt; Flows.</p>
                         </div>
 
-                        {/* Flow Instance / Token & Initial Screen */}
-                        <div className="grid grid-cols-2 gap-3">
+                        {/* 2. CTA Button & Body */}
+                        <div>
+                            <label className="block text-[10px] font-black text-slate-700 uppercase tracking-widest mb-1.5 ml-1">CTA Button Label</label>
+                            <input
+                                type="text"
+                                value={metaFlowCTA}
+                                onChange={(e) => handleUpdate("metaFlowCTA", e.target.value)}
+                                placeholder="Open Form"
+                                className="w-full border border-slate-200 bg-white rounded-xl p-3 text-sm font-bold text-slate-900 outline-none focus:ring-4 focus:ring-indigo-100 transition-all shadow-sm"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-[10px] font-black text-slate-700 uppercase tracking-widest mb-1.5 ml-1">Message Body Content</label>
+                            <textarea
+                                value={content}
+                                onChange={(e) => handleUpdate("content", e.target.value)}
+                                rows={3}
+                                placeholder="Please tap below to complete your details:"
+                                className="w-full border border-slate-200 bg-white rounded-xl p-3 text-sm outline-none focus:ring-4 focus:ring-indigo-100 transition-all resize-none shadow-sm"
+                            />
+                        </div>
+
+                        {/* 3. Screen & Instance Token */}
+                        <div className="grid grid-cols-2 gap-3 pt-2">
                             <div>
-                                <label className="block text-[10px] font-black text-slate-700 uppercase tracking-widest mb-1.5 ml-1">Initial Screen</label>
+                                <label className="block text-[10px] font-black text-slate-700 uppercase tracking-widest mb-1.5 ml-1">Initial Screen ID</label>
                                 <input
                                     type="text"
                                     value={initialScreen}
@@ -1064,125 +1106,113 @@ export default function FlowPropertiesPanel({ selectedNode, onChange, onClose, o
                             </div>
                         </div>
 
-                        {/* CTA Text */}
-                        <div>
-                            <label className="block text-[10px] font-black text-slate-700 uppercase tracking-widest mb-1.5 ml-1">CTA Button Text</label>
-                            <input
-                                type="text"
-                                value={metaFlowCTA}
-                                onChange={(e) => handleUpdate("metaFlowCTA", e.target.value)}
-                                placeholder="Open Form"
-                                className="w-full border border-slate-200 bg-white rounded-xl p-3 text-sm font-bold text-slate-900 outline-none focus:ring-4 focus:ring-indigo-100 transition-all shadow-sm"
-                            />
-                        </div>
+                        {/* 4. Optional JSON Spec Sync to Meta */}
+                        <div className="pt-4 border-t border-slate-100">
+                            <details className="group">
+                                <summary className="cursor-pointer text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center justify-between p-2.5 rounded-xl bg-indigo-50/50 hover:bg-indigo-50 border border-indigo-100 select-none">
+                                    <span>⚡ Upload / Sync Raw JSON Spec to Meta (Optional)</span>
+                                    <span className="transition group-open:rotate-180">▼</span>
+                                </summary>
+                                <div className="mt-3 space-y-3 pl-1">
+                                    <p className="text-[10px] text-slate-500 font-medium">
+                                        Only use this if you want Grafty to publish a new JSON flow schema directly to your Meta WABA account.
+                                    </p>
+                                    <div className="flex items-center justify-between">
+                                        <label className="block text-[10px] font-black text-slate-700 uppercase tracking-widest">JSON FLOW SPEC (SCHEMA)</label>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                try {
+                                                    if (!metaFlowSpec.trim()) return;
+                                                    const formatted = JSON.stringify(JSON.parse(metaFlowSpec), null, 2);
+                                                    setMetaFlowSpec(formatted);
+                                                    handleUpdate("metaFlowSpec", formatted);
+                                                    toast.success("JSON Formatted & Validated!");
+                                                } catch (e: any) {
+                                                    toast.error("Invalid JSON syntax: " + e.message);
+                                                }
+                                            }}
+                                            className="text-[10px] font-bold text-indigo-700 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 px-2 py-0.5 rounded-lg transition-all"
+                                        >
+                                            Format JSON
+                                        </button>
+                                    </div>
 
-                        {/* Message Body Content */}
-                        <div>
-                            <label className="block text-[10px] font-black text-slate-700 uppercase tracking-widest mb-1.5 ml-1">Message Body Content</label>
-                            <textarea
-                                value={content}
-                                onChange={(e) => handleUpdate("content", e.target.value)}
-                                rows={3}
-                                placeholder="Please click below to complete your details:"
-                                className="w-full border border-slate-200 bg-white rounded-xl p-3 text-sm outline-none focus:ring-4 focus:ring-indigo-100 transition-all resize-none shadow-sm"
-                            />
-                        </div>
-
-                        {/* JSON Flow Spec Editor */}
-                        <div className="pt-3 border-t border-slate-100 space-y-3">
-                            <div className="flex items-center justify-between">
-                                <label className="block text-[10px] font-black text-indigo-900 uppercase tracking-widest ml-1">JSON FLOW SPEC (SCHEMA)</label>
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        try {
-                                            if (!metaFlowSpec.trim()) return;
-                                            const formatted = JSON.stringify(JSON.parse(metaFlowSpec), null, 2);
-                                            setMetaFlowSpec(formatted);
-                                            handleUpdate("metaFlowSpec", formatted);
-                                            toast.success("JSON Formatted & Validated!");
-                                        } catch (e: any) {
-                                            toast.error("Invalid JSON syntax: " + e.message);
-                                        }
-                                    }}
-                                    className="text-[10px] font-bold text-indigo-700 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1 rounded-lg transition-all"
-                                >
-                                    Format JSON
-                                </button>
-                            </div>
-
-                            <textarea
-                                value={metaFlowSpec}
-                                onChange={(e) => {
-                                    setMetaFlowSpec(e.target.value);
-                                    handleUpdate("metaFlowSpec", e.target.value);
-                                }}
-                                rows={8}
-                                placeholder='{ "version": "3.0", "screens": [...] }'
-                                className="w-full border border-slate-800 bg-slate-950 text-emerald-400 font-mono text-[11px] rounded-xl p-3 outline-none focus:ring-4 focus:ring-indigo-100 transition-all resize-none shadow-inner leading-relaxed"
-                            />
-
-                            <button
-                                type="button"
-                                onClick={async () => {
-                                    setIsSyncing(true);
-                                    try {
-                                        let finalSpec = {};
-                                        if (metaFlowSpec.trim()) {
-                                            finalSpec = JSON.parse(metaFlowSpec);
-                                        }
-
-                                        if (Object.keys(finalSpec).length === 0) {
-                                            toast.error("JSON spec is empty! Paste valid Meta Flow JSON first.");
-                                            setIsSyncing(false);
-                                            return;
-                                        }
-
-                                        const res = await fetch('/api/whatsapp/flows/sync', {
-                                            method: 'POST',
-                                            headers: { 'Content-Type': 'application/json' },
-                                            body: JSON.stringify({
-                                                flowId: metaFlowId,
-                                                spec: finalSpec,
-                                                name: label || "Meta Flow"
-                                            })
-                                        });
-                                        const data = await res.json();
-                                        if (data.success) {
-                                            if (data.warning) {
-                                                toast("Uploaded but not published: " + data.warning, { icon: '⚠️' });
-                                            } else {
-                                                toast.success("Flow Synced & Published to Meta! 🚀");
+                                    <textarea
+                                        value={metaFlowSpec}
+                                        onChange={(e) => {
+                                            setMetaFlowSpec(e.target.value);
+                                            handleUpdate("metaFlowSpec", e.target.value);
+                                        }}
+                                        onPaste={(e) => {
+                                            const pasted = e.clipboardData.getData('text');
+                                            if (pasted) {
+                                                setMetaFlowSpec(pasted);
+                                                handleUpdate("metaFlowSpec", pasted);
                                             }
-                                            if (data.metaFlowId) {
-                                                handleUpdate("metaFlowId", data.metaFlowId);
-                                                setMetaFlowId(data.metaFlowId);
-                                                toast.success(`Attached Meta Flow ID: ${data.metaFlowId}`);
-                                                setTimeout(() => window.dispatchEvent(new Event('flow:save')), 500);
+                                        }}
+                                        rows={10}
+                                        spellCheck={false}
+                                        autoComplete="off"
+                                        placeholder='{ "version": "3.0", "screens": [...] }'
+                                        className="w-full border border-slate-800 bg-slate-950 text-emerald-400 font-mono text-[11px] rounded-xl p-3 outline-none focus:ring-4 focus:ring-indigo-100 transition-all resize-y shadow-inner leading-relaxed"
+                                    />
+
+                                    <button
+                                        type="button"
+                                        onClick={async () => {
+                                            if (!metaFlowSpec.trim()) {
+                                                toast.error("Please paste your Meta Flow JSON spec above before syncing.");
+                                                return;
                                             }
-                                        } else {
-                                            toast.error(data.error || "Sync failed");
-                                        }
-                                    } catch (e: any) {
-                                        toast.error("Invalid JSON or Network Error: " + (e.message || ''));
-                                    } finally {
-                                        setIsSyncing(false);
-                                    }
-                                }}
-                                disabled={isSyncing}
-                                className={`w-full py-3 rounded-xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all active:scale-98 shadow-md ${isSyncing ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700 text-white'}`}
-                            >
-                                {isSyncing ? (
-                                    <span className="flex items-center gap-2">
-                                        <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                        SYNCING TO META...
-                                    </span>
-                                ) : (
-                                    <>
-                                        <span>Sync & Publish to Meta Cloud</span>
-                                    </>
-                                )}
-                            </button>
+                                            setIsSyncing(true);
+                                            try {
+                                                const finalSpec = JSON.parse(metaFlowSpec);
+                                                const res = await fetch('/api/whatsapp/flows/sync', {
+                                                    method: 'POST',
+                                                    headers: { 'Content-Type': 'application/json' },
+                                                    body: JSON.stringify({
+                                                        flowId: metaFlowId,
+                                                        spec: finalSpec,
+                                                        name: label || "Meta Flow"
+                                                    })
+                                                });
+                                                const data = await res.json();
+                                                if (data.success) {
+                                                    if (data.warning) {
+                                                        toast("Uploaded but not published: " + data.warning, { icon: '⚠️' });
+                                                    } else {
+                                                        toast.success("Flow Synced & Published to Meta! 🚀");
+                                                    }
+                                                    if (data.metaFlowId) {
+                                                        handleUpdate("metaFlowId", data.metaFlowId);
+                                                        setMetaFlowId(data.metaFlowId);
+                                                        toast.success(`Attached Meta Flow ID: ${data.metaFlowId}`);
+                                                        setTimeout(() => window.dispatchEvent(new Event('flow:save')), 500);
+                                                    }
+                                                } else {
+                                                    toast.error(data.error || "Sync failed");
+                                                }
+                                            } catch (e: any) {
+                                                toast.error("Invalid JSON syntax or Network Error: " + (e.message || ''));
+                                            } finally {
+                                                setIsSyncing(false);
+                                            }
+                                        }}
+                                        disabled={isSyncing}
+                                        className={`w-full py-2.5 rounded-xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all active:scale-98 shadow-sm ${isSyncing ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700 text-white'}`}
+                                    >
+                                        {isSyncing ? (
+                                            <span className="flex items-center gap-2">
+                                                <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                                SYNCING TO META...
+                                            </span>
+                                        ) : (
+                                            <span>Upload JSON Spec to Meta Cloud</span>
+                                        )}
+                                    </button>
+                                </div>
+                            </details>
                         </div>
                     </div>
                 )}
