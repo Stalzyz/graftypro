@@ -81,23 +81,33 @@ export async function findTrigger(
     }
 
     // ----------------------------------------------------------------
-    // Step 3: Fallback — Legacy Flow trigger_keyword (EXACT only)
+    // Step 3: Fallback — Flow trigger_keyword (Flexible Matching)
+    // Supports: Comma-separated keywords ("quote, ecommerce, price"), EXACT, STARTS_WITH, and CONTAINS
     // ----------------------------------------------------------------
-    const legacyFlow = await prisma.flow.findFirst({
+    const activeFlows = await prisma.flow.findMany({
         where: {
             workspace_id: workspaceId,
             status: 'PUBLISHED',
-            trigger_keyword: { equals: msg.value, mode: 'insensitive' },
         },
         select: { id: true, name: true, trigger_keyword: true },
     });
 
-    if (legacyFlow) {
-        console.log(
-            `[TriggerEngine] ✅ Legacy flow keyword match: ` +
-            `"${input}" → ${legacyFlow.name} (${legacyFlow.id})`
-        );
-        return { matched: true, type: 'FLOW', flowId: legacyFlow.id };
+    for (const flow of activeFlows) {
+        if (!flow.trigger_keyword) continue;
+
+        // Split comma-separated keywords e.g. "get quote, ecommerce, price, shopify, atlas"
+        const keywords = flow.trigger_keyword.split(',').map(k => k.toLowerCase().trim()).filter(Boolean);
+
+        for (const kw of keywords) {
+            // Flexible matching logic: Exact, Starts With, or Substring Contains
+            if (input === kw || input.startsWith(kw) || input.includes(kw) || kw.includes(input)) {
+                console.log(
+                    `[TriggerEngine] ✅ Flow keyword match: ` +
+                    `"${input}" matched "${kw}" → ${flow.name} (${flow.id})`
+                );
+                return { matched: true, type: 'FLOW', flowId: flow.id };
+            }
+        }
     }
 
     console.log(`[TriggerEngine] ❌ No trigger matched for: "${input}"`);
