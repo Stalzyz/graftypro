@@ -1429,6 +1429,10 @@ enum IntegrationType {
   SHOPIFY
   CALENDLY
   GOOGLE_CALENDAR
+  INSTAGRAM
+  FACEBOOK
+  GOOGLE_SHEETS
+  ZAPIER
 }
 
 model Integration {
