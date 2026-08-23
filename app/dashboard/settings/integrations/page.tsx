@@ -1,6 +1,6 @@
 "use client";
 
-import { Calendar, Check, Mail, Globe, Settings as SettingsIcon, AlertCircle, ShoppingBag, Video, Loader2 } from "lucide-react";
+import { Calendar, Check, Mail, Globe, Settings as SettingsIcon, AlertCircle, ShoppingBag, Video, Loader2, Instagram, X } from "lucide-react";
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { toast } from "react-hot-toast";
@@ -22,6 +22,13 @@ function IntegrationsContent() {
     const [loading, setLoading] = useState(true);
     const [manualLink, setManualLink] = useState("");
     const [savingLink, setSavingLink] = useState(false);
+
+    // Instagram Integration State
+    const [showIgModal, setShowIgModal] = useState(false);
+    const [igPageId, setIgPageId] = useState("");
+    const [igAccessToken, setIgAccessToken] = useState("");
+    const [savingIg, setSavingIg] = useState(false);
+
     const searchParams = useSearchParams();
 
     useEffect(() => {
@@ -35,7 +42,14 @@ function IntegrationsContent() {
             // Fetch Integrations
             const intRes = await fetch("/api/settings/integrations");
             const intData = await intRes.json();
-            setIntegrations(intData.data || []);
+            const fetched = intData.data || [];
+            setIntegrations(fetched);
+
+            const ig = fetched.find((i: any) => i.type === 'INSTAGRAM');
+            if (ig?.credentials) {
+                setIgPageId(ig.credentials.page_id || "");
+                setIgAccessToken(ig.credentials.access_token || "");
+            }
 
             // Fetch Manual Link
             const mlRes = await fetch("/api/settings/workspace/meet-link");
@@ -47,6 +61,39 @@ function IntegrationsContent() {
 
         fetchInitialData();
     }, [searchParams]);
+
+    const handleSaveIgCredentials = async () => {
+        if (!igPageId.trim() || !igAccessToken.trim()) {
+            toast.error("Please enter both Instagram Page ID and Access Token");
+            return;
+        }
+        setSavingIg(true);
+        try {
+            const res = await fetch("/api/settings/integrations", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    type: "INSTAGRAM",
+                    credentials: {
+                        page_id: igPageId.trim(),
+                        access_token: igAccessToken.trim(),
+                    }
+                })
+            });
+            if (res.ok) {
+                toast.success("Instagram Messaging Integration connected! 📸");
+                setShowIgModal(false);
+                const updated = await (await fetch("/api/settings/integrations")).json();
+                setIntegrations(updated.data || []);
+            } else {
+                toast.error("Failed to save Instagram credentials");
+            }
+        } catch (e) {
+            toast.error("Network error saving Instagram settings");
+        } finally {
+            setSavingIg(false);
+        }
+    };
 
     const handleSaveManualLink = async () => {
         setSavingLink(true);
@@ -74,10 +121,37 @@ function IntegrationsContent() {
         <div className="max-w-4xl mx-auto space-y-8 animate-fade-in">
             <div>
                 <h1 className="text-2xl font-bold text-gray-800 tracking-tight text-center">Connected Apps</h1>
-                <p className="text-gray-500 text-sm text-center mt-1">Supercharge your WhatsApp flows with 1-click integrations.</p>
+                <p className="text-gray-500 text-sm text-center mt-1">Supercharge your WhatsApp & Instagram flows with 1-click integrations.</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Instagram Direct Messaging & Meta Ads */}
+                <div className={`soft-card p-6 border-2 transition-all ${isConnected('INSTAGRAM') ? 'border-pink-500 bg-pink-50/10' : 'border-gray-100'}`}>
+                    <div className="flex items-center justify-between mb-4">
+                        <div className="w-12 h-12 bg-gradient-to-tr from-amber-500 via-rose-500 to-purple-600 text-white rounded-xl flex items-center justify-center shadow-md">
+                            <Instagram size={24} />
+                        </div>
+                        {isConnected('INSTAGRAM') ? (
+                            <span className="px-2 py-1 bg-emerald-100 text-emerald-700 text-[10px] font-black uppercase rounded-lg flex items-center gap-1">
+                                <Check size={10} /> Active
+                            </span>
+                        ) : (
+                            <span className="px-2 py-1 bg-pink-100 text-pink-700 text-[10px] font-black uppercase rounded-lg">
+                                Available
+                            </span>
+                        )}
+                    </div>
+                    <h3 className="text-lg font-bold text-gray-800">Instagram & Meta DMs</h3>
+                    <p className="text-xs text-gray-500 mt-2 leading-relaxed">
+                        Automate Instagram DMs, Story Mentions, Reel Comment-to-DM replies, and Meta Ads leads.
+                    </p>
+                    <button
+                        onClick={() => setShowIgModal(true)}
+                        className="w-full mt-6 py-2.5 rounded-xl text-sm font-black bg-gradient-to-r from-purple-600 via-rose-500 to-amber-500 text-white shadow-lg hover:opacity-95 transition-all">
+                        {isConnected('INSTAGRAM') ? 'Manage Instagram' : 'Connect Instagram'}
+                    </button>
+                </div>
+
                 {/* Google Calendar Integration */}
                 <div className={`soft-card p-6 border-2 transition-all ${isConnected('GOOGLE_CALENDAR') ? 'border-emerald-500 bg-emerald-50/10' : 'border-gray-100'}`}>
                     <div className="flex items-center justify-between mb-4">
@@ -183,6 +257,79 @@ function IntegrationsContent() {
                     </button>
                 </div>
             </div>
+
+            {/* Modal for Instagram Integration Setup */}
+            {showIgModal && (
+                <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+                    <div className="bg-white rounded-3xl p-6 max-w-lg w-full shadow-2xl border border-gray-100 space-y-6 animate-in fade-in zoom-in duration-200">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-gradient-to-tr from-amber-500 via-rose-500 to-purple-600 text-white rounded-xl flex items-center justify-center shadow-md">
+                                    <Instagram size={20} />
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-black text-gray-900">Instagram Messaging Setup</h3>
+                                    <p className="text-xs text-gray-500">Connect your Instagram Professional Account</p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setShowIgModal(false)}
+                                className="p-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 transition-all">
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-[10px] font-black text-gray-600 uppercase tracking-widest mb-1.5 ml-1">Instagram Business Page / Account ID</label>
+                                <input
+                                    type="text"
+                                    value={igPageId}
+                                    onChange={(e) => setIgPageId(e.target.value)}
+                                    placeholder="e.g. 178414000000000"
+                                    className="w-full border border-gray-200 rounded-xl p-3 text-sm font-mono font-bold text-gray-800 outline-none focus:ring-4 focus:ring-rose-100 transition-all"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-[10px] font-black text-gray-600 uppercase tracking-widest mb-1.5 ml-1">Meta System User Access Token</label>
+                                <input
+                                    type="password"
+                                    value={igAccessToken}
+                                    onChange={(e) => setIgAccessToken(e.target.value)}
+                                    placeholder="EAAG..."
+                                    className="w-full border border-gray-200 rounded-xl p-3 text-sm font-mono font-bold text-gray-800 outline-none focus:ring-4 focus:ring-rose-100 transition-all"
+                                />
+                            </div>
+
+                            <div className="p-4 bg-purple-50/70 rounded-2xl border border-purple-100 space-y-2">
+                                <h4 className="text-xs font-black text-purple-900 flex items-center gap-1.5">
+                                    <span>🌐 Meta Webhook Configuration</span>
+                                </h4>
+                                <div className="text-[11px] text-purple-800 font-mono space-y-1">
+                                    <div><span className="font-bold">Callback URL:</span> https://grafty.pro/api/webhooks/instagram</div>
+                                    <div><span className="font-bold">Verify Token:</span> grafty_webhook_verify</div>
+                                    <div><span className="font-bold">Subscribed Fields:</span> messages, instagram_story_mentions, comments</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center justify-end gap-3 pt-2">
+                            <button
+                                onClick={() => setShowIgModal(false)}
+                                className="px-5 py-2.5 rounded-xl text-xs font-black text-gray-600 hover:bg-gray-100 transition-all">
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleSaveIgCredentials}
+                                disabled={savingIg}
+                                className="px-6 py-2.5 rounded-xl text-xs font-black bg-gradient-to-r from-purple-600 via-rose-500 to-amber-500 text-white shadow-lg hover:opacity-95 transition-all">
+                                {savingIg ? 'Saving...' : 'Save & Connect Instagram'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Manual Meeting Link Fallback */}
             <div className="soft-card p-8 border-2 border-gray-100 bg-white shadow-sm">
