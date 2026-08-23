@@ -25,6 +25,7 @@ function IntegrationsContent() {
 
     // Instagram Integration State
     const [showIgModal, setShowIgModal] = useState(false);
+    const [showIgGuide, setShowIgGuide] = useState(false);
     const [igPageId, setIgPageId] = useState("");
     const [igAccessToken, setIgAccessToken] = useState("");
     const [savingIg, setSavingIg] = useState(false);
@@ -302,10 +303,18 @@ function IntegrationsContent() {
                                 />
                             </div>
 
-                            <div className="p-4 bg-purple-50/70 rounded-2xl border border-purple-100 space-y-2">
-                                <h4 className="text-xs font-black text-purple-900 flex items-center gap-1.5">
-                                    <span>🌐 Meta Webhook Configuration</span>
-                                </h4>
+                            <div className="p-4 bg-purple-50/70 rounded-2xl border border-purple-100 space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <h4 className="text-xs font-black text-purple-900 flex items-center gap-1.5">
+                                        <span>🌐 Meta Webhook Configuration</span>
+                                    </h4>
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowIgGuide(true)}
+                                        className="text-[11px] font-extrabold text-purple-700 hover:text-purple-900 bg-white hover:bg-purple-100 px-3 py-1 rounded-lg border border-purple-200 shadow-sm transition-all flex items-center gap-1">
+                                        📖 Step-by-Step Guide
+                                    </button>
+                                </div>
                                 <div className="text-[11px] text-purple-800 font-mono space-y-1">
                                     <div><span className="font-bold">Callback URL:</span> https://grafty.pro/api/webhooks/instagram</div>
                                     <div><span className="font-bold">Verify Token:</span> grafty_webhook_verify</div>
@@ -314,17 +323,128 @@ function IntegrationsContent() {
                             </div>
                         </div>
 
-                        <div className="flex items-center justify-end gap-3 pt-2">
+                        <div className="flex items-center justify-between pt-2">
                             <button
-                                onClick={() => setShowIgModal(false)}
-                                className="px-5 py-2.5 rounded-xl text-xs font-black text-gray-600 hover:bg-gray-100 transition-all">
-                                Cancel
+                                type="button"
+                                onClick={() => setShowIgGuide(true)}
+                                className="text-xs font-bold text-rose-600 hover:text-rose-800 underline">
+                                Need help getting Meta Token & Page ID?
                             </button>
+                            <div className="flex items-center gap-3">
+                                <button
+                                    onClick={() => setShowIgModal(false)}
+                                    className="px-5 py-2.5 rounded-xl text-xs font-black text-gray-600 hover:bg-gray-100 transition-all">
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleSaveIgCredentials}
+                                    disabled={savingIg}
+                                    className="px-6 py-2.5 rounded-xl text-xs font-black bg-gradient-to-r from-purple-600 via-rose-500 to-amber-500 text-white shadow-lg hover:opacity-95 transition-all">
+                                    {savingIg ? 'Saving...' : 'Save & Connect Instagram'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal for Detailed Step-by-Step Meta Integration Guide */}
+            {showIgGuide && (
+                <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
+                    <div className="bg-white rounded-3xl p-6 md:p-8 max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-gray-100 space-y-6 animate-in fade-in zoom-in duration-200">
+                        <div className="flex items-center justify-between sticky top-0 bg-white pb-3 border-b border-gray-100 z-10">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-gradient-to-tr from-purple-600 via-rose-500 to-amber-500 text-white rounded-xl flex items-center justify-center shadow-md">
+                                    <Instagram size={20} />
+                                </div>
+                                <div>
+                                    <h3 className="text-xl font-black text-gray-900">Step-by-Step Meta & Instagram Guide</h3>
+                                    <p className="text-xs text-gray-500 font-medium">Complete setup instructions for Meta Developer App & Webhooks</p>
+                                </div>
+                            </div>
                             <button
-                                onClick={handleSaveIgCredentials}
-                                disabled={savingIg}
-                                className="px-6 py-2.5 rounded-xl text-xs font-black bg-gradient-to-r from-purple-600 via-rose-500 to-amber-500 text-white shadow-lg hover:opacity-95 transition-all">
-                                {savingIg ? 'Saving...' : 'Save & Connect Instagram'}
+                                onClick={() => setShowIgGuide(false)}
+                                className="p-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 transition-all">
+                                <X size={22} />
+                            </button>
+                        </div>
+
+                        {/* Step 1 */}
+                        <div className="space-y-3">
+                            <div className="flex items-center gap-2">
+                                <span className="w-6 h-6 rounded-full bg-rose-500 text-white text-xs font-black flex items-center justify-center">1</span>
+                                <h4 className="text-sm font-black text-gray-800">Convert Instagram to Professional Account</h4>
+                            </div>
+                            <div className="pl-8 text-xs text-gray-600 space-y-1.5 font-medium leading-relaxed">
+                                <p>1. Open the Instagram app on your smartphone &gt; Go to your profile &gt; Tap menu ☰ &gt; <strong>Settings and activity</strong>.</p>
+                                <p>2. Tap <strong>Account type and tools</strong> &gt; <strong>Switch to professional account</strong> &gt; Select <strong>Business</strong>.</p>
+                                <p>3. Go to <strong>Settings</strong> &gt; <strong>Messages and story replies</strong> &gt; <strong>Message controls</strong>.</p>
+                                <p>4. Toggle <strong>Allow access to messages</strong> to <strong>ON</strong> (Mandatory for Meta API access).</p>
+                            </div>
+                        </div>
+
+                        {/* Step 2 */}
+                        <div className="space-y-3 pt-3 border-t border-gray-100">
+                            <div className="flex items-center gap-2">
+                                <span className="w-6 h-6 rounded-full bg-purple-600 text-white text-xs font-black flex items-center justify-center">2</span>
+                                <h4 className="text-sm font-black text-gray-800">Link Instagram to Your Facebook Business Page</h4>
+                            </div>
+                            <div className="pl-8 text-xs text-gray-600 space-y-1.5 font-medium leading-relaxed">
+                                <p>1. Open your Facebook Business Page (e.g. Grekam Academy).</p>
+                                <p>2. Click <strong>Settings</strong> &gt; <strong>Linked Accounts</strong> &gt; Select <strong>Instagram</strong>.</p>
+                                <p>3. Click <strong>Connect Account</strong> and log in with your Instagram Business credentials to authorize the link.</p>
+                            </div>
+                        </div>
+
+                        {/* Step 3 */}
+                        <div className="space-y-3 pt-3 border-t border-gray-100">
+                            <div className="flex items-center gap-2">
+                                <span className="w-6 h-6 rounded-full bg-indigo-600 text-white text-xs font-black flex items-center justify-center">3</span>
+                                <h4 className="text-sm font-black text-gray-800">Generate Permanent Meta Token & Copy Page ID</h4>
+                            </div>
+                            <div className="pl-8 text-xs text-gray-600 space-y-2 font-medium leading-relaxed">
+                                <p>1. Go to <a href="https://business.facebook.com/settings" target="_blank" rel="noreferrer" className="text-indigo-600 underline font-bold">Meta Business Manager Settings</a> &gt; <strong>Users</strong> &gt; <strong>System Users</strong>.</p>
+                                <p>2. Click <strong>Add System User</strong> (Name: Grafty Automation, Role: Admin).</p>
+                                <p>3. Click <strong>Add Assets</strong> &gt; Select your Facebook Page & Instagram Account &gt; Toggle <strong>Full Control</strong>.</p>
+                                <p>4. Click <strong>Generate New Token</strong> &gt; Select your Meta App and check the following permissions:</p>
+                                <div className="p-3 bg-gray-50 rounded-xl border border-gray-200 font-mono text-[11px] text-gray-700 space-y-1">
+                                    <div>✔ instagram_basic</div>
+                                    <div>✔ instagram_manage_messages</div>
+                                    <div>✔ pages_show_list</div>
+                                    <div>✔ pages_read_engagement</div>
+                                    <div>✔ pages_messaging</div>
+                                </div>
+                                <p>5. Copy the generated permanent token starting with <code>EAAG...</code> and paste it into Grafty.</p>
+                            </div>
+                        </div>
+
+                        {/* Step 4 */}
+                        <div className="space-y-3 pt-3 border-t border-gray-100">
+                            <div className="flex items-center gap-2">
+                                <span className="w-6 h-6 rounded-full bg-emerald-600 text-white text-xs font-black flex items-center justify-center">4</span>
+                                <h4 className="text-sm font-black text-gray-800">Configure Meta Webhooks in Developer Console</h4>
+                            </div>
+                            <div className="pl-8 text-xs text-gray-600 space-y-2 font-medium leading-relaxed">
+                                <p>1. Go to <a href="https://developers.facebook.com/" target="_blank" rel="noreferrer" className="text-indigo-600 underline font-bold">Meta Developer Console</a> &gt; Select your App &gt; <strong>Webhooks</strong>.</p>
+                                <p>2. Select <strong>Instagram</strong> from the dropdown and click <strong>Subscribe to this object</strong>.</p>
+                                <div className="p-3 bg-emerald-50/70 rounded-xl border border-emerald-200 font-mono text-[11px] text-emerald-900 space-y-1">
+                                    <div><strong>Callback URL:</strong> https://grafty.pro/api/webhooks/instagram</div>
+                                    <div><strong>Verify Token:</strong> grafty_webhook_verify</div>
+                                </div>
+                                <p>3. Under Subscriptions, click <strong>Subscribe</strong> for:</p>
+                                <div className="flex gap-2 text-[10px] font-mono font-bold">
+                                    <span className="px-2 py-1 bg-gray-100 rounded-md">messages</span>
+                                    <span className="px-2 py-1 bg-gray-100 rounded-md">instagram_story_mentions</span>
+                                    <span className="px-2 py-1 bg-gray-100 rounded-md">comments</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="pt-4 border-t border-gray-100 flex justify-end">
+                            <button
+                                onClick={() => setShowIgGuide(false)}
+                                className="px-6 py-2.5 bg-gray-900 hover:bg-black text-white rounded-xl text-xs font-black transition-all">
+                                Got It! Close Guide
                             </button>
                         </div>
                     </div>
