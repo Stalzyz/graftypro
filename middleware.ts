@@ -234,6 +234,11 @@ export async function middleware(request: NextRequest) {
         path.startsWith("/api/public/config") ||
         path.startsWith("/api/media/local") ||
         path.startsWith("/uploads") ||
+        path === "/manifest.json" ||
+        path === "/sw.js" ||
+        path === "/site.webmanifest" ||
+        path === "/robots.txt" ||
+        path === "/sitemap.xml" ||
         path.includes("favicon") ||
         path.endsWith(".png") ||
         path.endsWith(".svg") ||
@@ -243,6 +248,9 @@ export async function middleware(request: NextRequest) {
         path.endsWith(".webp") ||
         path.endsWith(".mp4") ||
         path.endsWith(".mov") ||
+        path.endsWith(".json") ||
+        path.endsWith(".js") ||
+        path.endsWith(".css");
         path.endsWith(".3gp") ||
         path.endsWith(".mp3") ||
         path.endsWith(".ogg") ||
@@ -336,5 +344,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-    matcher: ["/((?!_next/static|_next/image|favicon.ico|uploads|.*\\.(?:png|jpg|jpeg|svg|gif|webp|pdf|ico)).*)" ],
+    matcher: ["/((?!_next/static|_next/image|favicon.ico|manifest\\.json|sw\\.js|uploads|.*\\.(?:png|jpg|jpeg|svg|gif|webp|pdf|ico|json|js|css)).*)" ],
 };
