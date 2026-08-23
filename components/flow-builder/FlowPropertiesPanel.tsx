@@ -140,15 +140,20 @@ export default function FlowPropertiesPanel({ selectedNode, onChange, onClose, o
             }
 
             if (selectedNode.type === 'meta_flow') {
-                setMetaFlowId(selectedNode.data.flowId || "");
-                setMetaFlowCTA(selectedNode.data.flowCTA || "Open Form");
+                setMetaFlowId(selectedNode.data.flowId || selectedNode.data.metaFlowId || "");
+                setMetaFlowCTA(selectedNode.data.flowCTA || selectedNode.data.ctaText || "Open Form");
                 setMetaFlowHeader(selectedNode.data.flowHeader || "");
                 setMetaFlowFooter(selectedNode.data.flowFooter || "");
                 setInitialScreen(selectedNode.data.initialScreen || "QUESTION_1");
                 setFlowToken(selectedNode.data.flowToken || "");
                 setMetaFlowHeaderType(selectedNode.data.headerType || "text");
                 setHeaderUrl(selectedNode.data.headerUrl || "");
-                setMetaFlowSpec(selectedNode.data.flowSpec ? JSON.stringify(selectedNode.data.flowSpec, null, 2) : "");
+                const rawSpec = selectedNode.data.flowSpec || selectedNode.data.metaFlowSpec || selectedNode.data.spec;
+                if (rawSpec) {
+                    setMetaFlowSpec(typeof rawSpec === 'string' ? rawSpec : JSON.stringify(rawSpec, null, 2));
+                } else {
+                    setMetaFlowSpec("");
+                }
             }
 
             if (selectedNode.type === 'goal') {
@@ -268,6 +273,13 @@ export default function FlowPropertiesPanel({ selectedNode, onChange, onClose, o
         } else if (field === "flowToken") {
             setFlowToken(val);
             newData.flowToken = val;
+        } else if (field === "metaFlowSpec" || field === "flowSpec") {
+            setMetaFlowSpec(val);
+            newData.flowSpec = val;
+            newData.metaFlowSpec = val;
+            try {
+                newData.spec = JSON.parse(val);
+            } catch (e) {}
         } else if (field === "metaFlowHeaderType") {
             setMetaFlowHeaderType(val as 'text' | 'image');
             newData.headerType = val;
@@ -1141,17 +1153,11 @@ export default function FlowPropertiesPanel({ selectedNode, onChange, onClose, o
                                     <textarea
                                         value={metaFlowSpec}
                                         onChange={(e) => {
-                                            setMetaFlowSpec(e.target.value);
-                                            handleUpdate("metaFlowSpec", e.target.value);
+                                            const v = e.target.value;
+                                            setMetaFlowSpec(v);
+                                            handleUpdate("metaFlowSpec", v);
                                         }}
-                                        onPaste={(e) => {
-                                            const pasted = e.clipboardData.getData('text');
-                                            if (pasted) {
-                                                setMetaFlowSpec(pasted);
-                                                handleUpdate("metaFlowSpec", pasted);
-                                            }
-                                        }}
-                                        rows={10}
+                                        rows={12}
                                         spellCheck={false}
                                         autoComplete="off"
                                         placeholder='{ "version": "3.0", "screens": [...] }'
