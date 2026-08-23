@@ -84,6 +84,10 @@ function validateFlow(nodes: Node[], edges: Edge[]): ValidationError[] {
 
     nodes.forEach(node => {
         if (node.type === 'start') return; // Start nodes don't need incoming edges
+        // If an extra end node is disconnected while another connected end node exists, skip warning
+        if (node.type === 'end' && !connectedTargets.has(node.id) && nodes.some(n => n.type === 'end' && connectedTargets.has(n.id))) {
+            return;
+        }
         if (!connectedTargets.has(node.id)) {
             errors.push({ nodeId: node.id, message: `Node "${node.data?.label || node.id}" is not connected (no incoming edge)`, severity: 'warning' });
         }
