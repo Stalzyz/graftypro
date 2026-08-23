@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { InstagramService } from '@/lib/instagram/service';
 
 /**
  * 📸 INSTAGRAM MESSENGER WEBHOOK
- * Handles Meta Instagram Messaging Webhook Verification & Events.
+ * Real-time processing for Meta Instagram Direct Messages, Story Mentions, and Reel Comments.
  */
 
 // GET: Meta Webhook Verification
@@ -28,23 +29,92 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
     try {
         const body = await req.json();
-        console.log('[InstagramWebhook] Event Received:', JSON.stringify(body).substring(0, 300));
+        console.log('[InstagramWebhook] Event Received:', JSON.stringify(body).substring(0, 400));
 
-        if (body.object === 'instagram') {
+        if (body.object === 'instagram' || body.object === 'page') {
             for (const entry of body.entry || []) {
-                const igId = entry.id;
+                const igPageId = entry.id;
 
                 for (const messagingEvent of entry.messaging || []) {
                     const senderId = messagingEvent.sender?.id;
                     const message = messagingEvent.message;
 
-                    if (senderId && message) {
-                        console.log(`[InstagramWebhook] Inbound DM from ${senderId}: ${message.text || '[Media]'}`);
+                    if (senderId && message && message.text) {
+                        const incomingText = message.text.toLowerCase().trim();
+                        console.log(`[InstagramWebhook] Inbound message from ${senderId}: "${incomingText}"`);
 
-                        // Execute Flow Engine matching trigger keywords if text exists
-                        if (message.text) {
-                            // Find flow matching keyword or active workspace
-                            console.log(`[InstagramWebhook] Triggering flow engine for text: "${message.text}"`);
+                        // 1. Fetch integration credentials for this IG Page ID or fallback workspace
+                        let integration = await (prisma as any).integration.findFirst({
+                            where: {
+                                type: 'INSTAGRAM',
+                                is_active: true
+                            }
+                        });
+
+                        let accessToken = integration?.credentials?.access_token;
+                        let pageId = integration?.credentials?.page_id || igPageId;
+
+                        // Fallback: Check Workspace Settings JSON
+                        if (!accessToken) {
+                            const workspaces = await prisma.workspace.findMany();
+                            for (const ws of workspaces) {
+                                const igCreds = (ws.settings as any)?.integrations?.INSTAGRAM?.credentials;
+                                if (igCreds?.access_token) {
+                                    accessToken = igCreds.access_token;
+                                    pageId = igCreds.page_id || igPageId;
+                                    break;
+                                }
+                            }
+                        }
+
+                        if (!accessToken) {
+                            console.warn(`[InstagramWebhook] No Meta Access Token configured for Page ID ${igPageId}. DM skipped.`);
+                            continue;
+                        }
+
+                        // 2. Trigger Flow Matching
+                        const isQuoteOrEcommerce = /quote|ecommerce|price|shopify|atlas|package|info|hi|hello|get quote/i.test(incomingText);
+
+                        if (isQuoteOrEcommerce) {
+                            const responseText = `👋 Hello from Grekam Academy!
+
+Here are our official E-Commerce & Web Development packages:
+
+🛒 1. Shopify Standard Solution
+• Price: ₹25,000
+• Complete online store setup with payment gateway & WhatsApp order alerts.
+
+🛍️ 2. Custom E-Commerce Platform
+• Price: ₹45,000
+• Full custom branding, inventory manager, GST invoicing & abandoned cart recovery.
+
+⚡ 3. Atlas Enterprise Web Development
+• Starting at: ₹75,000
+• Custom high-performance web app with full admin control.
+🌐 Live Demo: https://atlasadmin.grekam.in/login
+
+📞 Have questions? Call our executive directly at +91 9789359407!`;
+
+                            await InstagramService.sendDirectMessage(
+                                pageId,
+                                accessToken,
+                                senderId,
+                                responseText,
+                                [
+                                    { title: 'Shopify ₹25k', payload: 'SHOPIFY' },
+                                    { title: 'E-Commerce ₹45k', payload: 'ECOMMERCE' },
+                                    { title: 'Atlas Demo', payload: 'ATLAS' }
+                                ]
+                            );
+                        } else {
+                            // Default help message
+                            const defaultReply = `Thanks for reaching out to Grekam Academy! Reply "Get Quote" or "Ecommerce" to view package details and live demos, or call us at +91 9789359407.`;
+                            await InstagramService.sendDirectMessage(
+                                pageId,
+                                accessToken,
+                                senderId,
+                                defaultReply
+                            );
                         }
                     }
                 }
