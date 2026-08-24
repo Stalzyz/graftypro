@@ -77,6 +77,29 @@ export default function TeamManagement() {
         }
     };
 
+    const handleDelete = async (userId: string) => {
+        if (!confirm("Are you sure you want to remove this member?")) return;
+        
+        setError(null);
+        setSuccess(null);
+        
+        try {
+            const res = await fetch("/api/settings/users", {
+                method: "DELETE",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ id: userId })
+            });
+
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || "Failed to delete user");
+
+            setSuccess("Team member removed successfully.");
+            fetchUsers();
+        } catch (err: any) {
+            setError(err.message);
+        }
+    };
+
     if (loading) return (
         <div className="flex items-center justify-center min-h-[400px]">
             <Loader2 className="w-8 h-8 animate-spin text-[#27954D]" />
@@ -239,7 +262,11 @@ export default function TeamManagement() {
                                             </div>
                                         </div>
                                         {user.role !== 'OWNER' && (
-                                            <button className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all">
+                                            <button 
+                                                onClick={() => handleDelete(user.id)}
+                                                className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                                                title="Remove Member"
+                                            >
                                                 <Trash2 size={18} />
                                             </button>
                                         )}

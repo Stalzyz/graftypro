@@ -53,7 +53,10 @@ export async function POST(req: Request) {
             }, { status: 403 });
         }
 
-        const { email, password, first_name, last_name, role } = await req.json();
+        let { email, password, first_name, last_name, role } = await req.json();
+
+        const { AuthSecurityService } = await import("../../../../lib/security/auth-utils");
+        email = AuthSecurityService.normalizeEmail(email);
 
         // Basic creation logic (should include password hashing etc if this were a full user system)
         // For now, let's keep it simple as requested
@@ -68,7 +71,8 @@ export async function POST(req: Request) {
                 password_hash: hash,
                 first_name,
                 last_name,
-                role: role || "AGENT"
+                role: role || "AGENT",
+                email_verified: new Date()
             }
         });
 
@@ -124,5 +128,39 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: "User with this email already exists in this workspace" }, { status: 400 });
         }
         return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+}
+
+export async function DELETE(req: Request) {
+    try {
+        const user = await getCurrentUser(req);
+        if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+        const { id } = await req.json();
+        if (!id) return NextResponse.json({ error: "User ID is required" }, { status: 400 });
+
+        const targetUser = await prisma.user.findFirst({
+            where: { 
+                id: id,
+                workspace_id: user.workspaceId 
+            }
+        });
+
+        if (!targetUser) {
+            return NextResponse.json({ error: "User not found" }, { status: 404 });
+        }
+
+        if (targetUser.role === 'OWNER') {
+            return NextResponse.json({ error: "Cannot delete the workspace owner" }, { status: 403 });
+        }
+
+        await prisma.user.delete({
+            where: { id: targetUser.id }
+        });
+
+        return NextResponse.json({ success: true, message: "User deleted successfully" });
+    } catch (error: any) {
+        console.error("Delete User Error:", error);
+        return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
     }
 }
