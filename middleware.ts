@@ -219,6 +219,7 @@ export async function middleware(request: NextRequest) {
         path.startsWith("/api/super-admin/auth") ||
         path.startsWith("/api/webhooks") ||
         path.startsWith("/api/whatsapp/webhook") ||
+        path.startsWith("/api/cron") ||
         path.startsWith("/api/diagnostic") ||
         path.startsWith("/api/debug-catalog") ||
         path.startsWith("/api/reset-admin") ||
