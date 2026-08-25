@@ -115,20 +115,36 @@ function SharedInboxContent() {
     const [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
 
     const getCustomerWindowInfo = () => {
-        if (!messages || messages.length === 0) return { active: true, expired: false, hours: 24, minutes: 0, text: "24h Window Active" };
+        if (!messages || messages.length === 0) return { active: true, expired: false, hours: 24, minutes: 0, text: "24h Window Active", is72h: false };
         const inboundMessages = messages.filter(m => m.direction === 'INBOUND' && !m._deleted);
-        if (inboundMessages.length === 0) return { active: false, expired: true, text: "No Customer Message" };
+        if (inboundMessages.length === 0) return { active: false, expired: true, text: "No Customer Message", is72h: false };
+        
+        // 🚀 Detect Facebook / Instagram Click-to-WhatsApp Ad (CTWA) Referral
+        const hasAdReferral = inboundMessages.some(m => {
+            const ref = m.content?.referral || m.content?.raw?.referral || (m as any).referral;
+            return !!ref;
+        });
+
+        const is72h = hasAdReferral;
         const lastInbound = inboundMessages[inboundMessages.length - 1];
         const lastTime = new Date(lastInbound.created_at || lastInbound.timestamp).getTime();
         const elapsedMs = Date.now() - lastTime;
-        const windowMs = 24 * 60 * 60 * 1000;
+        const windowMs = (is72h ? 72 : 24) * 60 * 60 * 1000;
+
         if (elapsedMs >= windowMs) {
-            return { active: false, expired: true, text: "24h Window Expired" };
+            return { active: false, expired: true, text: is72h ? "72h Ad Window Expired" : "24h Window Expired", is72h };
         }
         const remainingMs = windowMs - elapsedMs;
         const hours = Math.floor(remainingMs / (1000 * 60 * 60));
         const minutes = Math.floor((remainingMs % (1000 * 60 * 60)) / (1000 * 60));
-        return { active: true, expired: false, hours, minutes, text: `${hours}h ${minutes}m left in 24h Window` };
+        return { 
+            active: true, 
+            expired: false, 
+            hours, 
+            minutes, 
+            is72h,
+            text: is72h ? `${hours}h ${minutes}m left in 72h Ad Window` : `${hours}h ${minutes}m left in 24h Window` 
+        };
     };
 
     const renderNoteWithMentions = (text: string) => {
@@ -484,7 +500,7 @@ function SharedInboxContent() {
         // 🔒 Guard: Auto-detect 24-Hour Window Expiry and guide agent to Templates
         const windowInfo = getCustomerWindowInfo();
         if (windowInfo.expired) {
-            toast.error("🔒 24h Customer Window Expired. Opening Approved Templates...", { duration: 4000 });
+            toast.error(windowInfo.is72h ? "🔒 72h Ad Customer Window Expired. Opening Approved Templates..." : "🔒 24h Customer Window Expired. Opening Approved Templates...", { duration: 4000 });
             setShowTemplateModal(true);
             fetchTemplates();
             return;
@@ -1636,7 +1652,7 @@ function SharedInboxContent() {
                                                 <div className="mb-2 p-2 px-3 bg-rose-50 border border-rose-200/80 rounded-xl flex items-center justify-between shadow-sm animate-in slide-in-from-bottom-2">
                                                     <div className="flex items-center gap-1.5 text-rose-700 font-bold text-[11px]">
                                                         <AlertCircle size={14} className="text-rose-600 shrink-0 animate-pulse" />
-                                                        <span>24h Window Expired</span>
+                                                        <span>{win.is72h ? "72h Ad Window Expired" : "24h Window Expired"}</span>
                                                     </div>
                                                     <button
                                                         onClick={() => { setShowTemplateModal(true); fetchTemplates(); }}

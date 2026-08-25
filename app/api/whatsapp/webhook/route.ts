@@ -157,6 +157,10 @@ async function handleIngestion(account: any, msg: any, metaContact: any) {
     }
     else content = { raw: msg[type] || "Unsupported Type" };
 
+    if (msg.referral) {
+        content.referral = msg.referral;
+    }
+
     // 3. Contact Sync
     const contact = await prisma.contact.upsert({
         where: { workspace_id_phone: { workspace_id: workspaceId, phone } },
