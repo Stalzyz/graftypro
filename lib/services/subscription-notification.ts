@@ -28,10 +28,17 @@ export class SubscriptionNotificationService {
 
         if (workspace?.subscription_ends_at) {
             endsAt = new Date(workspace.subscription_ends_at);
+        } else if (isPaidSub && workspace?.subscription_status === 'active') {
+            // For active paid subscriptions without explicit subscription_ends_at, project monthly cycle from created_at
+            const baseDate = new Date(workspace?.created_at || now);
+            endsAt = new Date(baseDate.getTime());
+            while (endsAt.getTime() <= now.getTime()) {
+                endsAt.setDate(endsAt.getDate() + 30);
+            }
         } else if (workspace?.trial_ends_at) {
             endsAt = new Date(workspace.trial_ends_at);
         } else {
-            // Project 30-day billing cycle from workspace creation / last update
+            // Project 30-day billing cycle from workspace creation
             const baseDate = new Date(workspace?.created_at || now);
             endsAt = new Date(baseDate.getTime());
             while (endsAt.getTime() <= now.getTime()) {
@@ -41,7 +48,7 @@ export class SubscriptionNotificationService {
 
         const diffMs = endsAt.getTime() - now.getTime();
         const daysLeft = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
-        const isExpired = endsAt.getTime() < now.getTime();
+        const isExpired = !isPaidSub && (endsAt.getTime() < now.getTime());
         const isExpiringSoon = daysLeft <= 7;
 
         return {

@@ -88,6 +88,17 @@ export async function POST(req: Request) {
 
                     console.log(`📄 Subscription Invoice Generated: ${invoice.invoice_number}`);
 
+                    // Ensure workspace subscription status and end dates are renewed for 30 days
+                    const nextRenewalDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+                    await prisma.workspace.update({
+                        where: { id: workspaceId },
+                        data: {
+                            subscription_status: "active",
+                            subscription_ends_at: nextRenewalDate,
+                            trial_ends_at: nextRenewalDate
+                        }
+                    });
+
                     // --- 100-Credit Trial "Block & Release" Logic ---
                     if (workspace.current_plan_id) {
                         const plan = await prisma.subscriptionPlan.findUnique({

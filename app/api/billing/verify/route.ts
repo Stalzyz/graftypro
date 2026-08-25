@@ -60,14 +60,17 @@ export async function POST(req: Request) {
             return "PRO"; // All dynamic premium plans fall under PRO enum mapping
         };
 
-        // 3. Activate Plan in DB
+        // 3. Activate Plan in DB (Set 30 days subscription duration)
+        const subEndsAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
         const updatedWorkspace = await prisma.workspace.update({
             where: { id: user.workspaceId },
             data: {
                 plan: normalizePlanEnum(newPlan) as any,
                 subscription_status: "active",
                 subscription_id: razorpay_subscription_id,
-                current_plan_id: dbPlanRecord?.id || null
+                current_plan_id: dbPlanRecord?.id || null,
+                subscription_ends_at: subEndsAt,
+                trial_ends_at: subEndsAt
             }
         });
 
