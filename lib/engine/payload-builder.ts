@@ -629,7 +629,9 @@ export function buildNodePayload(
         } else if (primaryActionType === 'url') {
             const targetBtn = urlButtons[0];
             finalPayload = buildCTAUrlPayload(to, bodyText, { title: targetBtn.title, value: targetBtn.value }, unifiedHeader, data.footer);
-            isInteractive = true;
+            // CTA URL buttons open external web links — Meta NEVER fires an in-WhatsApp reply webhook.
+            // Only treat as interactive if reply buttons were converted into body text options.
+            isInteractive = replyButtons.length > 0;
         } else if (nodeType === 'location') {
             if (data.locationType === 'REQUEST') {
                 finalPayload = buildLocationRequestPayload(to, bodyText);
