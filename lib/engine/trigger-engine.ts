@@ -99,8 +99,18 @@ export async function findTrigger(
         const keywords = flow.trigger_keyword.split(',').map(k => k.toLowerCase().trim()).filter(Boolean);
 
         for (const kw of keywords) {
-            // Flexible matching logic: Exact, Starts With, or Substring Contains
-            if (input === kw || input.startsWith(kw) || input.includes(kw) || kw.includes(input)) {
+            // FIX: Removed `kw.includes(input)` — it caused reverse substring matches
+            // where single-char inputs like "e" matched keywords like "ecommerce".
+            // Correct priority order:
+            // 1. EXACT: "join" matches keyword "join"
+            // 2. STARTS_WITH: "join now" matches keyword "join"
+            // 3. CONTAINS (input contains kw): "please join" matches keyword "join"
+            //    BUT only if keyword is >= 3 chars to prevent single-char matches
+            const isExact = input === kw;
+            const isStartsWith = input.startsWith(kw + ' ') || input.startsWith(kw);
+            const isContains = kw.length >= 3 && input.includes(kw);
+
+            if (isExact || isStartsWith || isContains) {
                 console.log(
                     `[TriggerEngine] ✅ Flow keyword match: ` +
                     `"${input}" matched "${kw}" → ${flow.name} (${flow.id})`

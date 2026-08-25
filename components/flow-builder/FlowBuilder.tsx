@@ -142,6 +142,9 @@ export default function FlowBuilder({ initialData }: { initialData?: any }) {
     // ── Save State ───────────────────────────────────────────────────────────
     const [saving, setSaving] = useState(false);
     const [saveStatus, setSaveStatus] = useState<'saved' | 'unsaved' | 'saving'>('saved');
+    // CRITICAL FIX: Track the current publication status so auto-save never
+    // silently demotes a PUBLISHED flow back to DRAFT.
+    const [currentStatus, setCurrentStatus] = useState<'DRAFT' | 'PUBLISHED'>(initialData?.status || 'DRAFT');
     const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
     const lastSavedRef = useRef<string>('');
 
@@ -183,10 +186,12 @@ export default function FlowBuilder({ initialData }: { initialData?: any }) {
         autoSaveTimerRef.current = setTimeout(() => {
             const snapshot = JSON.stringify({ nodes, edges, name: flowName });
             if (snapshot !== lastSavedRef.current && initialData?.id) {
-                handleSave('DRAFT', true); // silent auto-save
+                // CRITICAL FIX: Preserve the current publication status —
+                // never silently demote a PUBLISHED flow to DRAFT on auto-save.
+                handleSave(currentStatus, true);
             }
         }, 30_000); // 30 seconds
-    }, [nodes, edges, flowName, initialData?.id]);
+    }, [nodes, edges, flowName, initialData?.id, currentStatus]);
 
     useEffect(() => {
         triggerAutoSave();
@@ -231,7 +236,12 @@ export default function FlowBuilder({ initialData }: { initialData?: any }) {
             const isCtrl = e.ctrlKey || e.metaKey;
             if (isCtrl && e.key === 'z' && !e.shiftKey) { e.preventDefault(); handleUndo(); }
             if (isCtrl && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) { e.preventDefault(); handleRedo(); }
-            if (isCtrl && e.key === 's') { e.preventDefault(); handleSave('DRAFT'); }
+            if (isCtrl && e.key === 's') {
+                e.preventDefault();
+                // CRITICAL FIX: Ctrl+S preserves the current status —
+                // never downgrades a PUBLISHED flow to DRAFT on quick-save.
+                handleSave(currentStatus);
+            }
             if (e.key === 'Escape') { setSelectedNode(null); setShowSimulator(false); }
             if (isCtrl && e.key === '?') { e.preventDefault(); setShowKeyboardShortcuts(p => !p); }
         };
@@ -321,11 +331,12 @@ export default function FlowBuilder({ initialData }: { initialData?: any }) {
     // ── Global Save Listener ──────────────────────────────────────────────────
     useEffect(() => {
         const handleGlobalSave = () => {
-            handleSave('DRAFT', true);
+            // CRITICAL FIX: Preserve current status on global save events too
+            handleSave(currentStatus, true);
         };
         window.addEventListener('flow:save', handleGlobalSave);
         return () => window.removeEventListener('flow:save', handleGlobalSave);
-    }, [nodes, edges, flowName]); // Dependencies needed so handleSave uses latest state
+    }, [nodes, edges, flowName, currentStatus]); // Include currentStatus in deps
 
     // ── Save Flow ─────────────────────────────────────────────────────────────
     const handleSave = async (status: 'DRAFT' | 'PUBLISHED' = 'DRAFT', silent = false) => {
@@ -352,6 +363,8 @@ export default function FlowBuilder({ initialData }: { initialData?: any }) {
                 const data = await res.json();
                 lastSavedRef.current = JSON.stringify(payload);
                 setSaveStatus('saved');
+                // Update currentStatus to reflect what was actually saved
+                setCurrentStatus(status);
 
                 if (!silent) {
                     if (status === 'PUBLISHED') {
@@ -578,6 +591,18 @@ export default function FlowBuilder({ initialData }: { initialData?: any }) {
                         />
 
                         {saveStatusDisplay()}
+
+                        {/* Publication Status Badge */}
+                        {currentStatus === 'PUBLISHED' ? (
+                            <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-700 border border-emerald-300 shrink-0">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                LIVE
+                            </span>
+                        ) : (
+                            <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-gray-100 text-gray-500 border border-gray-200 shrink-0">
+                                DRAFT
+                            </span>
+                        )}
                     </div>
 
                     {/* Center: Undo / Redo */}

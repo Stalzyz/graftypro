@@ -133,23 +133,25 @@ const metaApiWorker = new Worker(
             let result;
             switch (type) {
                 case "SEND_TEMPLATE":
+                    // FIX: payload.templateName OR payload.template.name (flow-queue bridges via spread)
                     result = await WhatsAppService.sendTemplate(
                         phoneNumberId,
                         accessToken,
                         to,
-                        payload.templateName,
-                        payload.langCode || "en_US", // Final fallback
-                        payload.components || [],
+                        payload.templateName || payload.template?.name,
+                        payload.langCode || payload.template?.language?.code || "en_US",
+                        payload.components || payload.template?.components || [],
                         workspaceId,
                         category
                     );
                     break;
                 case "SEND_TEXT":
+                    // FIX: payload builder puts text at payload.text.body, not payload.body
                     result = await WhatsAppService.sendText(
                         phoneNumberId,
                         accessToken,
                         to,
-                        payload.body,
+                        payload.body || payload.text?.body,
                         workspaceId,
                         category
                     );

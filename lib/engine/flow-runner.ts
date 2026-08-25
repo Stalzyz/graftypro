@@ -81,8 +81,24 @@ export class FlowRunner {
             const session = await getActiveSession(contactId, workspaceId);
 
             // ----------------------------------------------------------------
-            // STEP 4: Check if this message is a trigger keyword FIRST
-            // Keywords always take priority — they can restart flows.
+            // STEP 4: If user is in an active session, continue it FIRST
+            // Only global reset keywords can override an active session.
+            // FIX: Previously, triggers were checked BEFORE the session,
+            // causing mid-flow user replies that matched any keyword to
+            // restart flows from scratch, losing all collected input.
+            // ----------------------------------------------------------------
+            const GLOBAL_RESET_KEYWORDS = ['restart', 'menu', 'cancel', 'stop', 'start over'];
+            const isGlobalReset = GLOBAL_RESET_KEYWORDS.includes(normalizedMsg.value.toLowerCase().trim());
+
+            if (session && !isGlobalReset) {
+                console.log(`[FlowRunner] 🔄 Continuing session ${session.id} at node "${session.current_node_id}"`);
+                await handleUserInput(session, waba, contact, normalizedMsg.value);
+                return;
+            }
+
+            // ----------------------------------------------------------------
+            // STEP 5: Check if this message is a trigger keyword
+            // (Always runs if: no active session, OR user sent a global reset)
             // ----------------------------------------------------------------
             const trigger = await findTrigger(workspaceId, normalizedMsg);
 
@@ -113,19 +129,6 @@ export class FlowRunner {
                     await executeFrom(newSession, waba, contact, null, null, 0);
                     return;
                 }
-            }
-
-            // ----------------------------------------------------------------
-            // STEP 5: No trigger match — continue existing session if any
-            // ----------------------------------------------------------------
-            if (session) {
-                // FIX #3: Removed the 15-minute aggressive stale-session close.
-                // Real WhatsApp users pause for hours mid-flow. Aggressively closing
-                // at 15 min was causing flows to silently restart on every short break.
-                // The correct TTL is 24 hours, managed via getActiveSession() → expireOldSessions().
-                console.log(`[FlowRunner] 🔄 Continuing session ${session.id} at node "${session.current_node_id}"`);
-                await handleUserInput(session, waba, contact, normalizedMsg.value);
-                return;
             }
 
             // ----------------------------------------------------------------

@@ -17,8 +17,11 @@ const LOCK_TTL_MS = 10_000;
 const SESSION_EXPIRE_HOURS = 24;
 
 // -------------------------------------------------------------------
-// Lock Management (STRICT REDIS ONLY - NUCLEAR HARDENED)
+// Lock Management (Redis-backed with in-memory fail-open fallback)
 // -------------------------------------------------------------------
+
+// In-memory fallback set: used when Redis is temporarily unavailable
+const inMemoryLocks = new Set<string>();
 
 async function acquireLock(lockKey: string): Promise<boolean> {
     try {
@@ -31,17 +34,26 @@ async function acquireLock(lockKey: string): Promise<boolean> {
         );
         return result === 'OK';
     } catch (e) {
-        console.error(`[SessionManager] CRITICAL: Redis Lock Failure for ${lockKey}. Blocking execution.`, e);
-        return false; // Strict Fail-Close: prevent race conditions if Redis is down
+        // FAIL-OPEN FALLBACK: If Redis is temporarily unavailable,
+        // use an in-memory Set to prevent concurrent processing.
+        // This is safe because Next.js is single-process per instance.
+        console.warn(`[SessionManager] ⚠️ Redis unavailable for lock ${lockKey}. Using in-memory fallback.`);
+        if (inMemoryLocks.has(lockKey)) return false;
+        inMemoryLocks.add(lockKey);
+        // Auto-release after TTL in case releaseLock is never called
+        setTimeout(() => inMemoryLocks.delete(lockKey), LOCK_TTL_MS);
+        return true;
     }
 }
 
 async function releaseLock(lockKey: string): Promise<void> {
+    // Always clean up in-memory fallback
+    inMemoryLocks.delete(lockKey);
     try {
         const { redis } = await import('../redis');
         await redis.del(`flow_lock:${lockKey}`);
     } catch (e) {
-        console.error(`[SessionManager] Warning: Could not release lock for ${lockKey}`, e);
+        console.warn(`[SessionManager] Warning: Could not release Redis lock for ${lockKey}`);
     }
 }
 
