@@ -72,7 +72,7 @@ export async function POST(req: Request) {
                 if (value.messages) {
                     for (const msg of value.messages) {
                         try {
-                            await handleIngestion(account, msg, value.contacts?.[0]);
+                            await handleIngestion(account, msg, value.contacts?.[0], value);
                         } catch (err) {
                             console.error(`❌ [INGEST_ERR] MsgID: ${msg.id}`, err);
                         }
@@ -106,7 +106,7 @@ export async function POST(req: Request) {
  * Handle Single Message Ingestion
  * Optimized for Media Caching & Metadata Extraction
  */
-async function handleIngestion(account: any, msg: any, metaContact: any) {
+async function handleIngestion(account: any, msg: any, metaContact: any, value?: any) {
     const workspaceId = account.workspace_id;
     const rawSender = msg.from;
     const phone = normalizePhone(rawSender);
@@ -157,8 +157,9 @@ async function handleIngestion(account: any, msg: any, metaContact: any) {
     }
     else content = { raw: msg[type] || "Unsupported Type" };
 
-    if (msg.referral) {
-        content.referral = msg.referral;
+    const referralData = msg.referral || (value as any)?.referral;
+    if (referralData) {
+        content.referral = referralData;
     }
 
     // 3. Contact Sync
