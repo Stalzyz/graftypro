@@ -1101,7 +1101,6 @@ export async function handleUserInput(session: FlowSessionData, waba: any, conta
     // Now we only match edges from interactive nodes (list/button/catalog/message)
     // so non-interactive nodes (condition/action/wait) never get cross-matched.
     const INTERACTIVE_NODE_TYPES = new Set(['list', 'message', 'catalog', 'Catalog', 'product_catalog', 'meta_flow', 'MetaFlow', 'appointment', 'payment', 'Payment']);
-    const nodes: any[] = session.flow.nodes || [];
 
     // BUG-H3 FIX: Strip the 'sel_' prefix added by the catalog fallback renderer
     // (see runCatalogNode: id: `sel_${c.id}`). The edges store the raw ID without sel_,
