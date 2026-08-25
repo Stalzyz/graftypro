@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "../../../../lib/db";
 import { getCurrentUser } from "../../../../lib/auth";
 import { AuthSecurityService } from "../../../../lib/security/auth-utils";
+import { SubscriptionNotificationService } from "../../../../lib/services/subscription-notification";
 export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
     const user = await getCurrentUser(request);
@@ -70,7 +71,6 @@ export async function GET(request: Request) {
                 }
             }
         }
-import { SubscriptionNotificationService } from "../../../../lib/services/subscription-notification";
 
         const subInfo = SubscriptionNotificationService.getSubscriptionInfo(workspace);
 
