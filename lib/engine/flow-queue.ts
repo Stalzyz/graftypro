@@ -15,8 +15,17 @@ import crypto from 'crypto';
 const QUEUE_NAME = 'flow-message-queue';
 const DEDUP_WINDOW_MS = 5_000; // 5 second dedup window
 
-// Dedup store: phone+hash → timestamp (in-process fallback)
+// Dedup store: hash → timestamp
 const dedupCache = new Map<string, number>();
+
+// BUG-L4 FIX: Periodically flush expired dedup entries to prevent memory accumulation.
+// Previously cleanup only ran when size > 1000, which is too infrequent for high traffic.
+setInterval(() => {
+    const cutoff = Date.now() - DEDUP_WINDOW_MS * 2;
+    for (const [k, t] of dedupCache.entries()) {
+        if (t < cutoff) dedupCache.delete(k);
+    }
+}, 60_000); // Flush every 60 seconds
 
 // -----------------------------------------------------------------------
 // Redis connection config (shared with existing queue.ts pattern)
@@ -75,13 +84,6 @@ function isDuplicate(phone: string, payload: any): boolean {
         return true;
     }
     dedupCache.set(key, Date.now());
-    // Cleanup old entries
-    if (dedupCache.size > 1000) {
-        const cutoff = Date.now() - DEDUP_WINDOW_MS * 2;
-        dedupCache.forEach((t, k) => {
-            if (t < cutoff) dedupCache.delete(k);
-        });
-    }
     return false;
 }
 
@@ -110,24 +112,32 @@ export async function enqueueMessage(msg: QueuedMessage): Promise<void> {
     if (isDuplicate(phone, msg.payload)) return;
 
     if (metaApiQueue) {
-        const type = msg.payload.template?.name ? 'SEND_TEMPLATE' : 
-                     (msg.payload.interactive ? 'SEND_INTERACTIVE' : 'SEND_TEXT');
+        // BUG-H2 FIX: Determine job type BEFORE spreading msg.payload.
+        // Previously `...msg.payload` spread `{ type: 'text' }` from the WhatsApp
+        // payload OVER the explicitly set type ('SEND_TEXT'), so the worker's
+        // switch(type) never matched 'SEND_TEXT' — messages silently fell through.
+        // Fix: use a separate `jobType` variable for the BullMQ job type,
+        // and keep `payload` as the raw WhatsApp API payload (never mix the two).
+        const jobType = msg.payload.template?.name ? 'SEND_TEMPLATE' :
+                        (msg.payload.interactive ? 'SEND_INTERACTIVE' : 'SEND_TEXT');
 
         await metaApiQueue.add('flow-message', {
-            type,
+            type: jobType,   // ← BullMQ job routing type (SEND_TEXT / SEND_TEMPLATE / SEND_INTERACTIVE)
             payload: {
                 workspaceId: msg.workspaceId,
                 contactId: msg.contactId,
                 phoneNumberId: msg.phoneNumberId,
                 accessToken: msg.accessToken,
                 to: phone,
-                ...msg.payload 
+                ...msg.payload  // ← WhatsApp API payload (type: 'text'/'template'/'interactive')
+                                // NOTE: This spread's `type` key is the Meta API message type.
+                                // The job routing type is safely stored in the outer `type` field.
             }
         }, {
             priority: PRIORITY_HIGH,
             jobId: `FLOW-${msg.sessionId}-${msg.nodeId}-${messageHash(phone, msg.payload)}`
         });
-        console.log(`[FlowQueue] 🚀 Bridged to Unified Meta Queue for ${phone} (Priority: HIGH)`);
+        console.log(`[FlowQueue] 🚀 Bridged to Unified Meta Queue for ${phone} (Priority: HIGH, JobType: ${jobType})`);
     } else {
         console.warn('[FlowQueue] ⚠️ Global queue unavailable, falling back to direct send');
         await sendMessageDirect(msg);

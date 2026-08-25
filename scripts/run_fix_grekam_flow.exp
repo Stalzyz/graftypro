@@ -1,0 +1,12 @@
+#!/usr/bin/expect -f
+set SERVER    "root@72.61.231.187"
+set PASS      "Photoshop09@"
+set REMOTE    "/root/grafty_bsp"
+set timeout   600
+
+puts "\n🚀 Pruning orphan end nodes from Grekam flow in VPS database..."
+spawn ssh -o StrictHostKeyChecking=no -o PubkeyAuthentication=no $SERVER "cd $REMOTE && docker compose -f docker-compose.prod.yml exec -T web node -e \"const { PrismaClient } = require('@prisma/client'); const p = new PrismaClient(); async function main() { const flowId = 'grekam-ecommerce-flow-01'; const flow = await p.flow.findUnique({ where: { id: flowId } }); if (!flow) return console.log('Flow not found'); const nodes = flow.nodes || \[\]; const edges = flow.edges || \[\]; const connectedTargets = new Set(edges.map(e => e.target)); const cleanedNodes = nodes.filter(n => !(n.type === 'end' && !connectedTargets.has(n.id))); await p.flow.update({ where: { id: flowId }, data: { nodes: cleanedNodes, status: 'PUBLISHED' } }); console.log('SUCCESS: Pruned orphan end nodes and published flow'); } main();\""
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}

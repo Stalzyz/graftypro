@@ -1,0 +1,17 @@
+#!/usr/bin/expect -f
+set SERVER    "root@72.61.231.187"
+set PASS      "Photoshop09@"
+set REMOTE    "/root/grafty_bsp"
+set timeout   60
+
+spawn ssh -o StrictHostKeyChecking=no -o PubkeyAuthentication=no $SERVER
+expect {
+    "password:" { send "$PASS\r" }
+}
+
+expect "# "
+send "cd $REMOTE && docker compose -f docker-compose.prod.yml exec -T postgres psql -U grafty -d grafty -c \"UPDATE \\\"Flow\\\" SET status = 'PUBLISHED', updated_at = NOW() WHERE name = 'Fit Zone' AND status = 'DRAFT'; SELECT id, name, status FROM \\\"Flow\\\" ORDER BY updated_at DESC;\"\r"
+expect "# "
+
+send "exit\r"
+expect eof

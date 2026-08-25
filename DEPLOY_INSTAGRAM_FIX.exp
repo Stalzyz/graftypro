@@ -1,0 +1,63 @@
+#!/usr/bin/expect -f
+set SERVER "root@72.61.231.187"
+set PASS "Photoshop09@"
+set REMOTE "/root/grafty_bsp"
+set timeout -1
+
+puts "\n============================================="
+puts "🚀 DEPLOYING: Instagram Webhook Hotfix"
+puts "=============================================\n"
+
+puts "==> Uploading: instagram webhook route.ts"
+spawn scp -o StrictHostKeyChecking=no -o PreferredAuthentications=password -o PubkeyAuthentication=no \
+    app/api/webhooks/instagram/route.ts \
+    $SERVER:$REMOTE/app/api/webhooks/instagram/route.ts
+expect "password:" { send "$PASS\r"; exp_continue } eof
+
+puts "==> Uploading: FlowPropertiesPanel.tsx"
+spawn scp -o StrictHostKeyChecking=no -o PreferredAuthentications=password -o PubkeyAuthentication=no \
+    components/flow-builder/FlowPropertiesPanel.tsx \
+    $SERVER:$REMOTE/components/flow-builder/FlowPropertiesPanel.tsx
+expect "password:" { send "$PASS\r"; exp_continue } eof
+
+puts "==> Uploading: trigger-engine.ts"
+spawn scp -o StrictHostKeyChecking=no -o PreferredAuthentications=password -o PubkeyAuthentication=no \
+    lib/engine/trigger-engine.ts \
+    $SERVER:$REMOTE/lib/engine/trigger-engine.ts
+expect "password:" { send "$PASS\r"; exp_continue } eof
+
+puts "==> Uploading: redis.ts"
+spawn scp -o StrictHostKeyChecking=no -o PreferredAuthentications=password -o PubkeyAuthentication=no \
+    lib/redis.ts \
+    $SERVER:$REMOTE/lib/redis.ts
+expect "password:" { send "$PASS\r"; exp_continue } eof
+
+puts "\n==> Files uploaded! Rebuilding & restarting..."
+spawn ssh -o StrictHostKeyChecking=no -o PreferredAuthentications=password -o PubkeyAuthentication=no $SERVER \
+    "cd $REMOTE && \
+     echo 'Building Next.js...' && \
+     docker compose -f docker-compose.prod.yml exec -T web npm run build < /dev/null 2>&1 | tail -5 || true && \
+     echo 'Restarting web and worker containers...' && \
+     docker compose -f docker-compose.prod.yml restart web worker && \
+     sleep 15 && \
+     docker compose -f docker-compose.prod.yml ps web worker && \
+     echo 'DEPLOY_COMPLETE'"
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    "DEPLOY_COMPLETE" { puts "\n✅ Deploy complete!"; exp_continue }
+    eof { }
+}
+
+puts "\n============================================="
+puts "✅ INSTAGRAM HOTFIX DEPLOYED TO VPS!"
+puts "============================================="
+puts "Fixes deployed:"
+puts "  1. Instagram webhook uses Flow Engine (not regex)"  
+puts "  2. Workspace scoped - uses Grekam's IG page"
+puts "  3. Flow trigger keywords: hi, hello, ecommerce, shopify..."
+puts "  4. Trigger hint text updated in Flow Builder"
+puts ""
+puts "⚠️  USER ACTION REQUIRED:"
+puts "   Go to Settings > Integrations > Connect Instagram"
+puts "   (Grekam workspace has NO Instagram credentials saved)"
+puts "============================================="

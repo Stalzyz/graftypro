@@ -1,0 +1,12 @@
+#!/usr/bin/expect -f
+set SERVER    "root@72.61.231.187"
+set PASS      "Photoshop09@"
+set REMOTE    "/root/grafty_bsp"
+set timeout   600
+
+puts "\nChecking ENV verify token and workspace details..."
+spawn ssh -o StrictHostKeyChecking=no -o PubkeyAuthentication=no $SERVER "cd $REMOTE && docker compose -f docker-compose.prod.yml exec -T web node -e \"console.log('ENV_VERIFY_TOKEN:', process.env.META_VERIFY_TOKEN || process.env.WEBHOOK_VERIFY_TOKEN || process.env.NEXT_PUBLIC_WEBHOOK_VERIFY_TOKEN || 'grafty_webhook_verify');\""
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}

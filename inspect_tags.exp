@@ -1,0 +1,37 @@
+#!/usr/bin/expect -f
+set SERVER "root@72.61.231.187"
+set PASS   "Photoshop09@"
+set timeout 60
+
+spawn ssh -o StrictHostKeyChecking=no -o PubkeyAuthentication=no $SERVER "cd /root/grafty_bsp && docker exec grafty_bsp-web-1 npx tsx -e \"
+const { PrismaClient } = require('@prisma/client');
+const p = new PrismaClient();
+async function run() {
+  // Sample contacts with tags in workspace 89b6c788
+  const contacts = await p.contact.findMany({
+    where: {
+      workspace_id: '89b6c788-d842-4bf6-8af9-bc02e84e76d2',
+      NOT: { tags: { equals: [] } }
+    },
+    select: { id: true, name: true, tags: true },
+    take: 20
+  });
+  console.log('Contacts with tags:', contacts.length);
+  contacts.forEach(c => console.log(' -', c.name, '|', JSON.stringify(c.tags)));
+
+  // Count contacts with comma-split tags (malformed: ['vip,lead'] instead of ['vip','lead'])
+  const all = await p.contact.findMany({
+    where: { workspace_id: '89b6c788-d842-4bf6-8af9-bc02e84e76d2' },
+    select: { id: true, tags: true }
+  });
+  const malformed = all.filter(c => c.tags.some(t => t.includes(',')));
+  console.log('\\nContacts with comma-in-tag (malformed):', malformed.length);
+  malformed.slice(0,5).forEach(c => console.log(' -', JSON.stringify(c.tags)));
+}
+run().catch(console.error).finally(() => p.\\\$disconnect());
+\" 2>&1 | tail -40"
+
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}

@@ -1,0 +1,44 @@
+#!/usr/bin/expect -f
+set SERVER    "root@72.61.231.187"
+set PASS      "Photoshop09@"
+set REMOTE    "/root/grafty_bsp"
+set timeout   600
+
+spawn ssh -o StrictHostKeyChecking=no -o PubkeyAuthentication=no $SERVER "cd $REMOTE && \
+echo '=== FIT ZONE FLOW INSPECTION ===' && \
+docker compose -f docker-compose.prod.yml exec -T web node -e \"
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
+async function run() {
+    const flow = await prisma.flow.findUnique({
+        where: { id: '501c3077-504c-415a-8417-30477e4d9454' }
+    });
+    console.log('FIT_ZONE_FLOW:', JSON.stringify(flow, null, 2));
+
+    const waba = await prisma.whatsAppAccount.findFirst({
+        where: { workspace_id: flow.workspace_id }
+    });
+    console.log('WABA_ACCOUNT:', JSON.stringify({
+        id: waba?.id,
+        workspace_id: waba?.workspace_id,
+        phone_number: waba?.phone_number,
+        phone_number_id: waba?.phone_number_id,
+        status: waba?.status,
+        hasToken: !!waba?.access_token
+    }, null, 2));
+
+    const messages = await prisma.message.findMany({
+        where: { workspace_id: flow.workspace_id },
+        take: 10,
+        orderBy: { created_at: 'desc' },
+        select: { id: true, type: true, direction: true, status: true, content: true, error_code: true, error_message: true, created_at: true }
+    });
+    console.log('WORKSPACE_MESSAGES:', JSON.stringify(messages, null, 2));
+}
+run().catch(console.error);
+\"
+"
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}

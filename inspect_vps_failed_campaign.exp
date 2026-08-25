@@ -1,0 +1,39 @@
+#!/usr/bin/expect -f
+set SERVER "root@72.61.231.187"
+set PASS "Photoshop09@"
+set timeout 30
+
+puts "=== 1. Workspace Info ==="
+spawn ssh -o StrictHostKeyChecking=no -o PubkeyAuthentication=no $SERVER "cd /root/grafty_bsp && docker compose -f docker-compose.prod.yml exec db psql -U postgres -d postgres -c \"SELECT id, name FROM workspaces WHERE id LIKE '3b04fc39%';\""
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}
+
+puts "\n=== 2. Recent Campaigns ==="
+spawn ssh -o StrictHostKeyChecking=no -o PubkeyAuthentication=no $SERVER "cd /root/grafty_bsp && docker compose -f docker-compose.prod.yml exec db psql -U postgres -d postgres -c \"SELECT id, workspace_id, name, template_name, status, total_audience, created_at FROM campaigns WHERE workspace_id LIKE '3b04fc39%' ORDER BY created_at DESC LIMIT 5;\""
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}
+
+puts "\n=== 3. Campaign Stats & Details ==="
+spawn ssh -o StrictHostKeyChecking=no -o PubkeyAuthentication=no $SERVER "cd /root/grafty_bsp && docker compose -f docker-compose.prod.yml exec db psql -U postgres -d postgres -c \"SELECT c.id, c.name, c.template_name, c.status as campaign_status, cs.sent, cs.delivered, cs.read, cs.failed FROM campaigns c LEFT JOIN campaign_stats cs ON c.id = cs.campaign_id WHERE c.workspace_id LIKE '3b04fc39%' ORDER BY c.created_at DESC LIMIT 5;\""
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}
+
+puts "\n=== 4. Failed Messages Error Details ==="
+spawn ssh -o StrictHostKeyChecking=no -o PubkeyAuthentication=no $SERVER "cd /root/grafty_bsp && docker compose -f docker-compose.prod.yml exec db psql -U postgres -d postgres -c \"SELECT id, status, error_code, error_message, content, created_at, failed_at FROM messages WHERE workspace_id LIKE '3b04fc39%' AND status = 'FAILED' ORDER BY created_at DESC LIMIT 10;\""
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}
+
+puts "\n=== 5. Campaign Logs in Worker/Web ==="
+spawn ssh -o StrictHostKeyChecking=no -o PubkeyAuthentication=no $SERVER "cd /root/grafty_bsp && docker compose -f docker-compose.prod.yml logs --tail=500 worker | grep -E '3b04fc39|customer_campaign|CAMPAIGN|Campaign|dispatch|failed|Error' | tail -n 40"
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}

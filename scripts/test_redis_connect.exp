@@ -1,0 +1,47 @@
+#!/usr/bin/expect -f
+set SERVER    "root@72.61.231.187"
+set PASS      "Photoshop09@"
+set REMOTE    "/root/grafty_bsp"
+set timeout   600
+
+spawn ssh -o StrictHostKeyChecking=no -o PubkeyAuthentication=no $SERVER "cd $REMOTE && \
+docker compose -f docker-compose.prod.yml exec -T web npx tsx -e \"
+import { redis } from './lib/redis';
+import { prisma } from './lib/db';
+import { FlowRunner } from './lib/engine/flow-runner';
+
+async function test() {
+    console.log('Redis status before:', redis.status);
+    if (redis.status === 'wait') {
+        console.log('Connecting to Redis...');
+        await redis.connect();
+        console.log('Redis status after:', redis.status);
+    }
+
+    const res = await redis.set('test_key', '1', 'PX', 10000, 'NX');
+    console.log('Redis set result:', res);
+
+    const fitZoneFlow = await prisma.flow.findFirst({ where: { name: 'Fit Zone' } });
+    const contact = await prisma.contact.findFirst({ where: { phone: '919150384501' } });
+
+    console.log('Testing FlowRunner with active Redis connection...');
+    const normMsg = {
+        phone: '919150384501',
+        type: 'text' as const,
+        value: 'join',
+        raw: { text: { body: 'join' } },
+        metaId: 'test_msg_' + Date.now(),
+        timestamp: new Date(),
+        phoneNumberId: '1237546716110204',
+        contactName: 'Test Contact'
+    };
+
+    await FlowRunner.processMessage(fitZoneFlow.workspace_id, contact.id, normMsg);
+}
+test().catch(console.error);
+\"
+"
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}

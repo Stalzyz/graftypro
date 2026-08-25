@@ -89,21 +89,35 @@ export async function releaseContactLock(contactId: string): Promise<void> {
 /**
  * Expires sessions older than SESSION_EXPIRE_HOURS.
  * Called lazily before fetching a session.
+ * BUG-M4 FIX: Merges existing state before closing instead of overwriting
+ * (previously this wiped all user-collected variables like name, email, order)
  */
 async function expireOldSessions(contactId: string): Promise<void> {
     try {
         const cutoff = new Date(Date.now() - SESSION_EXPIRE_HOURS * 60 * 60 * 1000);
-        await prisma.flowSession.updateMany({
+        // Fetch stale sessions first so we can merge-close them
+        const staleSessions = await prisma.flowSession.findMany({
             where: {
                 contact_id: contactId,
                 is_completed: false,
                 updated_at: { lt: cutoff },
             },
-            data: {
-                is_completed: true,
-                state: { closed_reason: 'EXPIRED_24H' } as any,
-            },
+            select: { id: true, state: true },
         });
+        for (const s of staleSessions) {
+            await prisma.flowSession.update({
+                where: { id: s.id },
+                data: {
+                    is_completed: true,
+                    // CRITICAL: merge, not overwrite — preserve all user variables
+                    state: {
+                        ...((s.state as Record<string, any>) || {}),
+                        closed_reason: 'EXPIRED_24H',
+                        closed_at: new Date().toISOString(),
+                    } as any,
+                },
+            });
+        }
     } catch (e) {
         console.warn('[SessionManager] Could not expire old sessions:', e);
     }
@@ -123,6 +137,11 @@ export async function getActiveSession(
         where: {
             contact_id: contactId,
             is_completed: false,
+            // BUG-C2 FIX: Exclude waiting (paused/delayed) sessions.
+            // A waiting session is in the middle of a Wait node delay.
+            // Only the scheduled worker resume cron should advance these.
+            // Allowing user input to continue a waiting session bypasses the delay.
+            is_waiting: false,
         },
         include: { flow: true },
         orderBy: { created_at: 'desc' },
@@ -312,4 +331,67 @@ export async function pauseSession(
         } as any,
     });
     console.log(`[SessionManager] ⏸️ Session ${sessionId} paused until ${nextRunAt.toISOString()}`);
+}
+
+/**
+ * BUG-M1 FIX: Resumes a paused (waiting) session.
+ * Clears the is_waiting flag and next_run_at so the session is live again.
+ * Called by the wait-node resume worker cron.
+ */
+export async function resumeSession(
+    sessionId: string
+): Promise<FlowSessionData | null> {
+    try {
+        const session = await prisma.flowSession.update({
+            where: { id: sessionId },
+            data: {
+                is_waiting: false,
+                next_run_at: null,
+            } as any,
+            include: { flow: true },
+        });
+        return {
+            id: session.id,
+            flow_id: session.flow_id,
+            contact_id: session.contact_id,
+            workspace_id: session.flow.workspace_id,
+            current_node_id: session.current_node_id,
+            state: (session.state as Record<string, any>) || {},
+            is_completed: session.is_completed,
+            is_waiting: false,
+            flow: session.flow,
+        };
+    } catch (e) {
+        console.error(`[SessionManager] Could not resume session ${sessionId}:`, e);
+        return null;
+    }
+}
+
+/**
+ * BUG-C3 SUPPORT: Finds all sessions whose wait delay has expired and are ready to resume.
+ * Used by the worker cron to restart paused flows.
+ */
+export async function getExpiredWaitingSessions(): Promise<FlowSessionData[]> {
+    const now = new Date();
+    const sessions = await prisma.flowSession.findMany({
+        where: {
+            is_completed: false,
+            is_waiting: true,
+            next_run_at: { lte: now },
+        } as any,
+        include: { flow: true },
+        take: 50, // Process max 50 at a time per tick
+    });
+
+    return sessions.map((s: any) => ({
+        id: s.id,
+        flow_id: s.flow_id,
+        contact_id: s.contact_id,
+        workspace_id: s.flow.workspace_id,
+        current_node_id: s.current_node_id,
+        state: (s.state as Record<string, any>) || {},
+        is_completed: s.is_completed,
+        is_waiting: true,
+        flow: s.flow,
+    }));
 }

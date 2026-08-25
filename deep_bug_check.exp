@@ -1,0 +1,25 @@
+#!/usr/bin/expect -f
+set SERVER "root@72.61.231.187"
+set PASS "Photoshop09@"
+set timeout 30
+
+puts "=== 1. Summary of Message Failure Error Codes in Production ==="
+spawn ssh -o StrictHostKeyChecking=no -o PubkeyAuthentication=no $SERVER "docker exec -i grafty_postgres psql -U user -d wabot_bsp -c \"SELECT status, error_code, error_message, count(*) FROM messages WHERE status = 'FAILED' GROUP BY status, error_code, error_message ORDER BY count DESC LIMIT 15;\""
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}
+
+puts "\n=== 2. Campaign Status Overview ==="
+spawn ssh -o StrictHostKeyChecking=no -o PubkeyAuthentication=no $SERVER "docker exec -i grafty_postgres psql -U user -d wabot_bsp -c \"SELECT status, count(*) FROM campaigns GROUP BY status;\""
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}
+
+puts "\n=== 3. Recent 50 Worker Error Logs ==="
+spawn ssh -o StrictHostKeyChecking=no -o PubkeyAuthentication=no $SERVER "docker compose -f /root/grafty_bsp/docker-compose.prod.yml logs --tail=500 worker | grep -iE 'error|fatal|exception|fail|reject|invalid' | tail -n 40"
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}

@@ -1,0 +1,22 @@
+#!/usr/bin/expect -f
+set SERVER "root@72.61.231.187"
+set PASS "Photoshop09@"
+set timeout 60
+
+spawn ssh -o StrictHostKeyChecking=no -o PreferredAuthentications=password -o PubkeyAuthentication=no $SERVER \
+    "docker compose -f /root/grafty_bsp/docker-compose.prod.yml exec -T web node -e \"
+        const { PrismaClient } = require('@prisma/client');
+        const prisma = new PrismaClient();
+        prisma.\\\$queryRaw\\\`
+            SELECT enumlabel FROM pg_enum 
+            JOIN pg_type ON pg_enum.enumtypid = pg_type.oid 
+            WHERE typname = 'IntegrationType';
+        \\\`.then(res => {
+            console.log('VPS DB enum values:', res);
+        }).catch(e => console.error(e.message)).finally(() => prisma.\\\$disconnect());
+    \""
+
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof { }
+}

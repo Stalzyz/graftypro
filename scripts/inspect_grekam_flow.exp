@@ -1,0 +1,12 @@
+#!/usr/bin/expect -f
+set SERVER    "root@72.61.231.187"
+set PASS      "Photoshop09@"
+set REMOTE    "/root/grafty_bsp"
+set timeout   600
+
+puts "\n🔍 Inspecting Grekam flow nodes & edges in production DB..."
+spawn ssh -o StrictHostKeyChecking=no -o PubkeyAuthentication=no $SERVER "cd $REMOTE && docker compose -f docker-compose.prod.yml exec -T web node -e \"const { PrismaClient } = require('@prisma/client'); const p = new PrismaClient(); async function main() { const flows = await p.flow.findMany({ where: { workspace_id: '89b6c788-d842-4bf6-8af9-bc02e84e76d2' } }); console.log(JSON.stringify(flows, null, 2)); } main();\""
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}

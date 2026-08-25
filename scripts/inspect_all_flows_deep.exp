@@ -1,0 +1,34 @@
+#!/usr/bin/expect -f
+set SERVER    "root@72.61.231.187"
+set PASS      "Photoshop09@"
+set REMOTE    "/root/grafty_bsp"
+set timeout   600
+
+spawn ssh -o StrictHostKeyChecking=no -o PubkeyAuthentication=no $SERVER "cd $REMOTE && \
+echo '=== DETAILED FLOW INSPECTION ===' && \
+docker compose -f docker-compose.prod.yml exec -T web node -e \"
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
+async function run() {
+    const flows = await prisma.flow.findMany({
+        select: { id: true, name: true, status: true, trigger_keyword: true, workspace_id: true, nodes: true, edges: true }
+    });
+    for (const f of flows) {
+        console.log('--------------------------------------------');
+        console.log('FLOW:', f.name, '(', f.id, ')');
+        console.log('STATUS:', f.status);
+        console.log('TRIGGER KEYWORD:', f.trigger_keyword);
+        console.log('WORKSPACE:', f.workspace_id);
+        console.log('NODES COUNT:', Array.isArray(f.nodes) ? f.nodes.length : 0);
+        console.log('NODES:', JSON.stringify(f.nodes, null, 2));
+        console.log('EDGES COUNT:', Array.isArray(f.edges) ? f.edges.length : 0);
+        console.log('EDGES:', JSON.stringify(f.edges, null, 2));
+    }
+}
+run().catch(console.error);
+\"
+"
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}

@@ -406,7 +406,7 @@ function IntegrationsContent() {
                                 <p>1. Go to <a href="https://business.facebook.com/settings" target="_blank" rel="noreferrer" className="text-indigo-600 underline font-bold">Meta Business Manager Settings</a> &gt; <strong>Users</strong> &gt; <strong>System Users</strong>.</p>
                                 <p>2. Click <strong>Add System User</strong> (Name: Grafty Automation, Role: Admin).</p>
                                 <p>3. Click <strong>Add Assets</strong> &gt; Select your Facebook Page & Instagram Account &gt; Toggle <strong>Full Control</strong>.</p>
-                                <p>4. Click <strong>Generate New Token</strong> &gt; Select your Meta App and check the following permissions:</p>
+                                <p>4. Click <strong>Generate New Token</strong> &gt; Select your Meta App (choose <strong>Grafty Pro</strong> or App ID: <code className="bg-gray-100 px-1.5 py-0.5 rounded font-mono font-bold text-rose-600">{process.env.NEXT_PUBLIC_META_APP_ID || "1183066783900270"}</code>) and check the following permissions:</p>
                                 <div className="p-3 bg-gray-50 rounded-xl border border-gray-200 font-mono text-[11px] text-gray-700 space-y-1">
                                     <div>✔ instagram_basic</div>
                                     <div>✔ instagram_manage_messages</div>

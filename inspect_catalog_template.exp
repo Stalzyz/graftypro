@@ -1,0 +1,11 @@
+#!/usr/bin/expect -f
+set SERVER "root@72.61.231.187"
+set PASS "Photoshop09@"
+set timeout 30
+
+puts "=== Template 'catalog' Component Structure ==="
+spawn ssh -o StrictHostKeyChecking=no -o PubkeyAuthentication=no $SERVER "docker exec -i grafty_postgres psql -U user -d wabot_bsp -c \"SELECT id, name, category, language, status, components FROM templates WHERE workspace_id LIKE '3b04fc39%' AND name = 'catalog';\""
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}

@@ -94,8 +94,11 @@ export async function POST(req: Request) {
 
         return NextResponse.json({ status: "success" });
     } catch (e: any) {
-        console.error("📩 [WEBHOOK_CRITICAL_FAIL]:", e.message);
-        return NextResponse.json({ error: "Internal Failure" }, { status: 500 });
+        // CRITICAL: Always return 200 to Meta — a 500 triggers infinite retries
+        // that permanently re-deliver the same message and re-trigger flows.
+        // Log the error for debugging but ACK Meta unconditionally.
+        console.error("📩 [WEBHOOK_CRITICAL_FAIL]:", e.message, e.stack);
+        return NextResponse.json({ status: "ack", note: "internal_error" }, { status: 200 });
     }
 }
 

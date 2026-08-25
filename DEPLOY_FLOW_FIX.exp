@@ -1,48 +1,40 @@
 #!/usr/bin/expect -f
-# =====================================================================
-# HOTFIX: Flow Cost Summation / list_select_id Fix
-# =====================================================================
+set SERVER    "root@72.61.231.187"
+set PASS      "Photoshop09@"
+set REMOTE    "/root/grafty_bsp"
+set timeout   900
 
-set SERVER "root@72.61.231.187"
-set PASS "Photoshop09@"
-set REMOTE "/root/grafty_bsp"
-set timeout 60
-
-proc scp_file {local_path remote_path server pass} {
-    spawn scp -o StrictHostKeyChecking=no -o PubkeyAuthentication=no -o PasswordAuthentication=yes $local_path $server:$remote_path
-    expect {
-        "password:" { send "$pass\r"; exp_continue }
-        "passphrase" { send "$pass\r"; exp_continue }
-        eof
-    }
-    wait
-}
-
-proc ssh_cmd {server pass cmd} {
-    spawn ssh -o StrictHostKeyChecking=no -o PubkeyAuthentication=no -o PasswordAuthentication=yes $server $cmd
-    expect {
-        "password:" { send "$pass\r"; exp_continue }
-        "passphrase" { send "$pass\r"; exp_continue }
-        eof
-    }
-    wait
-}
-
-puts "\n=============================================\n"
-puts "DEPLOYING FLOW COST SUMMATION HOTFIX\n"
-puts "=============================================\n"
-
-puts "==> \[1/2\] Uploading lib/engine/flow-executor.ts..."
-scp_file "lib/engine/flow-executor.ts" "$REMOTE/lib/engine/flow-executor.ts" $SERVER $PASS
-
-puts "==> \[2/2\] Rebuilding Production Docker Container..."
-set timeout -1
-spawn ssh -o StrictHostKeyChecking=no -o PubkeyAuthentication=no -o PasswordAuthentication=yes $SERVER "cd $REMOTE && docker compose -f docker-compose.prod.yml down && docker compose -f docker-compose.prod.yml up -d --build"
+spawn ssh -o StrictHostKeyChecking=no -o PubkeyAuthentication=no $SERVER
 expect {
-    "password:" { send "$PASS\r"; exp_continue }
-    "passphrase" { send "$PASS\r"; exp_continue }
-    eof
+    "password:" { send "$PASS\r" }
 }
-wait
 
-puts "\n=== DEPLOYMENT COMPLETE ==="
+expect "# "
+send "cd $REMOTE && git pull origin main\r"
+expect "# "
+
+send "docker compose -f docker-compose.prod.yml build --no-cache web\r"
+set timeout 600
+expect "# "
+
+send "docker compose -f docker-compose.prod.yml up -d --force-recreate web worker\r"
+set timeout 120
+expect "# "
+
+send "sleep 30\r"
+set timeout 60
+expect "# "
+
+send {docker compose -f docker-compose.prod.yml exec -T web npx ts-node -e "const {PrismaClient}=require('@prisma/client');const p=new PrismaClient();p.flow.updateMany({where:{name:{in:['Fit Zone']},status:'DRAFT'},data:{status:'PUBLISHED'}}).then(r=>console.log('Updated:',r.count)).catch(console.error)"}
+send "\r"
+set timeout 60
+expect "# "
+
+send "docker compose -f docker-compose.prod.yml ps\r"
+expect "# "
+
+send "docker compose -f docker-compose.prod.yml logs --tail=20 worker\r"
+expect "# "
+
+send "exit\r"
+expect eof

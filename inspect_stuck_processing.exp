@@ -1,0 +1,11 @@
+#!/usr/bin/expect -f
+set SERVER "root@72.61.231.187"
+set PASS "Photoshop09@"
+set timeout 30
+
+puts "=== Stuck PROCESSING Campaign Details ==="
+spawn ssh -o StrictHostKeyChecking=no -o PubkeyAuthentication=no $SERVER "docker exec -i grafty_postgres psql -U user -d wabot_bsp -c \"SELECT c.id, c.workspace_id, w.name as workspace_name, c.name, c.template_name, c.status, c.created_at, cs.total, cs.sent, cs.failed FROM campaigns c LEFT JOIN workspaces w ON c.workspace_id = w.id LEFT JOIN campaign_stats cs ON c.id = cs.campaign_id WHERE c.status = 'PROCESSING';\""
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}

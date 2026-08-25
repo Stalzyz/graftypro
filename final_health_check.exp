@@ -1,0 +1,30 @@
+#!/usr/bin/expect -f
+set SERVER "root@72.61.231.187"
+set PASS   "Photoshop09@"
+set timeout 90
+
+spawn ssh -o StrictHostKeyChecking=no -o PubkeyAuthentication=no $SERVER "cd /root/grafty_bsp && docker exec grafty_bsp-web-1 npx tsx -e \"
+const { PrismaClient } = require('@prisma/client');
+const p = new PrismaClient();
+async function run() {
+  const stuck = await p.campaign.findMany({
+    where: { workspace_id: '89b6c788-d842-4bf6-8af9-bc02e84e76d2', status: 'PROCESSING' },
+    select: { id: true, name: true, status: true }
+  });
+  console.log('PROCESSING campaigns remaining:', stuck.length);
+  const failed = await p.campaign.findMany({
+    where: { workspace_id: '89b6c788-d842-4bf6-8af9-bc02e84e76d2', status: 'FAILED' },
+    select: { id: true, name: true, updated_at: true },
+    orderBy: { updated_at: 'desc' },
+    take: 5
+  });
+  console.log('Recently FAILED (reset from stuck):', failed.length);
+  failed.forEach(c => console.log(' -', c.name, new Date(c.updated_at).toISOString()));
+}
+run().catch(console.error).finally(() => p.\\\$disconnect());
+\" 2>&1 | tail -20"
+
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}

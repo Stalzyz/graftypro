@@ -1,0 +1,18 @@
+#!/usr/bin/expect -f
+set SERVER "root@72.61.231.187"
+set PASS "Photoshop09@"
+set timeout 30
+
+puts "=== 1. Workspace & Campaign Info ==="
+spawn ssh -o StrictHostKeyChecking=no -o PubkeyAuthentication=no $SERVER "docker exec -i grafty_postgres psql -U user -d wabot_bsp -c \"SELECT id, name, template_name, variable_mapping, header_media_url, status FROM campaigns WHERE workspace_id LIKE '3b04fc39%' ORDER BY created_at DESC LIMIT 3;\""
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}
+
+puts "\n=== 2. Template Definition in DB ==="
+spawn ssh -o StrictHostKeyChecking=no -o PubkeyAuthentication=no $SERVER "docker exec -i grafty_postgres psql -U user -d wabot_bsp -c \"SELECT id, name, category, language, status, components, variables FROM templates WHERE workspace_id LIKE '3b04fc39%' ORDER BY updated_at DESC LIMIT 5;\""
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}

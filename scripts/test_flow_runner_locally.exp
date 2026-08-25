@@ -1,0 +1,54 @@
+#!/usr/bin/expect -f
+set SERVER    "root@72.61.231.187"
+set PASS      "Photoshop09@"
+set REMOTE    "/root/grafty_bsp"
+set timeout   600
+
+spawn ssh -o StrictHostKeyChecking=no -o PubkeyAuthentication=no $SERVER "cd $REMOTE && \
+docker compose -f docker-compose.prod.yml exec -T web npx tsx -e \"
+import { prisma } from './lib/db';
+import { FlowRunner } from './lib/engine/flow-runner';
+
+async function test() {
+    const flows = await prisma.flow.findMany();
+    console.log('Total flows in DB:', flows.length);
+    flows.forEach(f => console.log('Flow:', f.name, '| Status:', f.status, '| Keyword:', f.trigger_keyword, '| WS:', f.workspace_id));
+
+    const fitZoneFlow = flows.find(f => f.name === 'Fit Zone');
+    if (!fitZoneFlow) {
+        console.log('Fit Zone not found');
+        return;
+    }
+
+    const contact = await prisma.contact.findFirst({
+        where: { phone: '919150384501' }
+    });
+
+    console.log('Testing contact:', contact ? contact.phone : 'none', 'WS:', fitZoneFlow.workspace_id);
+
+    const normMsg = {
+        phone: '919150384501',
+        type: 'text' as const,
+        value: 'join',
+        raw: { text: { body: 'join' } },
+        metaId: 'test_msg_' + Date.now(),
+        timestamp: new Date(),
+        phoneNumberId: '1237546716110204',
+        contactName: 'Test Contact'
+    };
+
+    console.log('--- Triggering FlowRunner.processMessage ---');
+    try {
+        await FlowRunner.processMessage(fitZoneFlow.workspace_id, contact.id, normMsg);
+        console.log('FlowRunner finished execution successfully.');
+    } catch (e) {
+        console.error('FlowRunner CRASHED:', e);
+    }
+}
+test().catch(console.error);
+\"
+"
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}

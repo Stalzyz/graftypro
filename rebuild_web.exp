@@ -1,0 +1,20 @@
+#!/usr/bin/expect -f
+set SERVER "root@72.61.231.187"
+set PASS   "Photoshop09@"
+set timeout 300
+
+spawn ssh -o StrictHostKeyChecking=no -o PubkeyAuthentication=no $SERVER "
+cd /root/grafty_bsp && \
+echo '=== Rebuilding web container with tag fix ===' && \
+docker compose -f docker-compose.prod.yml build --no-cache web 2>&1 | tail -20 && \
+echo '=== Recreating containers ===' && \
+docker compose -f docker-compose.prod.yml up -d --no-build web worker && \
+sleep 15 && \
+echo '=== Container status ===' && \
+docker compose -f docker-compose.prod.yml ps --format 'table {{.Name}}\t{{.Status}}'
+"
+
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}

@@ -473,17 +473,23 @@ export default function FlowPropertiesPanel({ selectedNode, onChange, onClose, o
                 {selectedNode.type === 'start' && (
                     <div className="pt-2 space-y-4">
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Trigger Keyword (Live)</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Trigger Keywords</label>
                             <input
                                 type="text"
                                 value={content}
-                                onChange={(e) => handleUpdate("content", e.target.value.toUpperCase())}
-                                className="w-full border border-gray-300 rounded-lg p-2 text-sm font-black outline-none focus:ring-2 focus:ring-blue-500 bg-blue-50/30"
-                                placeholder="e.g. MENU, START, HI"
+                                onChange={(e) => handleUpdate("content", e.target.value)}
+                                className="w-full border border-gray-300 rounded-lg p-2 text-sm font-semibold outline-none focus:ring-2 focus:ring-blue-500 bg-blue-50/30"
+                                placeholder="e.g. hi, hello, menu, start"
                             />
-                            <p className="text-[10px] text-blue-600 mt-1.5 font-medium leading-tight">
-                                💡 This is the EXACT word the customer sends to start this flow. 
-                            </p>
+                            <div className="mt-2 p-2.5 bg-blue-50 rounded-lg border border-blue-100 space-y-1.5">
+                                <p className="text-[11px] text-blue-700 font-semibold">💡 How trigger keywords work:</p>
+                                <ul className="text-[10px] text-blue-600 space-y-0.5 list-none">
+                                    <li>✅ <strong>Case-insensitive</strong> — "HI", "Hi", "hi" all work</li>
+                                    <li>✅ <strong>Multiple keywords</strong> — separate with commas: <code className="bg-blue-100 px-1 rounded">hi, hello, menu</code></li>
+                                    <li>✅ <strong>Flexible matching</strong> — triggers if the message <em>contains</em> the keyword</li>
+                                    <li>ℹ️ Works on both WhatsApp &amp; Instagram DMs</li>
+                                </ul>
+                            </div>
                         </div>
                     </div>
                 )}

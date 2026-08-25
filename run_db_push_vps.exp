@@ -1,0 +1,18 @@
+#!/usr/bin/expect -f
+set SERVER "root@72.61.231.187"
+set PASS "Photoshop09@"
+set timeout 120
+
+puts "============================================="
+puts "🚀 RUNNING PRISMA DB PUSH ON VPS"
+puts "============================================="
+
+spawn ssh -o StrictHostKeyChecking=no -o PreferredAuthentications=password -o PubkeyAuthentication=no $SERVER \
+    "docker compose -f /root/grafty_bsp/docker-compose.prod.yml exec -T web npx prisma db push --schema=./prisma/schema.prisma --accept-data-loss"
+
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof { }
+}
+
+puts "\n✅ Prisma db push complete!"

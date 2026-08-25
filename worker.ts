@@ -51,10 +51,72 @@ const REDIS_CONNECTION = {
             HealthMonitorService.runGlobalHealthCheck().catch(console.error);
         }, 6 * 60 * 60 * 1000);
 
+        // ─────────────────────────────────────────────────────────────
+        // BUG-C3 FIX: Wait Node Resume Engine
+        // Previously, pauseSession() set next_run_at but NOTHING ever
+        // resumed these sessions — they were stuck forever. This cron
+        // polls every 60 seconds for sessions whose delay has expired
+        // and resumes their flow execution from the next node.
+        // ─────────────────────────────────────────────────────────────
+        const runWaitResumeEngine = async () => {
+            try {
+                const { getExpiredWaitingSessions, resumeSession } = await import("@/lib/engine/session-manager");
+                const { executeFrom } = await import("@/lib/engine/flow-executor");
+
+                const expiredSessions = await getExpiredWaitingSessions();
+                if (expiredSessions.length > 0) {
+                    console.log(`[WaitResume] ⏰ Found ${expiredSessions.length} expired wait session(s) to resume`);
+                }
+
+                for (const session of expiredSessions) {
+                    try {
+                        // 1. Clear the is_waiting flag
+                        const liveSession = await resumeSession(session.id);
+                        if (!liveSession) continue;
+
+                        // 2. Load the WABA for this workspace
+                        const waba = await prisma.whatsAppAccount.findFirst({
+                            where: { workspace_id: session.workspace_id },
+                        });
+                        if (!waba) {
+                            console.warn(`[WaitResume] No WABA found for workspace ${session.workspace_id}`);
+                            continue;
+                        }
+
+                        // 3. Load the contact
+                        const contact = await prisma.contact.findUnique({
+                            where: { id: session.contact_id },
+                            include: { workspace: { select: { plan_details: true } } },
+                        });
+                        if (!contact) {
+                            console.warn(`[WaitResume] Contact ${session.contact_id} not found`);
+                            continue;
+                        }
+
+                        // 4. Continue execution from the current node (post-wait)
+                        console.log(`[WaitResume] ▶️ Resuming session ${session.id} at node "${liveSession.current_node_id}"`);
+                        await executeFrom(liveSession, waba, contact, liveSession.current_node_id, null, 0);
+                        console.log(`[WaitResume] ✅ Session ${session.id} resumed successfully`);
+                    } catch (e: any) {
+                        console.error(`[WaitResume] ❌ Failed to resume session ${session.id}:`, e.message);
+                    }
+                }
+            } catch (e: any) {
+                console.error("[WaitResume] ❌ Resume engine error:", e.message);
+            }
+        };
+
+        // Run immediately on startup (catches any sessions that expired while server was down)
+        runWaitResumeEngine().catch(console.error);
+        // Then poll every 60 seconds
+        setInterval(runWaitResumeEngine, 60_000);
+        console.log("⏰ [Worker] Wait-Node Resume Engine started (every 60s)");
+
     } catch (err) {
         console.error("❌ [Worker] CRITICAL: DB connection failed!", err);
     }
 })();
+
 
 // ---------------------------------------------------------
 // 1. META API WORKER (Prioritized Outbound Layer)

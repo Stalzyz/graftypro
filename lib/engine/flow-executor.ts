@@ -211,13 +211,36 @@ async function runConditionNode(ctx: ExecutionContext, node: any, edges: any[], 
     const op = data.operator || 'contains';
     const condType = data.conditionType || 'message_body';
 
-    let passed = false;
-    if (condType === 'message_body') {
-        if (op === 'equals') passed = lastInput === expected;
-        else if (op === 'contains') passed = lastInput.includes(expected);
-        else if (op === 'starts_with') passed = lastInput.startsWith(expected);
-        else if (op === 'not_equals') passed = lastInput !== expected;
+    // BUG-H1 + BUG-M2 FIX: Support session_variable conditions and all operators.
+    // Previously only 'message_body' conditionType was evaluated — session_variable
+    // conditions always returned false, silently breaking vendor-built flows.
+    let subject = lastInput; // default: check the last user message
+    if (condType === 'session_variable') {
+        const varKey = (data.variableKey || data.key || '').trim();
+        subject = String(session.state?.[varKey] ?? '').toLowerCase();
+    } else if (condType === 'contact_field') {
+        const fieldKey = (data.fieldKey || data.key || '').trim();
+        subject = String((contact as any)[fieldKey] ?? '').toLowerCase();
     }
+
+    let passed = false;
+    switch (op) {
+        case 'equals':       passed = subject === expected; break;
+        case 'not_equals':   passed = subject !== expected; break;
+        case 'contains':     passed = subject.includes(expected); break;
+        case 'not_contains': passed = !subject.includes(expected); break;
+        case 'starts_with':  passed = subject.startsWith(expected); break;
+        case 'ends_with':    passed = subject.endsWith(expected); break;
+        case 'is_empty':     passed = subject.trim() === ''; break;
+        case 'is_not_empty': passed = subject.trim() !== ''; break;
+        case 'greater_than': passed = parseFloat(subject) > parseFloat(expected); break;
+        case 'less_than':    passed = parseFloat(subject) < parseFloat(expected); break;
+        case 'greater_eq':   passed = parseFloat(subject) >= parseFloat(expected); break;
+        case 'less_eq':      passed = parseFloat(subject) <= parseFloat(expected); break;
+        default:             passed = subject.includes(expected); break;
+    }
+
+    console.log(`[ConditionNode] condType=${condType} subject="${subject}" op=${op} expected="${expected}" → ${passed}`);
 
     const handleId = passed ? 'true' : 'false';
     const edge = edges.find((e: any) => e.source === node.id && e.sourceHandle === handleId);
@@ -289,7 +312,10 @@ async function runActionNode(ctx: ExecutionContext, node: any): Promise<void> {
                 const sanitized = expr.replace(/[^0-9+\-*/.() ]/g, '');
                 // eslint-disable-next-line no-new-func
                 const result = Function(`"use strict"; return (${sanitized})`)();
-                const newState = await updateSessionState(ctx.session.id, ctx.session.state, { [key]: String(Math.round(result)) });
+                // BUG-L3 FIX: Preserve up to 2 decimal places instead of always rounding to integer.
+                // Math.round() was killing currency/GST calculations (199.99 * 1.18 = 235, not 235.99).
+                const rounded = Math.round(result * 100) / 100;
+                const newState = await updateSessionState(ctx.session.id, ctx.session.state, { [key]: String(rounded) });
                 ctx.session.state = newState;
             } catch (e: any) {
                 console.error(`[FlowEngine] compute node failed: ${e.message}`);
@@ -355,7 +381,17 @@ async function runActionNode(ctx: ExecutionContext, node: any): Promise<void> {
                             displayValue = v.map(item => String(item).replace(/^\d+_/, '').replace(/_/g, ' ')).join(', ');
                         }
 
-                        return `<tr><td style="padding:6px 12px;font-weight:bold;color:#555;border-bottom:1px solid #f0f0f0">${displayKey}</td><td style="padding:6px 12px;border-bottom:1px solid #f0f0f0">${displayValue}</td></tr>`;
+                        // BUG-L2 FIX: HTML-escape user-supplied values to prevent XSS injection
+                        // in the email body. A malicious user could type <script>...</script>
+                        // as their name and inject HTML into sent notification emails.
+                        const escapeHtml = (s: string) => s
+                            .replace(/&/g, '&amp;')
+                            .replace(/</g, '&lt;')
+                            .replace(/>/g, '&gt;')
+                            .replace(/"/g, '&quot;')
+                            .replace(/'/g, '&#x27;');
+
+                        return `<tr><td style="padding:6px 12px;font-weight:bold;color:#555;border-bottom:1px solid #f0f0f0">${escapeHtml(displayKey)}</td><td style="padding:6px 12px;border-bottom:1px solid #f0f0f0">${escapeHtml(displayValue)}</td></tr>`;
                     })
                     .join('');
 
@@ -708,6 +744,11 @@ async function runMetaFlowNode(ctx: ExecutionContext, node: any): Promise<void> 
         return;
     }
     const { buildMetaFlowPayload } = await import('./payload-builder');
+    // BUG-M6 FIX: Always generate a unique token per session+node+timestamp.
+    // If a vendor hardcodes a flowToken in the node config, every user gets the
+    // same token — Meta deduplicates on it, so only the FIRST user's form submission
+    // is accepted. All subsequent users are silently rejected by Meta.
+    const uniqueToken = `tk_${ctx.session.id}_${node.id}_${Date.now()}`;
     const p = buildMetaFlowPayload(
         contact.phone,
         flowId,
@@ -716,7 +757,7 @@ async function runMetaFlowNode(ctx: ExecutionContext, node: any): Promise<void> 
         resolveVariables(data.text || data.bodyText || 'Please fill in the form below:', ctx.session.state, contact),
         resolveVariables(data.flowFooter || data.footerText || '', ctx.session.state, contact),
         data.initialScreen || data.screen || 'QUESTION_1',
-        data.flowToken || `tk_${Date.now()}`,
+        uniqueToken,
         data.headerType || 'text',
         getAbsoluteMediaUrl(data.headerUrl)
     );
@@ -948,7 +989,15 @@ async function runCollectInputNode(ctx: ExecutionContext, node: any): Promise<vo
     const { waba, contact, session } = ctx;
     const data = node.data || {};
     const prompt = resolveVariables(data.text || 'Please provide the information:', session.state, contact);
-    const payload = { to: contact.phone, type: 'text', text: { body: prompt } };
+    // BUG-H4 FIX: Use buildTextPayload() which adds messaging_product: 'whatsapp'.
+    // Previously the payload was built inline without messaging_product,
+    // causing Meta to reject it with a 400 error — the collect_input prompt was
+    // silently never delivered to the user.
+    const payload = buildTextPayload(contact.phone, prompt);
+    if (!payload) {
+        console.error(`[CollectInput] Could not build payload for node ${node.id}`);
+        return;
+    }
     try {
         const metaId = await sendMessageDirect({
             phoneNumberId: waba.phone_number_id,
@@ -959,7 +1008,7 @@ async function runCollectInputNode(ctx: ExecutionContext, node: any): Promise<vo
             workspaceId: session.workspace_id,
             contactId: contact.id,
         });
-        await saveOutboundMessage(waba, contact, metaId, payload);
+        if (metaId) await saveOutboundMessage(waba, contact, metaId, payload);
     } catch (e: any) {
         console.error(`[CollectInput] Send failed: ${e.message}`);
     }
@@ -1045,18 +1094,39 @@ export async function handleUserInput(session: FlowSessionData, waba: any, conta
     ));
     if (matchedEdge) return executeFrom(session, waba, contact, currentNodeId, matchedEdge.target, 0);
 
-    // ── FIX #2: Global edge fallback ──
-    // If no edge from the current node matched, search ALL edges in the flow.
-    // This handles users interacting with a list/button from a *previous* node
-    // (e.g. they scroll up and choose a different product while the session is
-    // sitting at the Payment node). Without this, the flow closes silently.
-    const globalEdge = edges.find((e: any) => (
-        (e.sourceHandle || '').toLowerCase() === normalizedInput.toLowerCase() ||
-        (e.sourceHandle || '').toLowerCase() === `button-${normalizedInput.toLowerCase()}` ||
-        (e.sourceHandle || '').toLowerCase() === `item-${normalizedInput.toLowerCase()}`
-    ));
+    // ── BUG-M3 FIX: Scoped global edge fallback ──
+    // Only look backwards from the current node through interactive-type source nodes.
+    // Previously this searched ALL edges blindly, causing flow jumps when two different
+    // nodes had the same option label (e.g., two catalog nodes both with "item-1").
+    // Now we only match edges from interactive nodes (list/button/catalog/message)
+    // so non-interactive nodes (condition/action/wait) never get cross-matched.
+    const INTERACTIVE_NODE_TYPES = new Set(['list', 'message', 'catalog', 'Catalog', 'product_catalog', 'meta_flow', 'MetaFlow', 'appointment', 'payment', 'Payment']);
+    const nodes: any[] = session.flow.nodes || [];
+
+    // BUG-H3 FIX: Strip the 'sel_' prefix added by the catalog fallback renderer
+    // (see runCatalogNode: id: `sel_${c.id}`). The edges store the raw ID without sel_,
+    // so we need to check both the raw input and the de-prefixed version.
+    const dePrefixedInput = normalizedInput.startsWith('sel_')
+        ? normalizedInput.slice(4)  // Remove 'sel_' prefix for edge matching
+        : normalizedInput;
+
+    const globalEdge = edges.find((e: any) => {
+        const sourceNode = nodes.find((n: any) => n.id === e.source);
+        if (!sourceNode || !INTERACTIVE_NODE_TYPES.has(sourceNode.type)) return false;
+        const handle = (e.sourceHandle || '').toLowerCase();
+        const inp = normalizedInput.toLowerCase();
+        const depInp = dePrefixedInput.toLowerCase();
+        return (
+            handle === inp ||
+            handle === depInp ||
+            handle === `button-${inp}` ||
+            handle === `item-${inp}` ||
+            handle === `button-${depInp}` ||
+            handle === `item-${depInp}`
+        );
+    });
     if (globalEdge) {
-        console.log(`[FlowExecutor] 🔀 Global edge match for "${normalizedInput}" — jumping to node ${globalEdge.target}`);
+        console.log(`[FlowExecutor] 🔀 Global edge match for "${normalizedInput}" (de-prefixed: "${dePrefixedInput}") — jumping to node ${globalEdge.target}`);
         return executeFrom(session, waba, contact, globalEdge.source, globalEdge.target, 0);
     }
 

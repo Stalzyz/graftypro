@@ -3,8 +3,10 @@ import { prisma } from '@/lib/db';
 import { InstagramService } from '@/lib/instagram/service';
 
 /**
- * 📸 INSTAGRAM MESSENGER WEBHOOK
+ * 📸 INSTAGRAM MESSENGER WEBHOOK v2.0
  * Handles Meta Instagram Messaging Webhook Verification & Real-time DM/Comment Events.
+ *
+ * FLOW: Instagram DM → Match igPageId to Workspace → Find PUBLISHED Flow via Trigger Engine → Reply
  */
 
 // GET: Meta Webhook Verification
@@ -17,11 +19,11 @@ export async function GET(req: Request) {
     const VERIFY_TOKEN = process.env.WEBHOOK_VERIFY_TOKEN || 'grafty_webhook_verify';
 
     if (mode === 'subscribe' && token === VERIFY_TOKEN) {
-        console.log('[InstagramWebhook] Verification Successful');
+        console.log('[InstagramWebhook] ✅ Verification Successful');
         return new NextResponse(challenge, { status: 200 });
     }
 
-    console.warn('[InstagramWebhook] Verification Failed - Invalid Token');
+    console.warn('[InstagramWebhook] ❌ Verification Failed - Invalid Token');
     return new NextResponse('Forbidden', { status: 403 });
 }
 
@@ -89,84 +91,218 @@ export async function POST(req: Request) {
 }
 
 /**
- * Executes flow logic for incoming Instagram message / comment
+ * Core handler: Resolves workspace by igPageId, finds matching flow via trigger keywords,
+ * and replies using InstagramService.
  */
 async function handleIncomingInstagramMessage(igPageId: string, senderId: string, incomingText: string) {
     try {
-        // 1. Fetch Instagram Integration Credentials
-        let integration = await (prisma as any).integration.findFirst({
-            where: {
-                type: 'INSTAGRAM',
-                is_active: true
-            }
+        // ----------------------------------------------------------------
+        // STEP 1: Find workspace & credentials by Instagram Page ID
+        // Try Integration table first (scoped by page_id), then workspace settings fallback.
+        // ----------------------------------------------------------------
+        let accessToken: string | null = null;
+        let workspaceId: string | null = null;
+        let resolvedPageId = igPageId;
+
+        // Strategy A: Integration table — find by page_id in credentials JSON
+        const allIntegrations = await (prisma as any).integration.findMany({
+            where: { type: 'INSTAGRAM', is_active: true },
         });
 
-        let accessToken = integration?.credentials?.access_token;
-        let pageId = integration?.credentials?.page_id || igPageId;
+        for (const integration of allIntegrations) {
+            const creds = integration.credentials as any;
+            if (
+                creds?.page_id === igPageId ||
+                creds?.instagram_page_id === igPageId ||
+                // Fallback: if only one integration exists, use it
+                allIntegrations.length === 1
+            ) {
+                accessToken = creds?.access_token;
+                workspaceId = integration.workspace_id;
+                resolvedPageId = creds?.page_id || igPageId;
+                break;
+            }
+        }
 
-        // Fallback: Check Workspace Settings JSON
+        // Strategy B: Workspace settings JSON fallback
         if (!accessToken) {
             const workspaces = await prisma.workspace.findMany();
             for (const ws of workspaces) {
                 const igCreds = (ws.settings as any)?.integrations?.INSTAGRAM?.credentials;
-                if (igCreds?.access_token) {
+                if (
+                    igCreds?.access_token &&
+                    (igCreds?.page_id === igPageId || !igCreds?.page_id)
+                ) {
                     accessToken = igCreds.access_token;
-                    pageId = igCreds.page_id || igPageId;
+                    workspaceId = ws.id;
+                    resolvedPageId = igCreds.page_id || igPageId;
                     break;
                 }
             }
         }
 
-        if (!accessToken) {
-            console.warn(`[InstagramWebhook] No Meta Access Token found for Page ID ${igPageId}. Make sure credentials are saved in Settings > Integrations.`);
+        if (!accessToken || !workspaceId) {
+            console.warn(
+                `[InstagramWebhook] ❌ No Instagram credentials found for Page ID "${igPageId}". ` +
+                `Make sure you connected your Instagram account in Settings → Integrations.`
+            );
             return;
         }
 
-        // 2. Trigger Keyword Match
-        const textLower = incomingText.toLowerCase();
-        const isQuoteOrEcommerce = /quote|ecommerce|price|shopify|atlas|package|info|hi|hello|get quote|cost|rates/i.test(textLower);
+        console.log(`[InstagramWebhook] ✅ Resolved workspace: ${workspaceId} for page: ${resolvedPageId}`);
 
-        if (isQuoteOrEcommerce) {
-            const responseText = `👋 Hello from Grekam Academy!
+        // ----------------------------------------------------------------
+        // STEP 1.5: Exchange User Access Token for Page Access Token dynamically
+        // Instagram Messaging API requires sending to POST /PAGE_ID/messages with a Page Access Token.
+        // ----------------------------------------------------------------
+        let finalPageAccessToken = accessToken;
+        let finalFacebookPageId = resolvedPageId;
 
-Here are our official E-Commerce & Web Development packages:
+        console.log(`[InstagramWebhook] 🔑 Resolved access token starts with: ${accessToken ? accessToken.substring(0, 15) : 'null'}`);
 
-🛒 1. Shopify Standard Solution
-• Price: ₹25,000
-• Complete online store setup with payment gateway & WhatsApp order alerts.
-
-🛍️ 2. Custom E-Commerce Platform
-• Price: ₹45,000
-• Full custom branding, inventory manager, GST invoicing & abandoned cart recovery.
-
-⚡ 3. Atlas Enterprise Web Development
-• Starting at: ₹75,000
-• Custom high-performance web app with full admin control.
-🌐 Live Demo: https://atlasadmin.grekam.in/login
-
-📞 Have questions? Call our executive directly at +91 9789359407!`;
-
-            await InstagramService.sendDirectMessage(
-                pageId,
-                accessToken,
-                senderId,
-                responseText,
-                [
-                    { title: 'Shopify ₹25k', payload: 'SHOPIFY' },
-                    { title: 'E-Commerce ₹45k', payload: 'ECOMMERCE' },
-                    { title: 'Atlas Demo', payload: 'ATLAS' }
-                ]
+        try {
+            console.log(`[InstagramWebhook] 🔑 Exchanging token for Instagram Account ID: ${igPageId}...`);
+            const accountsRes = await fetch(
+                `https://graph.facebook.com/v21.0/me/accounts?fields=access_token,instagram_business_account&access_token=${accessToken}`
             );
+            if (accountsRes.ok) {
+                const accountsData = await accountsRes.json();
+                console.log(`[InstagramWebhook] 🔑 Meta Accounts Response:`, JSON.stringify(accountsData, null, 2));
+                const matchingPage = accountsData.data?.find(
+                    (p: any) => p.instagram_business_account?.id === igPageId
+                );
+                if (matchingPage) {
+                    finalPageAccessToken = matchingPage.access_token;
+                    finalFacebookPageId = matchingPage.id;
+                    console.log(
+                        `[InstagramWebhook] 🔑 Successfully resolved Facebook Page ID: ${finalFacebookPageId} and Page Access Token for Instagram Account: ${igPageId}`
+                    );
+                } else {
+                    console.warn(
+                        `[InstagramWebhook] ⚠️ Instagram Account ID "${igPageId}" was not found in linked accounts of this token. Using credentials as-is.`
+                    );
+                }
+            } else {
+                const errData = await accountsRes.json().catch(() => ({}));
+                console.error(`[InstagramWebhook] ❌ Failed to fetch accounts from Meta:`, JSON.stringify(errData));
+            }
+        } catch (tokenErr: any) {
+            console.error(`[InstagramWebhook] ❌ Error resolving Page Access Token:`, tokenErr.message);
+        }
+
+        // ----------------------------------------------------------------
+        // STEP 2: Match trigger keyword against PUBLISHED flows in this workspace
+        // Uses the same flexible matching logic as trigger-engine.ts:
+        //   - Exact match
+        //   - StartsWith match
+        //   - Contains match (any comma-separated keyword)
+        // ----------------------------------------------------------------
+        const textLower = incomingText.toLowerCase().trim();
+
+        const publishedFlows = await prisma.flow.findMany({
+            where: { workspace_id: workspaceId, status: 'PUBLISHED' },
+            select: { id: true, name: true, trigger_keyword: true, nodes: true },
+        });
+
+        let matchedFlow: { id: string; name: string; trigger_keyword: string | null; nodes: any } | null = null;
+
+        for (const flow of publishedFlows) {
+            if (!flow.trigger_keyword) continue;
+
+            // Support comma-separated keywords: "hi, hello, ecommerce, quote"
+            const keywords = flow.trigger_keyword
+                .split(',')
+                .map((k) => k.toLowerCase().trim())
+                .filter(Boolean);
+
+            for (const kw of keywords) {
+                if (textLower === kw || textLower.startsWith(kw) || textLower.includes(kw) || kw.includes(textLower)) {
+                    matchedFlow = flow;
+                    console.log(
+                        `[InstagramWebhook] 🎯 Flow matched: "${kw}" → ${flow.name} (${flow.id})`
+                    );
+                    break;
+                }
+            }
+
+            if (matchedFlow) break;
+        }
+
+        // ----------------------------------------------------------------
+        // STEP 3: Execute — either send flow's first message or a default reply
+        // ----------------------------------------------------------------
+        if (matchedFlow) {
+            // Extract the first message node content from the flow
+            const nodes: any[] = Array.isArray(matchedFlow.nodes) ? matchedFlow.nodes : [];
+            const firstMessageNode = nodes.find(
+                (n: any) => n.type === 'message' || n.type === 'list'
+            );
+            const replyText =
+                firstMessageNode?.data?.text ||
+                `✅ Flow "${matchedFlow.name}" started! We'll guide you through the next steps.`;
+
+            // Extract quick replies (buttons) from the first message node
+            const rawButtons = firstMessageNode?.data?.buttons || [];
+            const quickReplies = rawButtons.map((b: any) => ({
+                title: b.title || b.text || '',
+                payload: b.id || b.payload || ''
+            })).filter((b: any) => b.title);
+
+            // IMPORTANT: Use finalFacebookPageId (resolved from Meta) and finalPageAccessToken.
+            await InstagramService.sendDirectMessage(
+                finalFacebookPageId,
+                finalPageAccessToken,
+                senderId,
+                replyText,
+                quickReplies.length > 0 ? quickReplies : undefined
+            );
+
+            console.log(`[InstagramWebhook] ✅ Replied using flow "${matchedFlow.name}" with ${quickReplies.length} buttons`);
         } else {
-            const defaultReply = `Thanks for reaching out to Grekam Academy! Reply "Get Quote" or "Ecommerce" to view package details and live demos, or call us at +91 9789359407.`;
-            await InstagramService.sendDirectMessage(
-                pageId,
-                accessToken,
-                senderId,
-                defaultReply
-            );
+            // No flow matched — send a generic fallback
+            const autoResponders = await (prisma as any).autoResponder.findMany({
+                where: { workspace_id: workspaceId, status: true },
+            });
+
+            let fallbackText: string | null = null;
+            for (const ar of autoResponders) {
+                const kw = ar.keyword?.toLowerCase().trim();
+                if (!kw) continue;
+                if (
+                    textLower === kw ||
+                    textLower.startsWith(kw) ||
+                    textLower.includes(kw)
+                ) {
+                    if (ar.reply_type === 'TEXT' && ar.reply_text) {
+                        fallbackText = ar.reply_text;
+                    }
+                    break;
+                }
+            }
+
+            if (fallbackText) {
+                await InstagramService.sendDirectMessage(
+                    finalFacebookPageId,
+                    finalPageAccessToken,
+                    senderId,
+                    fallbackText
+                );
+                console.log(`[InstagramWebhook] ✅ AutoResponder reply sent`);
+            } else {
+                // Generic default — get workspace name
+                const workspace = await prisma.workspace.findUnique({ where: { id: workspaceId } });
+                const wsName = workspace?.name || 'us';
+                const defaultReply = `👋 Hi! Thanks for reaching out to ${wsName}. Reply with a keyword to explore our services, or we'll get back to you shortly!`;
+                await InstagramService.sendDirectMessage(
+                    finalFacebookPageId,
+                    finalPageAccessToken,
+                    senderId,
+                    defaultReply
+                );
+                console.log(`[InstagramWebhook] 💬 Generic default reply sent (no trigger matched for: "${incomingText}")`);
+            }
         }
     } catch (err: any) {
-        console.error(`[InstagramWebhook] Failed to process message from ${senderId}:`, err.message);
+        console.error(`[InstagramWebhook] ❌ Failed to process message from ${senderId}:`, err.message);
     }
 }

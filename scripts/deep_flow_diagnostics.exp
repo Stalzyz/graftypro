@@ -1,0 +1,51 @@
+#!/usr/bin/expect -f
+set SERVER    "root@72.61.231.187"
+set PASS      "Photoshop09@"
+set REMOTE    "/root/grafty_bsp"
+set timeout   600
+
+spawn ssh -o StrictHostKeyChecking=no -o PubkeyAuthentication=no $SERVER "cd $REMOTE && \
+echo '=== 1. RECENT WEB CONTAINER LOGS ===' && \
+docker compose -f docker-compose.prod.yml logs --tail=150 web 2>&1 | grep -iE 'flow|trigger|session|webhook|error|fail|ingest' | tail -40 && \
+echo '' && \
+echo '=== 2. RECENT WORKER CONTAINER LOGS ===' && \
+docker compose -f docker-compose.prod.yml logs --tail=150 worker 2>&1 | grep -iE 'flow|meta|error|fail|worker' | tail -40 && \
+echo '' && \
+echo '=== 3. PRODUCTION DATABASE FLOWS AND SESSIONS ===' && \
+docker compose -f docker-compose.prod.yml exec -T web node -e \"
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
+async function run() {
+    const flows = await prisma.flow.findMany({
+        select: { id: true, name: true, status: true, trigger_keyword: true, workspace_id: true, updated_at: true }
+    });
+    console.log('ACTIVE_FLOWS:', JSON.stringify(flows, null, 2));
+
+    const sessions = await prisma.flowSession.findMany({
+        take: 10,
+        orderBy: { updated_at: 'desc' },
+        include: { flow: { select: { name: true } }, contact: { select: { phone: true } } }
+    });
+    console.log('RECENT_FLOW_SESSIONS:', JSON.stringify(sessions, null, 2));
+
+    const responders = await prisma.autoResponder.findMany({
+        take: 10,
+        select: { id: true, keyword: true, match_type: true, reply_type: true, status: true, workspace_id: true }
+    });
+    console.log('AUTO_RESPONDERS:', JSON.stringify(responders, null, 2));
+
+    const recentInbound = await prisma.message.findMany({
+        where: { direction: 'INBOUND' },
+        take: 5,
+        orderBy: { created_at: 'desc' },
+        select: { id: true, type: true, content: true, created_at: true, contact: { select: { phone: true } } }
+    });
+    console.log('RECENT_INBOUND_MESSAGES:', JSON.stringify(recentInbound, null, 2));
+}
+run().catch(console.error);
+\"
+"
+expect {
+    "password:" { send "$PASS\r"; exp_continue }
+    eof
+}
