@@ -49,6 +49,7 @@ model Workspace {
   current_plan_id    String?  // Link to SubscriptionPlan
   subscription_id    String?  // Razorpay Sub ID
   subscription_status String? // active, created, halted
+  subscription_ends_at DateTime? // Subscription expiration / renewal date
   
   // Billing Metadata
   billing_address   String?  @db.Text

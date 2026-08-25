@@ -108,7 +108,7 @@ export function TrialExpiredGate() {
     );
 }
 
-// Non-blocking top banner for active trials
+// Non-blocking top banner for active trials and subscriptions expiring within 7 days
 export function TrialBanner() {
     const [trial, setTrial] = useState<TrialState>({ status: "loading", days_left: 0, trial_expired: false });
     const [dismissed, setDismissed] = useState(false);
@@ -118,7 +118,13 @@ export function TrialBanner() {
             try {
                 const res = await fetch("/api/auth/trial-status", { cache: 'no-store' });
                 const data = await res.json();
-                setTrial({ status: data.status, days_left: data.days_left ?? 0, trial_expired: data.trial_expired });
+                setTrial({ 
+                    status: data.status, 
+                    days_left: data.days_left ?? 0, 
+                    trial_expired: data.trial_expired ?? false,
+                    plan: data.plan || "PRO",
+                    is_expiring_soon: data.is_expiring_soon ?? (data.days_left <= 7)
+                });
             } catch {
                 setTrial({ status: "paid", days_left: 0, trial_expired: false });
             }
@@ -126,25 +132,52 @@ export function TrialBanner() {
         fetchTrial();
     }, []);
 
-    if (dismissed || trial.status !== "trial" || trial.trial_expired) return null;
+    // Show banner whenever there are 7 or fewer days remaining (for trial OR paid subscription)
+    const showBanner = !dismissed && !trial.trial_expired && trial.status !== "loading" && (
+        trial.status === "trial" || (trial.days_left <= 7 && trial.days_left >= 0)
+    );
+
+    if (!showBanner) return null;
 
     const urgent = trial.days_left <= 2;
+    const isPaidSub = trial.status === "paid";
 
     return (
-        <div className={`w-full flex items-center justify-between px-6 py-2.5 text-sm font-bold ${urgent ? "bg-orange-500 text-white" : "bg-amber-50 text-amber-900 border-b border-amber-200"}`}>
+        <div className={`w-full flex items-center justify-between px-6 py-2.5 text-sm font-bold shadow-sm transition-all animate-in slide-in-from-top-2 ${
+            urgent 
+                ? "bg-gradient-to-r from-rose-600 to-orange-600 text-white" 
+                : isPaidSub
+                    ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white"
+                    : "bg-amber-50 text-amber-900 border-b border-amber-200"
+        }`}>
             <div className="flex items-center gap-3">
-                <Clock size={15} className={urgent ? "text-white" : "text-amber-500"} />
-                <span>
-                    {urgent
-                        ? `⚠️ Trial ending soon — ${trial.days_left} day${trial.days_left === 1 ? "" : "s"} left! Upgrade now to keep your data.`
-                        : `🎉 You're on a 7-day free trial — ${trial.days_left} day${trial.days_left === 1 ? "" : "s"} remaining.`
+                <Clock size={16} className={urgent || isPaidSub ? "text-white animate-pulse" : "text-amber-600"} />
+                <span className="tracking-tight">
+                    {isPaidSub
+                        ? (urgent
+                            ? `⚠️ Action Required: Your ${trial.plan} subscription expires in ${trial.days_left} day${trial.days_left === 1 ? "" : "s"}! Renew now.`
+                            : `⚡ ${trial.plan} Subscription — ${trial.days_left} day${trial.days_left === 1 ? "" : "s"} remaining in current cycle.`)
+                        : (urgent
+                            ? `⚠️ Trial ending soon — ${trial.days_left} day${trial.days_left === 1 ? "" : "s"} left! Upgrade now to keep your data.`
+                            : `🎉 You're on a 7-day free trial — ${trial.days_left} day${trial.days_left === 1 ? "" : "s"} remaining.`)
                     }
                 </span>
-                <Link href="/dashboard/settings/billing" className={`underline font-black ${urgent ? "text-white" : "text-amber-700"}`}>
-                    Upgrade Now →
+                <Link 
+                    href="/dashboard/settings/billing" 
+                    className={`px-3 py-1 rounded-lg text-xs font-black uppercase tracking-wider transition-all hover:scale-105 active:scale-95 ${
+                        urgent || isPaidSub 
+                            ? "bg-white text-slate-900 shadow-md hover:bg-slate-100" 
+                            : "bg-amber-700 text-white hover:bg-amber-800"
+                    }`}
+                >
+                    {isPaidSub ? "Renew / Manage →" : "Upgrade Now →"}
                 </Link>
             </div>
-            <button onClick={() => setDismissed(true)} className="ml-4 opacity-60 hover:opacity-100 transition-opacity">
+            <button 
+                onClick={() => setDismissed(true)} 
+                className="ml-4 opacity-70 hover:opacity-100 transition-opacity p-1"
+                title="Dismiss message"
+            >
                 <X size={16} />
             </button>
         </div>

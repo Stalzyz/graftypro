@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Check, Zap, Shield, CreditCard, ArrowRight, Star, Sparkles } from "lucide-react";
+import { Check, Zap, Shield, CreditCard, ArrowRight, Star, Sparkles, Clock } from "lucide-react";
 import Script from "next/script";
 
 interface PlanDetail {
@@ -208,8 +208,16 @@ export default function BillingPage() {
                         <p className="text-sm font-black text-slate-900">{currentPlan}</p>
                     </div>
                     <div className="w-px h-8 bg-slate-100" />
-                    <div className="bg-[#27954D]/10 text-[#27954D] px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest">
-                        {trialStatus?.status === 'trial' ? 'Trial Period' : 'Scale Active'}
+                    <div className="flex flex-col items-end">
+                        <div className="bg-[#27954D]/10 text-[#27954D] px-4 py-1.5 rounded-xl text-xs font-black uppercase tracking-widest">
+                            {trialStatus?.status === 'trial' ? 'Trial Period' : 'Scale Active'}
+                        </div>
+                        {trialStatus?.days_left !== undefined && (
+                            <p className={`text-[11px] font-bold mt-1 flex items-center gap-1 ${trialStatus.days_left <= 7 ? 'text-rose-600 font-extrabold' : 'text-amber-600'}`}>
+                                <Clock size={12} />
+                                {trialStatus.days_left} Days Remaining
+                            </p>
+                        )}
                     </div>
                 </div>
             </div>

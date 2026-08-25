@@ -70,15 +70,31 @@ export async function GET(request: Request) {
                 }
             }
         }
+import { SubscriptionNotificationService } from "../../../../lib/services/subscription-notification";
+
+        const subInfo = SubscriptionNotificationService.getSubscriptionInfo(workspace);
+
+        if (subInfo.is_expiring_soon || subInfo.is_expired) {
+            SubscriptionNotificationService.checkAndSendExpiryEmail(user.workspaceId).catch(err => {
+                console.error("[TRIAL_STATUS] Async email notification error:", err);
+            });
+        }
+
         const headers = { "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate" };
         
         if (hasPaidPlan) {
-            return NextResponse.json({ status: "paid", trial_expired: false, plan: workspace.plan_details?.name || workspace.plan }, { headers });
+            return NextResponse.json({ 
+                status: subInfo.is_expired ? "expired" : "paid", 
+                trial_expired: subInfo.is_expired, 
+                plan: workspace.plan_details?.name || workspace.plan,
+                days_left: subInfo.days_left,
+                subscription_ends_at: subInfo.subscription_ends_at,
+                is_expiring_soon: subInfo.is_expiring_soon,
+                server_time: now.toISOString()
+            }, { headers });
         }
         if (!trialEnd) return NextResponse.json({ status: "no_trial", trial_expired: true, days_left: 0 }, { headers });
         
-        // Calculate dynamic precision: if less than 24 hours left, we might want to show hours,
-        // but for now we stick to days.
         const daysLeft = Math.ceil((trialEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
         const expired = trialEnd < now;
 
@@ -86,7 +102,9 @@ export async function GET(request: Request) {
             status: expired ? "expired" : "trial", 
             trial_expired: expired, 
             trial_ends_at: trialEnd.toISOString(), 
+            subscription_ends_at: subInfo.subscription_ends_at,
             days_left: Math.max(0, daysLeft),
+            is_expiring_soon: daysLeft <= 7,
             server_time: now.toISOString()
         }, { headers });
     } catch (e: any) {
