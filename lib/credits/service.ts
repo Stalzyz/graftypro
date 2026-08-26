@@ -267,7 +267,17 @@ export class CreditService {
         // Pre-check 1: Workspace status
         const workspace = await prisma.workspace.findUnique({
             where: { id: workspaceId },
-            select: { status: true, current_plan_id: true, name: true, email: true, reseller: true }
+            select: { 
+                status: true, 
+                current_plan_id: true, 
+                name: true, 
+                billing_email: true, 
+                reseller: true,
+                users: {
+                    select: { email: true },
+                    take: 1
+                }
+            }
         });
 
         if (!workspace || workspace.status === 'SUSPENDED') {
@@ -394,16 +404,17 @@ export class CreditService {
                     });
 
                     // Trigger low balance email if it drops below threshold (e.g. 100)
+                    const targetEmail = workspace?.billing_email || workspace?.users?.[0]?.email;
                     if (balanceAfter <= 100 && currentBalance > 100) {
                         // Fire-and-forget — do NOT await inside tx (avoids timeout)
                         import('@/lib/queue').then(({ systemEmailQueue }) => {
-                            if (workspace?.email) {
+                            if (targetEmail) {
                                 systemEmailQueue?.add("send-system-email", {
                                     type: "LOW_CREDIT_BALANCE",
                                     payload: {
                                         workspaceId,
                                         vendorName: workspace.name,
-                                        to: workspace.email,
+                                        to: targetEmail,
                                         currentBalance: balanceAfter
                                     }
                                 }).catch((e: any) => console.error("[CreditService] Low balance email queue error:", e));
