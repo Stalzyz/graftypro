@@ -201,7 +201,7 @@ export class WhatsAppService {
             template: {
                 name: templateName,
                 language: { code: langCode },
-                components
+                ...(components && components.length > 0 ? { components } : {})
             }
         }, workspaceId, category, description);
     }
