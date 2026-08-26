@@ -1,5 +1,5 @@
 import { prisma } from "../lib/db";
-import { campaignQueue } from "../lib/queue";
+import { campaignQueue, metaApiQueue } from "../lib/queue";
 
 async function main() {
     const campaignId = "92ce1079-0b44-4efb-97a5-0a03c1a23399";
@@ -18,14 +18,31 @@ async function main() {
 
     console.log("✅ Campaign status reset in database.");
 
-    // 2. Remove old job if exists in BullMQ
-    const oldJob = await campaignQueue.getJob(`UNROLL-${campaignId}`);
-    if (oldJob) {
-        await oldJob.remove();
-        console.log("✅ Removed old unroll job from queue.");
+    // 2. Remove old unroll job if exists in BullMQ campaign-queue
+    const oldUnrollJob = await campaignQueue.getJob(`UNROLL-${campaignId}`);
+    if (oldUnrollJob) {
+        await oldUnrollJob.remove();
+        console.log("✅ Removed old unroll job from campaign-queue.");
     }
 
-    // 3. Add to campaign-queue to run immediately
+    // 3. Clear completed/failed meta-api jobs for this campaign to bypass deduplication
+    const completedJobs = await metaApiQueue.getCompleted();
+    for (const job of completedJobs) {
+        if (job.id && job.id.includes(campaignId)) {
+            await job.remove();
+            console.log(`✅ Removed completed job ${job.id} from meta-api-queue`);
+        }
+    }
+
+    const failedJobs = await metaApiQueue.getFailed();
+    for (const job of failedJobs) {
+        if (job.id && job.id.includes(campaignId)) {
+            await job.remove();
+            console.log(`✅ Removed failed job ${job.id} from meta-api-queue`);
+        }
+    }
+
+    // 4. Add to campaign-queue to run immediately
     await campaignQueue.add(
         "send-campaign",
         {
@@ -41,4 +58,8 @@ async function main() {
     console.log("🚀 Enqueued send-campaign job successfully!");
 }
 
-main().catch(console.error).finally(() => prisma.$disconnect());
+main().catch(console.error).finally(() => {
+    prisma.$disconnect();
+    campaignQueue.close();
+    metaApiQueue.close();
+});
