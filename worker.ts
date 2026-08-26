@@ -508,7 +508,7 @@ const campaignWorker = new Worker(
                     workspace_id: campaign.workspace_id,
                     name: (campaign as any).template_name
                 },
-                select: { language: true, name: true, status: true }
+                select: { language: true, name: true, status: true, components: true }
             });
             
             if (!templateRecord) {
@@ -643,6 +643,19 @@ const campaignWorker = new Worker(
                 }
             });
 
+            // Resolve catalog retailer ID if template contains a catalog button
+            let retailerId = "product_1";
+            const templateComponents = (templateRecord.components as any[]) || [];
+            const hasCatalogButton = templateComponents.some((c: any) => 
+                c.type === "BUTTONS" && c.buttons?.some((b: any) => b.type === "CATALOG")
+            );
+            if (hasCatalogButton) {
+                const firstProduct = await prisma.product.findFirst({
+                    where: { workspace_id: workspaceId, is_active: true }
+                });
+                retailerId = firstProduct?.sku || firstProduct?.id || "product_1";
+            }
+
             // 🎯 MONSTER OPTIMIZATION: Dispatch with Bulk Add
             const batchSize = 100;
             for (let i = 0; i < recipients.length; i += batchSize) {
@@ -706,6 +719,23 @@ const campaignWorker = new Worker(
                         components.push({
                             type: "body",
                             parameters: bodyParams
+                        });
+                    }
+
+                    // Add Catalog Button if template has catalog button
+                    if (hasCatalogButton) {
+                        components.push({
+                            type: "button",
+                            sub_type: "CATALOG",
+                            index: 0,
+                            parameters: [
+                                {
+                                    type: "action",
+                                    action: {
+                                        thumbnail_product_retailer_id: retailerId
+                                    }
+                                }
+                            ]
                         });
                     }
 
