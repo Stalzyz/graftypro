@@ -2,7 +2,7 @@ import { prisma } from "../lib/db";
 import { campaignQueue } from "../lib/queue";
 
 async function main() {
-    const campaignId = "637cf0e6-0d30-4551-8a7f-27cecc5888bb";
+    const campaignId = "92ce1079-0b44-4efb-97a5-0a03c1a23399";
     console.log(`♻️ Retrying campaign: ${campaignId}`);
 
     // 1. Reset campaign in database
@@ -31,7 +31,7 @@ async function main() {
         {
             campaignId: campaignId,
             workspaceId: "89b6c788-d842-4bf6-8af9-bc02e84e76d2",
-            segmentId: "d026a14a-434a-4de5-b5d6-733a488acf3e"
+            segmentId: "509e8522-bd8e-4427-8327-22052b1dd2d4"
         },
         {
             jobId: `UNROLL-${campaignId}`
