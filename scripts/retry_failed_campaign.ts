@@ -18,24 +18,34 @@ async function main() {
 
     console.log("✅ Campaign status reset in database.");
 
-    // 2. Remove old unroll job if exists in BullMQ campaign-queue
-    const oldUnrollJob = await campaignQueue.getJob(`UNROLL-${campaignId}`);
-    if (oldUnrollJob) {
-        await oldUnrollJob.remove();
-        console.log("✅ Removed old unroll job from campaign-queue.");
+    // 2. Clear campaign-queue completed/failed jobs
+    const completedCampaignJobs = await campaignQueue.getCompleted();
+    for (const job of completedCampaignJobs) {
+        if (job.id && job.id.includes(campaignId)) {
+            await job.remove();
+            console.log(`✅ Removed completed job ${job.id} from campaign-queue`);
+        }
+    }
+
+    const failedCampaignJobs = await campaignQueue.getFailed();
+    for (const job of failedCampaignJobs) {
+        if (job.id && job.id.includes(campaignId)) {
+            await job.remove();
+            console.log(`✅ Removed failed job ${job.id} from campaign-queue`);
+        }
     }
 
     // 3. Clear completed/failed meta-api jobs for this campaign to bypass deduplication
-    const completedJobs = await metaApiQueue.getCompleted();
-    for (const job of completedJobs) {
+    const completedMetaJobs = await metaApiQueue.getCompleted();
+    for (const job of completedMetaJobs) {
         if (job.id && job.id.includes(campaignId)) {
             await job.remove();
             console.log(`✅ Removed completed job ${job.id} from meta-api-queue`);
         }
     }
 
-    const failedJobs = await metaApiQueue.getFailed();
-    for (const job of failedJobs) {
+    const failedMetaJobs = await metaApiQueue.getFailed();
+    for (const job of failedMetaJobs) {
         if (job.id && job.id.includes(campaignId)) {
             await job.remove();
             console.log(`✅ Removed failed job ${job.id} from meta-api-queue`);
