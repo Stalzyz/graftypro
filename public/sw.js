@@ -50,8 +50,8 @@ self.addEventListener('fetch', (event) => {
   }
   if (!url.protocol.startsWith('http')) return;
 
-  // Ignore API requests and WebSockets
-  if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/_next/webpack-hmr')) {
+  // Ignore API requests and Next.js internal assets/chunks
+  if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/_next/')) {
     return;
   }
 
