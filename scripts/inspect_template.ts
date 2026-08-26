@@ -6,10 +6,11 @@ async function main() {
   const updated = await prisma.campaign.update({
     where: { id: "92ce1079-0b44-4efb-97a5-0a03c1a23399" },
     data: {
-      template_name: "quick_call"
+      template_name: "ecommerce",
+      status: "COMPLETED"
     }
   });
-  console.log("Updated Campaign:", JSON.stringify(updated, null, 2));
+  console.log("Restored Campaign:", JSON.stringify(updated, null, 2));
 }
 
 main()
